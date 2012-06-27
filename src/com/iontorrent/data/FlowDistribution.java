@@ -4,7 +4,7 @@
  */
 package com.iontorrent.data;
 
-import java.awt.datatransfer.StringSelection;
+import java.util.ArrayList;
 import java.util.TreeMap;
 
 /**
@@ -14,19 +14,43 @@ import java.util.TreeMap;
 public class FlowDistribution {
 
     private TreeMap<Short, Integer> map;
+    private String information;
     private String name;
+    private char base;
+    private int nrflows;
+    /**
+     * the chromosome location
+     */
+    private int location;
+    private ArrayList<ReadInfo> readinfos;
+    private boolean forward;
+    private boolean reverse;
 
-    public FlowDistribution(TreeMap<Short, Integer> map, String name) {
+    public FlowDistribution(int location, int nrflows, TreeMap<Short, Integer> map, String name, char base, boolean forward, boolean reverse, String information) {
         this.map = map;
+        this.information = information;
         this.name = name;
+        this.nrflows = nrflows;
+        this.location = location;
+        this.forward = forward;
+        this.reverse = reverse;
+        this.base = base;
+    }
+
+    public int getNrFlows() {
+        return nrflows;
+    }
+
+    public String getName() {
+        return name;
     }
 
     public String toCsv(int binsize) {
         int[] bins = getBinnedData(binsize);
         String nl = "\n";
         StringBuilder csv = new StringBuilder();
-        csv = csv.append(getName());
-        csv = csv.append("flow value, count\n");
+        csv = csv.append(getInformation());
+        csv = csv.append(nl).append("flow value, count\n");
         for (int b = 0; b < bins.length; b++) {
             csv = csv.append(b * binsize).append(",").append(bins[b]).append(nl);
         }
@@ -42,6 +66,26 @@ public class FlowDistribution {
         }
         buf.append("}\n");
         return buf.toString();
+    }
+
+    public String getReadInfoString() {
+        String nl = "\n";
+        StringBuilder csv = new StringBuilder();
+        csv = csv.append(getInformation());
+        csv = csv.append(nl).append(ReadInfo.getHeader()).append(nl);
+        for (ReadInfo ri : readinfos) {
+            csv = csv.append(ri.toCsv()).append(nl);
+        }
+        csv = csv.append(nl);
+        return csv.toString();
+    }
+    public String getReadNames() {
+        StringBuilder names = new StringBuilder();
+        for (ReadInfo ri : readinfos) {
+            names = names.append(ri.getReadName()).append("_");
+        }
+      
+        return names.toString();
     }
 
     public int[] getBinnedData(int binsize) {
@@ -77,14 +121,45 @@ public class FlowDistribution {
     /**
      * @return the name
      */
-    public String getName() {
-        return name;
+    public String getInformation() {
+        return information;
     }
 
     /**
-     * @param name the name to set
+     * @return the location
      */
-    public void setName(String name) {
-        this.name = name;
+    public int getLocation() {
+        return location;
+    }
+
+    /**
+     * @param location the location to set
+     */
+    public void setLocation(int location) {
+        this.location = location;
+    }
+
+    public int getMaxX() {
+        int maxx = 0;
+        for (Short x : map.keySet()) {
+            if (x > maxx) {
+                maxx = x;
+            }
+        }
+        return maxx;
+    }
+
+    public void setReadInfos(ArrayList<ReadInfo> readinfos) {
+        this.readinfos = readinfos;
+    }
+
+    public char getBase() {
+        return base;
+    }
+    public boolean isForward() {
+        return forward;
+    }
+    public boolean isReverse() {
+        return reverse;
     }
 }

@@ -12,12 +12,27 @@ package org.broad.igv.sam;
 
 //~--- non-JDK imports --------------------------------------------------------
 import com.iontorrent.data.FlowDistribution;
-import com.iontorrent.views.FlowSignalDistributionView;
+import com.iontorrent.data.ReadInfo;
+import com.iontorrent.utils.LocationListener;
+import com.iontorrent.utils.SimpleDialog;
+import com.iontorrent.views.FlowSignalDistributionPanel;
+import java.awt.*;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
+import java.io.File;
+import java.text.NumberFormat;
+import java.util.List;
+import java.util.*;
+import javax.swing.*;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.data.DataSource;
 import org.broad.igv.feature.FeatureUtils;
+import org.broad.igv.feature.Locus;
 import org.broad.igv.feature.genome.Genome;
 import org.broad.igv.goby.GobyCountArchiveDataSource;
 import org.broad.igv.lists.GeneList;
@@ -41,18 +56,6 @@ import org.broad.igv.ui.util.MessageUtils;
 import org.broad.igv.ui.util.UIUtilities;
 import org.broad.igv.util.Pair;
 import org.broad.igv.util.ResourceLocator;
-
-import javax.swing.*;
-import java.awt.*;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.StringSelection;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.MouseEvent;
-import java.io.File;
-import java.text.NumberFormat;
-import java.util.*;
-import java.util.List;
 
 /**
  * @author jrobinso
@@ -194,7 +197,9 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         this.dataManager = dataManager;
 
         ionTorrent = dataManager.isIonTorrent();
-
+        p("IsIonTorrent = "+ionTorrent);
+        // FOR NOW, SET TO TRUE AS A LOT OF BAM FILES DO NOT HAVE THIS INFO YET!
+        ionTorrent = true;
         minimumHeight = 50;
         maximumHeight = Integer.MAX_VALUE;
 
@@ -496,21 +501,34 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
     /**
      * Copy the contents of the popup text to the system clipboard.
      */
-    public void copyFlowSignalDistribution(final TrackClickEvent e, double location) {
-        FlowDistribution dist = getFlowSignalDistribution(location);        
+    public void copyFlowSignalDistribution(final TrackClickEvent e, int location) {
+        ArrayList<FlowDistribution> dists = getFlowSignalDistribution(e.getFrame(), location);
         Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-        clipboard.setContents(new StringSelection(dist.toJson()), null);
+        String json = "";
+        for (FlowDistribution dist : dists) {
+            json += dist.toJson() + "\n";
+        }
+        clipboard.setContents(new StringSelection(json), null);
     }
 
     /**
      * by default, returns both for forward and backward strand
      */
-    private FlowDistribution getFlowSignalDistribution(double location) {
-        return getFlowSignalDistribution(location, true, true);
+    private ArrayList<FlowDistribution> getFlowSignalDistribution(ReferenceFrame frame, int location) {
+        return getFlowSignalDistribution(frame, location, true, true);
     }
 
-    private FlowDistribution getFlowSignalDistribution(double location, boolean forward, boolean reverse) {
-        TreeMap<Short, Integer> map = new TreeMap<Short, Integer>();
+    private ArrayList<FlowDistribution> getFlowSignalDistribution(ReferenceFrame frame, int location, boolean forward, boolean reverse) {
+        // one for each base!
+        ArrayList<TreeMap<Short, Integer>> alleletrees = new ArrayList<TreeMap<Short, Integer>>();
+
+        int nrflows = 0;
+        ArrayList<FlowDistribution> alleledist = new ArrayList<FlowDistribution>();
+        String bases = "";
+        // also store information on read and position
+
+
+        ArrayList<ArrayList<ReadInfo>> allelereadinfos = new ArrayList<ArrayList<ReadInfo>>();
         for (AlignmentInterval interval : dataManager.getLoadedIntervals()) {
             Iterator<Alignment> alignmentIterator = interval.getAlignmentIterator();
             while (alignmentIterator.hasNext()) {
@@ -521,13 +539,68 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 if (!alignment.contains(location)) {
                     continue;
                 }
+                // we don't want the beginning or the end of the alignment! HP might might give misleading results
+                if (alignment.getAlignmentStart() == location || alignment.getAlignmentEnd() == location) {
+                    p(location+" for read "+alignment.getReadName()+" is at an end, not taking it");
+                    continue;
+                }
+                // also throw away positions near the end if we have the same base until the end if the user preference is set that way
+                boolean hideFirstHPs = PreferenceManager.getInstance().getAsBoolean(PreferenceManager.IONTORRENT_FLOWDIST_HIDE_FIRST_HP);
+                 
+                if (hideFirstHPs) {
+                    char baseatpos = (char)alignment.getBase(location);
+                    boolean hp = true;
+                    for (int pos = alignment.getAlignmentStart(); pos < location; pos++) {
+                        if ((char)alignment.getBase(pos) != baseatpos) {
+                            hp = false;
+                            break;
+                        }
+                    }
+                    if (hp) {
+                        p("Got all same bases "+baseatpos+" for read "+alignment.getReadName()+" at START.");                   
+                        continue;
+                    }
+                    hp = true;
+                    for (int pos = location+1; pos < alignment.getAlignmentEnd(); pos++) {
+                        if ((char)alignment.getBase(pos) != baseatpos) {
+                            hp = false;
+                            break;
+                        }
+                    }
+                    if (hp) {
+                        p("Got all same bases "+baseatpos+" for read "+alignment.getReadName()+" at END");
+                        continue;                    
+                    }
+                }
                 AlignmentBlock[] blocks = alignment.getAlignmentBlocks();
                 for (int i = 0; i < blocks.length; i++) {
                     AlignmentBlock block = blocks[i];
+                    int posinblock = (int) location - block.getStart();
                     if (!block.contains((int) location) || !block.hasFlowSignals()) {
                         continue;
                     }
-                    short flowSignal = block.getFlowSignalSubContext((int) location - block.getStart()).signals[1][0];
+
+                    int flownr = block.getFlowSignalSubContext(posinblock).getFlowOrderIndex();
+                    nrflows++;
+                    short flowSignal = block.getFlowSignalSubContext(posinblock).getCurrentSignal();
+
+                    char base = (char) block.getBase(posinblock);
+
+                    int whichbase = bases.indexOf(base);
+                    TreeMap<Short, Integer> map = null;
+                    ArrayList<ReadInfo> readinfos = null;
+                    if (whichbase < 0) {
+                        bases += base;
+                        map = new TreeMap<Short, Integer>();
+                        alleletrees.add(map);
+                        readinfos = new ArrayList<ReadInfo>();
+                        allelereadinfos.add(readinfos);
+                    } else {
+                        map = alleletrees.get(whichbase);
+                        readinfos = allelereadinfos.get(whichbase);
+                    }
+                    ReadInfo readinfo = new ReadInfo(alignment.getReadName(), flownr, flowSignal, base);
+                    readinfos.add(readinfo);
                     if (map.containsKey(flowSignal)) {
                         // increment
                         map.put(flowSignal, map.get(flowSignal) + 1);
@@ -537,14 +610,30 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                     }
                 }
             }        
+        }        
+       
+        String locus = Locus.getFormattedLocusString(frame.getChrName(), (int) location, (int) location);
+
+        int which = 0;
+        for (TreeMap<Short, Integer> map : alleletrees) {
+            String name = "";
+            if (forward && reverse) {
+                name += "both strand";
+            } else if (forward) {
+                name += "forward strand";
+            } else {
+                name += "reverse strand";
+            }
+            char base = bases.charAt(which);
+            name += ", " + base+", "+nrflows+" flows";            
+            String info = locus + ", " + bases;
+
+            FlowDistribution dist = new FlowDistribution(location, nrflows, map, name, base, forward, reverse, info);
+            dist.setReadInfos(allelereadinfos.get(which));
+            alleledist.add(dist);
+            which++;
         }
-        String info = "";
-        if (forward && reverse) info += "both strands";
-        else if (forward) info += "forward strand";
-        else info += "reverse strand";
-        
-        FlowDistribution dist = new FlowDistribution(map, info);
-        return dist;
+        return alleledist;
     }
 
     /**
@@ -1539,7 +1628,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             if (frame == null) {
                 item.setEnabled(false);
             } else {
-                final double location = frame.getChromosomePosition(me.getX());
+                final int location = (int) (frame.getChromosomePosition(me.getX()));
 
                 // Change track height by attribute
                 item.addActionListener(new ActionListener() {
@@ -1865,27 +1954,30 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         }
 
         private void addIonTorrentAuxiliaryViews(final TrackClickEvent e) {
-            
+
             JMenu groupMenu = new JMenu("View flow signal distrubtion for this base for");
             ButtonGroup group = new ButtonGroup();
-            
-            
-            JCheckBoxMenuItem item = new JCheckBoxMenuItem("both strands combined");
-            groupMenu.add(item);
-            group.add(item);
+
+
             
             JCheckBoxMenuItem itemb = new JCheckBoxMenuItem("forward and reverse (2 data series)");
             groupMenu.add(itemb);
             group.add(itemb);
+            itemb.setSelected(true);
+            itemb.setFont(itemb.getFont().deriveFont(Font.BOLD));
             
+            JCheckBoxMenuItem item = new JCheckBoxMenuItem("both strands combined");
+            groupMenu.add(item);
+            group.add(item);
+
             JCheckBoxMenuItem itemf = new JCheckBoxMenuItem("forward strand only");
             groupMenu.add(itemf);
             group.add(itemf);
-           
+
             JCheckBoxMenuItem itemr = new JCheckBoxMenuItem("reverse strand only");
             groupMenu.add(itemr);
             group.add(itemr);
-            
+
             final ReferenceFrame frame = e.getFrame();
             if (frame == null) {
                 item.setEnabled(false);
@@ -1893,49 +1985,85 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 itemr.setEnabled(false);
                 itemb.setEnabled(false);
             } else {
-                final double location = frame.getChromosomePosition(e.getMouseEvent().getX());
+                final int location = (int) (frame.getChromosomePosition(e.getMouseEvent().getX()));
                 // Change track height by attribute
                 item.addActionListener(new ActionListener() {
+
                     public void actionPerformed(ActionEvent aEvt) {
-                        showFlowSignalDistribution(location, e, true, true);
+                        showFlowSignalDistribution(location, e.getFrame(), true, true);
                     }
                 });
                 itemf.addActionListener(new ActionListener() {
+
                     public void actionPerformed(ActionEvent aEvt) {
-                        showFlowSignalDistribution(location, e, true, false);
+                        showFlowSignalDistribution(location, e.getFrame(), true, false);
                     }
                 });
                 itemr.addActionListener(new ActionListener() {
+
                     public void actionPerformed(ActionEvent aEvt) {
-                        showFlowSignalDistribution(location, e, false, true);
+                        showFlowSignalDistribution(location, e.getFrame(), false, true);
                     }
                 });
                 itemb.addActionListener(new ActionListener() {
+
                     public void actionPerformed(ActionEvent aEvt) {
-                        showFlowSignalDistribution(location, e, false, false);
+                        showFlowSignalDistribution(location, e.getFrame(), false, false);
                     }
                 });
             }
-            add(groupMenu);                    
+            add(groupMenu);
         }
     }
-    /** if neither forward nor reverse, create 2 charts in one */
-    private void showFlowSignalDistribution(double location, TrackClickEvent e, boolean forward, boolean reverse) {
-        FlowDistribution distributions[] =  null;
+
+    /**
+     * if neither forward nor reverse, create 2 charts in one
+     */
+    private void showFlowSignalDistribution(final int location, final ReferenceFrame frame, final boolean forward, final boolean reverse) {
+        FlowDistribution[] distributions = getFlowDistributions(forward, reverse, frame, location);
+
+        final FlowSignalDistributionPanel distributionPanel = new FlowSignalDistributionPanel(distributions);
+        LocationListener listener = new LocationListener() {
+
+            @Override
+            public void locationChanged(int newLocation) {
+                p("Got new location from panel: " + newLocation + ", (old location was: " + location + ")");
+                FlowDistribution[] newdist = getFlowDistributions(forward, reverse, frame, newLocation);
+                distributionPanel.setDistributions(newdist);
+                //frame.jumpTo(frame.getChrName(), location, location);
+                
+                frame.centerOnLocation(newLocation+1);
+                IGV.getInstance().repaintDataAndHeaderPanels();
+                IGV.getInstance().repaintStatusAndZoomSlider();
+            }
+        };
+        distributionPanel.setListener(listener);
+
+        // listen to left/right mouse clicks from panel and navigate accordingly
+        SimpleDialog dia = new SimpleDialog("Flow Signal Distribution", distributionPanel, 800, 500);
+    }
+
+    private FlowDistribution[] getFlowDistributions(boolean forward, boolean reverse, ReferenceFrame frame, int location) {
+        FlowDistribution distributions[] = null;
         if (forward || reverse) {
-            distributions = new FlowDistribution[1];
-            distributions[0] = getFlowSignalDistribution(location, forward, reverse);
+            ArrayList<FlowDistribution> dists = getFlowSignalDistribution(frame, location, forward, reverse);
+            distributions = new FlowDistribution[dists.size()];
+            for (int i = 0; i < dists.size(); i++) {
+                distributions[i] = dists.get(i);
+            }
+        } else {
+            ArrayList<FlowDistribution> distsf = getFlowSignalDistribution(frame, location, true, false);
+            ArrayList<FlowDistribution> distsr = getFlowSignalDistribution(frame, location, false, true);
+            distributions = new FlowDistribution[distsf.size() + distsr.size()];
+            for (int i = 0; i < distsf.size(); i++) {
+                distributions[i] = distsf.get(i);
+            }
+            for (int i = 0; i < distsr.size(); i++) {
+                distributions[i + distsf.size()] = distsr.get(i);
+            }
+
         }
-        else {
-            distributions = new FlowDistribution[3];
-            distributions[0] = getFlowSignalDistribution(location, true, true);
-            distributions[1] = getFlowSignalDistribution(location, true, false);
-            distributions[2] = getFlowSignalDistribution(location, false, true);
-        }        
-        
-        // and now display data in a custom view
-        String info = e.getFrame().getFormattedLocusString();       
-        FlowSignalDistributionView.showView(distributions, info);
+        return distributions;
     }
 
     private void p(String msg) {

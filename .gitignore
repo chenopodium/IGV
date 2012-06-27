@@ -1,4 +1,15 @@
+#Subversion files
+.svn
 
+#Class/TMP files
+.class
+*.tmp
+tmp/
+IGV-dist/
+
+#OS junk files
+[Tt]humbs.db
+*.DS_Store
 /make.bat
 /goby-io-igv.jar
 /run.bat
@@ -10,3 +21,9 @@
 /web/igv.jar
 /tmp
 /testtmp
+#Project files
+build/
+
+# Office Temp Files
+~$*
+

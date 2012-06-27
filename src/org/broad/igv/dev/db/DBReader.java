@@ -132,7 +132,7 @@ public abstract class DBReader<T> {
             return this;
         }
 
-        @Override
+      // @Override
         public void close() {
             try {
                 DBManager.closeResources(rs, rs.getStatement(), null);
