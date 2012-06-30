@@ -44,7 +44,6 @@ import java.io.File;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-
 /**
  * @author jrobinso
  */
@@ -82,6 +81,21 @@ public class PreferencesEditor extends javax.swing.JDialog {
 
     }
 
+    private void extractBinSize() {
+        String sbin = this.binSizeText.getText();
+        if (sbin != null) {
+            sbin = sbin.trim();
+            try {
+                Integer.parseInt(sbin);
+                updatedPreferenceMap.put(PreferenceManager.IONTORRENT_FLOWDIST_BINSIZE, sbin);
+            } catch (NumberFormatException numberFormatException) {
+                inputValidated = false;
+                MessageUtils.showMessage(
+                        "Bin size must be an integer.");
+            }
+        }
+    }
+
     private void resetBackgroundButtonActionPerformed(ActionEvent e) {
         final PreferenceManager prefMgr = PreferenceManager.getInstance();
         prefMgr.remove(PreferenceManager.BACKGROUND_COLOR);
@@ -95,18 +109,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
     }
 
     private void binSizeTextActionPerformed(ActionEvent e) {
-        String sbin = this.binSizeText.getText();
-        if (sbin != null) {
-            sbin = sbin.trim();
-            try {
-                Integer.parseInt(sbin);
-                updatedPreferenceMap.put(PreferenceManager.IONTORRENT_FLOWDIST_BINSIZE, sbin);
-            } catch (NumberFormatException numberFormatException) {
-                inputValidated = false;
-                MessageUtils.showMessage(
-                        "Bin size must be an integer.");
-            }
-        }
+        extractBinSize();
     }
 
     private void hideFirstHPActionPerformed(ActionEvent e) {
@@ -151,6 +154,10 @@ public class PreferencesEditor extends javax.swing.JDialog {
             server = server.trim();
             updatedPreferenceMap.put(PreferenceManager.IONTORRENT_SERVER, server);            
         }
+    }
+
+    private void binSizeTextFocusLost(FocusEvent e) {
+        extractBinSize();
     }
 
     public PreferencesEditor(java.awt.Frame parent, boolean modal) {
@@ -1713,6 +1720,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
                         @Override
                         public void focusLost(FocusEvent e) {
                             junctionFlankingTextFieldFocusLost(e);
+                            binSizeTextFocusLost(e);
                         }
                     });
                     panel6.add(binSizeText);
@@ -2840,7 +2848,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
                 inputValidated = false;
                 MessageUtils.showMessage("Down-sampling read count must be a positive integer.");
             } else {
-                updatedPreferenceMap.put(PreferenceManager.SAM_MAX_LEVELS, maxLevelString);
+                updatedPreferenceMap.put(PreferenceManager.SAM_SAMPLING_COUNT, maxLevelString);
             }
         } catch (NumberFormatException numberFormatException) {
             inputValidated = false;
@@ -2917,6 +2925,15 @@ public class PreferencesEditor extends javax.swing.JDialog {
         insertSizeMaxPercentileField.setEnabled(selected);
     }
 
+    public void selectTab(String tabname) {
+        if (tabname == null) return;
+        for (int i = 0; i < tabbedPane.getTabCount(); i++) {
+            if (tabbedPane.getTitleAt(i).equalsIgnoreCase(tabname)) {
+                tabbedPane.setSelectedIndex(i);
+                return;
+            }
+        }
+    }
 
     private void insertSizeMinPercentileFieldFocusLost(FocusEvent e) {
         insertSizeMinPercentileFieldActionPerformed(null);
@@ -3593,7 +3610,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
         
         samMaxWindowSizeField.setText(prefMgr.get(PreferenceManager.SAM_MAX_VISIBLE_RANGE));
         samSamplingWindowField.setText(prefMgr.get(PreferenceManager.SAM_SAMPLING_WINDOW));
-        samDownsampleCountField.setText(prefMgr.get(PreferenceManager.SAM_MAX_LEVELS));
+        samDownsampleCountField.setText(prefMgr.get(PreferenceManager.SAM_SAMPLING_COUNT));
 
         boolean downsample = prefMgr.getAsBoolean(PreferenceManager.SAM_DOWNSAMPLE_READS);
         downsampleReadsCB.setSelected(downsample);
@@ -3991,7 +4008,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
             PreferenceManager.SAM_MAX_VISIBLE_RANGE,
             PreferenceManager.SAM_SHOW_DUPLICATES,
             PreferenceManager.SAM_SHOW_SOFT_CLIPPED,
-            PreferenceManager.SAM_MAX_LEVELS,
+            PreferenceManager.SAM_SAMPLING_COUNT,
             PreferenceManager.SAM_SAMPLING_WINDOW,
             PreferenceManager.SAM_FILTER_FAILED_READS,
             PreferenceManager.SAM_DOWNSAMPLE_READS
