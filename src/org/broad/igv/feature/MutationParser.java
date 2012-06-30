@@ -141,9 +141,6 @@ public class MutationParser {
                     int start;
                     try {
                         start = Integer.parseInt(tokens[startColumn].trim());
-                        if (isMAF) {
-                            start--;
-                        }
                     } catch (NumberFormatException e) {
                         throw new DataLoadException("Column " + (startColumn + 1) + " must be a numeric value.", locator.getPath());
                     }
@@ -155,8 +152,16 @@ public class MutationParser {
                         throw new DataLoadException("Column " + (endColumn + 1) + " must be a numeric value.", locator.getPath());
                     }
 
+
+                    // MAF files use the 1-based inclusive convention for coordinates.  The convention is not
+                    // specified for MUT files, and it appears both conventions have been used.  We can detect
+                    // the convention used for single base mutations by testing start == end.
+                    if (isMAF || (start == end)) {
+                        start--;
+                    }
+
                     String sampleId = tokens[sampleColumn].trim();
-                    String type = tokens[typeColumn];
+                    String type = tokens[typeColumn].trim();
 
                     MultiMap<String, String> attributes = new MultiMap();
                     int n = Math.min(headers.length, tokens.length);

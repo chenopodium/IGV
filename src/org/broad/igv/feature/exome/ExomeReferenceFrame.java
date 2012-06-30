@@ -1,7 +1,20 @@
+/*
+ * Copyright (c) 2007-2012 The Broad Institute, Inc.
+ * SOFTWARE COPYRIGHT NOTICE
+ * This software and its documentation are the copyright of the Broad Institute, Inc. All rights are reserved.
+ *
+ * This software is supplied without any warranty or guaranteed support whatsoever. The Broad Institute is not responsible for its use, misuse, or functionality.
+ *
+ * This software is licensed under the terms of the GNU Lesser General Public License (LGPL),
+ * Version 2.1 which is available at http://www.opensource.org/licenses/lgpl-2.1.php.
+ */
+
 package org.broad.igv.feature.exome;
 
 import org.apache.log4j.Logger;
-import org.broad.igv.feature.*;
+import org.broad.igv.feature.Chromosome;
+import org.broad.igv.feature.Locus;
+import org.broad.igv.feature.NamedFeature;
 import org.broad.igv.feature.genome.Genome;
 import org.broad.igv.feature.genome.GenomeManager;
 import org.broad.igv.track.FeatureTrack;
@@ -26,12 +39,6 @@ public class ExomeReferenceFrame extends ReferenceFrame {
     int exomeOrigin;
 
     private int blockGap;
-
-    public ExomeReferenceFrame(ReferenceFrame otherFrame) {
-        super(otherFrame);
-        FeatureTrack geneTrack = IGV.getInstance().getGeneTrack();
-        init(geneTrack);
-    }
 
     public ExomeReferenceFrame(ReferenceFrame otherFrame, FeatureTrack referenceTrack) {
         super(otherFrame);
@@ -187,6 +194,7 @@ public class ExomeReferenceFrame extends ReferenceFrame {
 
         origin = exomeToGenomePosition(exomeOrigin);
         locationScale /= zoomFactor;
+        zoom = newZoom;
 
         IGV.getInstance().repaintDataAndHeaderPanels();
         IGV.getInstance().repaintStatusAndZoomSlider();
@@ -218,7 +226,6 @@ public class ExomeReferenceFrame extends ReferenceFrame {
         int genomeEnd = exomeToGenomePosition(exomeEnd);
         return genomeEnd;
     }
-
 
     public int genomeToExomePosition(int genomePosition) {
 

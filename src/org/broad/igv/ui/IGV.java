@@ -26,14 +26,12 @@ import org.broad.igv.Globals;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.batch.BatchRunner;
 import org.broad.igv.batch.CommandListener;
-import org.broad.igv.exceptions.DataLoadException;
 import org.broad.igv.feature.*;
 import org.broad.igv.feature.genome.*;
 import org.broad.igv.lists.GeneList;
 import org.broad.igv.lists.GeneListManager;
 import org.broad.igv.lists.Preloader;
 import org.broad.igv.peaks.PeakCommandBar;
-import org.broad.igv.renderer.IGVFeatureRenderer;
 import org.broad.igv.sam.AlignmentTrack;
 import org.broad.igv.sam.reader.BAMHttpReader;
 import org.broad.igv.session.IGVSessionReader;
@@ -50,6 +48,7 @@ import org.broad.igv.ui.panel.*;
 import org.broad.igv.ui.util.*;
 import org.broad.igv.ui.util.ProgressMonitor;
 import org.broad.igv.util.*;
+import org.broad.igv.util.collections.LRUCache;
 import org.broad.igv.variant.VariantTrack;
 import org.broad.tribble.util.SeekableFileStream;
 
@@ -100,15 +99,6 @@ public class IGV {
     Session session;
 
     private GenomeManager genomeManager;
-    /**
-     * The gene track for the current genome, rendered in the FeaturePanel
-     */
-    private FeatureTrack geneTrack;
-
-    /**
-     * The sequence track for the current genome
-     */
-    private SequenceTrack sequenceTrack;
 
     /**
      * Attribute used to group tracks.  Normally "null".  Set from the "Tracks" menu.
@@ -334,6 +324,7 @@ public class IGV {
 
         contentPane.chromosomeChanged(chrName);
         repaintDataAndHeaderPanels(updateCommandBar);
+        contentPane.getCommandBar().updateComponentStates();
 
     }
 
@@ -853,6 +844,8 @@ public class IGV {
         contentPane.getMainPanel().revalidate();
         mainFrame.repaint();
         //getContentPane().repaint();
+        contentPane.getCommandBar().updateComponentStates();
+
     }
 
     final public void refreshCommandBar() {
@@ -1575,7 +1568,7 @@ public class IGV {
 
     public Set<TrackType> getLoadedTypes() {
         Set<TrackType> types = new HashSet();
-        for (Track t : getAllTracks(false)) {
+        for (Track t : getAllTracks()) {
             TrackType type = t.getTrackType();
             if (t != null) {
                 types.add(type);
@@ -1655,16 +1648,6 @@ public class IGV {
         }
     }
 
-    public FeatureTrack getGeneTrack() {
-        return geneTrack;
-    }
-
-
-    public SequenceTrack getSequenceTrack() {
-        return sequenceTrack;
-    }
-
-
     public void reset() {
         groupByAttribute = null;
         for (TrackPanel sp : getTrackPanels()) {
@@ -1683,7 +1666,7 @@ public class IGV {
 
     public void sortAlignmentTracks(AlignmentTrack.SortOption option, Double location, String tag) {
         double actloc;
-        for (Track t : getAllTracks(false)) {
+        for (Track t : getAllTracks()) {
             if (t instanceof AlignmentTrack) {
                 for (ReferenceFrame frame : FrameManager.getFrames()) {
                     actloc = location != null ? location : frame.getCenter();
@@ -1694,7 +1677,7 @@ public class IGV {
     }
 
     public void groupAlignmentTracks(AlignmentTrack.GroupOption option) {
-        for (Track t : getAllTracks(false)) {
+        for (Track t : getAllTracks()) {
             if (t instanceof AlignmentTrack) {
                 for (ReferenceFrame frame : FrameManager.getFrames()) {
                     ((AlignmentTrack) t).groupAlignments(option, frame);
@@ -1704,7 +1687,7 @@ public class IGV {
     }
 
     public void packAlignmentTracks() {
-        for (Track t : getAllTracks(false)) {
+        for (Track t : getAllTracks()) {
             if (t instanceof AlignmentTrack) {
                 for (ReferenceFrame frame : FrameManager.getFrames()) {
                     ((AlignmentTrack) t).packAlignments(frame);
@@ -1714,20 +1697,20 @@ public class IGV {
     }
 
     public void collapseTracks() {
-        for (Track t : getAllTracks(true)) {
+        for (Track t : getAllTracks()) {
             t.setDisplayMode(Track.DisplayMode.COLLAPSED);
         }
     }
 
 
     public void expandTracks() {
-        for (Track t : getAllTracks(true)) {
+        for (Track t : getAllTracks()) {
             t.setDisplayMode(Track.DisplayMode.EXPANDED);
         }
     }
 
     public void collapseTrack(String trackName) {
-        for (Track t : getAllTracks(true)) {
+        for (Track t : getAllTracks()) {
             if (t.getName().equals(trackName)) {
                 t.setDisplayMode(Track.DisplayMode.COLLAPSED);
             }
@@ -1736,7 +1719,7 @@ public class IGV {
 
 
     public void expandTrack(String trackName) {
-        for (Track t : getAllTracks(true)) {
+        for (Track t : getAllTracks()) {
             if (t.getName().equals(trackName)) {
                 t.setDisplayMode(Track.DisplayMode.EXPANDED);
             }
@@ -1758,7 +1741,7 @@ public class IGV {
         // Old option to allow overlaying based on an arbitrary attribute.
         // String overlayAttribute = igv.getSession().getOverlayAttribute();
 
-        for (Track track : getAllTracks(false)) {
+        for (Track track : getAllTracks()) {
             if (track != null && track.getTrackType() == TrackType.MUTATION) {
 
                 String sample = track.getSample();
@@ -1777,7 +1760,7 @@ public class IGV {
 
         }
 
-        for (Track track : getAllTracks(false)) {
+        for (Track track : getAllTracks()) {
             if (track != null) {  // <= this should not be neccessary
                 if (track.getTrackType() != TrackType.MUTATION) {
                     String sample = track.getSample();
@@ -1790,7 +1773,7 @@ public class IGV {
         }
 
         boolean displayOverlays = getSession().getOverlayMutationTracks();
-        for (Track track : getAllTracks(false)) {
+        for (Track track : getAllTracks()) {
             if (track != null) {
                 if (track.getTrackType() == TrackType.MUTATION) {
                     track.setOverlayed(displayOverlays && overlaidTracks.contains(track));
@@ -1827,27 +1810,29 @@ public class IGV {
     /**
      * Return the list of all tracks in the order they appear on the screen
      *
-     * @param includeGeneTrack if false exclude gene and reference sequence tracks.
      * @return
      */
-    public List<Track> getAllTracks(boolean includeGeneTrack) {
+    public List<Track> getAllTracks() {
         List<Track> allTracks = new ArrayList<Track>();
 
         for (TrackPanel tp : getTrackPanels()) {
             allTracks.addAll(tp.getTracks());
         }
-        if ((geneTrack != null) && !includeGeneTrack) {
-            allTracks.remove(geneTrack);
-        }
-        if ((sequenceTrack != null) && !includeGeneTrack) {
-            allTracks.remove(sequenceTrack);
-        }
 
         return allTracks;
     }
 
+    public List<FeatureTrack> getFeatureTracks() {
+        List<FeatureTrack> featureTracks = new ArrayList<FeatureTrack>();
+        for (Track t : getAllTracks()) {
+            if (t instanceof FeatureTrack)
+                featureTracks.add((FeatureTrack) t);
+        }
+        return featureTracks;
+    }
+
     public void clearSelections() {
-        for (Track t : getAllTracks(true)) {
+        for (Track t : getAllTracks()) {
             if (t != null)
                 t.setSelected(false);
 
@@ -1862,7 +1847,7 @@ public class IGV {
     }
 
     public void shiftSelectTracks(Track track) {
-        List<Track> allTracks = getAllTracks(true);
+        List<Track> allTracks = getAllTracks();
         int clickedTrackIndex = allTracks.indexOf(track);
         // Find another track that is already selected.  The semantics of this
         // are not well defined, so any track will do
@@ -1889,7 +1874,7 @@ public class IGV {
 
     public Collection<Track> getSelectedTracks() {
         HashSet<Track> selectedTracks = new HashSet();
-        for (Track t : getAllTracks(true)) {
+        for (Track t : getAllTracks()) {
             if (t != null && t.isSelected()) {
                 selectedTracks.add(t);
             }
@@ -1906,7 +1891,7 @@ public class IGV {
     public Set<ResourceLocator> getDataResourceLocators() {
         HashSet<ResourceLocator> locators = new HashSet();
 
-        for (Track track : getAllTracks(false)) {
+        for (Track track : getAllTracks()) {
             ResourceLocator locator = track.getResourceLocator();
 
             if (locator != null) {
@@ -1920,7 +1905,7 @@ public class IGV {
 
 
     public void setAllTrackHeights(int newHeight) {
-        for (Track track : getAllTracks(false)) {
+        for (Track track : getAllTracks()) {
             track.setHeight(newHeight);
         }
 
@@ -1952,122 +1937,21 @@ public class IGV {
         }
     }
 
-
     /**
-     * @param reader        a reader for the gene (annotation) file.
-     * @param genome
-     * @param geneFileName
-     * @param geneTrackName
-     */
-    public void createGeneTrack(Genome genome, BufferedReader reader, String geneFileName, String geneTrackName,
-                                String annotationURL) {
-
-        FeatureDB.clearFeatures();
-        FeatureTrack geneFeatureTrack = null;
-
-        if (reader != null) {
-            FeatureParser parser;
-            if (GFFParser.isGFF(geneFileName)) {
-                parser = new GFFParser(geneFileName);
-            } else {
-                parser = AbstractFeatureParser.getInstanceFor(new ResourceLocator(geneFileName), genome);
-            }
-            if (parser == null) {
-                MessageUtils.showMessage("ERROR: Unrecognized annotation file format: " + geneFileName +
-                        "<br>Annotations for genome: " + genome.getId() + " will not be loaded.");
-            } else {
-                List<org.broad.tribble.Feature> genes = parser.loadFeatures(reader, genome);
-                String name = geneTrackName;
-                if (name == null) name = "Genes";
-
-                String id = genome.getId() + "_genes";
-                geneFeatureTrack = new FeatureTrack(id, name, new FeatureCollectionSource(genes, genome));
-                geneFeatureTrack.setMinimumHeight(5);
-                geneFeatureTrack.setHeight(35);
-                //geneFeatureTrack.setRendererClass(GeneRenderer.class);
-                geneFeatureTrack.setColor(Color.BLUE.darker());
-                TrackProperties props = parser.getTrackProperties();
-                if (props != null) {
-                    geneFeatureTrack.setProperties(parser.getTrackProperties());
-                }
-                geneFeatureTrack.setUrl(annotationURL);
-            }
-        }
-
-
-        SequenceTrack seqTrack = new SequenceTrack("Reference sequence");
-        if (geneFeatureTrack != null) {
-            setGenomeTracks(geneFeatureTrack, seqTrack);
-        } else {
-            setGenomeTracks(null, seqTrack);
-        }
-
-    }
-
-    /**
-     * Create an annotation track for the genome from a supplied list of features
-     * @param genome
-     * @param features
-     */
-    public void createGeneTrack(Genome genome, List<org.broad.tribble.Feature> features) {
-
-        FeatureDB.clearFeatures();
-        FeatureTrack geneFeatureTrack = null;
-        String name = "Annotations";
-
-        String id = genome.getId() + "_genes";
-        geneFeatureTrack = new FeatureTrack(id, name, new FeatureCollectionSource(features, genome));
-        geneFeatureTrack.setMinimumHeight(5);
-        geneFeatureTrack.setHeight(35);
-        //geneFeatureTrack.setRendererClass(GeneRenderer.class);
-        geneFeatureTrack.setColor(Color.BLUE.darker());
-
-        SequenceTrack seqTrack = new SequenceTrack("Reference sequence");
-        if (geneFeatureTrack != null) {
-            setGenomeTracks(geneFeatureTrack, seqTrack);
-        } else {
-            setGenomeTracks(null, seqTrack);
-        }
-
-    }
-
-    /**
-     * Replace current gene track with new one.  This is called upon switching genomes
+     * Add gene and sequence tracks.  This is called upon switching genomes.
      *
      * @param newGeneTrack
-     * @param newSeqTrack
+     * @param
      */
-    private void setGenomeTracks(FeatureTrack newGeneTrack, SequenceTrack newSeqTrack) {
+    public void setGenomeTracks(FeatureTrack newGeneTrack) {
 
-        boolean foundSeqTrack = false;
-        for (TrackPanel tsv : getTrackPanels()) {
-            foundSeqTrack = tsv.replaceTrack(sequenceTrack, newSeqTrack);
-            if (foundSeqTrack) {
-                break;
-            }
-        }
-
-        boolean foundGeneTrack = false;
-        for (TrackPanel tsv : getTrackPanels()) {
-            foundGeneTrack = tsv.replaceTrack(geneTrack, newGeneTrack);
-            if (foundGeneTrack) {
-                break;
-            }
-        }
+        TrackPanel panel = PreferenceManager.getInstance().getAsBoolean(PreferenceManager.SHOW_SINGLE_TRACK_PANE_KEY) ?
+                getTrackPanel(DATA_PANEL_NAME) : getTrackPanel(FEATURE_PANEL_NAME);
+        SequenceTrack newSeqTrack = new SequenceTrack("Reference sequence");
 
 
-        if (!foundGeneTrack || !foundSeqTrack) {
-            TrackPanel panel = PreferenceManager.getInstance().getAsBoolean(PreferenceManager.SHOW_SINGLE_TRACK_PANE_KEY) ?
-                    getTrackPanel(DATA_PANEL_NAME) : getTrackPanel(FEATURE_PANEL_NAME);
-
-            if (!foundSeqTrack) panel.addTrack(newSeqTrack);
-            if (!foundGeneTrack && newGeneTrack != null) panel.addTrack(newGeneTrack);
-
-        }
-
-        // Keep a reference to this track so it can be removed
-        geneTrack = newGeneTrack;
-        sequenceTrack = newSeqTrack;
+        panel.addTrack(newSeqTrack);
+        panel.addTrack(newGeneTrack);
 
     }
 
@@ -2130,7 +2014,7 @@ public class IGV {
                                                   final ReferenceFrame frame) {
 
         // Get the sortable tracks for this score (data) type
-        final List<Track> allTracks = getAllTracks(false);
+        final List<Track> allTracks = getAllTracks();
         final List<Track> tracksWithScore = new ArrayList(allTracks.size());
         for (Track t : allTracks) {
             if (t.isRegionScoreType(type)) {

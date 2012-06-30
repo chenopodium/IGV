@@ -35,42 +35,39 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * Notes from GFF3 spec
- * These tags have predefined meanings:
- * <p/>
- * ID	   Indicates the name of the feature.  IDs must be unique
- * within the scope of the GFF file.
- * <p/>
- * Name   Display name for the feature.  This is the name to be
- * displayed to the user.  Unlike IDs, there is no requirement
- * that the Name be unique within the file.
- * <p/>
- * Alias  A secondary name for the feature.  It is suggested that
- * this tag be used whenever a secondary identifier for the
- * feature is needed, such as locus names and
- * accession numbers.  Unlike ID, there is no requirement
- * that Alias be unique within the file.
- * <p/>
- * Parent Indicates the parent of the feature.  A parent ID can be
- * used to group exons into transcripts, transcripts into
- * genes, an so forth.  A feature may have multiple parents.
- * Parent can *only* be used to indicate a partof
- * relationship.
+ * Notes from GFF3 spec  http://www.sequenceontology.org/gff3.shtml
+ * These tags have predefined meanings (tags are case sensitive):
+ *
+ * ID	   Indicates the name of the feature (unique).
+ * Name   Display name for the feature.
+ * Alias  A secondary name for the feature.
+ * Parent Indicates the parent of the feature.
+ *
+ * Specs:
+ * GFF3  http://www.sequenceontology.org/gff3.shtml
+ * GFF2 specification: http://www.sanger.ac.uk/resources/software/gff/spec.html
+ * UCSC GFF (GFF "1") http://genome.ucsc.edu/FAQ/FAQformat#format3
+ * GTF  http://mblab.wustl.edu/GTF2.html
+ * UCSC GTF  http://genome.ucsc.edu/FAQ/FAQformat#format4
+ * Feature type definitions http://www.ebi.ac.uk/embl/Documentation/FT_definitions/feature_table.html#7.2
  */
 public class GFFCodec extends AsciiFeatureCodec<Feature> {
 
     private static Logger log = Logger.getLogger(GFFCodec.class);
 
-    public static CI.CIHashSet exonTerms = new CI.CIHashSet();
-    public static CI.CIHashSet utrTerms = new CI.CIHashSet();
-    public static CI.CIHashSet geneParts = new CI.CIHashSet();
-    static CI.CIHashSet ignoredTypes = new CI.CIHashSet();
+    public static Set<String> exonTerms = new HashSet();
+    public static Set<String> utrTerms = new HashSet();
+    public static Set<String> geneParts = new HashSet();
+    static HashSet<String> ignoredTypes = new HashSet();
+
 
     static {
         utrTerms.add("five_prime_UTR");
         utrTerms.add("three_prime_UTR");
         utrTerms.add("5'-utr");
         utrTerms.add("3'-utr");
+        utrTerms.add("3'-UTR");
+        utrTerms.add("5'-UTR");
         utrTerms.add("5utr");
         utrTerms.add("3utr");
     }
@@ -80,6 +77,8 @@ public class GFFCodec extends AsciiFeatureCodec<Feature> {
         exonTerms.add("exon");
         exonTerms.add("coding_exon");
         exonTerms.add("CDS");
+        exonTerms.add("cds");
+
     }
 
 
@@ -88,6 +87,7 @@ public class GFFCodec extends AsciiFeatureCodec<Feature> {
         geneParts.add("transcript");
         geneParts.add("processed_transcript");
         geneParts.add("mrna");
+        geneParts.add("mRNA");
         geneParts.add("promoter");
         geneParts.add("intron");
         geneParts.add("CDS_parts");
@@ -102,6 +102,7 @@ public class GFFCodec extends AsciiFeatureCodec<Feature> {
         ignoredTypes.add("intron");
     }
 
+
     private TrackProperties trackProperties = null;
     CI.CIHashSet featuresToHide = new CI.CIHashSet();
 
@@ -114,8 +115,16 @@ public class GFFCodec extends AsciiFeatureCodec<Feature> {
         GFF2, GFF3
     }
 
-    static String[] nameFields = {"name", "gene", "primary_name", "locus",
-            "alias", "systematic_id", "ID"};
+
+    /**
+     * List of know "Name" fields.  Some important fields from the GFF3 spec are listed below.  Note GFF3
+     * is case sensitive, however GFF2, GTF, and other variants might not be.
+     * <p/>
+     * ID	  Indicates the ID of the feature.
+     * Name   Display name for the feature.
+     * Alias  A secondary name for the feature.
+     */
+    static String[] nameFields = {"Name", "name", "Alias", "gene", "primary_name", "locus", "alias", "systematic_id", "ID"};
 
 
     public GFFCodec(Genome genome) {
@@ -135,7 +144,7 @@ public class GFFCodec extends AsciiFeatureCodec<Feature> {
         }
     }
 
-    public void readHeaderLine(String line){
+    public void readHeaderLine(String line) {
         header = new FeatureFileHeader();
         if (line.startsWith("#track") || line.startsWith("##track")) {
             trackProperties = new TrackProperties();
@@ -143,7 +152,7 @@ public class GFFCodec extends AsciiFeatureCodec<Feature> {
             header.setTrackProperties(trackProperties);
         } else if (line.startsWith("##gff-version") && line.endsWith("3")) {
             helper = new GFF3Helper();
-        }else if (line.startsWith("#nodecode") || line.startsWith("##nodecode")) {
+        } else if (line.startsWith("#nodecode") || line.startsWith("##nodecode")) {
             helper.setUrlDecoding(false);
         } else if (line.startsWith("#hide") || line.startsWith("##hide")) {
             String[] kv = line.split("=");
@@ -209,25 +218,27 @@ public class GFFCodec extends AsciiFeatureCodec<Feature> {
 
     public BasicFeature decode(String line) {
 
-
-        if (line.startsWith("##gff-version") && line.endsWith("3")) {
-            helper = new GFF3Helper();
-        }
-
         if (line.startsWith("#")) {
+            // This should not be possible as this line would be parsed as a header.  But just in case
             return null;
         }
 
         String[] tokens = Globals.tabPattern.split(line, -1);
         int nTokens = tokens.length;
 
-        // GFF files have 9 tokens
+        // GFF3 files have 9 tokens,
+        // TODO -- the attribute column is optional for GFF 2 and earlier (8 tokens required)
         if (nTokens < 9) {
             return null;
         }
 
         String chrToken = tokens[0].trim();
         String featureType = tokens[2].trim();
+
+        if(ignoredTypes.contains(featureType)) {
+            return null;
+        }
+
         String chromosome = genome == null ? chrToken : genome.getChromosomeAlias(chrToken);
 
         // GFF coordinates are 1-based inclusive (length = end - start + 1)
@@ -373,7 +384,6 @@ public class GFFCodec extends AsciiFeatureCodec<Feature> {
         public void parseAttributes(String description, MultiMap<String, String> kvalues) {
 
             List<String> kvPairs = StringUtils.breakQuotedString(description.trim(), ';');
-
             for (String kv : kvPairs) {
                 List<String> tokens = StringUtils.breakQuotedString(kv, ' ');
                 if (tokens.size() >= 2) {
@@ -384,6 +394,31 @@ public class GFFCodec extends AsciiFeatureCodec<Feature> {
             }
         }
 
+        /**
+         * parentIds[0] = attributes.get("id");
+         * if (parentIds[0] == null) {
+         * parentIds[0] = attributes.get("mRNA");
+         * }
+         * if (parentIds[0] == null) {
+         * parentIds[0] = attributes.get("systematic_id");
+         * }
+         * if (parentIds[0] == null) {
+         * parentIds[0] = attributes.get("transcript_id");
+         * }
+         * if (parentIds[0] == null) {
+         * parentIds[0] = attributes.get("gene");
+         * }
+         * if (parentIds[0] == null) {
+         * parentIds[0] = attributes.get("transcriptId");
+         * }
+         * if (parentIds[0] == null) {
+         * parentIds[0] = attributes.get("proteinId");
+         * }
+         *
+         * @param attributes
+         * @param attributeString
+         * @return
+         */
 
         public String[] getParentIds(MultiMap<String, String> attributes, String attributeString) {
 
@@ -391,9 +426,9 @@ public class GFFCodec extends AsciiFeatureCodec<Feature> {
             if (attributes.size() == 0) {
                 parentIds[0] = attributeString;
             } else {
-                String[] possNames = new String[]{"id", "mrna", "systematic_id", "transcript_id", "gene", "transcriptid", "proteinid"};
-                for(String possName: possNames){
-                    if(attributes.containsKey(possName)){
+                String[] possNames = new String[]{"id", "mRna", "systematic_id", "transcript_id", "gene", "transcriptId", "proteinId"};
+                for (String possName : possNames) {
+                    if (attributes.containsKey(possName)) {
                         parentIds[0] = attributes.get(possName);
                         break;
                     }
@@ -462,6 +497,8 @@ public class GFFCodec extends AsciiFeatureCodec<Feature> {
         /**
          * Parse the column 9 attributes.  Attributes are separated by semicolons.
          *
+         * TODO -- quotes (column 9) are explicitly forbidden in GFF3 -- should breakQuotedString be used?
+         *
          * @param description
          * @param kvalues
          */
@@ -514,6 +551,61 @@ public class GFFCodec extends AsciiFeatureCodec<Feature> {
 
         public void setNameFields(String[] nameFields) {
             this.nameFields = nameFields;
+        }
+    }
+
+
+    /**
+     * Helper for GTF files
+     * <p/>
+     * mandatory attributes
+     * gene_id value;     A globally unique identifier for the genomic source of the transcript
+     * transcript_id value;     A globally unique identifier for the predicted transcript.
+     * <p/>
+     * Attributes must end in a semicolon which must then be separated from the start of any subsequent
+     * attribute by exactly one space character (NOT a tab character).
+     * <p/>
+     * Textual attributes should be surrounded by doublequotes.
+     */
+    public static class GTFHelper implements Helper {
+
+        @Override
+        public void parseAttributes(String description, MultiMap<String, String> kvalues) {
+
+            List<String> kvPairs = StringUtils.breakQuotedString(description.trim(), ';');
+            for (String kv : kvPairs) {
+                List<String> tokens = StringUtils.breakQuotedString(kv, ' ');
+                if (tokens.size() >= 2) {
+                    String key = tokens.get(0).trim().replaceAll("\"", "");
+                    String value = tokens.get(1).trim().replaceAll("\"", "");
+                    kvalues.put(key, value);
+                }
+            }
+        }
+
+        @Override
+        public String[] getParentIds(MultiMap<String, String> attributes, String attributeString) {
+            return new String[0];  //To change body of implemented methods use File | Settings | File Templates.
+        }
+
+        @Override
+        public String getID(MultiMap<String, String> attributes) {
+            return attributes.get("transcript_id");  //To change body of implemented methods use File | Settings | File Templates.
+        }
+
+        @Override
+        public void setUrlDecoding(boolean b) {
+            //To change body of implemented methods use File | Settings | File Templates.
+        }
+
+        @Override
+        public String getName(MultiMap<String, String> attributes) {
+            return attributes.get("transcript_id");  //To change body of implemented methods use File | Settings | File Templates.
+        }
+
+        @Override
+        public void setNameFields(String[] fields) {
+            //To change body of implemented methods use File | Settings | File Templates.
         }
     }
 

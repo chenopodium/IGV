@@ -303,7 +303,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
     @Override
     public void preload(RenderContext context) {
         System.out.println("preload " + (int) context.getOrigin() + "-" + (int) context.getEndLocation());
-        dataManager.preload(context, renderOptions, renderOptions.bisulfiteContext);
+        dataManager.preload(context, renderOptions, renderOptions.bisulfiteContext, true);
     }
 
     public void render(RenderContext context, Rectangle rect) {
@@ -337,120 +337,110 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         renderAlignments(context, alignmentsRect);
     }
 
-    private void renderDownsampledIntervals(RenderContext context, Rectangle downsampleRect) {
+      private void renderDownsampledIntervals(RenderContext context, Rectangle downsampleRect) {
 
         // Might be offscreen
-        if (!context.getVisibleRect().intersects(downsampleRect)) {
-            return;
-        }
+        if (!context.getVisibleRect().intersects(downsampleRect)) return;
 
-        final AlignmentInterval loadedInterval = dataManager.getLoadedInterval(context.getReferenceFrame());
-        if (loadedInterval == null) {
-            return;
-        }
+        final Collection<AlignmentInterval> loadedIntervals = dataManager.getLoadedIntervals(context.getReferenceFrame());
+        if (loadedIntervals == null) return;
 
         Graphics2D g = context.getGraphic2DForColor(Color.black);
-        List<CachingQueryReader.DownsampledInterval> intervals = loadedInterval.getDownsampledIntervals();
-        for (CachingQueryReader.DownsampledInterval interval : intervals) {
-            int x0 = context.bpToScreenPixel(interval.getStart());
-            int x1 = context.bpToScreenPixel(interval.getEnd());
-            int w = Math.max(1, x1 - x0);
-            // If there is room, leave a gap on one side
-            if (w > 5) {
-                w--;
+
+        for (AlignmentInterval loadedInterval : loadedIntervals) {
+            List<CachingQueryReader.DownsampledInterval> intervals = loadedInterval.getDownsampledIntervals();
+            for (CachingQueryReader.DownsampledInterval interval : intervals) {
+                int x0 = context.bpToScreenPixel(interval.getStart());
+                int x1 = context.bpToScreenPixel(interval.getEnd());
+                int w = Math.max(1, x1 - x0);
+                // If there is room, leave a gap on one side
+                if (w > 5) w--;
+                // Greyscale from 0 -> 100 downsampled
+                //int gray = 200 - interval.getCount();
+                //Color color = (gray <= 0 ? Color.black : ColorUtilities.getGrayscaleColor(gray));
+                g.fillRect(x0, downsampleRect.y, w, downsampleRect.height);
             }
-            // Greyscale from 0 -> 100 downsampled
-            //int gray = 200 - interval.getCount();
-            //Color color = (gray <= 0 ? Color.black : ColorUtilities.getGrayscaleColor(gray));
-            g.fillRect(x0, downsampleRect.y, w, downsampleRect.height);
         }
     }
 
     private void renderAlignments(RenderContext context, Rectangle inputRect) {
-        try {
-            log.debug("Render features");
-            Map<String, List<AlignmentInterval.Row>> groups =
-                    dataManager.getGroups(context, renderOptions, renderOptions.bisulfiteContext);
 
-            Map<String, PEStats> peStats = dataManager.getPEStats();
-            if (peStats != null) {
-                renderOptions.peStats = peStats;
-            }
+        //log.debug("Render features");
+        Map<String, List<AlignmentInterval.Row>> groups =
+                dataManager.getGroups(context, renderOptions, renderOptions.bisulfiteContext);
 
-            if (groups == null) {
-                return;
-            }
-
-
-            Rectangle visibleRect = context.getVisibleRect();
-            final boolean leaveMargin = getDisplayMode() == DisplayMode.EXPANDED;
-
-            if (renderOptions.isPairedArcView()) {
-                maximumHeight = (int) inputRect.getHeight();
-                AlignmentRenderer.getInstance().clearCurveMaps();
-            } else {
-                maximumHeight = Integer.MAX_VALUE;
-            }
-
-            // Divide rectangle into equal height levels
-            double y = inputRect.getY();
-            double h = expandedHeight;
-            if (getDisplayMode() != DisplayMode.EXPANDED) {
-                int visHeight = visibleRect.height;
-                int depth = dataManager.getNLevels();
-                if (depth == 0) {
-                    squishedHeight = Math.min(maxSquishedHeight, Math.max(1, expandedHeight));
-                } else {
-                    squishedHeight = Math.min(maxSquishedHeight, Math.max(1, Math.min(expandedHeight, visHeight / depth)));
-                }
-                h = squishedHeight;
-            }
-
-            // Loop through groups
-            Graphics2D groupBorderGraphics = context.getGraphic2DForColor(AlignmentRenderer.GROUP_DIVIDER_COLOR);
-            int nGroups = groups.size();
-            int groupNumber = 0;
-            for (Map.Entry<String, List<AlignmentInterval.Row>> entry : groups.entrySet()) {
-                String group = entry.getKey();
-                groupNumber++;
-
-                // Loop through the alignment rows for this group
-                List<AlignmentInterval.Row> rows = entry.getValue();
-                for (AlignmentInterval.Row row : rows) {
-
-                    if ((visibleRect != null && y > visibleRect.getMaxY())) {
-                        return;
-                    }
-                    if (renderOptions.isPairedArcView()) {
-                        y = Math.min(getY() + getHeight(), visibleRect.getMaxY());
-                        y -= h;
-                    }
-
-                    if (y + h > visibleRect.getY()) {
-                        Rectangle rowRectangle = new Rectangle(inputRect.x, (int) y, inputRect.width, (int) h);
-                        renderer.renderAlignments(row.alignments, context, rowRectangle,
-                                inputRect, renderOptions, leaveMargin, selectedReadNames);
-                    }
-                    y += h;
-                }
-
-                // Draw a subtle divider line between groups
-                if (groupNumber < nGroups) {
-                    int borderY = (int) y + GROUP_MARGIN / 2;
-                    groupBorderGraphics.drawLine(inputRect.x, borderY, inputRect.width, borderY);
-                }
-                y += GROUP_MARGIN;
-            }
-
-            final int bottom = inputRect.y + inputRect.height;
-            groupBorderGraphics.drawLine(inputRect.x, bottom, inputRect.width, bottom);
-
-        } catch (Exception ex) {
-            log.error("Error rendering track", ex);
-            throw new RuntimeException("Error rendering track ", ex);
-
+        Map<String, PEStats> peStats = dataManager.getPEStats();
+        if (peStats != null) {
+            renderOptions.peStats = peStats;
         }
 
+        if (groups == null) {
+            return;
+        }
+
+
+        Rectangle visibleRect = context.getVisibleRect();
+        final boolean leaveMargin = getDisplayMode() == DisplayMode.EXPANDED;
+
+        if (renderOptions.isPairedArcView()) {
+            maximumHeight = (int) inputRect.getHeight();
+            AlignmentRenderer.getInstance().clearCurveMaps();
+        } else {
+            maximumHeight = Integer.MAX_VALUE;
+        }
+
+        // Divide rectangle into equal height levels
+        double y = inputRect.getY();
+        double h = expandedHeight;
+        if (getDisplayMode() != DisplayMode.EXPANDED) {
+            int visHeight = visibleRect.height;
+            int depth = dataManager.getNLevels();
+            if (depth == 0) {
+                squishedHeight = Math.min(maxSquishedHeight, Math.max(1, expandedHeight));
+            } else {
+                squishedHeight = Math.min(maxSquishedHeight, Math.max(1, Math.min(expandedHeight, visHeight / depth)));
+            }
+            h = squishedHeight;
+        }
+
+        // Loop through groups
+        Graphics2D groupBorderGraphics = context.getGraphic2DForColor(AlignmentRenderer.GROUP_DIVIDER_COLOR);
+        int nGroups = groups.size();
+        int groupNumber = 0;
+        for (Map.Entry<String, List<AlignmentInterval.Row>> entry : groups.entrySet()) {
+            String group = entry.getKey();
+            groupNumber++;
+
+            // Loop through the alignment rows for this group
+            List<AlignmentInterval.Row> rows = entry.getValue();
+            for (AlignmentInterval.Row row : rows) {
+
+                if ((visibleRect != null && y > visibleRect.getMaxY())) {
+                    return;
+                }
+                if (renderOptions.isPairedArcView()) {
+                    y = Math.min(getY() + getHeight(), visibleRect.getMaxY());
+                    y -= h;
+                }
+
+                if (y + h > visibleRect.getY()) {
+                    Rectangle rowRectangle = new Rectangle(inputRect.x, (int) y, inputRect.width, (int) h);
+                    renderer.renderAlignments(row.alignments, context, rowRectangle,
+                            inputRect, renderOptions, leaveMargin, selectedReadNames);
+                }
+                y += h;
+            }
+
+            // Draw a subtle divider line between groups
+            if (groupNumber < nGroups) {
+                int borderY = (int) y + GROUP_MARGIN / 2;
+                groupBorderGraphics.drawLine(inputRect.x, borderY, inputRect.width, borderY);
+            }
+            y += GROUP_MARGIN;
+        }
+
+        final int bottom = inputRect.y + inputRect.height;
+        groupBorderGraphics.drawLine(inputRect.x, bottom, inputRect.width, bottom);
     }
 
     public void clearCaches() {
@@ -623,7 +613,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 name += "forward strand";
             } else {
                 name += "reverse strand";
-            }
+        }
             char base = bases.charAt(which);
             name += ", " + base+", "+nrflows+" flows";            
             String info = locus + ", " + bases;
@@ -632,7 +622,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             dist.setReadInfos(allelereadinfos.get(which));
             alleledist.add(dist);
             which++;
-        }
+    }
         return alleledist;
     }
 
@@ -743,13 +733,16 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
     public String getValueStringAt(String chr, double position, int y, ReferenceFrame frame) {
 
         if (downsampleRect != null && y > downsampleRect.y && y <= downsampleRect.y + downsampleRect.height) {
-            AlignmentInterval iv = dataManager.getLoadedInterval(frame);
-            if (iv == null) {
+            Collection<AlignmentInterval> loadedIntervals = dataManager.getLoadedIntervals(frame);
+            if (loadedIntervals == null) {
                 return null;
             } else {
-                List<CachingQueryReader.DownsampledInterval> intervals = iv.getDownsampledIntervals();
+                for (AlignmentInterval loadedInterval : loadedIntervals) {
+                    List<CachingQueryReader.DownsampledInterval> intervals = loadedInterval.getDownsampledIntervals();
                 CachingQueryReader.DownsampledInterval interval = (CachingQueryReader.DownsampledInterval) FeatureUtils.getFeatureAt(position, 0, intervals);
-                return interval == null ? null : interval.getValueString();
+                    if(interval != null) return interval.getValueString();
+                }
+                return null;
             }
         } else if (renderOptions.isPairedArcView()) {
             Alignment feature = null;
@@ -1087,7 +1080,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         }
 
         /**
-         * Called by session reader. Restores state of object.
+         * Called by session reader.  Restores state of object.
          *
          * @param attributes
          */
@@ -1991,7 +1984,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
                     public void actionPerformed(ActionEvent aEvt) {
                         showFlowSignalDistribution(location, e.getFrame(), true, true);
-                    }
+    }
                 });
                 itemf.addActionListener(new ActionListener() {
 
