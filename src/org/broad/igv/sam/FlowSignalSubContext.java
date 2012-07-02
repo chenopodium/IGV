@@ -33,7 +33,7 @@ public class FlowSignalSubContext {
      public short getCurrentSignal() {
         return signals[CURR][0];
     }
-     public short[] getPNextSignals() {
+     public short[] getNextSignals() {
         return signals[NEXT];
     }
 
@@ -43,6 +43,9 @@ public class FlowSignalSubContext {
 
     public short[] getSignalsOfType(int type) {
         return signals[type];
+    }
+    public char getBaseForNextEmpty(int emptypos) {
+        return bases[NEXT][emptypos];
     }
 
     public char[] getBasesOfType(int type) {

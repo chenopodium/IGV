@@ -115,8 +115,8 @@ public class FlowSignalContextBuilder {
     // TODO:
     // - support IUPAC bases
     // - support lower/upper cases (is this necessary)?
-    public FlowSignalContext getFlowSignalContext(byte[] readBases, int fromIdx, int nBases) {
-        int i, idx;
+    public FlowSignalContext getFlowSignalContext(byte[] readBases, int startBasePosition, int nrBasesInBlock) {
+        int currentBasePosition, idx;
         short[][][] blockFlowSignals = null;
         char[][][] blockFlowOrder = null; 
         
@@ -125,25 +125,25 @@ public class FlowSignalContextBuilder {
             return null;
         }
 
-        blockFlowSignals = new short[nBases][][];
-        blockFlowOrder = new char[nBases][][];
+        blockFlowSignals = new short[nrBasesInBlock][][];
+        blockFlowOrder = new char[nrBasesInBlock][][];
         //Default value
         Arrays.fill(blockFlowSignals, null);
         Arrays.fill(blockFlowOrder, null);
 
         // NB: should be at the first base of a HP
         // Go through the bases
-        i = fromIdx;
+        currentBasePosition = startBasePosition;
         idx = 0;
         
-        int[] flowOrderIndices = new int[nBases];
+        int[] flowOrderIndices = new int[nrBasesInBlock];
        
-        while (0 <= this.flowSignalsIndex && this.flowSignalsIndex < this.flowSignals.length && i < fromIdx + nBases) {
+        while (0 <= this.flowSignalsIndex && this.flowSignalsIndex < this.flowSignals.length && currentBasePosition < startBasePosition + nrBasesInBlock) {
             short s = this.flowSignals[this.flowSignalsIndex];
             char f = this.flowOrder.charAt((this.flowSignalsIndex + this.flowOrderStart) % this.flowOrder.length());
             flowOrderIndices[idx] = flowSignalsIndex+flowOrderStart;
             int nextFlowSignalsStart = -1, nextFlowSignalsEnd = -1;
-            int basepos = i + 1;
+            int basepos = currentBasePosition + 1;
             if (basepos < readBases.length) {
                 if (this.readNegativeStrandFlag) {
                     nextFlowSignalsEnd = this.flowSignalsIndex - 1;
@@ -224,7 +224,7 @@ public class FlowSignalContextBuilder {
             // update for the next iteration
             this.prevFlowSignalsStart = nextFlowSignalsStart;
             this.prevFlowSignalsEnd = nextFlowSignalsEnd;
-            i++; // next base
+            currentBasePosition++; // next base
             idx++; // next base
         }
 

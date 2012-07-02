@@ -64,6 +64,12 @@ public class PreferenceManager implements PropertyManager {
     public static final String IONTORRENT_FLOWDIST_CHARTTYPE = "IONTORRENT.FLOWDIST_CHARTTYPE";
     public static final String IONTORRENT_SERVER = "IONTORRENT.SERVER";
     public static final String IONTORRENT_RESULTS = "IONTORRENT.RESULTS";
+    /** the number of bases to the left and right of the current location we wish to include in the ionogram alignment view */
+    public static final String IONTORRENT_NRBASES_IONOGRAM_ALIGN= "IONTORRENT.NRBASES_IONOGRAM_ALIGN";
+    /** the currently preferred height of one line in the ionogram alignment (can be zoomed, and we want to remember the setting */
+    public static final String IONTORRENT_HEIGHT_IONOGRAM_ALIGN= "IONTORRENT.HEIGHT_IONOGRAM_ALIGN";
+    /** the maximum number of reads we want to include in the ionogram alignment (showing hundreds may not make sense  :-)*/
+    public static final String IONTORRENT_MAXNREADS_IONOGRAM_ALIGN= "IONTORRENT.MAXNRREADS_IONOGRAM_ALIGN";
     
     public static final String SAM_ALLELE_THRESHOLD = "SAM.ALLELE_THRESHOLD";
     public static final String SAM_QUALITY_THRESHOLD = "SAM.QUALITY_THRESHOLD";

@@ -11,9 +11,10 @@
 package org.broad.igv.sam;
 
 //~--- non-JDK imports --------------------------------------------------------
-
 import com.iontorrent.data.FlowDistribution;
+import com.iontorrent.data.FlowValue;
 import com.iontorrent.data.ReadInfo;
+import com.iontorrent.data.SubReadIonogram;
 import com.iontorrent.utils.LocationListener;
 import com.iontorrent.utils.SimpleDialog;
 import com.iontorrent.views.FlowSignalDistributionPanel;
@@ -142,7 +143,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             }
         }
     }
-
     protected static final Map<BisulfiteContext, String> bisulfiteContextToPubString = new HashMap<BisulfiteContext, String>();
 
     static {
@@ -153,7 +153,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         bisulfiteContextToPubString.put(BisulfiteContext.GCH, "GCH");
         bisulfiteContextToPubString.put(BisulfiteContext.WCG, "WCG");
     }
-
     protected static final Map<BisulfiteContext, Pair<byte[], byte[]>> bisulfiteContextToContextString = new HashMap<BisulfiteContext, Pair<byte[], byte[]>>();
 
     static {
@@ -164,7 +163,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         bisulfiteContextToContextString.put(BisulfiteContext.GCH, new Pair<byte[], byte[]>(new byte[]{'G'}, new byte[]{'H'}));
         bisulfiteContextToContextString.put(BisulfiteContext.WCG, new Pair<byte[], byte[]>(new byte[]{'W'}, new byte[]{'G'}));
     }
-
     static final ShadeBasesOption DEFAULT_SHADE_BASES_OPTION = ShadeBasesOption.QUALITY;
     static final ColorOption DEFAULT_COLOR_OPTION = ColorOption.INSERT_SIZE;
     static final boolean DEFAULT_SHOWALLBASES = false;
@@ -341,13 +339,17 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         renderAlignments(context, alignmentsRect);
     }
 
-      private void renderDownsampledIntervals(RenderContext context, Rectangle downsampleRect) {
+    private void renderDownsampledIntervals(RenderContext context, Rectangle downsampleRect) {
 
         // Might be offscreen
-        if (!context.getVisibleRect().intersects(downsampleRect)) return;
+        if (!context.getVisibleRect().intersects(downsampleRect)) {
+            return;
+        }
 
         final Collection<AlignmentInterval> loadedIntervals = dataManager.getLoadedIntervals(context.getReferenceFrame());
-        if (loadedIntervals == null) return;
+        if (loadedIntervals == null) {
+            return;
+        }
 
         Graphics2D g = context.getGraphic2DForColor(Color.black);
 
@@ -358,7 +360,9 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 int x1 = context.bpToScreenPixel(interval.getEnd());
                 int w = Math.max(1, x1 - x0);
                 // If there is room, leave a gap on one side
-                if (w > 5) w--;
+                if (w > 5) {
+                    w--;
+                }
                 // Greyscale from 0 -> 100 downsampled
                 //int gray = 200 - interval.getCount();
                 //Color color = (gray <= 0 ? Color.black : ColorUtilities.getGrayscaleColor(gray));
@@ -617,7 +621,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 name += "forward strand";
             } else {
                 name += "reverse strand";
-        }
+            }
             char base = bases.charAt(which);
             name += ", " + base + ", " + nrflows + " flows";
             String info = locus + ", " + bases;
@@ -626,8 +630,67 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             dist.setReadInfos(allelereadinfos.get(which));
             alleledist.add(dist);
             which++;
-    }
+        }
         return alleledist;
+    }
+
+    private ArrayList<SubReadIonogram> getIonograms(ReferenceFrame frame, int center_location, int nrbases_left_right, boolean forward) {
+        // one for each base!
+        boolean reverse = !forward;
+        ArrayList<SubReadIonogram> ionograms = new ArrayList<SubReadIonogram>();
+        String locus = Locus.getFormattedLocusString(frame.getChrName(), (int) center_location, (int) center_location);
+        for (AlignmentInterval interval : dataManager.getLoadedIntervals()) {
+            Iterator<Alignment> alignmentIterator = interval.getAlignmentIterator();
+            while (alignmentIterator.hasNext()) {
+                Alignment alignment = alignmentIterator.next();
+                if ((alignment.isNegativeStrand() && !reverse) || (!alignment.isNegativeStrand() && !forward)) {
+                    continue;
+                }
+                if (!alignment.contains(center_location)) {
+                    continue;
+                }
+                SubReadIonogram iono = new SubReadIonogram(alignment.getReadName(), center_location);
+                iono.setLocusinfo(locus);
+                AlignmentBlock[] blocks = alignment.getAlignmentBlocks();
+                for (int i = 0; i < blocks.length; i++) {
+                    // only for matches/mismatches, there is no block for deletions
+                    AlignmentBlock block = blocks[i];
+                    
+                    // now add flow values from a few bases to the left and right - including empties!
+                    for (int loc = center_location - nrbases_left_right; loc <= center_location +nrbases_left_right; loc++) {
+                        int posinblock = (int) loc - block.getStart();
+                        if (!block.contains((int) loc) || !block.hasFlowSignals()) {
+                            continue;
+                        }
+                        //
+                        FlowSignalSubContext subcontext = block.getFlowSignalSubContext(posinblock);
+                        
+                        int flownr = subcontext.getFlowOrderIndex();
+                       
+                        short flowSignal = subcontext.getCurrentSignal();
+                        char base = (char) block.getBase(posinblock);
+                        // now we also have to get the EMTPIES after this flow!
+                        boolean isempty = false;
+                        FlowValue flowvalue = new FlowValue(flowSignal, flownr, base, loc, isempty);
+                        iono.addFlowValue(flowvalue);
+                        short[] nextempties = subcontext.getNextSignals();
+                        if (nextempties != null) {
+                            // add the emtpies
+                            isempty = true;
+                            for (int nrempty = 0; nrempty < nextempties.length; nrempty++) {
+                                int curflowpos = flownr + nrempty+1;                                
+                                short emptysignal = nextempties[nrempty];
+                                char emptybase = subcontext.getBaseForNextEmpty(nrempty);
+                                FlowValue emptyvalue = new FlowValue(emptysignal, curflowpos, emptybase, loc, isempty);
+                                iono.addFlowValue(emptyvalue);
+                            }
+                        }
+                    }
+                }
+                ionograms.add(iono);
+            }           
+        }
+        return ionograms;
     }
 
     /**
@@ -743,8 +806,10 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             } else {
                 for (AlignmentInterval loadedInterval : loadedIntervals) {
                     List<CachingQueryReader.DownsampledInterval> intervals = loadedInterval.getDownsampledIntervals();
-                CachingQueryReader.DownsampledInterval interval = (CachingQueryReader.DownsampledInterval) FeatureUtils.getFeatureAt(position, 0, intervals);
-                    if (interval != null) return interval.getValueString();
+                    CachingQueryReader.DownsampledInterval interval = (CachingQueryReader.DownsampledInterval) FeatureUtils.getFeatureAt(position, 0, intervals);
+                    if (interval != null) {
+                        return interval.getValueString();
+                    }
                 }
                 return null;
             }
@@ -1035,7 +1100,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
          * delta, maxInsertSizeThreshold - delta, maxInsertSizeThreshold,
          * Color.blue, AlignmentRenderer.grey1, Color.red); }
          */
-
         /**
          * Called by session writer. Return instance variable values as a map of
          * strings. Used to record current state of object. Variables with
@@ -1085,7 +1149,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         }
 
         /**
-         * Called by session reader.  Restores state of object.
+         * Called by session reader. Restores state of object.
          *
          * @param attributes
          */
@@ -1975,12 +2039,16 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             groupMenu.add(itemr);
             group.add(itemr);
 
+            final JMenuItem itemIonoAlignment = new JCheckBoxMenuItem("View ionogram alignment");
+
+
             final ReferenceFrame frame = e.getFrame();
             if (frame == null) {
                 item.setEnabled(false);
                 itemf.setEnabled(false);
                 itemr.setEnabled(false);
                 itemb.setEnabled(false);
+                itemIonoAlignment.setEnabled(false);
             } else {
                 final int location = (int) (frame.getChromosomePosition(e.getMouseEvent().getX()));
                 // Change track height by attribute
@@ -1988,7 +2056,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
                     public void actionPerformed(ActionEvent aEvt) {
                         showFlowSignalDistribution(location, e.getFrame(), true, true);
-    }
+                    }
                 });
                 itemf.addActionListener(new ActionListener() {
 
@@ -2008,9 +2076,31 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                         showFlowSignalDistribution(location, e.getFrame(), false, false);
                     }
                 });
+                itemIonoAlignment.addActionListener(new ActionListener() {
+
+                    public void actionPerformed(ActionEvent aEvt) {
+                        showIonogramAlignment(location, e.getFrame());
+                    }
+                });
             }
             add(groupMenu);
+            add(itemIonoAlignment);
         }
+    }
+
+    /*
+     * Open a seperate window that shows the alignment of ionograms - including
+     * empty flows (might be difficult to show in a track due to those
+     * empties....)
+     */
+    private void showIonogramAlignment(final int center_location, final ReferenceFrame frame) {
+        // first get parameters from preferences such as how many bases to the left/right we want to consider
+        PreferenceManager prefs = PreferenceManager.getInstance();
+        int nrbases_left_right = prefs.getAsInt(PreferenceManager.IONTORRENT_NRBASES_IONOGRAM_ALIGN);
+        // now we get the flow values for each read at each location 
+        ArrayList<SubReadIonogram> forward_ionograms = getIonograms(frame, center_location, nrbases_left_right, true);
+        ArrayList<SubReadIonogram> reverse_ionograms = getIonograms(frame, center_location, nrbases_left_right, false);
+        // now create two panels, one for forward, and one for the reverse strand
     }
 
     /**
@@ -2062,5 +2152,4 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         }
         return distributions;
     }
-
 }
