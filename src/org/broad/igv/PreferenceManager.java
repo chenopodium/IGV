@@ -946,6 +946,9 @@ public class PreferenceManager implements PropertyManager {
         defaultValues.put(IONTORRENT_FLOWDIST_CHARTTYPE, "LINE");
         defaultValues.put(IONTORRENT_SERVER, "ioneast.ite");
         defaultValues.put(IONTORRENT_RESULTS, "/results/analysis/output/Home/");
+        defaultValues.put(IONTORRENT_NRBASES_IONOGRAM_ALIGN, "5");
+        defaultValues.put(IONTORRENT_HEIGHT_IONOGRAM_ALIGN, "50");
+        defaultValues.put(IONTORRENT_MAXNREADS_IONOGRAM_ALIGN, "100");
         
         defaultValues.put(CHART_DRAW_TOP_BORDER, "false");
         defaultValues.put(CHART_DRAW_BOTTOM_BORDER, "false");

@@ -4,14 +4,21 @@
  */
 package com.iontorrent.views;
 
-import com.iontorrent.data.SubReadIonogram;
+import com.iontorrent.data.Ionogram;
+import com.iontorrent.data.IonogramAlignment;
+import com.iontorrent.utils.BagPanel;
 import com.iontorrent.utils.FileTools;
 import com.iontorrent.utils.LocationListener;
+import java.awt.*;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
+import java.awt.image.RenderedImage;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
-import javax.swing.JOptionPane;
-import javax.swing.JTextField;
+import javax.imageio.ImageIO;
+import javax.swing.*;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.ui.IGV;
 
@@ -19,34 +26,131 @@ import org.broad.igv.ui.IGV;
  *
  * @author Chantal Roth
  */
-public class IonogramAlignmentPanel extends javax.swing.JPanel {
+public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
 
-     private static org.apache.log4j.Logger log = org.apache.log4j.Logger.getLogger(IonogramAlignmentPanel.class);
-     
+    private static org.apache.log4j.Logger log = org.apache.log4j.Logger.getLogger(IonogramAlignmentControlPanel.class);
     private LocationListener listener;
     private int iono_height;
     private int location;
-    private ArrayList<SubReadIonogram> ionograms;
+    private ArrayList<Ionogram> ionograms;
     private String filename;
     private boolean ignore_events;
-    
-    public IonogramAlignmentPanel(int location, ArrayList<SubReadIonogram> ionograms) {
-        this.location = location;
-        this.ionograms = ionograms;
-        // get default height?
-    }
+    private IonogramAlignment alignment;
+    private JPanel center;
+    private JPanel labels;
+    private BagPanel main;
+    private JScrollPane slabels;
+    private JScrollPane scenter;
+    private JScrollPane sheader;
+
     /**
      * Creates new form IonogramAlignmentPanel
      */
-    public IonogramAlignmentPanel() {
+    public IonogramAlignmentControlPanel(int location, IonogramAlignment alignment) {
+        this.location = location;
+
         initComponents();
-         this.setFocusable(true);
+        this.setFocusable(true);
         setFocusTraversalKeysEnabled(false);
         addKeyListener(new java.awt.event.KeyAdapter() {
+
             public void keyPressed(java.awt.event.KeyEvent evt) {
                 formKeyTyped(evt);
             }
         });
+        main = new BagPanel();
+        ToolTipManager.sharedInstance().registerComponent(main);
+        setAlignment(alignment);
+        add("Center", main);
+
+    }
+
+    public void setAlignment(IonogramAlignment alignment) {
+        this.ionograms = alignment.getIonograms();
+        this.alignment = alignment;
+        PreferenceManager prefs = PreferenceManager.getInstance();
+        this.iono_height = prefs.getAsInt(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN);
+        this.ignore_events = true;
+        spinBin.setValue(iono_height);
+        ignore_events = false;
+        
+        if (sheader != null) {
+            main.remove(sheader);
+        }
+        if (slabels != null) {
+            main.remove(slabels);
+        }
+        if (scenter != null) {
+            main.remove(scenter);
+        }
+
+        center = new JPanel();
+
+        labels = new JPanel();
+        labels.setBackground(Color.white);
+        ToolTipManager.sharedInstance().registerComponent(center);
+        ToolTipManager.sharedInstance().registerComponent(labels);
+        int nrionograms = ionograms.size();
+
+        center.setLayout(new GridLayout(nrionograms, 1));
+        labels.setLayout(new GridLayout(nrionograms, 1));
+        p("Slots: " + alignment.getNrslots());
+        // first one just shows bases
+        IonogramPanel header = new IonogramPanel(ionograms.get(0), alignment, true);
+
+       
+        int slotheight = prefs.getAsInt(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN);
+        int slotwidth = prefs.getAsInt(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN) + IonogramPanel.BORDER;
+        int lblwidth = 40;
+        for (Ionogram iono : ionograms) {
+            p("Adding ionogram to alignmentpanel: " + iono.toString());
+            IonogramPanel ionopanel = new IonogramPanel(iono, alignment, false);
+            ionopanel.setToolTipText(iono.getFloworder());
+            center.add(ionopanel);
+            JLabel lbl = new JLabel(iono.getReadname());
+            lbl.setBackground(Color.white);
+            lbl.setToolTipText(iono.getFloworder());
+            p("Got floworder: " + iono.getFloworder());
+            lbl.setSize(lblwidth, slotheight);
+            lbl.setMinimumSize(new Dimension(30, slotheight));
+            lbl.setMaximumSize(new Dimension(lblwidth, slotheight));
+            lbl.setPreferredSize(new Dimension(lblwidth, slotheight));
+            labels.add(lbl);
+        }
+
+        int totwidth = slotwidth * alignment.getNrslots() + IonogramPanel.BORDER;
+        int totheight = (nrionograms + 1) * slotheight;
+        center.setSize(totwidth, totheight);
+        labels.setSize(lblwidth, totheight);
+        labels.setMaximumSize(new Dimension(lblwidth, totheight));
+        labels.setPreferredSize(new Dimension(lblwidth, totheight));
+
+        center.setMinimumSize(new Dimension(totwidth, totheight));
+        p("Setting size of center: " + totheight + ", single height=" + slotheight);
+
+        slabels = new JScrollPane(labels, JScrollPane.VERTICAL_SCROLLBAR_NEVER, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scenter = new JScrollPane(center);
+        sheader = new JScrollPane(header, JScrollPane.VERTICAL_SCROLLBAR_NEVER, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+
+        slabels.getVerticalScrollBar().setModel(scenter.getVerticalScrollBar().getModel());
+        sheader.getHorizontalScrollBar().setModel(scenter.getHorizontalScrollBar().getModel());
+
+        JLabel corner = new JLabel("Read names/Bases");
+        corner.setBackground(Color.white);
+        corner.setSize(lblwidth, slotheight);
+        corner.setMaximumSize(new Dimension(lblwidth, slotheight));
+        corner.setPreferredSize(new Dimension(lblwidth, slotheight));
+        int weigth = 15;
+        main.place(0, 0, 1, 1, corner);
+        main.place(1, 0, weigth, 1, weigth, 1, sheader);
+        main.place(0, 1, 1, weigth, 1, weigth, slabels);
+        main.place(1, 1, weigth, weigth, weigth, weigth, scenter);
+
+        this.repaint();
+        main.invalidate();
+        main.revalidate();
+        // I know this is a hack, but it just won't repaint... not sure why
+        paintImmediately(0,0,1000,1000);
     }
 
     /**
@@ -66,6 +170,9 @@ public class IonogramAlignmentPanel extends javax.swing.JPanel {
         spinBin = new javax.swing.JSpinner();
         btnLeft = new javax.swing.JButton();
         btnRight = new javax.swing.JButton();
+        leftbar = new javax.swing.JToolBar();
+        zoomIn = new javax.swing.JButton();
+        zoomOut = new javax.swing.JButton();
 
         setLayout(new java.awt.BorderLayout());
 
@@ -110,7 +217,7 @@ public class IonogramAlignmentPanel extends javax.swing.JPanel {
         jLabel1.setText("Ionogram height:");
         topbar.add(jLabel1);
 
-        spinBin.setModel(new javax.swing.SpinnerNumberModel(25, 1, 200, 5));
+        spinBin.setModel(new javax.swing.SpinnerNumberModel(50, 10, 200, 5));
         spinBin.setMaximumSize(new java.awt.Dimension(50, 19));
         spinBin.setMinimumSize(new java.awt.Dimension(47, 18));
         spinBin.setPreferredSize(new java.awt.Dimension(47, 18));
@@ -146,6 +253,35 @@ public class IonogramAlignmentPanel extends javax.swing.JPanel {
         topbar.add(btnRight);
 
         add(topbar, java.awt.BorderLayout.PAGE_START);
+
+        leftbar.setOrientation(1);
+        leftbar.setRollover(true);
+
+        zoomIn.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/zoom-in.png"))); // NOI18N
+        zoomIn.setToolTipText("Zoom in (vertically)");
+        zoomIn.setFocusable(false);
+        zoomIn.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        zoomIn.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        zoomIn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                zoomInActionPerformed(evt);
+            }
+        });
+        leftbar.add(zoomIn);
+
+        zoomOut.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/zoom-out.png"))); // NOI18N
+        zoomOut.setToolTipText("Zoom out (vertically)");
+        zoomOut.setFocusable(false);
+        zoomOut.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        zoomOut.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        zoomOut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                zoomOutActionPerformed(evt);
+            }
+        });
+        leftbar.add(zoomOut);
+
+        add(leftbar, java.awt.BorderLayout.LINE_START);
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveActionPerformed
@@ -165,17 +301,73 @@ public class IonogramAlignmentPanel extends javax.swing.JPanel {
         if (ans == 0) {
             doSaveImageAction();
         } else if (ans == 1) {
-           // doSaveDataAction();
+            doSaveDataAction();
         }
 
     }//GEN-LAST:event_btnSaveActionPerformed
-
-     private void doSaveImageAction() {
-        filename = FileTools.getFile("File to store chart ionogram alignment image", ".png", filename, true);
+    private void doSaveDataAction() {
+        // get file name from user
+        filename = FileTools.getFile("File to store ionogram alignment", ".csv", filename, true);
         if (filename == null || filename.length() < 1) {
             return;
         }
-       // TODO: save image!
+        String csv = getCsvString();
+
+        File fileToSave = new File(filename);
+        FileTools.writeStringToFile(fileToSave, csv, false);
+    }
+
+    public String getCsvString() {
+        String s = alignment.toString();
+        return s;
+    }
+
+    public boolean export() {
+        if (center == null) {
+            JOptionPane.showMessageDialog(this, "There is no image to export");
+            return false;
+        }
+        String file = FileTools.getFile("Save image to a file", "*.*", null, true);
+        return export(file);
+    }
+
+    public boolean export(String file) {
+        if (file == null || file.length() < 3) {
+            JOptionPane.showMessageDialog(this, "I need to know if it is a .png or a .jpg file");
+            return false;
+        }
+        if (center == null) {
+            return false;
+        }
+        File f = new File(file);
+        String ext = file.substring(file.length() - 3);
+        RenderedImage image = myCreateImage();
+        try {
+            return ImageIO.write(image, ext, f);
+        } catch (IOException ex) {
+            err("Could not write image to file " + f);
+        }
+        return false;
+    }
+    // Returns a generated image.
+
+    public RenderedImage myCreateImage() {
+        return myCreateImage(800, 600);
+    }
+
+    public RenderedImage myCreateImage(int minw, int minh) {
+
+        BufferedImage bufferedImage = new BufferedImage(minw, minh, BufferedImage.TYPE_INT_RGB);
+
+        // Create a graphics contents on the buffered image
+        Graphics2D g2d = bufferedImage.createGraphics();
+        main.paintAll(g2d);
+
+        return bufferedImage;
+    }
+
+    private void doSaveImageAction() {
+        export();
     }
 
     private void btnConfigureActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnConfigureActionPerformed
@@ -248,12 +440,12 @@ public class IonogramAlignmentPanel extends javax.swing.JPanel {
         }
     }//GEN-LAST:event_spinBinStateChanged
 
-     private void changeIonoHeight(int new_iono_height) {
+    private void changeIonoHeight(int new_iono_height) {
         this.iono_height = new_iono_height;
         PreferenceManager pref = PreferenceManager.getInstance();
-        pref.put(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN, ""+iono_height);
+        pref.put(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN, "" + iono_height);
         refresh();
-        if (((Integer)spinBin.getValue()).intValue() != new_iono_height) {
+        if (((Integer) spinBin.getValue()).intValue() != new_iono_height) {
             ignore_events = true;
             spinBin.setValue(new_iono_height);
             ignore_events = false;
@@ -267,7 +459,15 @@ public class IonogramAlignmentPanel extends javax.swing.JPanel {
         moveRight();
     }//GEN-LAST:event_btnRightActionPerformed
 
-     private void moveLeft() {
+    private void zoomInActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zoomInActionPerformed
+        changeIonoHeight(this.iono_height + 5);
+    }//GEN-LAST:event_zoomInActionPerformed
+
+    private void zoomOutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zoomOutActionPerformed
+        changeIonoHeight(this.iono_height - 5);
+    }//GEN-LAST:event_zoomOutActionPerformed
+
+    private void moveLeft() {
         if (getListener() != null) {
             getListener().locationChanged(location - 1);
         }
@@ -278,7 +478,8 @@ public class IonogramAlignmentPanel extends javax.swing.JPanel {
             getListener().locationChanged(location + 1);
         }
     }
-     /**
+
+    /**
      * @return the listener
      */
     public LocationListener getListener() {
@@ -291,11 +492,11 @@ public class IonogramAlignmentPanel extends javax.swing.JPanel {
     public void setListener(LocationListener listener) {
         this.listener = listener;
     }
-     private void formKeyTyped(java.awt.event.KeyEvent evt) {                              
-        handleKeyEvent(evt);
-    }                             
 
-   
+    private void formKeyTyped(java.awt.event.KeyEvent evt) {
+        handleKeyEvent(evt);
+    }
+
     public void handleKeyEvent(KeyEvent e) {
         int c = e.getKeyCode();
         p("Got key: " + c + ", left/right etc: " + KeyEvent.VK_LEFT + "/" + KeyEvent.VK_RIGHT + "/" + KeyEvent.VK_UP + "/" + KeyEvent.VK_DOWN + "/" + KeyEvent.VK_DELETE);
@@ -304,19 +505,21 @@ public class IonogramAlignmentPanel extends javax.swing.JPanel {
         } else if (c == KeyEvent.VK_RIGHT || c == 39) {
             this.moveRight();
         } else if (c == KeyEvent.VK_UP || c == KeyEvent.VK_PAGE_UP || c == 38) {
-            changeIonoHeight(this.iono_height + 5);            
+            changeIonoHeight(this.iono_height + 5);
         } else if (c == KeyEvent.VK_DOWN || c == KeyEvent.VK_PAGE_DOWN || c == 40) {
-            changeIonoHeight(iono_height - 5);            
+            changeIonoHeight(iono_height - 5);
         }
     }
-     private String getReadNames() {
+
+    private String getReadNames() {
         StringBuilder rinfo = new StringBuilder();
         for (int i = 0; i < ionograms.size(); i++) {
-            SubReadIonogram iono = ionograms.get(i);
+            Ionogram iono = ionograms.get(i);
             rinfo = rinfo.append("_").append(iono.getReadname());
         }
         return rinfo.toString();
     }
+
     private void p(String msg) {
         log.info(msg);
     }
@@ -331,7 +534,10 @@ public class IonogramAlignmentPanel extends javax.swing.JPanel {
     private javax.swing.JButton btnSave;
     private javax.swing.JButton btnTSL;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JToolBar leftbar;
     private javax.swing.JSpinner spinBin;
     private javax.swing.JToolBar topbar;
+    private javax.swing.JButton zoomIn;
+    private javax.swing.JButton zoomOut;
     // End of variables declaration//GEN-END:variables
 }

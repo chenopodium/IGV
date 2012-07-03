@@ -11,6 +11,7 @@ package com.iontorrent.data;
 public class FlowValue {
     private int flowvalue;
     private char base;
+    private char alignmentbase;
     private int chromosome_location;
     /** whether this flow is actually mapping to an empty base, so no true location on the genome
      * In that case, the location is the location of the previously mapped flow
@@ -20,13 +21,21 @@ public class FlowValue {
     /** flow position in read */
     private int flowposition;
     
-    public FlowValue(int flowvalue, int flowposition, char base, int chromosome_location, boolean empty) {
+    
+    public FlowValue(int flowvalue, int flowposition, char base, int chromosome_location, boolean empty, char alignmentbase) {
         this.flowvalue = flowvalue;
+        this.alignmentbase = alignmentbase;
         this.flowposition = flowposition;
         this.base = base;
         this.chromosome_location = chromosome_location;
         this.empty = empty;
                 
+    }
+    public char getAlignmentBase() {
+        return alignmentbase;
+    }
+    public int getFlowPosition() {
+        return flowposition;
     }
 
     public static String getHeader() {
@@ -35,6 +44,14 @@ public class FlowValue {
     @Override
     public String toString() {
         return  flowposition+", "+base+", "+flowvalue+", "+chromosome_location+", "+empty;
+    }
+    
+    public String toHtml() {
+        String nl = "<br>";
+        String s=  "Flow position: "+flowposition+nl+"Base called: "+base+nl+"Flow value: "+flowvalue+nl+"Chromosome location: "+chromosome_location+nl;
+        if (empty) s += "Empty flow";
+        else s += "Incorporation";
+        return s;
     }
     /**
      * @return the flowvalue

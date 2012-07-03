@@ -11,13 +11,11 @@
 package org.broad.igv.sam;
 
 //~--- non-JDK imports --------------------------------------------------------
-import com.iontorrent.data.FlowDistribution;
-import com.iontorrent.data.FlowValue;
-import com.iontorrent.data.ReadInfo;
-import com.iontorrent.data.SubReadIonogram;
+import com.iontorrent.data.*;
 import com.iontorrent.utils.LocationListener;
 import com.iontorrent.utils.SimpleDialog;
 import com.iontorrent.views.FlowSignalDistributionPanel;
+import com.iontorrent.views.IonogramAlignmentControlPanel;
 
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
@@ -634,11 +632,21 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         return alleledist;
     }
 
-    private ArrayList<SubReadIonogram> getIonograms(ReferenceFrame frame, int center_location, int nrbases_left_right, boolean forward) {
+    private IonogramAlignment getIonogramAlignment(ReferenceFrame frame, int center_location, int nrbases_left_right, boolean forward) {
         // one for each base!
         boolean reverse = !forward;
-        ArrayList<SubReadIonogram> ionograms = new ArrayList<SubReadIonogram>();
+        
+        PreferenceManager prefs = PreferenceManager.getInstance();
+        float maxNrReads = prefs.getAsFloat(PreferenceManager.IONTORRENT_MAXNREADS_IONOGRAM_ALIGN);
+        
+                
+        ArrayList<Ionogram> ionograms = new ArrayList<Ionogram>();
         String locus = Locus.getFormattedLocusString(frame.getChrName(), (int) center_location, (int) center_location);
+
+        // we need to map the number of maximum empties per location
+        int[] maxemptyperlocation = new int[nrbases_left_right * 2 + 1];
+
+        int nrionograms = 0;
         for (AlignmentInterval interval : dataManager.getLoadedIntervals()) {
             Iterator<Alignment> alignmentIterator = interval.getAlignmentIterator();
             while (alignmentIterator.hasNext()) {
@@ -649,48 +657,69 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 if (!alignment.contains(center_location)) {
                     continue;
                 }
-                SubReadIonogram iono = new SubReadIonogram(alignment.getReadName(), center_location);
+                if (nrionograms > maxNrReads) break;
+                
+                Ionogram iono = new Ionogram(alignment.getReadName(), center_location);
                 iono.setLocusinfo(locus);
+                
+                nrionograms++;
                 AlignmentBlock[] blocks = alignment.getAlignmentBlocks();
                 for (int i = 0; i < blocks.length; i++) {
                     // only for matches/mismatches, there is no block for deletions
                     AlignmentBlock block = blocks[i];
-                    
+
                     // now add flow values from a few bases to the left and right - including empties!
-                    for (int loc = center_location - nrbases_left_right; loc <= center_location +nrbases_left_right; loc++) {
+                    for (int loc = center_location - nrbases_left_right; loc <= center_location + nrbases_left_right; loc++) {
+                        
+                        char alignmentbase = (char)alignment.getBase(loc);
+                        int relativelocation = loc - center_location + nrbases_left_right;
                         int posinblock = (int) loc - block.getStart();
                         if (!block.contains((int) loc) || !block.hasFlowSignals()) {
                             continue;
                         }
                         //
                         FlowSignalSubContext subcontext = block.getFlowSignalSubContext(posinblock);
-                        
+                        if (subcontext == null) continue;
                         int flownr = subcontext.getFlowOrderIndex();
-                       
+                        if (alignment instanceof SamAlignment) {
+                            SamAlignment sam = (SamAlignment)alignment;
+                            iono.setFloworder(sam.getFlowOrder());
+                        }
+                      
                         short flowSignal = subcontext.getCurrentSignal();
                         char base = (char) block.getBase(posinblock);
                         // now we also have to get the EMTPIES after this flow!
                         boolean isempty = false;
-                        FlowValue flowvalue = new FlowValue(flowSignal, flownr, base, loc, isempty);
+                        FlowValue flowvalue = new FlowValue(flowSignal, flownr, base, loc, isempty, alignmentbase);
                         iono.addFlowValue(flowvalue);
                         short[] nextempties = subcontext.getNextSignals();
                         if (nextempties != null) {
                             // add the emtpies
+                            int nrempties = nextempties.length;
+                            int curmax = maxemptyperlocation[relativelocation];
+                            if (nrempties > curmax) {
+                                maxemptyperlocation[relativelocation] = nrempties;
+                            }
+
                             isempty = true;
-                            for (int nrempty = 0; nrempty < nextempties.length; nrempty++) {
-                                int curflowpos = flownr + nrempty+1;                                
-                                short emptysignal = nextempties[nrempty];
-                                char emptybase = subcontext.getBaseForNextEmpty(nrempty);
-                                FlowValue emptyvalue = new FlowValue(emptysignal, curflowpos, emptybase, loc, isempty);
+                            for (int e = 0; e < nrempties; e++) {
+                                int curflowpos = 0;
+                                if (!alignment.isNegativeStrand())curflowpos = flownr + e + 1;
+                                else curflowpos = flownr - e - 1;
+                                short emptysignal = nextempties[e];
+                                char emptybase = subcontext.getBaseForNextEmpty(e);
+                                FlowValue emptyvalue = new FlowValue(emptysignal, curflowpos, emptybase, loc, isempty, ' ');
                                 iono.addFlowValue(emptyvalue);
                             }
                         }
                     }
                 }
                 ionograms.add(iono);
-            }           
+            }
         }
-        return ionograms;
+        // now we can start to creat the alignment slots as we know the max number of empties per location
+        IonogramAlignment ionoalign = new IonogramAlignment(ionograms, maxemptyperlocation, nrbases_left_right, center_location);
+        return ionoalign;
     }
 
     /**
@@ -2097,10 +2126,37 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         // first get parameters from preferences such as how many bases to the left/right we want to consider
         PreferenceManager prefs = PreferenceManager.getInstance();
         int nrbases_left_right = prefs.getAsInt(PreferenceManager.IONTORRENT_NRBASES_IONOGRAM_ALIGN);
+        nrbases_left_right = Math.max(2, nrbases_left_right);
+        nrbases_left_right = Math.min(20, nrbases_left_right);
+        final int bases = nrbases_left_right;
         // now we get the flow values for each read at each location 
-        ArrayList<SubReadIonogram> forward_ionograms = getIonograms(frame, center_location, nrbases_left_right, true);
-        ArrayList<SubReadIonogram> reverse_ionograms = getIonograms(frame, center_location, nrbases_left_right, false);
+        IonogramAlignment forward_align = getIonogramAlignment(frame, center_location, nrbases_left_right, true);
+        IonogramAlignment reverse_align = getIonogramAlignment(frame, center_location, nrbases_left_right, false);
+        final IonogramAlignmentControlPanel forpanel = new IonogramAlignmentControlPanel(center_location, forward_align);
+        final IonogramAlignmentControlPanel revpanel = new IonogramAlignmentControlPanel(center_location, reverse_align);
+       
+        LocationListener listener = new LocationListener() {
+
+            @Override
+            public void locationChanged(int newLocation) {
+                log.info("Got new location from panel: " + newLocation);
+                IonogramAlignment forward= getIonogramAlignment(frame, newLocation, bases, true);
+                IonogramAlignment reverse = getIonogramAlignment(frame, newLocation, bases, false);
+                forpanel.setAlignment(forward);
+                revpanel.setAlignment(reverse);
+                frame.centerOnLocation(newLocation + 1);
+                IGV.getInstance().repaintDataAndHeaderPanels();
+                IGV.getInstance().repaintStatusAndZoomSlider();
+            }
+        };
+        forpanel.setListener(listener);
+
         // now create two panels, one for forward, and one for the reverse strand
+        revpanel.setListener(listener);
+        SimpleDialog fdia = new SimpleDialog("Ionogram Alignment (forward)", forpanel, 800, 500);
+        fdia.setLocation(200, 100);
+        SimpleDialog rdia = new SimpleDialog("Ionogram Alignment (reverse)", revpanel, 800, 500);
+        rdia.setLocation(200, 600);
     }
 
     /**

@@ -10,7 +10,7 @@ import java.util.ArrayList;
  * The inogram of a part of an alignment, including the empties
  * @author Chantal Roth
  */
-public class SubReadIonogram {
+public class Ionogram {
     
     private String readname;
     
@@ -24,8 +24,9 @@ public class SubReadIonogram {
        
     private String floworder;
     
+    private FlowValue[] slotrow;
     
-    public SubReadIonogram(String readname, int chromosome_center_location) {
+    public Ionogram(String readname, int chromosome_center_location) {
         this.readname = readname;
         this.chromosome_center_location = chromosome_center_location;        
         
@@ -33,21 +34,26 @@ public class SubReadIonogram {
     }
     
     public void addFlowValue(FlowValue flowvalue) {
-        flowvalues.add(flowvalue);
+        getFlowvalues().add(flowvalue);
         // add to maps
     }
 
-    public void addFlow(int flowvalue, int flowposition, char base, int chromosome_location, boolean empty){        
-        FlowValue val = new FlowValue(flowvalue, flowposition, base, chromosome_location, empty);
-        addFlowValue(val);
-    }
     
     @Override
     public String toString() {
-        String s = readname+"@ "+locusinfo+":\n";
+        String s = readname+"@ "+getLocusinfo()+":\n";
         s += FlowValue.getHeader()+"\n";
-        for (FlowValue fv: flowvalues) {
+        for (FlowValue fv: getFlowvalues()) {
             s += fv.toString()+"\n";
+        }
+        return s;
+    }
+     public String toHtml() {
+        String nl = "<br>";
+        String s = readname+"@ "+getLocusinfo()+":"+nl;
+        s += FlowValue.getHeader()+nl;
+        for (FlowValue fv: getFlowvalues()) {
+            s += fv.toString()+nl;
         }
         return s;
     }
@@ -119,6 +125,42 @@ public class SubReadIonogram {
      */
     public void setLocusinfo(String locusinfo) {
         this.locusinfo = locusinfo;
+    }
+
+    /**
+     * @return the flowvalues
+     */
+    public ArrayList<FlowValue> getFlowvalues() {
+        return flowvalues;
+    }
+
+    /**
+     * @param flowvalues the flowvalues to set
+     */
+    public void setFlowvalues(ArrayList<FlowValue> flowvalues) {
+        this.flowvalues = flowvalues;
+    }
+
+    /**
+     * @return the slotrow
+     */
+    public FlowValue[] getSlotrow() {
+        return slotrow;
+    }
+
+    /**
+     * @param slotrow the slotrow to set
+     */
+    public void setSlotrow(FlowValue[] slotrow) {
+        this.slotrow = slotrow;
+    }
+
+    public int getMaxValue() {
+        int max = 0;
+        for (FlowValue f: flowvalues) {
+            if (f.getFlowvalue() > max) max = f.getFlowvalue();
+        }
+        return max;
     }
     
     
