@@ -411,7 +411,7 @@ public class DirectoryManager {
     public static void initializeLog() {
 
         Logger logger = Logger.getRootLogger();
-
+        logger.setLevel(Level.DEBUG);
         PatternLayout layout = new PatternLayout();
         layout.setConversionPattern("%p [%d{ISO8601}] [%F:%L]  %m%n");
 

@@ -27,9 +27,9 @@ public class IonogramPanel extends JPanel {
     IonogramAlignment alignment;
     private boolean isHeader;
     private Color cg = new Color(80, 80, 80);
-    private Color ca = new Color(130, 255, 140);
-    private Color ct = new Color(245, 120, 120);
-    private Color cc = new Color(130, 140, 255);
+    private Color ca = new Color(110, 245, 120);
+    private Color ct = new Color(235, 100, 100);
+    private Color cc = new Color(110, 110, 235);
     private Color colors[] = {cg, ca, ct, cc};
     static String GATC = "GATC";
     public static final int BORDER = 0;
@@ -83,11 +83,22 @@ public class IonogramPanel extends JPanel {
         int slot = evt.getX() / this.slotwidth;
         String nl = "<br>";
         String s = "read: " + ionogram.getReadname() + nl;
-        if (slot > 0 && slot < alignment.getNrslots()) {
+        if (slot >= 0 && slot < alignment.getNrslots()) {
             FlowValue fv = ionogram.getSlotrow()[slot];
             if (fv != null) {
-                
+                String fo = ionogram.getFloworder();
+             //   if (fo != null) {
+                fo = fo + fo + fo;// in case the flow order is just GATC, we want to get just one substring for those 11 bases :-)
+                int pos = fv.getFlowPosition();
+                int start = Math.max(0, pos - 5);
+                start = start % fo.length();
+                int end =pos +5;
+                end = end % fo.length();
+                String order = "";
+                if (start < end) order = fo.substring(start, pos)+"|"+ fo.substring(pos, end);
+                else order = fo.substring(start)+"|" + fo.substring(0,end);                                
                 s += fv.toHtml();
+                s += "<br>Flow order around "+pos+": "+order;
             } else {
                 s += ionogram.toHtml();
             }
@@ -160,7 +171,7 @@ public class IonogramPanel extends JPanel {
                 }
                 char base = fv.getBase();
                 int value = fv.getFlowvalue();
-                int y = y0 - (int) (value * dy) - 1;
+                int y = y0 - (int) (value * dy) ;
                 int mx = x + (int) (dx / 2);
                 int barwidth = slotwidth / 3;
 
@@ -191,14 +202,14 @@ public class IonogramPanel extends JPanel {
                         gg.setColor(Color.darkGray);
                     }
                     gg.setStroke(line);
-                    for (int i = 100; i < value; i += 100) {
+                    for (int i = 100; i+2 < value; i += 100) {
                         int liney = (int) (y0 - i * dy);
-                        g.drawLine(mx - barwidth / 2 + 1, liney, mx + barwidth / 2 - 2, liney);
+                        g.drawLine(mx - barwidth / 2 + 1, liney, mx + barwidth / 2 - 1, liney);
                     }
                 } else {
                     //if (!fv.isEmpty()) {
                     g.setFont(this.titleFont);
-                    g.drawString("" + alignment.getAlignmentBase(slot), x + slotwidth / 2 - 5, y0 - h / 2);
+                    g.drawString("" + alignment.getAlignmentBase(slot), x + slotwidth / 2 - 5, 15);
                     //   g.setColor(Color.darkGray);
                     //  g.drawString("" + fv.getChromosome_location(), x + 2, y0 - h + 20);
                     //}

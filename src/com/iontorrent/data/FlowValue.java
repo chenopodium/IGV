@@ -48,10 +48,19 @@ public class FlowValue {
     
     public String toHtml() {
         String nl = "<br>";
-        String s=  "Flow position: "+flowposition+nl+"Base called: "+base+nl+"Flow value: "+flowvalue+nl+"Chromosome location: "+chromosome_location+nl;
-        if (empty) s += "Empty flow";
-        else s += "Incorporation";
+        String s=  "Flow position: "+bold(flowposition)+nl+
+                   "Base called: "+bold(base)+nl+
+                   "Flow value: "+bold(flowvalue)+nl+
+                   "Chromosome location: "+chromosome_location+nl;
+        if (empty) s += "Flow type: <b>empty flow</b>";
+        else s += "Flow type: <b>incorporation</b>";
         return s;
+    }
+    private String bold(String s) {
+        return "<b>"+s+"</b>";
+    }
+    private String bold(int s) {
+        return "<b>"+s+"</b>";
     }
     /**
      * @return the flowvalue

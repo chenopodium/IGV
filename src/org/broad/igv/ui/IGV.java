@@ -2210,8 +2210,10 @@ public class IGV {
 
             final PreferenceManager preferenceManager = PreferenceManager.getInstance();
             if (igvArgs.getGenomeId() != null) {
+                log.info("Got genome from igvARgs: "+igvArgs.getGenomeId());
                 selectGenomeFromList(igvArgs.getGenomeId());
             } else if (igvArgs.getSessionFile() == null) {
+                log.info("Got no genome and no sesssion file, will use default genome");
                 String genomeId = preferenceManager.getDefaultGenome();
                 contentPane.getCommandBar().selectGenomeFromList(genomeId);
             }
@@ -2245,6 +2247,7 @@ public class IGV {
                         }
                     }
                     if (!success) {
+                        log.info("Got a session file, but could not load it. Using default genome now.");
                         String genomeId = preferenceManager.getDefaultGenome();
                         contentPane.getCommandBar().selectGenomeFromList(genomeId);
 

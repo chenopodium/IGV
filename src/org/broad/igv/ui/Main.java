@@ -262,8 +262,19 @@ public class Main {
                         dataFileString = firstArg;
                     }
                 }
+//                if (nonOptionArgs.length > 1) {
+//                    locusString = nonOptionArgs[1];
+//                }
+                // How about checking for equals just for additional parameters? 
+                // Is the equals sign a legal character in a locus string?
                 if (nonOptionArgs.length > 1) {
-                    locusString = nonOptionArgs[1];
+                    // check if arg contains = for all args
+                    for (String arg: nonOptionArgs ) {
+                        arg = checkEqualsAndExtractParamter(arg);
+                        if (arg != null) locusString = arg;
+
+                    }
+
                 }
 
 // Alternative implementation
@@ -321,6 +332,16 @@ public class Main {
                 else if (key.equalsIgnoreCase("locus") || key.equalsIgnoreCase("position")) {
                     log.info("Got locus: "+key+"="+val);
                     locusString = val;
+                    return null;
+                }
+                 else if (key.equalsIgnoreCase("genome") ) {
+                    log.info("Got genome: "+key+"="+val);
+                    genomeId = val;
+                    return null;
+                }
+                 else if (key.startsWith("property") || key.startsWith("preferences") ) {
+                    log.info("Got propertyOverrides: "+key+"="+val);
+                    propertyOverrides = val;
                     return null;
                 }
                 else {

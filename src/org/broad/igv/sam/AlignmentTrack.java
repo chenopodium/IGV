@@ -2134,7 +2134,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         IonogramAlignment reverse_align = getIonogramAlignment(frame, center_location, nrbases_left_right, false);
         final IonogramAlignmentControlPanel forpanel = new IonogramAlignmentControlPanel(center_location, forward_align);
         final IonogramAlignmentControlPanel revpanel = new IonogramAlignmentControlPanel(center_location, reverse_align);
-       
+        String locus = Locus.getFormattedLocusString(frame.getChrName(), (int) center_location, (int) center_location);
         LocationListener listener = new LocationListener() {
 
             @Override
@@ -2142,8 +2142,11 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 log.info("Got new location from panel: " + newLocation);
                 IonogramAlignment forward= getIonogramAlignment(frame, newLocation, bases, true);
                 IonogramAlignment reverse = getIonogramAlignment(frame, newLocation, bases, false);
-                forpanel.setAlignment(forward);
-                revpanel.setAlignment(reverse);
+                String locus = Locus.getFormattedLocusString(frame.getChrName(), (int) newLocation, (int) newLocation);
+                forpanel.setAlignment(forward, newLocation);
+                forward.setTitle("Ionogram Alignment (forward) at "+locus);
+                reverse.setTitle("Ionogram Alignment (reverse) at "+locus);
+                revpanel.setAlignment(reverse, newLocation);
                 frame.centerOnLocation(newLocation + 1);
                 IGV.getInstance().repaintDataAndHeaderPanels();
                 IGV.getInstance().repaintStatusAndZoomSlider();
@@ -2153,9 +2156,10 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
         // now create two panels, one for forward, and one for the reverse strand
         revpanel.setListener(listener);
-        SimpleDialog fdia = new SimpleDialog("Ionogram Alignment (forward)", forpanel, 800, 500);
+        
+        SimpleDialog fdia = new SimpleDialog("Ionogram Alignment (forward) at "+locus, forpanel, 800, 500);
         fdia.setLocation(200, 100);
-        SimpleDialog rdia = new SimpleDialog("Ionogram Alignment (reverse)", revpanel, 800, 500);
+        SimpleDialog rdia = new SimpleDialog("Ionogram Alignment (reverse) at "+locus, revpanel, 800, 500);
         rdia.setLocation(200, 600);
     }
 

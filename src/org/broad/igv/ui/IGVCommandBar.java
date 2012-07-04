@@ -618,7 +618,7 @@ public class IGVCommandBar extends javax.swing.JPanel {
         }
 
 
-        log.debug("Run selectGenomeFromList");
+        log.debug("Run selectGenomeFromList "+genomeId);
 
 
         boolean wasFound = false;
@@ -655,6 +655,7 @@ public class IGVCommandBar extends javax.swing.JPanel {
         // If genome archive was not found use first item
         // we have in the list
         if (!wasFound) {
+            log.debug(genomeId+" was not found in list, selecting first one");
             int count = genomeComboBox.getItemCount();
 
             for (int i = 0; i < count; i++) {

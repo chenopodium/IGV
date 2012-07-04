@@ -42,6 +42,7 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
     private JScrollPane slabels;
     private JScrollPane scenter;
     private JScrollPane sheader;
+    private JLabel corner;
 
     /**
      * Creates new form IonogramAlignmentPanel
@@ -60,12 +61,13 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
         });
         main = new BagPanel();
         ToolTipManager.sharedInstance().registerComponent(main);
-        setAlignment(alignment);
+        setAlignment(alignment, location);
         add("Center", main);
 
     }
 
-    public void setAlignment(IonogramAlignment alignment) {
+    public void setAlignment(IonogramAlignment alignment, int chromosomepos) {
+        location = chromosomepos;
         this.ionograms = alignment.getIonograms();
         this.alignment = alignment;
         PreferenceManager prefs = PreferenceManager.getInstance();
@@ -82,6 +84,9 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
         }
         if (scenter != null) {
             main.remove(scenter);
+        }
+        if (corner != null) {
+            main.remove(corner);
         }
 
         center = new JPanel();
@@ -103,14 +108,14 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
         int slotwidth = prefs.getAsInt(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN) + IonogramPanel.BORDER;
         int lblwidth = 40;
         for (Ionogram iono : ionograms) {
-            p("Adding ionogram to alignmentpanel: " + iono.toString());
+           // p("Adding ionogram to alignmentpanel: " + iono.toString());
             IonogramPanel ionopanel = new IonogramPanel(iono, alignment, false);
-            ionopanel.setToolTipText(iono.getFloworder());
+            //ionopanel.setToolTipText(iono.getFloworder());
             center.add(ionopanel);
             JLabel lbl = new JLabel(iono.getReadname());
             lbl.setBackground(Color.white);
-            lbl.setToolTipText(iono.getFloworder());
-            p("Got floworder: " + iono.getFloworder());
+            lbl.setToolTipText("<html>"+iono.toHtml()+"</html>");
+          //  p("Got floworder: " + iono.getFloworder());
             lbl.setSize(lblwidth, slotheight);
             lbl.setMinimumSize(new Dimension(30, slotheight));
             lbl.setMaximumSize(new Dimension(lblwidth, slotheight));
@@ -126,7 +131,7 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
         labels.setPreferredSize(new Dimension(lblwidth, totheight));
 
         center.setMinimumSize(new Dimension(totwidth, totheight));
-        p("Setting size of center: " + totheight + ", single height=" + slotheight);
+     //   p("Setting size of center: " + totheight + ", single height=" + slotheight);
 
         slabels = new JScrollPane(labels, JScrollPane.VERTICAL_SCROLLBAR_NEVER, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scenter = new JScrollPane(center);
@@ -135,7 +140,7 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
         slabels.getVerticalScrollBar().setModel(scenter.getVerticalScrollBar().getModel());
         sheader.getHorizontalScrollBar().setModel(scenter.getHorizontalScrollBar().getModel());
 
-        JLabel corner = new JLabel("Read names/Bases");
+        corner = new JLabel("<html>"+alignment.getLocus()+"</html>");
         corner.setBackground(Color.white);
         corner.setSize(lblwidth, slotheight);
         corner.setMaximumSize(new Dimension(lblwidth, slotheight));
@@ -149,6 +154,16 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
         this.repaint();
         main.invalidate();
         main.revalidate();
+        
+        Container parent = this;
+        while (parent.getParent() != null ) {
+            parent = parent.getParent();
+        }
+        if (parent != null && parent instanceof JFrame) {
+            JFrame f = (JFrame)parent;
+            p("Found parent frame :-)");
+            f.setTitle(alignment.getTitle());
+        }
         // I know this is a hack, but it just won't repaint... not sure why
         paintImmediately(0,0,1000,1000);
     }
@@ -352,7 +367,7 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
     // Returns a generated image.
 
     public RenderedImage myCreateImage() {
-        return myCreateImage(800, 600);
+        return myCreateImage(main.getWidth(), main.getHeight());
     }
 
     public RenderedImage myCreateImage(int minw, int minh) {

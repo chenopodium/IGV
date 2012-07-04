@@ -14,7 +14,7 @@ public class IonogramAlignment {
     
     private ArrayList<Ionogram> ionograms;
     private static org.apache.log4j.Logger log = org.apache.log4j.Logger.getLogger(IonogramAlignment.class);
-    
+    private String title;
     private int nrslots;    
     private int nrionograms;
     private int maxemptyperlocation[];
@@ -47,6 +47,10 @@ public class IonogramAlignment {
         }
         return slots;
     }
+    public String getLocus() {
+        if (ionograms != null && ionograms.size()>0) return ionograms.get(0).getLocusinfo();
+        else return "Unknown";
+    }
     public int getRelativeLocation(int chromosome_location) {
         return chromosome_location - getChromosome_center_location()+getRelativecenter();
     }
@@ -56,7 +60,7 @@ public class IonogramAlignment {
     public char getAlignmentBase(int slot){
          for (int i = 0;i < this.nrionograms; i++) {
                 FlowValue v = slotmatrix[i][slot];
-                if (v != null) return v.getAlignmentBase();
+                if (v != null && v.getAlignmentBase()!= ' ') return v.getAlignmentBase();
          }
          return ' ';
     }
@@ -69,11 +73,18 @@ public class IonogramAlignment {
         // I know using String + is usually not recommended
         // but, this method does not have to be fast or efficient, so for readability
         // + is still much nicer than all those appends :-)
+        
+        res += "readname, ";
+        for (int s = 0; s < this.nrslots; s++) {
+            res = res + "slot "+s+", ";
+        }
+        res += nl;
         for (int i = 0;i < this.nrionograms; i++) {
+            res += ionograms.get(i).getReadname()+", ";
             for (int s = 0; s < this.nrslots; s++) {
                 FlowValue v = slotmatrix[i][s];
                 if (v == null) res += ",";
-                else res = res + v.getFlowvalue();
+                else res = res + v.getFlowvalue()+", ";
             }
             res += nl;
         }
@@ -159,5 +170,19 @@ public class IonogramAlignment {
             if (v > max) max = v;
         }
         return max;
+    }
+
+    /**
+     * @return the title
+     */
+    public String getTitle() {
+        return title;
+    }
+
+    /**
+     * @param title the title to set
+     */
+    public void setTitle(String title) {
+        this.title = title;
     }
 }
