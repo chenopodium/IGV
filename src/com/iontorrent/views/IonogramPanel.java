@@ -79,28 +79,50 @@ public class IonogramPanel extends JPanel {
 
     @Override
     public String getToolTipText(MouseEvent evt) {
-      //  p("Get Ionopanel tool tip");
+        //  p("Get Ionopanel tool tip");
         int slot = evt.getX() / this.slotwidth;
         String nl = "<br>";
         String s = "read: " + ionogram.getReadname() + nl;
         if (slot >= 0 && slot < alignment.getNrslots()) {
-            FlowValue fv = ionogram.getSlotrow()[slot];
-            if (fv != null) {
-                String fo = ionogram.getFloworder();
-             //   if (fo != null) {
-                fo = fo + fo + fo;// in case the flow order is just GATC, we want to get just one substring for those 11 bases :-)
-                int pos = fv.getFlowPosition();
-                int start = Math.max(0, pos - 5);
-                start = start % fo.length();
-                int end =pos +5;
-                end = end % fo.length();
-                String order = "";
-                if (start < end) order = fo.substring(start, pos)+"|"+ fo.substring(pos, end);
-                else order = fo.substring(start)+"|" + fo.substring(0,end);                                
-                s += fv.toHtml();
-                s += "<br>Flow order around "+pos+": "+order;
+            if (this.isHeader) {
+                char base = alignment.getAlignmentBase(slot);
+                if (base == ' ') {
+                    s += alignment.getEmptyBasesInfo(slot);
+                } else {
+                    s += base;
+                }
             } else {
-                s += ionogram.toHtml();
+                FlowValue fv = ionogram.getSlotrow()[slot];
+                if (fv != null) {
+                    String fo = ionogram.getFloworder();
+                    //   if (fo != null) {
+                    fo = fo + fo + fo;// in case the flow order is just GATC, we want to get just one substring for those 11 bases :-)
+                    int pos = fv.getFlowPosition();
+                    int start = Math.max(0, pos - 5);
+                    start = start % fo.length();
+                    int end = pos + 5;
+                    end = end % fo.length();
+
+                    String left = "";
+                    String right = "";
+                    char base = fv.getBase();
+                    if (start < end) {
+                        left = fo.substring(start, pos);
+                        if (pos + 1 <= end) {
+                            right = fo.substring(pos + 1, end);
+                        }
+                    } else {
+                        left = fo.substring(start);
+                        if (end > 0) {
+                            right = fo.substring(1, end);
+                        }
+                    }
+                    s += fv.toHtml();
+                    String order = left + "<font color='000088'><b>" + base + "</b></font>" + right;
+                    s += "<br>Flow order around " + pos + ": " + order;
+                } else {
+                    s += ionogram.toHtml();
+                }
             }
         } else {
             s += ionogram.toHtml();
@@ -154,45 +176,61 @@ public class IonogramPanel extends JPanel {
                 g.setColor(highlight);
                 g.fillRect(x, y0 - h, slotwidth, h);
             }
-            if (fv == null) {
-                gg.setStroke(line);
-                g.setColor(Color.black);
-                g.drawLine(x, y0, x, y0 - h);
-            } else {
-                if (slot != alignment.getCenterSlot()) {
-                    //if (!isHeader) {
-                    if (!fv.isEmpty()) {
-                        g.setColor(flowcolor);
-                    } else {
-                        g.setColor(emptycolor);
-                    }
-                    g.fillRect(x, y0 - h, slotwidth, h);
-                    // }
-                }
-                char base = fv.getBase();
-                int value = fv.getFlowvalue();
-                int y = y0 - (int) (value * dy) ;
-                int mx = x + (int) (dx / 2);
-                int barwidth = slotwidth / 3;
+            gg.setStroke(line);
+            g.setColor(Color.black);
+            g.drawLine(x, y0, x, y0 - h);
+            if (this.isHeader) {
 
-                gg.setStroke(line);
-                g.setColor(Color.black);
-                g.drawLine(x, y0, x, y0 - h);
-                Color color = colors[GATC.indexOf(base)];
-                int nr = 0;
-                g.setColor(color.darker());
-                if (!isHeader) {
+                char base = alignment.getAlignmentBase(slot);
+                if (base != ' ') {
+                    Color color = colors[GATC.indexOf(base)].darker();
+                    g.setColor(color);
+                    g.setFont(this.titleFont);
+                    g.drawString("" + base, x + 5, 15);
+                } else {
+                    g.setColor(Color.gray);
+                    g.setFont(this.gatcFont);
+                    g.drawString("" + alignment.getEmptyBases(slot), x + 5, 17);
+                }
+            } else {
+                if (fv == null) {
+                } else {
+                    if (slot != alignment.getCenterSlot()) {
+                        //if (!isHeader) {
+                        if (!fv.isEmpty()) {
+                            g.setColor(flowcolor);
+                        } else {
+                            g.setColor(emptycolor);
+                        }
+                        g.fillRect(x, y0 - h, slotwidth, h);
+                        // }
+                    }
+                    char base = fv.getBase();
+                    int value = fv.getFlowvalue();
+                    int y = y0 - (int) (value * dy);
+                    int mx = x + (int) (dx / 2);
+                    int barwidth = slotwidth / 3;
+
+                    gg.setStroke(line);
+                    g.setColor(Color.black);
+                    g.drawLine(x, y0, x, y0 - h);
+                    Color color = colors[GATC.indexOf(base)];
+                    int nr = 0;
+                    g.setColor(color.darker());
+
                     g.fill3DRect(mx - barwidth / 2, y, barwidth, (int) (value * dy), true);
                     g.setFont(gatcFont);
                     nr = (int) Math.round(value / 100.0);
                     if (showText) {
                         g.drawString("" + nr + base, x + 2, y0 - 5);
+                    } else if (fv.isEmpty()) {
+                        g.drawString("" + (char) base, x + 2, y0 - 5);
                     }
                     if (showFlowValue) {
                         g.drawString("" + fv.getFlowvalue(), x + slotwidth - 20, y0 - 5);
                     }
                     if (showText) {
-                        g.setColor(Color.darkGray);                    
+                        g.setColor(Color.darkGray);
                         g.drawString("" + fv.getFlowPosition(), x + 2, y0 - h + 10);
                     }
 
@@ -202,20 +240,12 @@ public class IonogramPanel extends JPanel {
                         gg.setColor(Color.darkGray);
                     }
                     gg.setStroke(line);
-                    for (int i = 100; i+2 < value; i += 100) {
+                    for (int i = 100; i + 2 < value; i += 100) {
                         int liney = (int) (y0 - i * dy);
                         g.drawLine(mx - barwidth / 2 + 1, liney, mx + barwidth / 2 - 1, liney);
                     }
-                } else {
-                    //if (!fv.isEmpty()) {
-                    g.setFont(this.titleFont);
-                    g.drawString("" + alignment.getAlignmentBase(slot), x + slotwidth / 2 - 5, 15);
-                    //   g.setColor(Color.darkGray);
-                    //  g.drawString("" + fv.getChromosome_location(), x + 2, y0 - h + 20);
-                    //}
                 }
             }
-
         }
     }
 

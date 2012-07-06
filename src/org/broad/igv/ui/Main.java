@@ -54,7 +54,7 @@ import java.awt.event.WindowEvent;
 public class Main {
 
     private static Logger log = Logger.getLogger(Main.class);
-
+   
     /**
      * Launch an igv instance as a stand-alone application in its own Frame.
      *

@@ -104,7 +104,7 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
         IonogramPanel header = new IonogramPanel(ionograms.get(0), alignment, true);
 
        
-        int slotheight = prefs.getAsInt(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN);
+        int slotheight = prefs.getAsInt(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN)+IonogramPanel.TOP;
         int slotwidth = prefs.getAsInt(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN) + IonogramPanel.BORDER;
         int lblwidth = 40;
         for (Ionogram iono : ionograms) {

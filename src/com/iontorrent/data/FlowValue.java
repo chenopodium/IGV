@@ -49,7 +49,7 @@ public class FlowValue {
     public String toHtml() {
         String nl = "<br>";
         String s=  "Flow position: "+bold(flowposition)+nl+
-                   "Base called: "+bold(base)+nl+
+                   "Base called: "+bold(""+base)+nl+
                    "Flow value: "+bold(flowvalue)+nl+
                    "Chromosome location: "+chromosome_location+nl;
         if (empty) s += "Flow type: <b>empty flow</b>";
