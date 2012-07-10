@@ -694,9 +694,9 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                             if (!forward) {
                                 // for reverse alignments, we should use the reverse or at least the complement because we are displaying
                                 // everything in the forward strand
-                                order = AlignUtil.complement(order);
-                                iono.setFloworder(order);
+                                order = AlignUtil.complement(order);                               
                             }
+                            iono.setFloworder(order);
                         }
                       
                         short flowSignal = subcontext.getCurrentSignal();

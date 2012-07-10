@@ -96,36 +96,45 @@ public class IonogramPanel extends JPanel {
                 if (fv != null) {
                     String fo = ionogram.getFloworder();
                     //   if (fo != null) {
-                    fo = fo + fo + fo;// in case the flow order is just GATC, we want to get just one substring for those 11 bases :-)
+                    fo = fo + fo + fo + fo;// in case the flow order is just GATC, we want to get just one substring for those 11 bases :-)
                     int pos = fv.getFlowPosition();
                     int start = Math.max(0, pos - 5);
                     start = start % fo.length();
                     int end = pos + 5;
                     end = end % fo.length();
-
+                    pos = pos % fo.length();
                     String left = "";
                     String right = "";
                     char base = fv.getBase();
-                    if (start < end) {
-                        left = fo.substring(start, pos);
-                        if (pos + 1 <= end) {
-                            right = fo.substring(pos + 1, end);
+                    try {
+                        if (start < end) {
+
+                            left = fo.substring(start, pos);
+                            if (pos + 1 <= end) {
+                                right = fo.substring(pos + 1, end);
+                            }
+                        } else {
+                            left = fo.substring(start);
+                            if (end > 0) {
+                                right = fo.substring(1, end);
+                            }
                         }
-                    } else {
-                        left = fo.substring(start);
-                        if (end > 0) {
-                            right = fo.substring(1, end);
-                        }
+                    } catch (Exception e) {
+                        p("Got an error: " + e.getMessage());
+                        p("start=" + start + ", end=" + end + ", pos=" + pos + "fo=" + fo);
+
                     }
+
+
                     s += fv.toHtml();
-                     if (ionogram.isReverse()) {
-                         StringBuilder sleft = new StringBuilder(right);                         
-                         StringBuilder sright= new StringBuilder(left);                         
-                         left = sleft.reverse().toString();                                               
-                         right = sright.reverse().toString();
+                    if (ionogram.isReverse()) {
+                        StringBuilder sleft = new StringBuilder(right);
+                        StringBuilder sright = new StringBuilder(left);
+                        left = sleft.reverse().toString();
+                        right = sright.reverse().toString();
                     }
                     String order = left + "<font color='000088'><b>" + base + "</b></font>" + right;
-                   
+
                     s += "<br>Flow order around " + pos + ": " + order;
                 } else {
                     s += ionogram.toHtml();
