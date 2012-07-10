@@ -5,6 +5,13 @@
 package com.iontorrent.data;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import org.iontorrent.sam2flowgram.flowalign.FlowOrder;
+import org.iontorrent.sam2flowgram.flowalign.FlowSeq;
+import org.iontorrent.sam2flowgram.flowalign.FlowgramAlignment;
+import org.iontorrent.sam2flowgram.util.AlignUtil;
 
 /**
  * compute the slots/flows for a list of subread ionograms
@@ -29,9 +36,11 @@ public class IonogramAlignment {
      */
     private FlowValue[][] slotmatrix;
     private String emptyBasesInfo[];
-
-    public IonogramAlignment(ArrayList<Ionogram> ionograms, int maxemptyperlocation[], int nrbases_left_right, int chromosome_center_location) {
+    private String consensus;
+    
+    public IonogramAlignment(String consensus, ArrayList<Ionogram> ionograms, int maxemptyperlocation[], int nrbases_left_right, int chromosome_center_location) {
         this.ionograms = ionograms;
+        this.consensus = consensus;
         this.chromosome_center_location = chromosome_center_location;
         nrionograms = ionograms.size();
         this.maxemptyperlocation = maxemptyperlocation;
@@ -42,6 +51,61 @@ public class IonogramAlignment {
 
         slotmatrix = new FlowValue[nrionograms][nrslots];
         computeAlignment();
+        recomputeAlignmentUsingFlowSpace();
+    }
+
+    public void recomputeAlignmentUsingFlowSpace() {
+        //  public FlowgramAlignment(FlowSeq flowQseq, byte tseq[],
+        //                     FlowOrder qseqFlowOrder)
+
+       
+        byte[] tseq = new byte[consensus.length()];
+        int r = 0;
+       
+        for (int i = 0; i < consensus.length(); i++) {
+            char base = consensus.charAt(i);
+            if (base != ' ' && base != '_') {
+                tseq[r] = (byte) AlignUtil.baseCharToInt(base);
+                r++;                
+            }
+        }
+        p("REFERENCE: "+consensus+"="+Arrays.toString(tseq));
+        for (Ionogram iono : ionograms) {
+
+            int len = iono.getFlowvalues().size();
+            
+            byte[] qorder = new byte[len];
+            int[] signals = new int[len];
+            // public FlowSeq(byte seq[], int signals[], byte flowOrder[])
+            String qseq = "";
+            FlowValue prev = null;
+            for (int i = 0; i < len; i++) {
+                FlowValue fv = iono.getFlowvalues().get(i);
+                if (prev != null && prev.getBase() == fv.getBase() && !fv.isEmpty()) {
+                    // skip
+                }
+                else {
+                    qorder[i] = (byte) AlignUtil.baseCharToInt(fv.getBase());
+                    signals[i] = fv.getFlowvalue();
+                    qseq += fv.getBase()+"("+fv.getFlowvalue()+"), ";
+                }
+                prev = fv;
+            }
+
+            FlowSeq flowQseq = new FlowSeq(signals);
+            FlowOrder qseqFlowOrder = new FlowOrder(qorder);
+            
+            //  p("ref: "+Arrays.toString(tseq)+", signals="+Arrays.toString(signals)+", order="+Arrays.toString(qorder)+" :"+qseqFlowOrder.toString());
+
+            try {
+                FlowgramAlignment falign = new FlowgramAlignment(flowQseq, tseq, qseqFlowOrder, true, true, 1);
+                System.out.println(iono.getReadname()+":"+"\nqseq="+qseq+"\n" + falign.getAlignmentString(true));
+                //    p("aln="+Arrays.toString(falign.aln));                
+
+            } catch (Exception ex) {
+                Logger.getLogger(IonogramAlignment.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
     }
 
     private int computeSlots() {
@@ -82,7 +146,9 @@ public class IonogramAlignment {
     }
 
     public String getEmptyBasesInfo(int slot) {
-        if (emptyBasesInfo[slot] == null) getEmptyBases(slot);
+        if (emptyBasesInfo[slot] == null) {
+            getEmptyBases(slot);
+        }
         return emptyBasesInfo[slot];
     }
 
@@ -97,11 +163,12 @@ public class IonogramAlignment {
                 if (which >= 0) {
                     counts[which]++;
                     total++;
+                } else {
+                    p("Strange base in slot " + slot + " for iono " + i + ": " + v.getBase());
                 }
-                else p("Strange base in slot "+slot+" for iono "+i+": "+v.getBase());
             }
         }
-        p("Found "+total+" flows in slot "+slot);
+        //   p("Found "+total+" flows in slot "+slot);
         String bases = "";
         emptyBasesInfo[slot] = "";
         if (total > 0) {
@@ -133,7 +200,7 @@ public class IonogramAlignment {
                 bases += base;
                 info += base + "(" + counts[secondpos] + "%) ";
             }
-            p("bases are: "+bases+", top: "+maxpos);
+            //    p("bases are: "+bases+", top: "+maxpos);
             emptyBasesInfo[slot] = info;
         }
 

@@ -58,6 +58,7 @@ import org.broad.igv.ui.util.MessageUtils;
 import org.broad.igv.ui.util.UIUtilities;
 import org.broad.igv.util.Pair;
 import org.broad.igv.util.ResourceLocator;
+import org.iontorrent.sam2flowgram.util.AlignUtil;
 
 /**
  * @author jrobinso
@@ -635,7 +636,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
     private IonogramAlignment getIonogramAlignment(ReferenceFrame frame, int center_location, int nrbases_left_right, boolean forward) {
         // one for each base!
         boolean reverse = !forward;
-        
+        int alignmentwidth = nrbases_left_right*2+1;
         PreferenceManager prefs = PreferenceManager.getInstance();
         float maxNrReads = prefs.getAsFloat(PreferenceManager.IONTORRENT_MAXNREADS_IONOGRAM_ALIGN);
         
@@ -644,10 +645,16 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         String locus = Locus.getFormattedLocusString(frame.getChrName(), (int) center_location, (int) center_location);
 
         // we need to map the number of maximum empties per location
-        int[] maxemptyperlocation = new int[nrbases_left_right * 2 + 1];
+        int[] maxemptyperlocation = new int[alignmentwidth];
 
         int nrionograms = 0;
+        char[] consensus = new char[alignmentwidth+1];
         for (AlignmentInterval interval : dataManager.getLoadedIntervals()) {
+            for (int loc = center_location - nrbases_left_right; loc <= center_location + nrbases_left_right+1; loc++) {
+                BaseAlignmentCounts ac = (BaseAlignmentCounts)interval.getAlignmentCounts(loc);
+                char bestbase = ac.getBestBaseAt(loc);
+                consensus[loc - center_location + nrbases_left_right ]=  bestbase;
+            }
             Iterator<Alignment> alignmentIterator = interval.getAlignmentIterator();
             while (alignmentIterator.hasNext()) {
                 Alignment alignment = alignmentIterator.next();
@@ -659,7 +666,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 }
                 if (nrionograms > maxNrReads) break;
                 
-                Ionogram iono = new Ionogram(alignment.getReadName(), center_location);
+                Ionogram iono = new Ionogram(alignment.getReadName(), center_location, !forward);
                 iono.setLocusinfo(locus);
                 
                 nrionograms++;
@@ -667,12 +674,12 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 for (int i = 0; i < blocks.length; i++) {
                     // only for matches/mismatches, there is no block for deletions
                     AlignmentBlock block = blocks[i];
-
+                     for (int loc = center_location - nrbases_left_right; loc <= center_location + nrbases_left_right; loc++) {
                     // now add flow values from a few bases to the left and right - including empties!
-                    for (int loc = center_location - nrbases_left_right; loc <= center_location + nrbases_left_right; loc++) {
+                         int relativelocation = loc - center_location + nrbases_left_right;
+                      //  char alignmentbase = (char)alignment.getBase(loc);
+                        char bestbase = consensus[relativelocation];
                         
-                        char alignmentbase = (char)alignment.getBase(loc);
-                        int relativelocation = loc - center_location + nrbases_left_right;
                         int posinblock = (int) loc - block.getStart();
                         if (!block.contains((int) loc) || !block.hasFlowSignals()) {
                             continue;
@@ -683,15 +690,25 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                         int flownr = subcontext.getFlowOrderIndex();
                         if (alignment instanceof SamAlignment) {
                             SamAlignment sam = (SamAlignment)alignment;
-                            iono.setFloworder(sam.getFlowOrder());
+                            String order = sam.getFlowOrder();
+                            if (!forward) {
+                                // for reverse alignments, we should use the reverse or at least the complement because we are displaying
+                                // everything in the forward strand
+                                order = AlignUtil.complement(order);
+                                iono.setFloworder(order);
+                            }
                         }
                       
                         short flowSignal = subcontext.getCurrentSignal();
+                        // that base is always the FORWARD base, so the complement in a reverse sequence
                         char base = (char) block.getBase(posinblock);
                         // now we also have to get the EMTPIES after this flow!
                         boolean isempty = false;
-                        FlowValue flowvalue = new FlowValue(flowSignal, flownr, base, loc, isempty, alignmentbase);
-                        iono.addFlowValue(flowvalue);
+                        // skip if this flow values is the same as the one before
+                        FlowValue flowvalue = new FlowValue(flowSignal, flownr, base, loc, isempty, bestbase);
+                        if (!iono.isSameAsPrev(flowvalue)){
+                            iono.addFlowValue(flowvalue);
+                        }
                         short[] nextempties = subcontext.getNextSignals();
                         if (nextempties != null) {
                             // add the emtpies
@@ -708,8 +725,14 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                                 else curflowpos = flownr - e - 1;
                                 short emptysignal = nextempties[e];
                                 char emptybase = subcontext.getBaseForNextEmpty(e);
+                                // if reverse, use complement!
+                                if (!forward) {
+                                   emptybase = AlignUtil.getComplement(emptybase);
+                                }
                                 FlowValue emptyvalue = new FlowValue(emptysignal, curflowpos, emptybase, loc, isempty, ' ');
-                                iono.addFlowValue(emptyvalue);
+                                if (!iono.isSameAsPrev(emptyvalue)){ 
+                                    iono.addFlowValue(emptyvalue);
+                                }
                             }
                         }
                     }
@@ -717,8 +740,9 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 ionograms.add(iono);
             }
         }
+       
         // now we can start to creat the alignment slots as we know the max number of empties per location
-        IonogramAlignment ionoalign = new IonogramAlignment(ionograms, maxemptyperlocation, nrbases_left_right, center_location);
+        IonogramAlignment ionoalign = new IonogramAlignment(new String(consensus), ionograms, maxemptyperlocation, nrbases_left_right, center_location);
         return ionoalign;
     }
 
@@ -2156,10 +2180,10 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
         // now create two panels, one for forward, and one for the reverse strand
         revpanel.setListener(listener);
-        
-        SimpleDialog fdia = new SimpleDialog("Ionogram Alignment (forward) at "+locus, forpanel, 800, 500);
+        ImageIcon image = new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/msa.gif"));
+        SimpleDialog fdia = new SimpleDialog("Ionogram Alignment (forward) at "+locus, forpanel, 800, 500, image.getImage());
         fdia.setLocation(200, 100);
-        SimpleDialog rdia = new SimpleDialog("Ionogram Alignment (reverse) at "+locus, revpanel, 800, 500);
+        SimpleDialog rdia = new SimpleDialog("Ionogram Alignment (reverse) at "+locus, revpanel, 800, 500, image.getImage());
         rdia.setLocation(200, 600);
     }
 
@@ -2187,7 +2211,8 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         distributionPanel.setListener(listener);
 
         // listen to left/right mouse clicks from panel and navigate accordingly
-        SimpleDialog dia = new SimpleDialog("Flow Signal Distribution", distributionPanel, 800, 500);
+        ImageIcon image = new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/chip_16.png"));
+        SimpleDialog dia = new SimpleDialog("Flow Signal Distribution", distributionPanel, 800, 500, image.getImage());
     }
 
     private FlowDistribution[] getFlowDistributions(boolean forward, boolean reverse, ReferenceFrame frame, int location) {

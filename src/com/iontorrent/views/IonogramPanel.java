@@ -118,7 +118,14 @@ public class IonogramPanel extends JPanel {
                         }
                     }
                     s += fv.toHtml();
+                     if (ionogram.isReverse()) {
+                         StringBuilder sleft = new StringBuilder(right);                         
+                         StringBuilder sright= new StringBuilder(left);                         
+                         left = sleft.reverse().toString();                                               
+                         right = sright.reverse().toString();
+                    }
                     String order = left + "<font color='000088'><b>" + base + "</b></font>" + right;
+                   
                     s += "<br>Flow order around " + pos + ": " + order;
                 } else {
                     s += ionogram.toHtml();

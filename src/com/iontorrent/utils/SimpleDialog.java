@@ -6,6 +6,7 @@ package com.iontorrent.utils;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.Image;
 import java.awt.Toolkit;
 import javax.swing.JDialog;
 import javax.swing.JPanel;
@@ -21,10 +22,10 @@ public class SimpleDialog extends JDialog {
      
     
     
-    public SimpleDialog(String title, JPanel mainpanel, int width, int height) {
+    public SimpleDialog(String title, JPanel mainpanel, int width, int height, Image image) {
         setLocationRelativeTo(null);
         this.setUndecorated(false);
-        
+        if (image != null) this.setIconImage(image);
         JPanel main = new JPanel(new BorderLayout());
         super.setTitle(title);
         this.add(main);

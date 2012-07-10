@@ -13,6 +13,7 @@ import java.util.ArrayList;
 public class Ionogram {
     
     private String readname;
+    private boolean reverse;
     
     private String locusinfo;
     
@@ -26,13 +27,21 @@ public class Ionogram {
     
     private FlowValue[] slotrow;
     
-    public Ionogram(String readname, int chromosome_center_location) {
+    public Ionogram(String readname, int chromosome_center_location, boolean reverse) {
         this.readname = readname;
         this.chromosome_center_location = chromosome_center_location;        
-        
+        this.reverse = reverse;
         flowvalues = new ArrayList<FlowValue>();
     }
     
+    public boolean isReverse(){
+        return reverse;
+    }
+    public boolean isSameAsPrev(FlowValue flowvalue) {
+        if (flowvalues == null || flowvalues.size()==0) return false;
+        FlowValue last = flowvalues.get(flowvalues.size()-1);
+        return (last.getFlowPosition() == flowvalue.getFlowPosition());
+    }
     public void addFlowValue(FlowValue flowvalue) {
         getFlowvalues().add(flowvalue);
         // add to maps

@@ -130,6 +130,24 @@ abstract public class BaseAlignmentCounts implements AlignmentCounts {
         }
     }
 
+    public char getBestBaseAt(int pos) {
+         int totalCount = getTotalCount(pos);
+         int percent;
+         int max = 0;
+         int bestpos = 0;
+         for (int i = 0; i < nucleotides.length; i++) {
+            char c = nucleotides[i];
+            int negCount = getNegCount(pos, (byte) c);
+            int posCount = getPosCount(pos, (byte) c);
+            int count = negCount + posCount;
+            percent = (int) Math.round(((float) count) * 100 / totalCount);
+            if (percent > max)  {
+                max = percent;
+                bestpos = i;
+            }                       
+        }
+        return Character.toUpperCase(nucleotides[bestpos]);
+    }
     public String getValueStringAt(int pos) {
 
         StringBuffer buf = new StringBuffer();
