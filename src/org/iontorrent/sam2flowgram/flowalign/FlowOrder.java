@@ -19,7 +19,7 @@ public class FlowOrder
     /**
      * The length or period of the flow order.
      */
-    public int length = 0;
+    private int length = 0;
 
     /**
      * Forward jump table.  Indicates the number bases after a given base the 
@@ -38,6 +38,7 @@ public class FlowOrder
      */
     public byte keySequence[] = null;
 
+   
     /**
      * Creates the forward and reverse jump table from the flow order.
      */
@@ -56,6 +57,9 @@ public class FlowOrder
             }
             this.jumpFwd[i] = this.jumpRev[j] = k;
         }
+    }
+     public int getLength() {
+        return length;
     }
     
     /**

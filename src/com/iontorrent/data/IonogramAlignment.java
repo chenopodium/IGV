@@ -48,17 +48,27 @@ public class IonogramAlignment {
         this.relativecenter = nrbases_left_right;
         nrslots = computeSlots();
         emptyBasesInfo = new String[nrslots];
-
         slotmatrix = new FlowValue[nrionograms][nrslots];
-        computeAlignment();
-        recomputeAlignmentUsingFlowSpace();
+        computeSlotsForGivenAlignment();
+        recomputeAlignment();
+    }
+    
+    public void recomputeAlignment() {
+        p("RECOMPUTING ALIGNMENT WITH FLOW SPACE");
+       ArrayList<FlowgramAlignment>  aligns = recomputeAlignmentUsingFlowSpace();
+       computeMaxEmpties(aligns);
+       nrslots = computeSlots();
+       emptyBasesInfo = new String[nrslots];
+
+       slotmatrix = new FlowValue[nrionograms][nrslots];
+       computeSlotsWithFlowAlignment(aligns);
     }
 
-    public void recomputeAlignmentUsingFlowSpace() {
+    private ArrayList<FlowgramAlignment> recomputeAlignmentUsingFlowSpace() {
         //  public FlowgramAlignment(FlowSeq flowQseq, byte tseq[],
         //                     FlowOrder qseqFlowOrder)
 
-       
+       ArrayList<FlowgramAlignment> aligns = new ArrayList<FlowgramAlignment>();
         byte[] tseq = new byte[consensus.length()];
         int r = 0;
        
@@ -71,43 +81,101 @@ public class IonogramAlignment {
         }
         p("REFERENCE: "+consensus+"="+Arrays.toString(tseq));
         for (Ionogram iono : ionograms) {
-
-            int len = iono.getFlowvalues().size();
-            
+            int len = iono.getFlowvalues().size();            
             byte[] qorder = new byte[len];
-            int[] signals = new int[len];
-            // public FlowSeq(byte seq[], int signals[], byte flowOrder[])
-            String qseq = "";
-            FlowValue prev = null;
             for (int i = 0; i < len; i++) {
                 FlowValue fv = iono.getFlowvalues().get(i);
-                if (prev != null && prev.getBase() == fv.getBase() && !fv.isEmpty()) {
-                    // skip
-                }
-                else {
-                    qorder[i] = (byte) AlignUtil.baseCharToInt(fv.getBase());
-                    signals[i] = fv.getFlowvalue();
-                    qseq += fv.getBase()+"("+fv.getFlowvalue()+"), ";
-                }
-                prev = fv;
+                qorder[i] = (byte) AlignUtil.baseCharToInt(fv.getBase());                                                   
             }
-
-            FlowSeq flowQseq = new FlowSeq(signals);
-            FlowOrder qseqFlowOrder = new FlowOrder(qorder);
-            
+            FlowSeq flowQseq = new FlowSeq(iono.getFlowvalues());
+            FlowOrder qseqFlowOrder = new FlowOrder(qorder);            
             //  p("ref: "+Arrays.toString(tseq)+", signals="+Arrays.toString(signals)+", order="+Arrays.toString(qorder)+" :"+qseqFlowOrder.toString());
-
+            FlowgramAlignment falign = null;
             try {
-                FlowgramAlignment falign = new FlowgramAlignment(flowQseq, tseq, qseqFlowOrder, true, true, 1);
-                System.out.println(iono.getReadname()+":"+"\nqseq="+qseq+"\n" + falign.getAlignmentString(true));
+                falign = new FlowgramAlignment(flowQseq, tseq, qseqFlowOrder, true, true, 1);
+          //      System.out.println(iono.getReadname()+":"+"\n" + falign.getAlignmentString(true));                
                 //    p("aln="+Arrays.toString(falign.aln));                
 
             } catch (Exception ex) {
                 Logger.getLogger(IonogramAlignment.class.getName()).log(Level.SEVERE, null, ex);
             }
+            aligns.add(falign);
+        }
+        return aligns;
+    }
+    private void pp(String s) {
+        System.out.println(s);
+    }
+     private void computeSlotsWithFlowAlignment(ArrayList<FlowgramAlignment> aligns) {
+        // compute nr of slots:
+        // for each actual incorporation, get the maximum number of empties.
+        // the sum of each incorporation plus empties is the nr of slots
+        // before we can creat an array, we use an array lost for each incorporation event
+        p("Computing alignment: got " + this.nrslots + " slots and " + this.nrionograms + " ionograms");
+         for (int i = 0; i < getNrionograms(); i++) {
+          //  Ionogram iono = ionograms.get(i);
+            FlowgramAlignment align = aligns.get(i);            
+            Ionogram iono = ionograms.get(i);
+            int nrempty = 0;
+            if (align != null) {
+                int lastincalignpos = 0;
+                pp(iono.getReadname()+":"+"\n" + align.getAlignmentString(true));
+                pp(align.showHelperArrays());
+                for (int qpos = 0; qpos < iono.getFlowvalues().size(); qpos++) {
+                    int alignpos = align.getAlignPosForQpos(qpos);
+                    int tflowpos = align.getTargetFlowposForAlignPos(alignpos);                
+                    int tbasepos = align.getTargetBaseposForTargetFlowPos(tflowpos);
+                   // if (tbasepos == 0) tbasepos = prevtbasepos;
+                    
+                    //int relative = getRelativeLocation(loc);
+                    int startslot = slotperlocation[tbasepos];                                   
+                    FlowValue fv = align.getQueryFlowValue(qpos);
+                    FlowValue tv = align.getTargetFlowValue(tflowpos);
+                    
+                    if (fv.isEmpty()) {
+                       // nrempty++;
+                        nrempty = alignpos - lastincalignpos;
+                    } else {
+                        //incorporation, starting empty from scratch
+                        nrempty = 0;
+                        lastincalignpos = alignpos;
+                    }
+                    int slot = startslot + nrempty;
+                   
+                    System.out.println("q "+qpos+" "+fv.getBase()+" "+(fv.isEmpty()? "e": "i")+" -> a "+alignpos+" -> t "+tflowpos+tv.getBase()+"-> tpos "+tbasepos+consensus.charAt(tbasepos)+"-> slot "+slot);
+                  
+                    if (slot < slotmatrix[i].length) slotmatrix[i][slot] = fv;
+                }
+            }
+            iono.setSlotrow(slotmatrix[i]);
+
         }
     }
-
+    private void computeMaxEmpties(ArrayList<FlowgramAlignment> aligns) {
+        // first we have to compute the size of the msa, the space between incorporations
+        maxemptyperlocation = new int[this.getNrrelativelocations()];
+        
+        for (int pos = 0; pos < getNrrelativelocations(); pos++) {
+            int maxempty = 0;           
+            
+            for (int i = 0; i < this.nrionograms; i++) {
+                FlowgramAlignment al = aligns.get(i);
+                int invalid = al.getTargetFlowSeq().getLength();
+                if (al != null) {
+                    int nextal = al.getAlignPosForTBasepos(pos+1);                    
+                    int preval = al.getAlignPosForTBasepos(pos);
+                    int empties = 0;
+                    if (nextal >= invalid) empties = 0;
+                    else empties = Math.max(0, nextal - preval-1);
+                    // nr empties
+                    if (empties > maxempty) maxempty = empties;                                           
+                }
+            }
+            p("Max empty for targetbase pos  "+pos+" = "+consensus.charAt(pos)+"="+maxempty);
+            maxemptyperlocation[pos] = maxempty;
+        }
+        
+    }
     private int computeSlots() {
         int slots = 0;
         slotperlocation = new int[maxemptyperlocation.length];
@@ -116,6 +184,7 @@ public class IonogramAlignment {
             slotperlocation[relativeloc] = slots;
             slots += maxemptyperlocation[relativeloc] + 1;
         }
+        p("Computing slots: "+slots);
         return slots;
     }
 
@@ -125,10 +194,6 @@ public class IonogramAlignment {
         } else {
             return "Unknown";
         }
-    }
-
-    public int getRelativeLocation(int chromosome_location) {
-        return chromosome_location - getChromosome_center_location() + getRelativecenter();
     }
 
     public int getCenterSlot() {
@@ -240,7 +305,7 @@ public class IonogramAlignment {
         return res;
     }
 
-    private void computeAlignment() {
+    private void computeSlotsForGivenAlignment() {
         // compute nr of slots:
         // for each actual incorporation, get the maximum number of empties.
         // the sum of each incorporation plus empties is the nr of slots
@@ -250,8 +315,8 @@ public class IonogramAlignment {
             Ionogram iono = ionograms.get(i);
             int nrempty = 0;
             for (FlowValue fv : iono.getFlowvalues()) {
-                int loc = fv.getChromosome_location();
-                int relative = getRelativeLocation(loc);
+                int relative = fv.getBasecall_location();
+                //int relative = getRelativeLocation(loc);
                 int startslot = slotperlocation[relative];
 
                 if (fv.isEmpty()) {

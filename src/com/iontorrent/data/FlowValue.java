@@ -12,7 +12,7 @@ public class FlowValue {
     private int flowvalue;
     private char base;
     private char alignmentbase;
-    private int chromosome_location;
+    private int basecall_location;
     /** whether this flow is actually mapping to an empty base, so no true location on the genome
      * In that case, the location is the location of the previously mapped flow
      */
@@ -22,12 +22,12 @@ public class FlowValue {
     private int flowposition;
     
     
-    public FlowValue(int flowvalue, int flowposition, char base, int chromosome_location, boolean empty, char alignmentbase) {
+    public FlowValue(int flowvalue, int flowposition, char base, int location_in_sequence, boolean empty, char alignmentbase) {
         this.flowvalue = flowvalue;
         this.alignmentbase = alignmentbase;
         this.flowposition = flowposition;
         this.base = base;
-        this.chromosome_location = chromosome_location;
+        this.basecall_location = location_in_sequence;
         this.empty = empty;
                 
     }
@@ -43,7 +43,7 @@ public class FlowValue {
     }
     @Override
     public String toString() {
-        return  flowposition+", "+base+", "+flowvalue+", "+chromosome_location+", "+empty;
+        return  flowposition+", "+base+", "+flowvalue+", "+basecall_location+", "+empty;
     }
     
     public String toHtml() {
@@ -51,7 +51,7 @@ public class FlowValue {
         String s=  "Flow position: "+bold(flowposition)+nl+
                    "Base called: "+bold(""+base)+nl+
                    "Flow value: "+bold(flowvalue)+nl+
-                   "Chromosome location: "+chromosome_location+nl;
+                   "basecall location: "+basecall_location+nl;
         if (empty) s += "Flow type: <b>empty flow</b>";
         else s += "Flow type: <b>incorporation</b>";
         return s;
@@ -91,17 +91,17 @@ public class FlowValue {
     }
 
     /**
-     * @return the chromosome_location
+     * @return the basecall_location
      */
-    public int getChromosome_location() {
-        return chromosome_location;
+    public int getBasecall_location() {
+        return basecall_location;
     }
 
     /**
-     * @param chromosome_location the chromosome_location to set
+     * @param basecall_location the basecall_location to set
      */
-    public void setChromosome_location(int chromosome_location) {
-        this.chromosome_location = chromosome_location;
+    public void setBasecall_location(int chromosome_location) {
+        this.basecall_location = chromosome_location;
     }
 
     /**

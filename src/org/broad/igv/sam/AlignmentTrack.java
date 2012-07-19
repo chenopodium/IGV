@@ -705,7 +705,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                         // now we also have to get the EMTPIES after this flow!
                         boolean isempty = false;
                         // skip if this flow values is the same as the one before
-                        FlowValue flowvalue = new FlowValue(flowSignal, flownr, base, loc, isempty, bestbase);
+                        FlowValue flowvalue = new FlowValue(flowSignal, flownr, base, relativelocation, isempty, bestbase);
                         if (!iono.isSameAsPrev(flowvalue)){
                             iono.addFlowValue(flowvalue);
                         }
@@ -729,7 +729,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                                 if (!forward) {
                                    emptybase = AlignUtil.getComplement(emptybase);
                                 }
-                                FlowValue emptyvalue = new FlowValue(emptysignal, curflowpos, emptybase, loc, isempty, ' ');
+                                FlowValue emptyvalue = new FlowValue(emptysignal, curflowpos, emptybase, relativelocation, isempty, ' ');
                                 if (!iono.isSameAsPrev(emptyvalue)){ 
                                     iono.addFlowValue(emptyvalue);
                                 }

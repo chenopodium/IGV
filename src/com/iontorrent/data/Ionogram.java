@@ -5,6 +5,7 @@
 package com.iontorrent.data;
 
 import java.util.ArrayList;
+import org.iontorrent.sam2flowgram.flowalign.FlowSeq;
 
 /**
  * The inogram of a part of an alignment, including the empties
@@ -38,7 +39,7 @@ public class Ionogram {
         return reverse;
     }
     public boolean isSameAsPrev(FlowValue flowvalue) {
-        if (flowvalues == null || flowvalues.size()==0) return false;
+        if (flowvalues == null || flowvalues.isEmpty()) return false;
         FlowValue last = flowvalues.get(flowvalues.size()-1);
         return (last.getFlowPosition() == flowvalue.getFlowPosition());
     }
@@ -46,14 +47,26 @@ public class Ionogram {
         getFlowvalues().add(flowvalue);
         // add to maps
     }
-
-    
+    public void setFlowValues(ArrayList<FlowValue> flowvalues) {
+        this.flowvalues = flowvalues;
+    }
+    public void setFlowSequence(FlowSeq seq) {
+        this.flowvalues = seq.getFlowValues();
+    }
     @Override
     public String toString() {
         String s = readname+"@ "+getLocusinfo()+":\n";
         s += FlowValue.getHeader()+"\n";
         for (FlowValue fv: getFlowvalues()) {
             s += fv.toString()+"\n";
+        }
+        return s;
+    }
+   
+    public String toShortString() {
+        String s = readname+"@ "+getLocusinfo()+": ";        
+        for (FlowValue fv: getFlowvalues()) {
+            s += fv.getBase()+" ("+fv.getFlowvalue()+") "+" ";
         }
         return s;
     }
