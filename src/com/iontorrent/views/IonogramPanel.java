@@ -7,6 +7,7 @@ package com.iontorrent.views;
 import com.iontorrent.data.FlowValue;
 import com.iontorrent.data.IonogramAlignment;
 import com.iontorrent.data.Ionogram;
+import com.iontorrent.data.PeakFunction;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.text.DecimalFormat;
@@ -45,6 +46,7 @@ public class IonogramPanel extends JPanel {
     private Color highlight = new Color(255, 255, 180);
     // private boolean NORM;
     private BasicStroke line = new BasicStroke(1);
+    private BasicStroke fatline = new BasicStroke(2);
     boolean raw;
     boolean norm;
     private DecimalFormat f = new DecimalFormat("0.00");
@@ -57,13 +59,18 @@ public class IonogramPanel extends JPanel {
             0f);
     private int slotheight;
     private int slotwidth;
+    private static final int NRPOINTS = 40;
+    private PeakFunction peak = new PeakFunction(NRPOINTS);
+    private boolean drawPeak;
+    private PreferenceManager prefs;
 
     public IonogramPanel(Ionogram ionogram, IonogramAlignment alignment, boolean isHeader) {
         this.ionogram = ionogram;
         this.alignment = alignment;
         this.isHeader = isHeader;
+       
         this.setBackground(Color.white);
-        PreferenceManager prefs = PreferenceManager.getInstance();
+        prefs = PreferenceManager.getInstance();
         slotheight = prefs.getAsInt(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN);
         slotwidth = prefs.getAsInt(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN);
         int totalwidth = slotwidth * alignment.getNrslots() + BORDER;
@@ -85,11 +92,11 @@ public class IonogramPanel extends JPanel {
         String s = "read: " + ionogram.getReadname() + nl;
         if (slot >= 0 && slot < alignment.getNrslots()) {
             if (this.isHeader) {
-                char base = alignment.getAlignmentBase(slot);
-                if (base == ' ') {
+                String bases = alignment.getAlignmentBase(slot);
+                if (bases.charAt(0) == ' ') {
                     s += alignment.getEmptyBasesInfo(slot);
                 } else {
-                    s += base;
+                    s += bases;
                 }
             } else {
                 FlowValue fv = ionogram.getSlotrow()[slot];
@@ -151,6 +158,8 @@ public class IonogramPanel extends JPanel {
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
 
+        String type = prefs.get(PreferenceManager.IONTORRENT_IONOGRAM_ALIGN_DRAWTYPE);
+        drawPeak = type.equalsIgnoreCase("PEAK");
         Graphics2D gg = (Graphics2D) g;
         int width = this.getWidth();
         int height = slotheight + TOP;
@@ -197,17 +206,20 @@ public class IonogramPanel extends JPanel {
             g.drawLine(x, y0, x, y0 - h);
             if (this.isHeader) {
 
-                char base = alignment.getAlignmentBase(slot);
-                if (base != ' ') {
-                    Color color = colors[GATC.indexOf(base)].darker();
+                String bases = alignment.getAlignmentBase(slot);
+                if (bases.charAt(0) != ' ') {
+                    Color color = colors[GATC.indexOf(bases.charAt(0))].darker();
                     g.setColor(color);
                     g.setFont(this.titleFont);
-                    g.drawString("" + base, x + 5, 15);
+                    g.drawString("" + bases, x + 5, 15);
                 } else {
                     g.setColor(Color.gray);
                     g.setFont(this.gatcFont);
                     g.drawString("" + alignment.getEmptyBases(slot), x + 5, 17);
                 }
+                g.setColor(Color.lightGray);
+                g.setFont(this.gatcFont);
+                g.drawString("slot " + slot, x + 5, y0 - 2);
             } else {
                 if (fv == null) {
                 } else {
@@ -233,8 +245,24 @@ public class IonogramPanel extends JPanel {
                     Color color = colors[GATC.indexOf(base)];
                     int nr = 0;
                     g.setColor(color.darker());
-
-                    g.fill3DRect(mx - barwidth / 2, y, barwidth, (int) (value * dy), true);
+                    int maxy = (int) (value * dy);
+// DRAW PEAK FUNCTION
+                    if (drawPeak) {
+                        int sx = x + slotwidth / 3;
+                        gg.setColor(Color.gray);
+                        for (int i = 100; i + 50 < value; i += 100) {
+                            int liney = (int) (y0 - i * dy);
+                            g.drawLine(sx - 1, liney, sx + slotwidth / 3, liney);
+                        }
+                        g.setColor(Color.DARK_GRAY);
+                        gg.setStroke(fatline);
+                        peak.draw(g, sx + 1, y0 - 1, slotwidth / 2, -maxy);
+                        g.setColor(color.darker());
+                        //gg.setStroke(fatline);
+                        peak.draw(g, sx, y0 - 2, slotwidth / 2, -maxy);
+                    } else {
+                        g.fill3DRect(mx - barwidth / 2, y, barwidth, maxy, true);
+                    }
                     g.setFont(gatcFont);
                     nr = (int) Math.round(value / 100.0);
                     if (showText) {
@@ -250,15 +278,20 @@ public class IonogramPanel extends JPanel {
                         g.drawString("" + fv.getFlowPosition(), x + 2, y0 - h + 10);
                     }
 
-                    if (base == 'G') {
-                        gg.setColor(Color.lightGray);
-                    } else {
-                        gg.setColor(Color.darkGray);
-                    }
-                    gg.setStroke(line);
-                    for (int i = 100; i + 2 < value; i += 100) {
-                        int liney = (int) (y0 - i * dy);
-                        g.drawLine(mx - barwidth / 2 + 1, liney, mx + barwidth / 2 - 1, liney);
+
+
+                    if (!drawPeak) {
+                        gg.setStroke(line);
+                        if (base == 'G') {
+                            gg.setColor(Color.lightGray);
+                        } else {
+                            gg.setColor(Color.darkGray);
+                        }
+
+                        for (int i = 100; i + 50 < value; i += 100) {
+                            int liney = (int) (y0 - i * dy);
+                            g.drawLine(mx - barwidth / 2 + 1, liney, mx + barwidth / 2 - 1, liney);
+                        }
                     }
                 }
             }

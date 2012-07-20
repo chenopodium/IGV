@@ -70,6 +70,7 @@ public class PreferenceManager implements PropertyManager {
     public static final String IONTORRENT_HEIGHT_IONOGRAM_ALIGN= "IONTORRENT.HEIGHT_IONOGRAM_ALIGN";
     /** the maximum number of reads we want to include in the ionogram alignment (showing hundreds may not make sense  :-)*/
     public static final String IONTORRENT_MAXNREADS_IONOGRAM_ALIGN= "IONTORRENT.MAXNRREADS_IONOGRAM_ALIGN";
+    public static final String IONTORRENT_IONOGRAM_ALIGN_DRAWTYPE= "IONTORRENT.ONOGRAM_ALIGN_DRAWTYPE";
     
     public static final String SAM_ALLELE_THRESHOLD = "SAM.ALLELE_THRESHOLD";
     public static final String SAM_QUALITY_THRESHOLD = "SAM.QUALITY_THRESHOLD";
@@ -942,6 +943,7 @@ public class PreferenceManager implements PropertyManager {
         defaultValues.put(SHOW_EXPAND_ICON, "false");
 
         defaultValues.put(IONTORRENT_FLOWDIST_HIDE_FIRST_HP, "true");
+        defaultValues.put(IONTORRENT_IONOGRAM_ALIGN_DRAWTYPE, "peak");
         defaultValues.put(IONTORRENT_FLOWDIST_BINSIZE, "15");
         defaultValues.put(IONTORRENT_FLOWDIST_CHARTTYPE, "LINE");
         defaultValues.put(IONTORRENT_SERVER, "ioneast.ite");

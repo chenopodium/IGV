@@ -30,6 +30,8 @@ public class FlowSeq {
     public int nonEmptyFlowLast;
 
     private ArrayList<FlowValue> flows;
+    
+    
     /**
      * Creates a new flow sequence.
      * @param seq the sequence in integer format.

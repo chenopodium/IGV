@@ -35,6 +35,9 @@ public class Ionogram {
         flowvalues = new ArrayList<FlowValue>();
     }
     
+    public void clear() {
+        flowvalues = new ArrayList<FlowValue>();
+    }
     public boolean isReverse(){
         return reverse;
     }
