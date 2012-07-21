@@ -44,7 +44,7 @@ public class Ionogram {
     public boolean isSameAsPrev(FlowValue flowvalue) {
         if (flowvalues == null || flowvalues.isEmpty()) return false;
         FlowValue last = flowvalues.get(flowvalues.size()-1);
-        return (last.getFlowPosition() == flowvalue.getFlowPosition());
+        return (last.getBase() == flowvalue.getBase());
     }
     public void addFlowValue(FlowValue flowvalue) {
         getFlowvalues().add(flowvalue);

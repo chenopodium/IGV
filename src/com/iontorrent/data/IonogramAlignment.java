@@ -157,6 +157,10 @@ public class IonogramAlignment {
         
         slotmatrix = new FlowValue[nrionograms][nrslots];
         computeSlotsWithFlowAlignment(aligns);
+//         pp("maxemptyperlocation");
+//         for (int pos = 0; pos < getNrrelativelocations(); pos++) {
+//             pp("pos="+ pos+"="+maxemptyperlocation[pos]+", slot="+this.slotperlocation[pos]);
+//         }
     }
 
     private ArrayList<FlowgramAlignment> recomputeAlignmentUsingFlowSpace() {
@@ -242,8 +246,8 @@ public class IonogramAlignment {
             int nrempty = 0;
             if (align != null) {
                 int lastincalignpos = 0;
-                pp(iono.getReadname() + ":" + "\n" + align.getAlignmentString(true));
-                pp(align.showHelperArrays());
+          //      pp(iono.getReadname() + ":" + "\n" + align.getAlignmentString(true));
+          //      pp(align.showHelperArrays());
                 for (int qpos = 0; qpos < iono.getFlowvalues().size(); qpos++) {
                     int alignpos = align.getAlignPosForQpos(qpos);
                     int tflowpos = align.getTargetFlowposForAlignPos(alignpos);
@@ -266,7 +270,7 @@ public class IonogramAlignment {
                     }
                     int slot = startslot + nrempty;
 
-                    pp("q " + qpos + " " + fv.getBase() + " " + (fv.isEmpty() ? "e" : "i") + " -> a " + alignpos + " -> t " + tflowpos + tv.getBase() + "-> tpos " + tbasepos + consensus.charAt(tbasepos) + "-> slot " + slot);
+                //    pp("q " + qpos + " " + fv.getBase() + " " + (fv.isEmpty() ? "e" : "i") + " -> a " + alignpos + " -> t " + tflowpos + tv.getBase() + "-> tpos " + tbasepos + consensus.charAt(tbasepos) + "-> slot " + slot);
 
                     if (slot < slotmatrix[i].length) {
                         slotmatrix[i][slot] = fv;
@@ -287,7 +291,7 @@ public class IonogramAlignment {
 
             for (int i = 0; i < this.nrionograms; i++) {
                 FlowgramAlignment al = aligns.get(i);
-                int invalid = al.getTargetFlowSeq().getLength();
+                int invalid = al.getLength();
                 if (al != null) {
                     int nextal = al.getAlignPosForTBasepos(pos + 1);
                     int preval = al.getAlignPosForTBasepos(pos);
@@ -297,6 +301,9 @@ public class IonogramAlignment {
                     } else {
                         empties = Math.max(0, nextal - preval - 1);
                     }
+//                    if (pos == 8) {
+//                        pp("pos "+pos+"-> nextal="+nextal+", preval="+preval+", invalid="+invalid+", nextval-preval-1="+Math.max(0, nextal - preval - 1)+", empties="+empties+", maxempties="+maxempty);
+//                    }
                     // nr empties
                     if (empties > maxempty) {
                         maxempty = empties;
@@ -306,6 +313,7 @@ public class IonogramAlignment {
          //   p("Max empty for targetbase pos  " + pos + " = " + consensus.charAt(pos) + "=" + maxempty);
             maxemptyperlocation[pos] = maxempty;
         }
+       
 
     }
 
@@ -317,7 +325,7 @@ public class IonogramAlignment {
             slotperlocation[relativeloc] = slots;
             slots += maxemptyperlocation[relativeloc] + 1;
         }
-       // p("Computing slots: " + slots);
+        p("Computing slots: " + slots);
         return slots;
     }
 

@@ -193,12 +193,14 @@ public class FlowSeq {
                     flows.get(flowOrderPosition).setFlowvalue( signals[flowOrderPosition]);
                 }
                 else {
+                    FlowValue fv = flows.get(flowOrderPosition);                    
                     flowsignals[flowOrderPosition] += (signals[flowOrderPosition] - (AlignUtil.getBaseCallFromFlowSignal(signals[flowOrderPosition]) * 100));
                     if(flowsignals[flowOrderPosition] < 0) {
                         flowsignals[flowOrderPosition] = 0;
-                        flows.get(flowOrderPosition).setFlowvalue(0);
-                        flows.get(flowOrderPosition).setEmpty(true);
+                        fv.setFlowvalue(0);
+                        fv.setEmpty(true);
                     }
+                    fv.setFlowvalue(flowsignals[flowOrderPosition]);
                 }
             }
         }
