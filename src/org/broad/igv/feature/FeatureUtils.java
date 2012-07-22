@@ -1,19 +1,12 @@
 /*
- * Copyright (c) 2007-2011 by The Broad Institute of MIT and Harvard.  All Rights Reserved.
+ * Copyright (c) 2007-2012 The Broad Institute, Inc.
+ * SOFTWARE COPYRIGHT NOTICE
+ * This software and its documentation are the copyright of the Broad Institute, Inc. All rights are reserved.
+ *
+ * This software is supplied without any warranty or guaranteed support whatsoever. The Broad Institute is not responsible for its use, misuse, or functionality.
  *
  * This software is licensed under the terms of the GNU Lesser General Public License (LGPL),
  * Version 2.1 which is available at http://www.opensource.org/licenses/lgpl-2.1.php.
- *
- * THE SOFTWARE IS PROVIDED "AS IS." THE BROAD AND MIT MAKE NO REPRESENTATIONS OR
- * WARRANTES OF ANY KIND CONCERNING THE SOFTWARE, EXPRESS OR IMPLIED, INCLUDING,
- * WITHOUT LIMITATION, WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
- * PURPOSE, NONINFRINGEMENT, OR THE ABSENCE OF LATENT OR OTHER DEFECTS, WHETHER
- * OR NOT DISCOVERABLE.  IN NO EVENT SHALL THE BROAD OR MIT, OR THEIR RESPECTIVE
- * TRUSTEES, DIRECTORS, OFFICERS, EMPLOYEES, AND AFFILIATES BE LIABLE FOR ANY DAMAGES
- * OF ANY KIND, INCLUDING, WITHOUT LIMITATION, INCIDENTAL OR CONSEQUENTIAL DAMAGES,
- * ECONOMIC DAMAGES OR INJURY TO PROPERTY AND LOST PROFITS, REGARDLESS OF WHETHER
- * THE BROAD OR MIT SHALL BE ADVISED, SHALL HAVE OTHER REASON TO KNOW, OR IN FACT
- * SHALL KNOW OF THE POSSIBILITY OF THE FOREGOING.
  */
 
 /*
@@ -87,20 +80,27 @@ public class FeatureUtils {
         return segmentedLists;
     }
 
+    private static class StartComparator implements Comparator<Feature>{
+
+        private static StartComparator instance = null;
+        private StartComparator(){}
+
+        public static StartComparator getInstance(){
+            if(instance == null) instance = new StartComparator();
+            return instance;
+        }
+
+        public int compare(Feature o1, Feature o2) {
+            return (o1.getStart() - o2.getStart());
+        }
+    }
+
     /**
      * Sort the feature list by ascending start value
      */
     public static void sortFeatureList(List<? extends Feature> features) {
-
-        Collections.sort(features, new Comparator() {
-
-            public int compare(Object o1, Object o2) {
-                org.broad.tribble.Feature f1 = (org.broad.tribble.Feature) o1;
-                org.broad.tribble.Feature f2 = (org.broad.tribble.Feature) o2;
-                return (f1.getStart() - f2.getStart());
-            }
-        });
-    }
+        Collections.sort(features, FEATURE_START_COMPARATOR);
+}
 
     /**
      * Return a feature from the supplied list at the given position.
@@ -338,7 +338,7 @@ public class FeatureUtils {
         }
     };
 
-    private static final Comparator<Feature> FEATURE_START_COMPARATOR = new Comparator<Feature>() {
+    public static final Comparator<Feature> FEATURE_START_COMPARATOR = new Comparator<Feature>() {
         public int compare(Feature o1, Feature o2) {
             return o1.getStart() - o2.getStart();
         }

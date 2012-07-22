@@ -257,7 +257,7 @@ public class IGVSessionReader implements SessionReader {
     public void loadSession(InputStream inputStream, Session session, String sessionName) {
 
 
-        log.info("Load session "+session.getPath());
+        log.debug("Load session");
 
 
         Document document = null;
@@ -279,13 +279,7 @@ public class IGVSessionReader implements SessionReader {
             nodes = document.getElementsByTagName(SessionElement.SESSION.getText());
         }
 
-        try {
-            processRootNode(session, nodes.item(0), additionalInformation);
-        }
-        catch (Exception e) {
-            log.info("problem in processRootNode: "+e.getMessage());
-            e.printStackTrace();
-        }
+        processRootNode(session, nodes.item(0), additionalInformation);
 
         // Add tracks not explicitly allocated to panels.  It is legal to define sessions with the Resources
         // section only (no Panel or Track elements).
@@ -322,8 +316,7 @@ public class IGVSessionReader implements SessionReader {
         // Load the genome, which can be an ID, or a path or URL to a .genome or indexed fasta file.
         String genomeId = getAttribute(element, SessionAttribute.GENOME.getText());
         if (genomeId != null && genomeId.length() > 0) {
-            log.info("Trying to load genome "+genomeId);
-            if (GenomeManager.getInstance() != null && GenomeManager.getInstance().getGenomeId() != null && GenomeManager.getInstance().getGenomeId().equals(genomeId)) {
+            if (genomeId.equals(GenomeManager.getInstance().getGenomeId())) {
                 // We don't have to reload the genome, but the gene track for the current genome should be restored.
                 Genome genome = GenomeManager.getInstance().getCurrentGenome();
                 IGV.getInstance().setGenomeTracks(genome.getGeneTrack());

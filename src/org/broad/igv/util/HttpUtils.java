@@ -1,19 +1,12 @@
 /*
- * Copyright (c) 2007-2011 by The Broad Institute of MIT and Harvard.  All Rights Reserved.
+ * Copyright (c) 2007-2012 The Broad Institute, Inc.
+ * SOFTWARE COPYRIGHT NOTICE
+ * This software and its documentation are the copyright of the Broad Institute, Inc. All rights are reserved.
+ *
+ * This software is supplied without any warranty or guaranteed support whatsoever. The Broad Institute is not responsible for its use, misuse, or functionality.
  *
  * This software is licensed under the terms of the GNU Lesser General Public License (LGPL),
  * Version 2.1 which is available at http://www.opensource.org/licenses/lgpl-2.1.php.
- *
- * THE SOFTWARE IS PROVIDED "AS IS." THE BROAD AND MIT MAKE NO REPRESENTATIONS OR
- * WARRANTIES OF ANY KIND CONCERNING THE SOFTWARE, EXPRESS OR IMPLIED, INCLUDING,
- * WITHOUT LIMITATION, WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
- * PURPOSE, NONINFRINGEMENT, OR THE ABSENCE OF LATENT OR OTHER DEFECTS, WHETHER
- * OR NOT DISCOVERABLE.  IN NO EVENT SHALL THE BROAD OR MIT, OR THEIR RESPECTIVE
- * TRUSTEES, DIRECTORS, OFFICERS, EMPLOYEES, AND AFFILIATES BE LIABLE FOR ANY DAMAGES
- * OF ANY KIND, INCLUDING, WITHOUT LIMITATION, INCIDENTAL OR CONSEQUENTIAL DAMAGES,
- * ECONOMIC DAMAGES OR INJURY TO PROPERTY AND LOST PROFITS, REGARDLESS OF WHETHER
- * THE BROAD OR MIT SHALL BE ADVISED, SHALL HAVE OTHER REASON TO KNOW, OR IN FACT
- * SHALL KNOW OF THE POSSIBILITY OF THE FOREGOING.
  */
 
 package org.broad.igv.util;
@@ -43,6 +36,7 @@ import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
 /**
@@ -64,12 +58,13 @@ public class HttpUtils {
 
     private String defaultUserName = null;
     private char[] defaultPassword = null;
+    private static Pattern URLmatcher = Pattern.compile(".{1,8}://.*");
 
     /**
      * @return the single instance
      */
     public static HttpUtils getInstance() {
-        if(instance == null){
+        if (instance == null) {
             instance = new HttpUtils();
         }
         return instance;
@@ -89,10 +84,9 @@ public class HttpUtils {
         byteRangeTestMap = Collections.synchronizedMap(new HashMap());
     }
 
-    public static boolean isURL(String string) {
+    public static boolean isRemoteURL(String string) {
         String lcString = string.toLowerCase();
-        return lcString.startsWith("http://") || lcString.startsWith("https://") || lcString.startsWith("ftp://")
-                || lcString.startsWith("file://");
+        return lcString.startsWith("http://") || lcString.startsWith("https://") || lcString.startsWith("ftp://");
     }
 
     /**
@@ -654,10 +648,9 @@ public class HttpUtils {
         log.info("Testing range-byte request on host: " + host);
 
         String testURL;
-        if(host.endsWith("www.broadinstitute.org")) {
+        if (host.endsWith("www.broadinstitute.org")) {
             testURL = "http://www.broadinstitute.org/igvdata/annotations/seq/hg19/chr12.txt";
-        }
-        else {
+        } else {
             testURL = "http://igvdata.broadinstitute.org/genomes/seq/hg19/chr12.txt";
         }
 
@@ -707,6 +700,15 @@ public class HttpUtils {
 
     public void shutdown() {
         // Do any cleanup required here
+    }
+
+    /**
+     * Checks if the string is a URL (not necessarily remote, can be any protocol)
+     * @param f
+     * @return
+     */
+    public static boolean isURL(String f) {
+        return f.startsWith("http:") || f.startsWith("ftp:") || f.startsWith("https:") || URLmatcher.matcher(f).matches();
     }
 
 
