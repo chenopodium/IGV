@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<jnlp spec="6.0+"
+ codebase="file://localhost/S:/svn/trunk/IGV/web">
+	<information>
+	<title>IonTorrent IGV 2.2.3</title>
+    <vendor>The Broad Institute</vendor>
+    <homepage href="http://www.broadinstitute.org/igv"/>
+    <description>IGV Software, modified by IonTorrent</description>
+    <description kind="short">IGV</description>
+    <icon href="http://10.33.62.73:8080/IgvServlet/IGV_64.png"/>
+    <icon kind="splash" href="10.33.62.73/IGV_64.png"/>
+    <offline-allowed/>
+	<shortcut/>
+  </information>
+  <security>
+      <all-permissions/>
+  </security>
+  <update check="always" policy="always"/>
+  <resources>
+    <java version="1.6+" max-heap-size="900M"/>
+    <jar href="igv.jar" download="eager" main="true"/>
+    <jar href="batik-codec.jar" download="eager"/>
+    <property name="apple.laf.useScreenMenuBar" value="true"/>
+    <property name="com.apple.mrj.application.growbox.intrudes" value="false"/>
+    <property name="com.apple.mrj.application.live-resize" value="true"/>
+    <property name="com.apple.macos.smallTabs" value="true"/>
+  </resources>
+  <application-desc main-class="org.broad.igv.ui.Main">
+    <argument>http://10.33.62.73/output/Home/C01-319--R133579-e151b-GDM-3-tx-hg19_347/plugin_out/variantCaller_dev_out/igv.php3</argument>
+	<argument>chr4:1807894</argument>
+  </application-desc>
+</jnlp>
+

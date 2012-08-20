@@ -197,6 +197,9 @@ public class SnapshotUtilities {
 
     private static void exportScreenShotPNG(Component target, File selectedFile, int width, int height) throws IOException{
 
+        
+        if (width <= 0) width = 800;
+        if (height <= 0) height = 600;
         BufferedImage image = getDeviceCompatibleImage(width, height);
         Graphics g = image.createGraphics();
         target.paintAll(g);

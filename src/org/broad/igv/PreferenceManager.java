@@ -71,6 +71,7 @@ public class PreferenceManager implements PropertyManager {
     /** the maximum number of reads we want to include in the ionogram alignment (showing hundreds may not make sense  :-)*/
     public static final String IONTORRENT_MAXNREADS_IONOGRAM_ALIGN= "IONTORRENT.MAXNRREADS_IONOGRAM_ALIGN";
     public static final String IONTORRENT_IONOGRAM_ALIGN_DRAWTYPE= "IONTORRENT.ONOGRAM_ALIGN_DRAWTYPE";
+    public static final String IONTORRENT_BAM_HAS_FLOWVALUES= "IONTORRENT.BAM_HAS_FLOWVALUES";
     
     public static final String SAM_ALLELE_THRESHOLD = "SAM.ALLELE_THRESHOLD";
     public static final String SAM_QUALITY_THRESHOLD = "SAM.QUALITY_THRESHOLD";
@@ -173,6 +174,8 @@ public class PreferenceManager implements PropertyManager {
     final public static String PROXY_NTLM = "PROXY.NTLM";
     final public static String PROXY_USER = "PROXY.USERNAME";
     final public static String PROXY_PW = "PROXY.PW";
+    final public static String AUTHENTICATION_DEFAULT_PW = "AUTHENTICATION.DEFAULT_PW";
+    final public static String AUTHENTICATION_DEFAULT_USER = "AUTHENTICATION.DEFAULT_USER";
 
     final public static String KNOWN_SNPS = "KNOWN_SNPS_FILE";
 
@@ -902,6 +905,8 @@ public class PreferenceManager implements PropertyManager {
         remove(PreferenceManager.PROXY_AUTHENTICATE);
         remove(PreferenceManager.PROXY_USER);
         remove(PreferenceManager.PROXY_PW);
+        remove(PreferenceManager.AUTHENTICATION_DEFAULT_PW);
+        remove(PreferenceManager.AUTHENTICATION_DEFAULT_USER);
         HttpUtils.getInstance().updateProxySettings();
     }
 
@@ -944,6 +949,7 @@ public class PreferenceManager implements PropertyManager {
 
         defaultValues.put(IONTORRENT_FLOWDIST_HIDE_FIRST_HP, "true");
         defaultValues.put(IONTORRENT_IONOGRAM_ALIGN_DRAWTYPE, "peak");
+        defaultValues.put(IONTORRENT_BAM_HAS_FLOWVALUES, "false");
         defaultValues.put(IONTORRENT_FLOWDIST_BINSIZE, "15");
         defaultValues.put(IONTORRENT_FLOWDIST_CHARTTYPE, "LINE");
         defaultValues.put(IONTORRENT_SERVER, "ioneast.ite");

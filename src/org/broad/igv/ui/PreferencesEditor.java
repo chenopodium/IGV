@@ -218,6 +218,42 @@ public class PreferencesEditor extends javax.swing.JDialog {
        storeSelectedIonoAlignDrawType();
     }
 
+    private void defaultUsernameFieldFocusLost(FocusEvent e) {
+        updateDefaultUsername();
+    }
+
+    private void updateDefaultUsername() {
+        updatedPreferenceMap.put(PreferenceManager.AUTHENTICATION_DEFAULT_USER, this.defaultUsernameField.getText());
+        HttpUtils.getInstance().setDefaultUserName(this.defaultUsernameField.getText());
+        
+    }
+    
+    private void updateDefaultPw() {
+        
+        String pw = defaultPasswordField.getText();
+        String pwEncoded = Utilities.base64Encode(pw);
+        updatedPreferenceMap.put(PreferenceManager.AUTHENTICATION_DEFAULT_PW, pwEncoded);        
+        HttpUtils.getInstance().setDefaultPassword(pw);
+        
+    }
+
+    private void defaultUsernameFieldActionPerformed(ActionEvent e) {
+        updateDefaultUsername();
+    }
+
+    private void defaultPasswordFieldActionPerformed(ActionEvent e) {
+      updateDefaultPw();
+    }
+
+    private void defaultPasswordFieldFocusLost(FocusEvent e) {
+       updateDefaultPw();
+    }
+
+    private void checkBAMHasFlowValuesActionPerformed(ActionEvent e) {
+        boolean sel = this.checkBAMHasFlowValues.isSelected();
+        updatedPreferenceMap.put(PreferenceManager.IONTORRENT_BAM_HAS_FLOWVALUES, ""+sel);
+    }
+
     public PreferencesEditor(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
@@ -380,6 +416,8 @@ public class PreferencesEditor extends javax.swing.JDialog {
         panel8 = new JPanel();
         label31 = new JLabel();
         textServer2 = new JTextField();
+        panel9 = new JPanel();
+        checkBAMHasFlowValues = new JCheckBox();
         expressionPane = new JPanel();
         jPanel8 = new JPanel();
         expMapToGeneCB = new JRadioButton();
@@ -392,20 +430,27 @@ public class PreferencesEditor extends javax.swing.JDialog {
         useProbeMappingCB = new JCheckBox();
         proxyPanel = new JPanel();
         jPanel15 = new JPanel();
-        jPanel16 = new JPanel();
-        proxyUsernameField = new JTextField();
-        jLabel28 = new JLabel();
-        authenticateProxyCB = new JCheckBox();
-        jLabel29 = new JLabel();
-        proxyPasswordField = new JPasswordField();
         jPanel17 = new JPanel();
         proxyHostField = new JTextField();
         proxyPortField = new JTextField();
         jLabel27 = new JLabel();
         jLabel23 = new JLabel();
         useProxyCB = new JCheckBox();
+        jPanel16 = new JPanel();
+        proxyUsernameField = new JTextField();
+        jLabel28 = new JLabel();
+        authenticateProxyCB = new JCheckBox();
+        jLabel29 = new JLabel();
+        proxyPasswordField = new JPasswordField();
         label3 = new JLabel();
         clearProxySettingsButton = new JButton();
+        jPanel18 = new JPanel();
+        jPanel19 = new JPanel();
+        defaultUsernameField = new JTextField();
+        jLabel32 = new JLabel();
+        jLabel33 = new JLabel();
+        defaultPasswordField = new JPasswordField();
+        label33 = new JLabel();
         dbPanel = new JPanel();
         label17 = new JLabel();
         label18 = new JLabel();
@@ -1983,6 +2028,38 @@ public class PreferencesEditor extends javax.swing.JDialog {
                     }
                 }
                 panel5.add(panel8);
+
+                //======== panel9 ========
+                {
+                    panel9.setBorder(new TitledBorder("BAM File Information"));
+                    panel9.setLayout(null);
+
+                    //---- checkBAMHasFlowValues ----
+                    checkBAMHasFlowValues.setText("The current BAM file contains flow information (select to show flow menu items)");
+                    checkBAMHasFlowValues.addActionListener(new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            checkBAMHasFlowValuesActionPerformed(e);
+                        }
+                    });
+                    panel9.add(checkBAMHasFlowValues);
+                    checkBAMHasFlowValues.setBounds(15, 20, 420, checkBAMHasFlowValues.getPreferredSize().height);
+
+                    { // compute preferred size
+                        Dimension preferredSize = new Dimension();
+                        for(int i = 0; i < panel9.getComponentCount(); i++) {
+                            Rectangle bounds = panel9.getComponent(i).getBounds();
+                            preferredSize.width = Math.max(bounds.x + bounds.width, preferredSize.width);
+                            preferredSize.height = Math.max(bounds.y + bounds.height, preferredSize.height);
+                        }
+                        Insets insets = panel9.getInsets();
+                        preferredSize.width += insets.right;
+                        preferredSize.height += insets.bottom;
+                        panel9.setMinimumSize(preferredSize);
+                        panel9.setPreferredSize(preferredSize);
+                    }
+                }
+                panel5.add(panel9);
             }
             tabbedPane.addTab("IonTorrent", panel5);
 
@@ -2113,79 +2190,9 @@ public class PreferencesEditor extends javax.swing.JDialog {
                 {
                     jPanel15.setLayout(null);
 
-                    //======== jPanel16 ========
-                    {
-                        jPanel16.setLayout(null);
-
-                        //---- proxyUsernameField ----
-                        proxyUsernameField.setText("jTextField1");
-                        proxyUsernameField.setEnabled(false);
-                        proxyUsernameField.addActionListener(new ActionListener() {
-                            @Override
-                            public void actionPerformed(ActionEvent e) {
-                                proxyUsernameFieldActionPerformed(e);
-                            }
-                        });
-                        proxyUsernameField.addFocusListener(new FocusAdapter() {
-                            @Override
-                            public void focusLost(FocusEvent e) {
-                                proxyUsernameFieldFocusLost(e);
-                            }
-                        });
-                        jPanel16.add(proxyUsernameField);
-                        proxyUsernameField.setBounds(127, 45, 261, proxyUsernameField.getPreferredSize().height);
-
-                        //---- jLabel28 ----
-                        jLabel28.setText("Username");
-                        jPanel16.add(jLabel28);
-                        jLabel28.setBounds(new Rectangle(new Point(28, 51), jLabel28.getPreferredSize()));
-
-                        //---- authenticateProxyCB ----
-                        authenticateProxyCB.setText("Authentication required");
-                        authenticateProxyCB.addActionListener(new ActionListener() {
-                            @Override
-                            public void actionPerformed(ActionEvent e) {
-                                authenticateProxyCBActionPerformed(e);
-                            }
-                        });
-                        jPanel16.add(authenticateProxyCB);
-                        authenticateProxyCB.setBounds(new Rectangle(new Point(17, 17), authenticateProxyCB.getPreferredSize()));
-
-                        //---- jLabel29 ----
-                        jLabel29.setText("Password");
-                        jPanel16.add(jLabel29);
-                        jLabel29.setBounds(new Rectangle(new Point(28, 87), jLabel29.getPreferredSize()));
-
-                        //---- proxyPasswordField ----
-                        proxyPasswordField.setText("jPasswordField1");
-                        proxyPasswordField.addFocusListener(new FocusAdapter() {
-                            @Override
-                            public void focusLost(FocusEvent e) {
-                                proxyPasswordFieldFocusLost(e);
-                            }
-                        });
-                        jPanel16.add(proxyPasswordField);
-                        proxyPasswordField.setBounds(127, 81, 261, proxyPasswordField.getPreferredSize().height);
-
-                        { // compute preferred size
-                            Dimension preferredSize = new Dimension();
-                            for(int i = 0; i < jPanel16.getComponentCount(); i++) {
-                                Rectangle bounds = jPanel16.getComponent(i).getBounds();
-                                preferredSize.width = Math.max(bounds.x + bounds.width, preferredSize.width);
-                                preferredSize.height = Math.max(bounds.y + bounds.height, preferredSize.height);
-                            }
-                            Insets insets = jPanel16.getInsets();
-                            preferredSize.width += insets.right;
-                            preferredSize.height += insets.bottom;
-                            jPanel16.setMinimumSize(preferredSize);
-                            jPanel16.setPreferredSize(preferredSize);
-                        }
-                    }
-                    jPanel15.add(jPanel16);
-                    jPanel16.setBounds(20, 263, 741, jPanel16.getPreferredSize().height);
-
                     //======== jPanel17 ========
                     {
+                        jPanel17.setBorder(new TitledBorder("Proxy Settings"));
                         jPanel17.setLayout(null);
 
                         //---- proxyHostField ----
@@ -2203,7 +2210,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
                             }
                         });
                         jPanel17.add(proxyHostField);
-                        proxyHostField.setBounds(115, 70, 485, proxyHostField.getPreferredSize().height);
+                        proxyHostField.setBounds(110, 75, 485, proxyHostField.getPreferredSize().height);
 
                         //---- proxyPortField ----
                         proxyPortField.setText("jTextField1");
@@ -2220,17 +2227,17 @@ public class PreferencesEditor extends javax.swing.JDialog {
                             }
                         });
                         jPanel17.add(proxyPortField);
-                        proxyPortField.setBounds(115, 106, 108, proxyPortField.getPreferredSize().height);
+                        proxyPortField.setBounds(110, 100, 108, proxyPortField.getPreferredSize().height);
 
                         //---- jLabel27 ----
                         jLabel27.setText("Proxy port");
                         jPanel17.add(jLabel27);
-                        jLabel27.setBounds(new Rectangle(new Point(20, 112), jLabel27.getPreferredSize()));
+                        jLabel27.setBounds(new Rectangle(new Point(15, 100), jLabel27.getPreferredSize()));
 
                         //---- jLabel23 ----
                         jLabel23.setText("Proxy host");
                         jPanel17.add(jLabel23);
-                        jLabel23.setBounds(new Rectangle(new Point(20, 76), jLabel23.getPreferredSize()));
+                        jLabel23.setBounds(new Rectangle(new Point(15, 80), jLabel23.getPreferredSize()));
 
                         //---- useProxyCB ----
                         useProxyCB.setText("Use proxy");
@@ -2241,7 +2248,83 @@ public class PreferencesEditor extends javax.swing.JDialog {
                             }
                         });
                         jPanel17.add(useProxyCB);
-                        useProxyCB.setBounds(new Rectangle(new Point(9, 29), useProxyCB.getPreferredSize()));
+                        useProxyCB.setBounds(new Rectangle(new Point(5, 55), useProxyCB.getPreferredSize()));
+
+                        //======== jPanel16 ========
+                        {
+                            jPanel16.setLayout(null);
+
+                            //---- proxyUsernameField ----
+                            proxyUsernameField.setText("jTextField1");
+                            proxyUsernameField.setEnabled(false);
+                            proxyUsernameField.addActionListener(new ActionListener() {
+                                @Override
+                                public void actionPerformed(ActionEvent e) {
+                                    proxyUsernameFieldActionPerformed(e);
+                                }
+                            });
+                            proxyUsernameField.addFocusListener(new FocusAdapter() {
+                                @Override
+                                public void focusLost(FocusEvent e) {
+                                    proxyUsernameFieldFocusLost(e);
+                                }
+                            });
+                            jPanel16.add(proxyUsernameField);
+                            proxyUsernameField.setBounds(145, 45, 261, proxyUsernameField.getPreferredSize().height);
+
+                            //---- jLabel28 ----
+                            jLabel28.setText("Username");
+                            jPanel16.add(jLabel28);
+                            jLabel28.setBounds(new Rectangle(new Point(80, 50), jLabel28.getPreferredSize()));
+
+                            //---- authenticateProxyCB ----
+                            authenticateProxyCB.setText("Authentication required");
+                            authenticateProxyCB.addActionListener(new ActionListener() {
+                                @Override
+                                public void actionPerformed(ActionEvent e) {
+                                    authenticateProxyCBActionPerformed(e);
+                                }
+                            });
+                            jPanel16.add(authenticateProxyCB);
+                            authenticateProxyCB.setBounds(new Rectangle(new Point(75, 20), authenticateProxyCB.getPreferredSize()));
+
+                            //---- jLabel29 ----
+                            jLabel29.setText("Password");
+                            jPanel16.add(jLabel29);
+                            jLabel29.setBounds(new Rectangle(new Point(80, 70), jLabel29.getPreferredSize()));
+
+                            //---- proxyPasswordField ----
+                            proxyPasswordField.setText("jPasswordField1");
+                            proxyPasswordField.addFocusListener(new FocusAdapter() {
+                                @Override
+                                public void focusLost(FocusEvent e) {
+                                    proxyPasswordFieldFocusLost(e);
+                                }
+                            });
+                            jPanel16.add(proxyPasswordField);
+                            proxyPasswordField.setBounds(145, 70, 261, proxyPasswordField.getPreferredSize().height);
+
+                            { // compute preferred size
+                                Dimension preferredSize = new Dimension();
+                                for(int i = 0; i < jPanel16.getComponentCount(); i++) {
+                                    Rectangle bounds = jPanel16.getComponent(i).getBounds();
+                                    preferredSize.width = Math.max(bounds.x + bounds.width, preferredSize.width);
+                                    preferredSize.height = Math.max(bounds.y + bounds.height, preferredSize.height);
+                                }
+                                Insets insets = jPanel16.getInsets();
+                                preferredSize.width += insets.right;
+                                preferredSize.height += insets.bottom;
+                                jPanel16.setMinimumSize(preferredSize);
+                                jPanel16.setPreferredSize(preferredSize);
+                            }
+                        }
+                        jPanel17.add(jPanel16);
+                        jPanel16.setBounds(30, 120, 706, jPanel16.getPreferredSize().height);
+
+                        //---- label3 ----
+                        label3.setText("<html>Note:  do not use these settings unless you receive error or warning messages about server connections.  On most systems the correct settings will be automatically copied from your web browser.");
+                        jPanel17.add(label3);
+                        label3.setBounds(10, 10, 630, 50);
 
                         { // compute preferred size
                             Dimension preferredSize = new Dimension();
@@ -2258,12 +2341,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
                         }
                     }
                     jPanel15.add(jPanel17);
-                    jPanel17.setBounds(new Rectangle(new Point(20, 91), jPanel17.getPreferredSize()));
-
-                    //---- label3 ----
-                    label3.setText("<html>Note:  do not use these settings unless you receive error or warning messages about server connections.  On most systems the correct settings will be automatically copied from your web browser.");
-                    jPanel15.add(label3);
-                    label3.setBounds(22, 20, 630, 63);
+                    jPanel17.setBounds(20, 35, jPanel17.getPreferredSize().width, 218);
 
                     //---- clearProxySettingsButton ----
                     clearProxySettingsButton.setText("Clear All");
@@ -2274,7 +2352,102 @@ public class PreferencesEditor extends javax.swing.JDialog {
                         }
                     });
                     jPanel15.add(clearProxySettingsButton);
-                    clearProxySettingsButton.setBounds(new Rectangle(new Point(17, 390), clearProxySettingsButton.getPreferredSize()));
+                    clearProxySettingsButton.setBounds(new Rectangle(new Point(10, 575), clearProxySettingsButton.getPreferredSize()));
+
+                    //======== jPanel18 ========
+                    {
+                        jPanel18.setBorder(new TitledBorder("Authentication"));
+                        jPanel18.setLayout(null);
+
+                        //======== jPanel19 ========
+                        {
+                            jPanel19.setLayout(null);
+
+                            //---- defaultUsernameField ----
+                            defaultUsernameField.setText("ionadmin");
+                            defaultUsernameField.addActionListener(new ActionListener() {
+                                @Override
+                                public void actionPerformed(ActionEvent e) {
+                                    proxyUsernameFieldActionPerformed(e);
+                                    defaultUsernameFieldActionPerformed(e);
+                                }
+                            });
+                            defaultUsernameField.addFocusListener(new FocusAdapter() {
+                                @Override
+                                public void focusLost(FocusEvent e) {
+                                    proxyUsernameFieldFocusLost(e);
+                                    defaultUsernameFieldFocusLost(e);
+                                }
+                            });
+                            jPanel19.add(defaultUsernameField);
+                            defaultUsernameField.setBounds(105, 5, 261, defaultUsernameField.getPreferredSize().height);
+
+                            //---- jLabel32 ----
+                            jLabel32.setText("Default username");
+                            jPanel19.add(jLabel32);
+                            jLabel32.setBounds(new Rectangle(new Point(5, 10), jLabel32.getPreferredSize()));
+
+                            //---- jLabel33 ----
+                            jLabel33.setText("Default Password");
+                            jPanel19.add(jLabel33);
+                            jLabel33.setBounds(new Rectangle(new Point(5, 30), jLabel33.getPreferredSize()));
+
+                            //---- defaultPasswordField ----
+                            defaultPasswordField.setText("ionadmin");
+                            defaultPasswordField.addFocusListener(new FocusAdapter() {
+                                @Override
+                                public void focusLost(FocusEvent e) {
+                                    proxyPasswordFieldFocusLost(e);
+                                    defaultPasswordFieldFocusLost(e);
+                                }
+                            });
+                            defaultPasswordField.addActionListener(new ActionListener() {
+                                @Override
+                                public void actionPerformed(ActionEvent e) {
+                                    defaultPasswordFieldActionPerformed(e);
+                                }
+                            });
+                            jPanel19.add(defaultPasswordField);
+                            defaultPasswordField.setBounds(105, 30, 261, defaultPasswordField.getPreferredSize().height);
+
+                            { // compute preferred size
+                                Dimension preferredSize = new Dimension();
+                                for(int i = 0; i < jPanel19.getComponentCount(); i++) {
+                                    Rectangle bounds = jPanel19.getComponent(i).getBounds();
+                                    preferredSize.width = Math.max(bounds.x + bounds.width, preferredSize.width);
+                                    preferredSize.height = Math.max(bounds.y + bounds.height, preferredSize.height);
+                                }
+                                Insets insets = jPanel19.getInsets();
+                                preferredSize.width += insets.right;
+                                preferredSize.height += insets.bottom;
+                                jPanel19.setMinimumSize(preferredSize);
+                                jPanel19.setPreferredSize(preferredSize);
+                            }
+                        }
+                        jPanel18.add(jPanel19);
+                        jPanel19.setBounds(10, 40, 680, 70);
+
+                        //---- label33 ----
+                        label33.setText("<html>When accessing files on remote servers that require user authentication, you can specify a default username/password here");
+                        jPanel18.add(label33);
+                        label33.setBounds(10, 10, 630, 35);
+
+                        { // compute preferred size
+                            Dimension preferredSize = new Dimension();
+                            for(int i = 0; i < jPanel18.getComponentCount(); i++) {
+                                Rectangle bounds = jPanel18.getComponent(i).getBounds();
+                                preferredSize.width = Math.max(bounds.x + bounds.width, preferredSize.width);
+                                preferredSize.height = Math.max(bounds.y + bounds.height, preferredSize.height);
+                            }
+                            Insets insets = jPanel18.getInsets();
+                            preferredSize.width += insets.right;
+                            preferredSize.height += insets.bottom;
+                            jPanel18.setMinimumSize(preferredSize);
+                            jPanel18.setPreferredSize(preferredSize);
+                        }
+                    }
+                    jPanel15.add(jPanel18);
+                    jPanel18.setBounds(20, 255, 742, 125);
 
                     { // compute preferred size
                         Dimension preferredSize = new Dimension();
@@ -3457,6 +3630,8 @@ public class PreferencesEditor extends javax.swing.JDialog {
             this.proxyUsernameField.setText("");
             this.proxyPasswordField.setText("");
             this.useProxyCB.setSelected(false);
+            this.defaultPasswordField.setText("");
+            this.defaultPasswordField.setText("");
             PreferenceManager.getInstance().clearProxySettings();
         }
     }
@@ -3824,7 +3999,10 @@ public class PreferencesEditor extends javax.swing.JDialog {
         proxyUsernameField.setText(prefMgr.get(PreferenceManager.PROXY_USER, ""));
         String pwCoded = prefMgr.get(PreferenceManager.PROXY_PW, "");
         proxyPasswordField.setText(Utilities.base64Decode(pwCoded));
-
+        this.defaultUsernameField.setText(prefMgr.get(PreferenceManager.AUTHENTICATION_DEFAULT_USER, ""));
+        pwCoded = prefMgr.get(PreferenceManager.AUTHENTICATION_DEFAULT_PW, "");
+        this.defaultPasswordField.setText(Utilities.base64Decode(pwCoded));
+        
         backgroundColorPanel.setBackground(
                 PreferenceManager.getInstance().getAsColor(PreferenceManager.BACKGROUND_COLOR));
 
@@ -4079,6 +4257,8 @@ public class PreferencesEditor extends javax.swing.JDialog {
     private JPanel panel8;
     private JLabel label31;
     private JTextField textServer2;
+    private JPanel panel9;
+    private JCheckBox checkBAMHasFlowValues;
     private JPanel expressionPane;
     private JPanel jPanel8;
     private JRadioButton expMapToGeneCB;
@@ -4091,20 +4271,27 @@ public class PreferencesEditor extends javax.swing.JDialog {
     private JCheckBox useProbeMappingCB;
     private JPanel proxyPanel;
     private JPanel jPanel15;
-    private JPanel jPanel16;
-    private JTextField proxyUsernameField;
-    private JLabel jLabel28;
-    private JCheckBox authenticateProxyCB;
-    private JLabel jLabel29;
-    private JPasswordField proxyPasswordField;
     private JPanel jPanel17;
     private JTextField proxyHostField;
     private JTextField proxyPortField;
     private JLabel jLabel27;
     private JLabel jLabel23;
     private JCheckBox useProxyCB;
+    private JPanel jPanel16;
+    private JTextField proxyUsernameField;
+    private JLabel jLabel28;
+    private JCheckBox authenticateProxyCB;
+    private JLabel jLabel29;
+    private JPasswordField proxyPasswordField;
     private JLabel label3;
     private JButton clearProxySettingsButton;
+    private JPanel jPanel18;
+    private JPanel jPanel19;
+    private JTextField defaultUsernameField;
+    private JLabel jLabel32;
+    private JLabel jLabel33;
+    private JPasswordField defaultPasswordField;
+    private JLabel label33;
     private JPanel dbPanel;
     private JLabel label17;
     private JLabel label18;

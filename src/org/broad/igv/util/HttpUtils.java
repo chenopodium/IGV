@@ -234,7 +234,6 @@ public class HttpUtils {
         if (!file.exists()) {
             return false;
         }
-
         HttpURLConnection conn = openConnection(url, null, "HEAD");
 
         // Check content-length first
@@ -729,7 +728,7 @@ public class HttpUtils {
             this.user = user;
         }
     }
-
+    
     /**
      * The default authenticator
      */
@@ -754,7 +753,21 @@ public class HttpUtils {
                 }
             }
 
-            if (defaultUserName != null && defaultPassword != null) {
+            log.info("Default username: "+defaultUserName+"/"+defaultPassword);
+            if (defaultUserName == null || defaultUserName.length()<1) {
+                PreferenceManager prefMgr = PreferenceManager.getInstance();
+                defaultUserName = prefMgr.get(PreferenceManager.AUTHENTICATION_DEFAULT_USER, "ionadmin");
+                String pwCoded = prefMgr.get(PreferenceManager.AUTHENTICATION_DEFAULT_PW, "");                 
+                defaultPassword = Utilities.base64Decode(pwCoded).toCharArray();
+                if (defaultPassword == null || defaultPassword.length<1) {
+                    defaultUserName = null;
+                    defaultUserName = null;
+                }
+                log.info("Got default authentication from preferences: "+defaultUserName);
+            }
+            if (defaultUserName != null  && defaultUserName.length()>0 && (defaultPassword == null || defaultPassword.length<1)) defaultPassword = defaultUserName.toCharArray();
+            log.info("Got username: "+defaultUserName+"/"+defaultPassword);
+            if (defaultUserName != null && defaultPassword != null &&  defaultUserName.length()>0 &&defaultPassword.length>0 ) {
                 return new PasswordAuthentication(defaultUserName, defaultPassword);
             }
 
@@ -778,7 +791,9 @@ public class HttpUtils {
                     proxySettings.user = userString;
                     proxySettings.pw = new String(userPass);
                 }
-
+                // CR: use as default just for this instance, so next time it won't ask again (we might want to store it as preference?)
+                defaultUserName = userString;
+                defaultPassword = userPass;
                 return new PasswordAuthentication(userString, userPass);
             }
         }

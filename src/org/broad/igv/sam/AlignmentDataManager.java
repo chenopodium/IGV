@@ -136,11 +136,18 @@ public class AlignmentDataManager {
 
 
     public boolean isIonTorrent() {
+        boolean isIon = false;
         Set<String> platforms = reader.getPlatforms();
         if (platforms != null) {
-            return platforms.contains("IONTORRENT");
+            isIon = platforms.contains("IONTORRENT");
         }
-        return false;
+        if (!isIon) {
+            // check preferences
+            
+            PreferenceManager prefs = PreferenceManager.getInstance();
+            isIon = prefs.getAsBoolean(PreferenceManager.IONTORRENT_BAM_HAS_FLOWVALUES);
+        }
+        return isIon;
     }
 
 

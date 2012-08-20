@@ -51,6 +51,7 @@ public class FlowSignalDistributionPanel extends javax.swing.JPanel {
     public static final int TYPE_LINE = 1;
     public static final int TYPE_AREA = 2;
     public static final int TYPE_STACKED = 3;
+    boolean interactive;
     private static org.apache.log4j.Logger log = org.apache.log4j.Logger.getLogger(FlowSignalDistributionPanel.class);
     /**
      * bar or line chart - only static until we move it into user preferences
@@ -116,8 +117,11 @@ public class FlowSignalDistributionPanel extends javax.swing.JPanel {
     private boolean ignore_events;
 
     public FlowSignalDistributionPanel(FlowDistribution distributions[]) {
+        this(distributions, true);
+    }
+    public FlowSignalDistributionPanel(FlowDistribution distributions[], boolean interactive) {
         this.distributions = distributions;
-
+        this.interactive = true;
         initComponents();
         this.setFocusable(true);
         setFocusTraversalKeysEnabled(false);
@@ -168,7 +172,8 @@ public class FlowSignalDistributionPanel extends javax.swing.JPanel {
     private void recreateChart() {
         getPreferences();
         if (distributions == null || distributions.length < 1) {
-            JOptionPane.showMessageDialog(this, "I got no flow signal distribution data");
+            if (interactive)JOptionPane.showMessageDialog(this, "I got no flow signal distribution data at position "+this.location);
+            else err("I got no flow signal distribution data at position "+this.location);
             return;
         }
         if (chartpanel != null) {

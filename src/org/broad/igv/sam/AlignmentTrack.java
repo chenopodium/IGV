@@ -24,9 +24,11 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.io.File;
+import java.io.IOException;
 import java.text.NumberFormat;
 import java.util.List;
 import java.util.*;
+import java.util.logging.Level;
 import javax.swing.*;
 
 import org.apache.log4j.Logger;
@@ -2222,7 +2224,26 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         ImageIcon image = new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/chip_16.png"));
         SimpleDialog dia = new SimpleDialog("Flow Signal Distribution", distributionPanel, 800, 500, image.getImage());
     }
+    public void createFlowSignalScreenShot( boolean forward, boolean reverse, String filename) {
+        ReferenceFrame frame = FrameManager.getDefaultFrame();
+        int location = (int) (frame.getOrigin()+frame.getEnd())/2;
+        log.info("Frame center="+frame.getCenter());
+        log.info("Got location "+location);
+        FlowDistribution[] distributions = getFlowDistributions(forward, reverse, frame, location);
 
+        FlowSignalDistributionPanel distributionPanel = new FlowSignalDistributionPanel(distributions, false);
+        JFrame f = new JFrame();
+        f.getContentPane().add(distributionPanel);
+        f.setSize(800,600);
+        f.setVisible(true);
+        try {
+            log.info("createFlowSignalScreenShot: Trying to write image to "+filename);;
+            IGV.getInstance().createSnapshotNonInteractive(f, new File(filename));
+        } catch (IOException ex) {
+            log.error(ex);            
+        }
+        
+    }
     private FlowDistribution[] getFlowDistributions(boolean forward, boolean reverse, ReferenceFrame frame, int location) {
         FlowDistribution distributions[] = null;
         if (forward || reverse) {

@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.net.URLDecoder;
 import java.util.*;
 import java.util.List;
+import org.broad.igv.ui.panel.TrackPanel;
 
 public class CommandExecutor {
 
@@ -85,6 +86,13 @@ public class CommandExecutor {
                     return gotoImmediate(args);
                 } else if (cmd.equalsIgnoreCase("goto")) {
                     result = goto1(args);
+                } else if (cmd.equalsIgnoreCase("snapshot_fs")) { 
+                    // create image of flow signal distributon
+                    // first goto that position
+                    log.info("Goto "+args);
+                    result = goto1(args);
+                    result = createFsSnapshot(param2);
+                    // 
                 } else if (cmd.equalsIgnoreCase("gototrack")) {
                     boolean res = IGV.getInstance().scrollToTrack(param1);
                     result = res ? "OK" : String.format("Error: Track %s not found", param1);
@@ -166,6 +174,40 @@ public class CommandExecutor {
         igv.setGenomeTracks(GenomeManager.getInstance().getCurrentGenome().getGeneTrack());
     }
 
+    private String createFsSnapshot( String filename) {
+        if (filename == null) {
+            String locus = FrameManager.getDefaultFrame().getFormattedLocusString();
+            filename = locus.replaceAll(":", "_").replace("-", "_").replace(",", "_")+"_fs" ;
+        }
+
+        File file = snapshotDirectory == null ? new File(filename) : new File(snapshotDirectory, filename);
+        log.info("createFsSnapshot: " + file.getAbsolutePath());
+boolean ok = false;
+        try {
+           // List<TrackPanel> panels = IGV.getInstance().getTrackPanels();
+           // for (TrackPanel tp: panels) {
+                 List<Track> tracks = IGV.getInstance().getAllTracks();
+                 log.info("Trying to find alignment track");
+                for (Track track : tracks) {
+                    log.info("Got track: "+track.getName());
+                    if (track instanceof AlignmentTrack) {
+                        AlignmentTrack atrack = (AlignmentTrack) track;                        
+                        log.info("Found alingment track, exporting image to "+filename);
+                        atrack.createFlowSignalScreenShot(true, false, filename+ "f.png");
+                        atrack.createFlowSignalScreenShot(false, true, filename+ "r.png");
+                        ok =true;
+                    }
+                }
+           // }
+            
+        } catch (Exception e) {
+            log.error(e);
+            return e.getMessage();
+        }
+       
+         if (ok) return "OK";
+         else return "NOT OK";
+    }
     private String setViewAsPairs(String vAPString, String trackName) {
         List<Track> tracks = igv.getAllTracks();
         boolean vAP = "false".equalsIgnoreCase(vAPString) ? false : true;
