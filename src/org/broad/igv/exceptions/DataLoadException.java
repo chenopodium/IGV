@@ -33,6 +33,6 @@ public class DataLoadException extends RuntimeException {
     }
 
     public String getMessage() {
-        return "An error occurred while accessing:    " + fileName + "<br>" + message;
+        return "An error occurred while accessing:<br>" + fileName + "<br>" + message;
     }
 }

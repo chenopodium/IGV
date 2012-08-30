@@ -91,7 +91,9 @@ public class CommandExecutor {
                     // first goto that position
                     log.info("Goto "+args);
                     result = goto1(args);
-                    result = createFsSnapshot(param2);
+                    boolean close = false;
+                    if (param3 != null) close = param3.equalsIgnoreCase("TRUE");
+                    result = createFsSnapshot(param2, close);
                     // 
                 } else if (cmd.equalsIgnoreCase("gototrack")) {
                     boolean res = IGV.getInstance().scrollToTrack(param1);
@@ -174,7 +176,7 @@ public class CommandExecutor {
         igv.setGenomeTracks(GenomeManager.getInstance().getCurrentGenome().getGeneTrack());
     }
 
-    private String createFsSnapshot( String filename) {
+    private String createFsSnapshot( String filename, boolean closeAfter) {
         if (filename == null) {
             String locus = FrameManager.getDefaultFrame().getFormattedLocusString();
             filename = locus.replaceAll(":", "_").replace("-", "_").replace(",", "_")+"_fs" ;
@@ -182,7 +184,7 @@ public class CommandExecutor {
 
         File file = snapshotDirectory == null ? new File(filename) : new File(snapshotDirectory, filename);
         log.info("createFsSnapshot: " + file.getAbsolutePath());
-boolean ok = false;
+        boolean ok = false;
         try {
            // List<TrackPanel> panels = IGV.getInstance().getTrackPanels();
            // for (TrackPanel tp: panels) {
@@ -193,8 +195,8 @@ boolean ok = false;
                     if (track instanceof AlignmentTrack) {
                         AlignmentTrack atrack = (AlignmentTrack) track;                        
                         log.info("Found alingment track, exporting image to "+filename);
-                        atrack.createFlowSignalScreenShot(true, false, filename+ "f.png");
-                        atrack.createFlowSignalScreenShot(false, true, filename+ "r.png");
+                        atrack.createFlowSignalScreenShot(true, false, filename+ "f.png", closeAfter);
+                        atrack.createFlowSignalScreenShot(false, true, filename+ "r.png",closeAfter);
                         ok =true;
                     }
                 }

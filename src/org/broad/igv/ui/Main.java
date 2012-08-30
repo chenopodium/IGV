@@ -76,6 +76,7 @@ public class Main {
 
     private static void initApplication() {
         DirectoryManager.initializeLog();
+        
         log.info("Startup  " + Globals.applicationString());
         log.info("Default User Directory: " + DirectoryManager.getUserDirectory());
         System.setProperty("http.agent", Globals.applicationString());

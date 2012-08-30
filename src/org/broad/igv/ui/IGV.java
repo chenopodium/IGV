@@ -1497,7 +1497,7 @@ public class IGV {
                         }
                     } catch (Exception e) {
                         log.error("Error loading tracks", e);
-                        messages.append("Error loading " + locator + ": " + e.getMessage());
+                        messages.append("Error loading " + locator + ":<br>" + e.getMessage());
                     }
                 }
             };

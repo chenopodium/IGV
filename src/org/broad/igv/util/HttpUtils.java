@@ -8,7 +8,6 @@
  * This software is licensed under the terms of the GNU Lesser General Public License (LGPL),
  * Version 2.1 which is available at http://www.opensource.org/licenses/lgpl-2.1.php.
  */
-
 package org.broad.igv.util;
 
 import biz.source_code.base64Coder.Base64Coder;
@@ -38,24 +37,21 @@ import java.util.*;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
+import javax.swing.JOptionPane;
+import org.broad.igv.ui.util.MessageUtils;
 
 /**
  * Wrapper utility class... for interacting with HttpURLConnection.
  *
- * @author Jim Robinson
- * @date 9/22/11
+ * @author Jim Robinson @date 9/22/11
  */
 public class HttpUtils {
 
     private static Logger log = Logger.getLogger(HttpUtils.class);
-
     private static HttpUtils instance;
-
     private Map<String, Boolean> byteRangeTestMap;
-
     private ProxySettings proxySettings = null;
     private final int MAX_REDIRECTS = 5;
-
     private String defaultUserName = null;
     private char[] defaultPassword = null;
     private static Pattern URLmatcher = Pattern.compile(".{1,8}://.*");
@@ -90,12 +86,11 @@ public class HttpUtils {
     }
 
     /**
-     * Join the {@code elements} with the character {@code joiner},
-     * URLencoding the {@code elements} along the way. {@code joiner}
-     * is NOT URLEncoded
-     * Example:
-     * String[] parm_list = new String[]{"app les", "oranges", "bananas"};
-     * String formatted = buildURLString(Arrays.asList(parm_list), "+");
+     * Join the {@code elements} with the character {@code joiner}, URLencoding
+     * the {@code elements} along the way. {@code joiner} is NOT URLEncoded
+     * Example: String[] parm_list = new String[]{"app les", "oranges",
+     * "bananas"}; String formatted = buildURLString(Arrays.asList(parm_list),
+     * "+");
      * <p/>
      * formatted will be "app%20les+oranges+bananas"
      *
@@ -120,10 +115,9 @@ public class HttpUtils {
         }
     }
 
-
     /**
-     * Return the contents of the url as a String.  This method should only be used for queries expected to return
-     * a small amount of data.
+     * Return the contents of the url as a String. This method should only be
+     * used for queries expected to return a small amount of data.
      *
      * @param url
      * @return
@@ -138,7 +132,9 @@ public class HttpUtils {
             return readContents(is);
 
         } finally {
-            if (is != null) is.close();
+            if (is != null) {
+                is.close();
+            }
         }
     }
 
@@ -153,7 +149,9 @@ public class HttpUtils {
             return readContents(is);
 
         } finally {
-            if (is != null) is.close();
+            if (is != null) {
+                is.close();
+            }
         }
     }
 
@@ -188,7 +186,6 @@ public class HttpUtils {
         }
         return input;
     }
-
 
     public boolean resourceAvailable(URL url) {
 
@@ -225,7 +222,8 @@ public class HttpUtils {
      *
      * @param file
      * @param url
-     * @return true if the files are "the same", false if the remote file has been modified wrt the local one.
+     * @return true if the files are "the same", false if the remote file has
+     * been modified wrt the local one.
      * @throws IOException
      */
     public boolean compareResources(File file, URL url) throws IOException {
@@ -267,6 +265,18 @@ public class HttpUtils {
 
     }
 
+    public void updateDefaultUserPwSettings() {
+        PreferenceManager prefMgr = PreferenceManager.getInstance();
+        defaultUserName = prefMgr.get(PreferenceManager.AUTHENTICATION_DEFAULT_USER, "ionadmin");
+        String pwCoded = prefMgr.get(PreferenceManager.AUTHENTICATION_DEFAULT_PW, "");
+        defaultPassword = Utilities.base64Decode(pwCoded).toCharArray();
+        if (defaultUserName.equals("ionadmin") || defaultUserName.equals("ionuser")) {
+            defaultPassword = defaultUserName.toCharArray();
+            String pwEncoded = Utilities.base64Encode(defaultUserName);
+            prefMgr.put(PreferenceManager.PROXY_PW, pwEncoded);
+        }
+        log.info("Default username is now: "+defaultUserName);
+    }
 
     public void updateProxySettings() {
         boolean useProxy;
@@ -325,7 +335,9 @@ public class HttpUtils {
             }
             log.info("Download complete.  Total bytes downloaded = " + downloaded);
         } finally {
-            if (is != null) is.close();
+            if (is != null) {
+                is.close();
+            }
             if (out != null) {
                 out.flush();
                 out.close();
@@ -335,7 +347,6 @@ public class HttpUtils {
 
         return contentLength <= 0 || contentLength == fileLength;
     }
-
 
     public void uploadGenomeSpaceFile(String uri, File file, Map<String, String> headers) throws IOException {
 
@@ -363,7 +374,6 @@ public class HttpUtils {
             throw new IOException("Error uploading " + file.getName() + " : " + message);
         }
     }
-
 
     public String createGenomeSpaceDirectory(URL url, String body) throws IOException {
 
@@ -413,19 +423,20 @@ public class HttpUtils {
     private void disableCertificateValidation() {
         // Create a trust manager that does not validate certificate chains
         TrustManager[] trustAllCerts = new TrustManager[]{
-                new X509TrustManager() {
-                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                        return null;
-                    }
+            new X509TrustManager() {
 
-                    public void checkClientTrusted(
-                            java.security.cert.X509Certificate[] certs, String authType) {
-                    }
-
-                    public void checkServerTrusted(
-                            java.security.cert.X509Certificate[] certs, String authType) {
-                    }
+                public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                    return null;
                 }
+
+                public void checkClientTrusted(
+                        java.security.cert.X509Certificate[] certs, String authType) {
+                }
+
+                public void checkServerTrusted(
+                        java.security.cert.X509Certificate[] certs, String authType) {
+                }
+            }
         };
 
         // Install the all-trusting trust manager
@@ -459,7 +470,9 @@ public class HttpUtils {
             }
             return readContents(inputStream);
         } finally {
-            if (inputStream != null) inputStream.close();
+            if (inputStream != null) {
+                inputStream.close();
+            }
         }
 
 
@@ -473,6 +486,11 @@ public class HttpUtils {
         return openConnection(url, requestProperties, method, 0);
     }
 
+    private HttpURLConnection openConnection(
+            URL url, Map<String, String> requestProperties, String method, int redirectCount) throws IOException {
+        return openConnection(url, requestProperties, method, redirectCount, true);
+    }
+
     /**
      * The "real" connection method
      *
@@ -483,12 +501,13 @@ public class HttpUtils {
      * @throws java.io.IOException
      */
     private HttpURLConnection openConnection(
-            URL url, Map<String, String> requestProperties, String method, int redirectCount) throws IOException {
+            URL url, Map<String, String> requestProperties, String method, int redirectCount, boolean tryAgainIfFail) throws IOException {
 
-        boolean useProxy = proxySettings != null && proxySettings.useProxy && proxySettings.proxyHost != null &&
-                proxySettings.proxyPort > 0;
+        boolean useProxy = proxySettings != null && proxySettings.useProxy && proxySettings.proxyHost != null
+                && proxySettings.proxyPort > 0;
 
         HttpURLConnection conn;
+        
         if (useProxy) {
             Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxySettings.proxyHost, proxySettings.proxyPort));
             conn = (HttpURLConnection) url.openConnection(proxy);
@@ -499,13 +518,17 @@ public class HttpUtils {
                 String encodedUserPwd = String.valueOf(Base64Coder.encode(bytes));
                 conn.setRequestProperty("Proxy-Authorization", "Basic " + encodedUserPwd);
             }
-        } else {
+        }
+        else {
             conn = (HttpURLConnection) url.openConnection();
         }
+        
 
         if (GSUtils.isGenomeSpace(url)) {
             String token = GSUtils.getGSToken();
-            if (token != null) conn.setRequestProperty("Cookie", "gs-token=" + token);
+            if (token != null) {
+                conn.setRequestProperty("Cookie", "gs-token=" + token);
+            }
             conn.setRequestProperty("Accept", "application/json,text/plain");
         }
 
@@ -524,11 +547,9 @@ public class HttpUtils {
             return conn;
         } else {
             int code = conn.getResponseCode();
-
             // Redirects.  These can occur even if followRedirects == true if there is a change in protocol,
             // for example http -> https.
             if (code >= 300 && code < 400) {
-
                 if (redirectCount > MAX_REDIRECTS) {
                     throw new IOException("Too many redirects");
                 }
@@ -537,24 +558,31 @@ public class HttpUtils {
                 log.debug("Redirecting to " + newLocation);
 
                 return openConnection(new URL(newLocation), requestProperties, method, redirectCount++);
-            }
-
-            // TODO -- handle other response codes.
+            } // TODO -- handle other response codes.
             else if (code >= 400) {
-
                 String message;
                 if (code == 404) {
                     message = "File not found: " + url.toString();
                     throw new FileNotFoundException(message);
                 } else {
+                    // if wrong pw, handle this here!
                     message = conn.getResponseMessage();
-                }
-                String details = readErrorStream(conn);
-                log.debug("error stream: " + details);
-                log.debug(message);
-                HttpResponseException exc = new HttpResponseException(code);
+                    HttpResponseException exc = new HttpResponseException(code);
+                    String details = readErrorStream(conn);
+                    log.debug("error stream: " + details);
+                    log.debug(message);
+                    if (code == 403 || code == 401 || code == 500) {
+                        if (this.defaultPassword != null || this.defaultUserName != null) {
+                            this.clearDefaultCredentials();
+                            resetAuthenticator();
+                          //  MessageUtils.showMessage(exc.getMessage() + "<br>I will clear the credentials and try again");
+                            log.debug("Clearing credentials");
+                           // return openConnection(url, requestProperties, method, redirectCount, false);
+                        }
+                    }
 
-                throw exc;
+                    throw exc;
+                }
             }
         }
         return conn;
@@ -571,13 +599,16 @@ public class HttpUtils {
     public void clearDefaultCredentials() {
         this.defaultPassword = null;
         this.defaultUserName = null;
+        PreferenceManager prefMgr = PreferenceManager.getInstance();
+        prefMgr.put(PreferenceManager.AUTHENTICATION_DEFAULT_USER, null);
+        prefMgr.put(PreferenceManager.AUTHENTICATION_DEFAULT_PW, null);
     }
 
-
     /**
-     * Test to see if this client can successfully retrieve a portion of a remote file using the byte-range header.
-     * This is not a test of the server, but the client.  In some environments the byte-range header gets removed
-     * by filters after the request is made by IGV.
+     * Test to see if this client can successfully retrieve a portion of a
+     * remote file using the byte-range header. This is not a test of the
+     * server, but the client. In some environments the byte-range header gets
+     * removed by filters after the request is made by IGV.
      *
      * @return
      */
@@ -608,8 +639,9 @@ public class HttpUtils {
                         int n = 0;
                         while (n < len) {
                             int count = str.read(buffer, n, len - n);
-                            if (count < 0)
+                            if (count < 0) {
                                 throw new EOFException();
+                            }
                             n += count;
                         }
 
@@ -654,7 +686,7 @@ public class HttpUtils {
         }
 
         byte[] expectedBytes = {'T', 'C', 'G', 'C', 'T', 'T', 'G', 'A', 'A', 'C', 'C', 'C', 'G', 'G',
-                'G', 'A', 'G', 'A', 'G', 'G'};
+            'G', 'A', 'G', 'A', 'G', 'G'};
         SeekableHTTPStream str = new SeekableHTTPStream(new IGVUrlHelper(new URL(testURL)));
         str.seek(25350000);
         byte[] buffer = new byte[80000];
@@ -667,9 +699,9 @@ public class HttpUtils {
         return true;
     }
 
-
     /**
-     * Return the first bytes of content from the URL.  The number of bytes returned is ~ nominalLength.
+     * Return the first bytes of content from the URL. The number of bytes
+     * returned is ~ nominalLength.
      *
      * @param url
      * @param nominalLength
@@ -692,17 +724,20 @@ public class HttpUtils {
             }
             return bos.toByteArray();
         } finally {
-            if (is != null) is.close();
+            if (is != null) {
+                is.close();
+            }
         }
     }
-
 
     public void shutdown() {
         // Do any cleanup required here
     }
 
     /**
-     * Checks if the string is a URL (not necessarily remote, can be any protocol)
+     * Checks if the string is a URL (not necessarily remote, can be any
+     * protocol)
+     *
      * @param f
      * @return
      */
@@ -710,8 +745,8 @@ public class HttpUtils {
         return f.startsWith("http:") || f.startsWith("ftp:") || f.startsWith("https:") || URLmatcher.matcher(f).matches();
     }
 
-
     public static class ProxySettings {
+
         boolean auth = false;
         String user;
         String pw;
@@ -728,7 +763,7 @@ public class HttpUtils {
             this.user = user;
         }
     }
-    
+
     /**
      * The default authenticator
      */
@@ -753,21 +788,21 @@ public class HttpUtils {
                 }
             }
 
-            log.info("Default username: "+defaultUserName+"/"+defaultPassword);
-            if (defaultUserName == null || defaultUserName.length()<1) {
+            log.info("Default username: " + defaultUserName + "/" + defaultPassword);
+            if (defaultUserName == null || defaultUserName.length() < 1) {
                 PreferenceManager prefMgr = PreferenceManager.getInstance();
                 defaultUserName = prefMgr.get(PreferenceManager.AUTHENTICATION_DEFAULT_USER, "ionadmin");
-                String pwCoded = prefMgr.get(PreferenceManager.AUTHENTICATION_DEFAULT_PW, "");                 
+                String pwCoded = prefMgr.get(PreferenceManager.AUTHENTICATION_DEFAULT_PW, "");
                 defaultPassword = Utilities.base64Decode(pwCoded).toCharArray();
-                if (defaultPassword == null || defaultPassword.length<1) {
+                if (defaultPassword == null || defaultPassword.length < 1) {
                     defaultUserName = null;
-                    defaultUserName = null;
+                    defaultPassword = null;
                 }
-                log.info("Got default authentication from preferences: "+defaultUserName);
+                log.info("Got default authentication from preferences: " + defaultUserName);
             }
-            if (defaultUserName != null  && defaultUserName.length()>0 && (defaultPassword == null || defaultPassword.length<1)) defaultPassword = defaultUserName.toCharArray();
-            log.info("Got username: "+defaultUserName+"/"+defaultPassword);
-            if (defaultUserName != null && defaultPassword != null &&  defaultUserName.length()>0 &&defaultPassword.length>0 ) {
+           
+            log.info("Got username: " + defaultUserName + "/" + defaultPassword);
+            if (defaultUserName != null && defaultPassword != null && defaultUserName.length() > 0 && defaultPassword.length > 0) {
                 return new PasswordAuthentication(defaultUserName, defaultPassword);
             }
 
@@ -799,7 +834,6 @@ public class HttpUtils {
         }
     }
 
-
     /**
      * Provide override for unit tests
      */
@@ -815,16 +849,15 @@ public class HttpUtils {
 
     }
 
-
     /**
-     * Extension of CookieManager that grabs cookies from the GenomeSpace identity server to store locally.
-     * This is to support the GenomeSpace "single sign-on". Examples ...
-     * gs-username=igvtest; Domain=.genomespace.org; Expires=Mon, 21-Jul-2031 03:27:23 GMT; Path=/
-     * gs-token=HnR9rBShNO4dTXk8cKXVJT98Oe0jWVY+; Domain=.genomespace.org; Expires=Mon, 21-Jul-2031 03:27:23 GMT; Path=/
+     * Extension of CookieManager that grabs cookies from the GenomeSpace
+     * identity server to store locally. This is to support the GenomeSpace
+     * "single sign-on". Examples ... gs-username=igvtest;
+     * Domain=.genomespace.org; Expires=Mon, 21-Jul-2031 03:27:23 GMT; Path=/
+     * gs-token=HnR9rBShNO4dTXk8cKXVJT98Oe0jWVY+; Domain=.genomespace.org;
+     * Expires=Mon, 21-Jul-2031 03:27:23 GMT; Path=/
      */
-
     static class IGVCookieManager extends CookieManager {
-
 
         @Override
         public void put(URI uri, Map<String, List<String>> stringListMap) throws IOException {
@@ -849,5 +882,4 @@ public class HttpUtils {
             super.put(uri, stringListMap);
         }
     }
-
 }

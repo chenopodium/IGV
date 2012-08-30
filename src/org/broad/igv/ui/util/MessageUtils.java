@@ -53,7 +53,10 @@ public class MessageUtils {
             log.info(message);
         } else {
             // Always use HTML for message displays, but first remove any embedded <html> tags.
-            message = "<html>" + message.replaceAll("<html>", "");
+            message = message.replaceAll("<html>", "");
+            message = message.replaceAll("</html>", "");
+            message = message.replaceAll("\n", "<br>");
+            message = "<html>" + message+"</html>";
             Frame parent = IGV.hasInstance() ? IGV.getMainFrame() : null;
             JOptionPane.showMessageDialog(parent, message);
 

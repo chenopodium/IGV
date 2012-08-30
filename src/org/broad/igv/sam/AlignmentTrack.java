@@ -2224,7 +2224,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         ImageIcon image = new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/chip_16.png"));
         SimpleDialog dia = new SimpleDialog("Flow Signal Distribution", distributionPanel, 800, 500, image.getImage());
     }
-    public void createFlowSignalScreenShot( boolean forward, boolean reverse, String filename) {
+    public void createFlowSignalScreenShot( boolean forward, boolean reverse, String filename, boolean closeAfter) {
         ReferenceFrame frame = FrameManager.getDefaultFrame();
         int location = (int) (frame.getOrigin()+frame.getEnd())/2;
         log.info("Frame center="+frame.getCenter());
@@ -2238,9 +2238,12 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         f.setVisible(true);
         try {
             log.info("createFlowSignalScreenShot: Trying to write image to "+filename);;
-            IGV.getInstance().createSnapshotNonInteractive(f, new File(filename));
-        } catch (IOException ex) {
+            IGV.getInstance().createSnapshotNonInteractive(distributionPanel.getCenter(), new File(filename));
+        } catch (Exception ex) {
             log.error(ex);            
+        }
+        if (closeAfter) {
+            f.dispose();
         }
         
     }

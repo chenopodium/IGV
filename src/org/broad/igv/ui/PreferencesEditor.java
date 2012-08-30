@@ -45,12 +45,15 @@ import javax.swing.*;
 import java.io.File;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import org.apache.log4j.Logger;
+
 
 /**
  * @author jrobinso
  */
 public class PreferencesEditor extends javax.swing.JDialog {
-
+    private static Logger log = Logger.getLogger(PreferencesEditor.class);
+ 
     private boolean canceled = false;
     Map<String, String> updatedPreferenceMap = Collections.synchronizedMap(new HashMap<String, String>() {
         @Override
@@ -223,17 +226,16 @@ public class PreferencesEditor extends javax.swing.JDialog {
     }
 
     private void updateDefaultUsername() {
+        this.proxySettingsChanged = true;
         updatedPreferenceMap.put(PreferenceManager.AUTHENTICATION_DEFAULT_USER, this.defaultUsernameField.getText());
-        HttpUtils.getInstance().setDefaultUserName(this.defaultUsernameField.getText());
-        
     }
     
     private void updateDefaultPw() {
-        
+        this.proxySettingsChanged = true;
         String pw = defaultPasswordField.getText();
         String pwEncoded = Utilities.base64Encode(pw);
         updatedPreferenceMap.put(PreferenceManager.AUTHENTICATION_DEFAULT_PW, pwEncoded);        
-        HttpUtils.getInstance().setDefaultPassword(pw);
+        
         
     }
 
@@ -2399,6 +2401,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
                                 public void focusLost(FocusEvent e) {
                                     proxyPasswordFieldFocusLost(e);
                                     defaultPasswordFieldFocusLost(e);
+                                    defaultPasswordFieldFocusLost(e);
                                 }
                             });
                             defaultPasswordField.addActionListener(new ActionListener() {
@@ -2798,6 +2801,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
                 @Override
                 public void actionPerformed(ActionEvent e) {
                     okButtonActionPerformed(e);
+                    okButtonActionPerformed(e);
                 }
             });
             okCancelButtonPanel.add(okButton);
@@ -2831,8 +2835,13 @@ public class PreferencesEditor extends javax.swing.JDialog {
         setVisible(false);
     }
 
+    private void p(String s) {
+        log.info(s);
+        System.out.println("Testing PreferencesEditor: "+s);
+    }
     private void okButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_okButtonActionPerformed
 
+        p("Ok clicked");
         if (inputValidated) {
 
             checkForProbeChanges();
@@ -2860,9 +2869,12 @@ public class PreferencesEditor extends javax.swing.JDialog {
 
             // Proxies
             if (proxySettingsChanged) {
+                p("Updating proxy settings");
                 HttpUtils.getInstance().updateProxySettings();
+                HttpUtils.getInstance().updateDefaultUserPwSettings();
             }
-
+            
+            else p("NOT updating proxy settings");
             // IGV directory
             if (newIGVDirectory != null) {
                 moveIGVDirectory();
@@ -2878,6 +2890,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
             IGV.getInstance().repaint();
             setVisible(false);
         } else {
+            p("Input is NOT valudated - resetting");
             resetValidation();
         }
     }
@@ -3692,6 +3705,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
         proxySettingsChanged = true;
         String user = proxyUsernameField.getText();
         updatedPreferenceMap.put(PreferenceManager.PROXY_USER, user);
+        log.info("username changed to "+user);
 
     }
 
@@ -3706,6 +3720,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
         String pw = proxyPasswordField.getText();
         String pwEncoded = Utilities.base64Encode(pw);
         updatedPreferenceMap.put(PreferenceManager.PROXY_PW, pwEncoded);
+        log.info("pw changed");
 
     }
 

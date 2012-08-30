@@ -188,8 +188,9 @@ public class FlowSignalDistributionPanel extends javax.swing.JPanel {
         this.repaint();
         this.paintAll(getGraphics());
 
-
-
+    }
+    public JComponent getCenter() {
+        return chartpanel;
     }
 
     private CategoryDataset createCategoryDataset() {
