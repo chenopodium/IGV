@@ -64,6 +64,7 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
         main = new BagPanel();
         ToolTipManager.sharedInstance().registerComponent(main);
         flowBased = false;
+        
         setAlignment(alignment, location);
         add("Center", main);
 
@@ -77,6 +78,10 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
     }
     public void setAlignment(IonogramAlignment alignment, int chromosomepos) {
         location = chromosomepos;
+        if (alignment == null ) {
+            p("Got no alignment");
+            return;
+        }
         this.ionograms = alignment.getIonograms();
         this.alignment = alignment;
         PreferenceManager prefs = PreferenceManager.getInstance();

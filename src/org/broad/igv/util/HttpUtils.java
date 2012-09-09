@@ -10,6 +10,9 @@
  */
 package org.broad.igv.util;
 
+import sun.net.www.protocol.http.AuthCacheValue;
+import sun.net.www.protocol.http.AuthCacheImpl;
+
 import biz.source_code.base64Coder.Base64Coder;
 import org.apache.log4j.Logger;
 import org.apache.tomcat.util.HttpDate;
@@ -75,8 +78,7 @@ public class HttpUtils {
 
         disableCertificateValidation();
         CookieHandler.setDefault(new IGVCookieManager());
-        Authenticator.setDefault(new IGVAuthenticator());
-
+        this.resetAuthenticator();
         byteRangeTestMap = Collections.synchronizedMap(new HashMap());
     }
 
@@ -275,7 +277,7 @@ public class HttpUtils {
             String pwEncoded = Utilities.base64Encode(defaultUserName);
             prefMgr.put(PreferenceManager.PROXY_PW, pwEncoded);
         }
-        log.info("Default username is now: "+defaultUserName);
+        log.info("Default username is now: " + defaultUserName);
     }
 
     public void updateProxySettings() {
@@ -507,7 +509,16 @@ public class HttpUtils {
                 && proxySettings.proxyPort > 0;
 
         HttpURLConnection conn;
-        
+
+        p(" ==== OPEN CONNECTION " + method);
+        if (requestProperties != null) {
+            Iterator iter = requestProperties.keySet().iterator();
+            for (; iter.hasNext();) {
+                String key = (String) iter.next();
+                p("Got request property: " + key + "=" + requestProperties.get(key));
+            }
+        }
+
         if (useProxy) {
             Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxySettings.proxyHost, proxySettings.proxyPort));
             conn = (HttpURLConnection) url.openConnection(proxy);
@@ -518,11 +529,10 @@ public class HttpUtils {
                 String encodedUserPwd = String.valueOf(Base64Coder.encode(bytes));
                 conn.setRequestProperty("Proxy-Authorization", "Basic " + encodedUserPwd);
             }
-        }
-        else {
+        } else {
             conn = (HttpURLConnection) url.openConnection();
         }
-        
+
 
         if (GSUtils.isGenomeSpace(url)) {
             String token = GSUtils.getGSToken();
@@ -547,6 +557,7 @@ public class HttpUtils {
             return conn;
         } else {
             int code = conn.getResponseCode();
+
             // Redirects.  These can occur even if followRedirects == true if there is a change in protocol,
             // for example http -> https.
             if (code >= 300 && code < 400) {
@@ -572,12 +583,24 @@ public class HttpUtils {
                     log.debug("error stream: " + details);
                     log.debug(message);
                     if (code == 403 || code == 401 || code == 500) {
+                        p(" ======== DEBUGGING ERROR " + code + " =================");
+
                         if (this.defaultPassword != null || this.defaultUserName != null) {
+                            MessageUtils.showMessage(exc.getMessage() + "<br>I will clear the credentials and try again");
+                            p("Clearing credentials");
+                            
                             this.clearDefaultCredentials();
                             resetAuthenticator();
-                          //  MessageUtils.showMessage(exc.getMessage() + "<br>I will clear the credentials and try again");
-                            log.debug("Clearing credentials");
-                           // return openConnection(url, requestProperties, method, redirectCount, false);
+
+                            if (tryAgainIfFail) {
+//                                if (requestProperties == null) {
+//                                    requestProperties = new HashMap<String, String>();
+//                                }
+//                                String encoded = Utilities.base64Encode("ionadmin:ionadmin");
+//                                requestProperties.put("Authorization", "Basic " + encoded);
+
+                                return openConnection(url, requestProperties, method, redirectCount, false);
+                            }
                         }
                     }
 
@@ -594,6 +617,12 @@ public class HttpUtils {
 
     public void setDefaultUserName(String defaultUserName) {
         this.defaultUserName = defaultUserName;
+    }
+
+    private void p(String s) {
+        // log.info(s);
+        System.out.println("HttPUtils: " + s);
+
     }
 
     public void clearDefaultCredentials() {
@@ -788,7 +817,9 @@ public class HttpUtils {
                 }
             }
 
-            log.info("Default username: " + defaultUserName + "/" + defaultPassword);
+            log.info("IGVAuthenticator: PasswordAuthentication: Default username: " + defaultUserName);
+         //   Exception test = new Exception("Testing stack trace");
+        //    test.printStackTrace();
             if (defaultUserName == null || defaultUserName.length() < 1) {
                 PreferenceManager prefMgr = PreferenceManager.getInstance();
                 defaultUserName = prefMgr.get(PreferenceManager.AUTHENTICATION_DEFAULT_USER, "ionadmin");
@@ -798,10 +829,10 @@ public class HttpUtils {
                     defaultUserName = null;
                     defaultPassword = null;
                 }
-                log.info("Got default authentication from preferences: " + defaultUserName);
+                log.info("IGVAuthenticator: Got default authentication from preferences: " + defaultUserName);
             }
-           
-            log.info("Got username: " + defaultUserName + "/" + defaultPassword);
+
+            log.info("IGVAuthenticator: Using username: " + defaultUserName + "/" + defaultPassword);
             if (defaultUserName != null && defaultPassword != null && defaultUserName.length() > 0 && defaultPassword.length > 0) {
                 return new PasswordAuthentication(defaultUserName, defaultPassword);
             }
@@ -838,6 +869,11 @@ public class HttpUtils {
      * Provide override for unit tests
      */
     public void setAuthenticator(Authenticator authenticator) {
+        // there is a java bug: the credentions - such wrong ones - are stored and never reset!
+        // we need to disable this kind if caching and use our own!
+       Authenticator.setDefault(null);        
+        AuthCacheValue.setAuthCache(new AuthCacheImpl());
+        
         Authenticator.setDefault(authenticator);
     }
 
@@ -845,7 +881,8 @@ public class HttpUtils {
      * For unit tests
      */
     public void resetAuthenticator() {
-        Authenticator.setDefault(new IGVAuthenticator());
+        // there is a java bug: the credentions - such wrong ones - are stored and never reset!
+        setAuthenticator(new IGVAuthenticator());
 
     }
 
@@ -861,6 +898,7 @@ public class HttpUtils {
 
         @Override
         public void put(URI uri, Map<String, List<String>> stringListMap) throws IOException {
+            // p("CookieManager: put "+uri.toString());
             if (uri.toString().startsWith(PreferenceManager.getInstance().get(PreferenceManager.GENOME_SPACE_IDENTITY_SERVER))) {
                 List<String> cookies = stringListMap.get("Set-Cookie");
                 if (cookies != null) {
