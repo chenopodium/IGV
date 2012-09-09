@@ -14,7 +14,6 @@
  */
 package org.broad.igv;
 
-
 import org.apache.log4j.Logger;
 import org.broad.igv.maf.MAFManager;
 import org.broad.igv.renderer.ColorScaleFactory;
@@ -1102,3 +1101,4 @@ public class PreferenceManager implements PropertyManager {
     }
 
 }
+ 

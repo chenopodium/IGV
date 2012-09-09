@@ -26,9 +26,14 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
+import java.lang.management.ThreadMXBean;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import static org.junit.Assert.*;
 
@@ -53,6 +58,7 @@ public class TestUtils {
 
     public static void setUpTestEnvironment() {
         Globals.setTesting(true);
+        //Globals.setBatch(true);
         PreferenceManager.getInstance().setPrefsFile("testprefs.properties");
         Globals.READ_TIMEOUT = 60 * 1000;
         Globals.CONNECT_TIMEOUT = 60 * 1000;
@@ -78,7 +84,7 @@ public class TestUtils {
     }
 
     /**
-     * See TestUtils.createIndex(file, indexType, binSize)
+     * See {@link #createIndex(String, int, int)}
      *
      * @param file
      * @throws IOException
@@ -103,7 +109,7 @@ public class TestUtils {
     }
 
     /**
-     * Load a test genome, do some test setup
+     * Load a test genome
      *
      * @return
      * @throws IOException
@@ -159,11 +165,16 @@ public class TestUtils {
             Feature exp = expected.next();
             assertTrue(actIter.hasNext());
             Feature act = actIter.next();
-            assertEquals(exp.getChr(), act.getChr());
-            assertEquals(exp.getStart(), act.getStart());
-            assertEquals(exp.getEnd(), act.getEnd());
+            assertFeaturesEqual(exp, act);
         }
         assertFalse(actIter.hasNext());
+    }
+
+
+    public static void assertFeaturesEqual(Feature exp, Feature act) {
+        assertEquals(exp.getChr(), act.getChr());
+        assertEquals(exp.getStart(), act.getStart());
+        assertEquals(exp.getEnd(), act.getEnd());
     }
 
     /*
@@ -210,6 +221,36 @@ public class TestUtils {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+
+    public static void checkDeadlockedThreads() throws IllegalThreadStateException {
+        ThreadMXBean tmx = ManagementFactory.getThreadMXBean();
+        long[] ids = tmx.findDeadlockedThreads();
+        if (ids != null) {
+            ThreadInfo[] infos = tmx.getThreadInfo(ids, true, true);
+            String log = "The following threads are deadlocked:\n";
+            for (ThreadInfo ti : infos) {
+                System.out.println(ti);
+                log += ti.toString() + "\n";
+            }
+
+            throw new IllegalThreadStateException(log);
+        }
+    }
+
+    public static Timer startDeadlockChecker(final int period) {
+
+        TimerTask checker = new TimerTask() {
+            @Override
+            public void run() {
+                //System.out.println("deadlock checker thread:" + Thread.currentThread().getName());
+                checkDeadlockedThreads();
+            }
+        };
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(checker, 0, period);
+        return timer;
     }
 
 }

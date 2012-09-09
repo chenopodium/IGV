@@ -39,7 +39,7 @@ import java.util.*;
 import java.util.List;
 import org.broad.igv.ui.panel.TrackPanel;
 
-public class CommandExecutor {
+ public class CommandExecutor {
 
     private static Logger log = Logger.getLogger(CommandExecutor.class);
 
@@ -162,7 +162,7 @@ public class CommandExecutor {
             }
             log.debug("Finished sleeping");
 
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error(e);
             result = "Error: " + e.getMessage();
         }
