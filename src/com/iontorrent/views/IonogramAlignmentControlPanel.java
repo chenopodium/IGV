@@ -7,10 +7,7 @@ package com.iontorrent.views;
 import com.iontorrent.data.FlowDistribution;
 import com.iontorrent.data.Ionogram;
 import com.iontorrent.data.IonogramAlignment;
-import com.iontorrent.utils.BagPanel;
-import com.iontorrent.utils.FileTools;
-import com.iontorrent.utils.LocationListener;
-import com.iontorrent.utils.SimpleDialog;
+import com.iontorrent.utils.*;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
@@ -454,53 +451,12 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
         
     }
     private void btnTSLActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnTSLActionPerformed
-        String server = PreferenceManager.getInstance().get(PreferenceManager.IONTORRENT_SERVER);
-        String res = PreferenceManager.getInstance().get(PreferenceManager.IONTORRENT_RESULTS);
-        String bam = null;
-        if (res.endsWith(".bam")) {
-            bam = res;
-            File f = new File(bam);
-            res = f.getParent().toString();
-
-        }
-        if (server == null || server.length() < 1) {
-            server = "ioneast.ite";
-        }
-
-        if (!server.startsWith("http")) {
-            server = "http://" + server;
-        }
-
-        if (server.lastIndexOf(":") < 7) {
-            server += ":8080";
-        }
-        String url = server + "/TSL?restartApplication";
-        if (res != null && res.length() > 0) {
-            url += "&res_dir=" + res;
-        }
-        if (bam != null && bam.length() > 0) {
-            url += "&bam=" + bam;
-        }
+        
         String readnames = this.getReadNames();
-        if (readnames != null && readnames.length() > 0) {
-            url += "&read_names=" + readnames;
-        }
-
-        JTextField txt = new JTextField();
-        txt.setText(url);;
-        if (!java.awt.Desktop.isDesktopSupported()) {
-            JOptionPane.showMessageDialog(this, txt, "Please open a browser and paste the url below:", JOptionPane.OK_OPTION);
-            return;
-        }
-        java.awt.Desktop desktop = java.awt.Desktop.getDesktop();
-        try {
-
-            java.net.URI uri = new java.net.URI(url);
-            desktop.browse(uri);
-            JOptionPane.showMessageDialog(this, "Raw data", "When TSL opens, pick the folder with the raw data to view raw traces\nand specify the .sff file to see ionograms", JOptionPane.OK_OPTION);
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, txt, "Please open a browser and paste the url below:", JOptionPane.OK_OPTION);
-        }
+        long loc = alignment.getChromosome_center_location();
+        
+        String chr = alignment.getChromosome();
+        LinkUtils.linkToTSL(readnames, chr, loc);
     }//GEN-LAST:event_btnTSLActionPerformed
 
     private void spinBinStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_spinBinStateChanged

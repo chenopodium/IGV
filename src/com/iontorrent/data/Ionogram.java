@@ -17,6 +17,7 @@ public class Ionogram {
     private boolean reverse;
     
     private String locusinfo;
+    private String chromosome;
     
     private int chromosome_center_location;
     
@@ -186,6 +187,17 @@ public class Ionogram {
             if (f.getFlowvalue() > max) max = f.getFlowvalue();
         }
         return max;
+    }
+
+    public void setChromosome(String chromosome) {
+        this.chromosome = chromosome;
+    }
+
+    /**
+     * @return the chromosome
+     */
+    public String getChromosome() {
+        return chromosome;
     }
     
     

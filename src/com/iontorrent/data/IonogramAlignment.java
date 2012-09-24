@@ -40,10 +40,11 @@ public class IonogramAlignment {
     private FlowValue[][] slotmatrix;
     private String emptyBasesInfo[];
     private String consensus;
-
+    private String chromosome;
    
-    public IonogramAlignment(String consensus, ArrayList<Ionogram> ionograms, int maxemptyperlocation[], int nrbases_left_right, int chromosome_center_location) {
+    public IonogramAlignment(String chromosome,String consensus, ArrayList<Ionogram> ionograms, int maxemptyperlocation[], int nrbases_left_right, int chromosome_center_location) {
         this.ionograms = ionograms;
+        this.chromosome = chromosome;
         this.consensus = consensus;
         this.chromosome_center_location = chromosome_center_location;
         nrionograms = ionograms.size();
@@ -134,6 +135,7 @@ public class IonogramAlignment {
             String info = locus + ", " + bases;
             
             FlowDistribution dist = new FlowDistribution(slot, nrflows, map, name, base, forward, reverse, info);
+            dist.setChromosome(chromosome);
             dist.setReadInfos(allelereadinfos.get(which));
             alleledist.add(dist);
             which++;
@@ -555,5 +557,9 @@ public class IonogramAlignment {
      */
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    public String getChromosome() {
+        return chromosome;
     }
 }

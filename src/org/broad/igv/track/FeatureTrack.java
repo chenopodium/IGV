@@ -10,6 +10,7 @@
  */
 package org.broad.igv.track;
 
+import com.iontorrent.utils.ErrorHandler;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.feature.Chromosome;
@@ -709,11 +710,13 @@ public class FeatureTrack extends AbstractTrack {
         try {
             renderFeatureImpl(context, inputRect, packedFeatures);
         } catch (TribbleException e) {
-            log.error("Tribble error", e);
+            String err = ErrorHandler.getString(e);
+            log.error("Tribble error: "+err, e);
             //Error loading features.  We'll let the user decide if this is "fatal" or not.  
             if (!fatalLoadError) {
                 fatalLoadError = true;
-                boolean unload = MessageUtils.confirm("<html> Error loading features: " + e.getMessage() +
+                
+                boolean unload = MessageUtils.confirm("<html> Error loading features: " + err +
                         "<br>Unload track " + getName() + "?");
                 if (unload) {
                     Collection<Track> tmp = Arrays.asList((Track) this);

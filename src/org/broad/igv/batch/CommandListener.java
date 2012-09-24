@@ -251,6 +251,7 @@ public class CommandListener implements Runnable {
         String server = params.get("server");
         if (server == null || server.trim().length()<1) server = PreferenceManager.getInstance().get(PreferenceManager.IONTORRENT_SERVER);
         else {
+            log.info("Got server:"+server);
             PreferenceManager.getInstance().put(PreferenceManager.IONTORRENT_SERVER, server);
         }
         if (command.equals("/load")) {

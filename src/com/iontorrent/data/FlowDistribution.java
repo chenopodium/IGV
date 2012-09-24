@@ -18,6 +18,7 @@ public class FlowDistribution {
     private String name;
     private char base;
     private int nrflows;
+    private String chromosome;
     /**
      * the chromosome location
      */
@@ -161,5 +162,16 @@ public class FlowDistribution {
     }
     public boolean isReverse() {
         return reverse;
+    }
+
+    public String getChromosome() {
+        return chromosome;
+    }
+
+    /**
+     * @param chromosome the chromosome to set
+     */
+    public void setChromosome(String chromosome) {
+        this.chromosome = chromosome;
     }
 }

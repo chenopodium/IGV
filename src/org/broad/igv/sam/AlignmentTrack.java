@@ -628,6 +628,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             String info = locus + ", " + bases;
 
             FlowDistribution dist = new FlowDistribution(location, nrflows, map, name, base, forward, reverse, info);
+            dist.setChromosome(frame.getChrName());
             dist.setReadInfos(allelereadinfos.get(which));
             alleledist.add(dist);
             which++;
@@ -674,6 +675,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
                 Ionogram iono = new Ionogram(alignment.getReadName(), center_location, !forward);
                 iono.setLocusinfo(locus);
+                iono.setChromosome(alignment.getChromosome());
 
                 nrionograms++;
                 AlignmentBlock[] blocks = alignment.getAlignmentBlocks();
@@ -757,7 +759,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             return null;
         }
         // now we can start to creat the alignment slots as we know the max number of empties per location
-        IonogramAlignment ionoalign = new IonogramAlignment(new String(consensus), ionograms, maxemptyperlocation, nrbases_left_right, center_location);
+        IonogramAlignment ionoalign = new IonogramAlignment(frame.getChrName(), new String(consensus), ionograms, maxemptyperlocation, nrbases_left_right, center_location);
         return ionoalign;
     }
 
