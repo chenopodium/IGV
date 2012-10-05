@@ -1,4 +1,8 @@
-This folder contains the standalone verson of IonTorrents IGV and also a Servlet to launch IGV via URL:
+To download IonIGV from GitHub:
+==================================
+1. get the ***entire package*** as ZIP file at https://github.com/chenopodium/IGV/tree/chantal
+2. Extract the zip. You find the executable files in the ***dist*** folder
+
 
 IgvServlet.war
 ===============
