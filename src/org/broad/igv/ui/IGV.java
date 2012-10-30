@@ -1457,7 +1457,7 @@ public class IGV {
 
         //Set<TrackPanel> changedPanels = new HashSet();
 
-        log.info("Loading" + locators.size() + " resources.");
+        log.info("Loading " + locators.size() + " resources.");
         final MessageCollection messages = new MessageCollection();
 
 
@@ -1468,6 +1468,7 @@ public class IGV {
 
             // If its a local file, check explicitly for existence (rather than rely on exception)
             if (locator.isLocal()) {
+                log.info("Loading local file "+locator.getPath());
                 File trackSetFile = new File(locator.getPath());
                 if (!trackSetFile.exists()) {
                     messages.append("File not found: " + locator.getPath() + "\n");

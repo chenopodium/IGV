@@ -114,8 +114,10 @@ public class TrackLoader {
     public List<Track> load(ResourceLocator locator, Genome genome) {
 
         final String path = locator.getPath();
+        log.info("Loading "+locator.getPath());
         try {
             String typeString = locator.getType();
+            log.info("Typestring is  "+typeString);
             if (typeString == null) {
 
                 // Genome space hack -- check for explicit type converter
@@ -894,11 +896,13 @@ public class TrackLoader {
                 }
             }
 
+            log.info("Creating alignment track");
             AlignmentTrack alignmentTrack = new AlignmentTrack(locator, dataManager, genome);    // parser.loadTrack(locator, dsName);
             alignmentTrack.setName(dsName);
 
 
             // Create coverage track
+            log.info("Creating alignment track");
             CoverageTrack covTrack = new CoverageTrack(locator, alignmentTrack.getName() + " Coverage", genome);
             covTrack.setVisible(PreferenceManager.getInstance().getAsBoolean(PreferenceManager.SAM_SHOW_COV_TRACK));
             newTracks.add(covTrack);
@@ -940,6 +944,7 @@ public class TrackLoader {
             }
 
             newTracks.add(alignmentTrack);
+            log.info("Creating alignment tracks done");
 
         } catch (IndexNotFoundException e) {
             MessageUtils.showMessage("<html>Could not find the index file for  <br><br>&nbsp;&nbsp;" + e.getSamFile() +

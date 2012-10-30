@@ -4,6 +4,8 @@
  */
 package com.iontorrent.data;
 
+import com.iontorrent.rawdataaccess.FlowValue;
+import com.iontorrent.wellmodel.WellCoordinate;
 import java.util.ArrayList;
 import org.iontorrent.sam2flowgram.flowalign.FlowSeq;
 
@@ -28,7 +30,7 @@ public class Ionogram {
     private String floworder;
     
     private FlowValue[] slotrow;
-    
+    private boolean selected[];
     public Ionogram(String readname, int chromosome_center_location, boolean reverse) {
         this.readname = readname;
         this.chromosome_center_location = chromosome_center_location;        
@@ -132,6 +134,16 @@ public class Ionogram {
         return readname;
     }
 
+    public WellCoordinate getCoord() {
+         // Y9VO3:844:1030_Y9VO3:38:643
+            int col = readname.indexOf(":");
+            readname = readname.substring(col + 1);
+            readname = readname.replace(":", "_");
+            int ul = readname.indexOf("_");
+            int x = Integer.parseInt(readname.substring(0, ul));
+            int y = Integer.parseInt(readname.substring(ul+1));
+            return new WellCoordinate(x, y);
+    }
     /**
      * @param readname the readname to set
      */
@@ -179,8 +191,16 @@ public class Ionogram {
      */
     public void setSlotrow(FlowValue[] slotrow) {
         this.slotrow = slotrow;
+        selected = new boolean[slotrow.length];
     }
 
+    public boolean isSelected(int slot) {
+        return selected[slot];
+    }
+    public void toggleSelect(int slot) {
+        selected[slot] = !selected[slot];
+    }
+    
     public int getMaxValue() {
         int max = 0;
         for (FlowValue f: flowvalues) {

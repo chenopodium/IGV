@@ -22,7 +22,7 @@ public class SimpleDialog extends JDialog {
      
     
     
-    public SimpleDialog(String title, JPanel mainpanel, int width, int height, Image image) {
+    public SimpleDialog(String title, JPanel mainpanel, int width, int height, int x, int y, Image image) {
         setLocationRelativeTo(null);
         this.setUndecorated(false);
         if (image != null) this.setIconImage(image);
@@ -32,8 +32,8 @@ public class SimpleDialog extends JDialog {
         main.add(mainpanel, BorderLayout.CENTER);
         Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
         
-        int x = (int) Math.max(100, screen.getWidth() / 2 - 400);
-        int y = (int) Math.max(100, screen.getHeight() / 2 - 200);
+        if (x <= 0) x = (int) Math.max(100, screen.getWidth() / 2 - 400);
+        if (y <= 0) y = (int) Math.max(100, screen.getHeight() / 2 - 200);
         this.setLocation(x, y);
         this.setVisible(true);
         this.setSize(width, height);

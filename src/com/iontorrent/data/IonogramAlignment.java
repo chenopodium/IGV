@@ -4,12 +4,17 @@
  */
 package com.iontorrent.data;
 
+import com.iontorrent.rawdataaccess.FlowValue;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.broad.igv.PreferenceManager;
+import org.broad.igv.feature.Locus;
+import org.broad.igv.sam.*;
+import org.broad.igv.ui.panel.ReferenceFrame;
 import org.iontorrent.sam2flowgram.flowalign.FlowOrder;
 import org.iontorrent.sam2flowgram.flowalign.FlowSeq;
 import org.iontorrent.sam2flowgram.flowalign.FlowgramAlignment;
@@ -59,14 +64,138 @@ public class IonogramAlignment {
         //  recomputeAlignment();
     }
     
+    public static IonogramAlignment extractIonogramAlignment(AlignmentDataManager dataManager, ReferenceFrame frame, int center_location, int nrbases_left_right, boolean forward) {
+         boolean reverse = !forward;
+        int alignmentwidth = nrbases_left_right * 2 + 1;
+        PreferenceManager prefs = PreferenceManager.getInstance();
+        float maxNrReads = prefs.getAsFloat(PreferenceManager.IONTORRENT_MAXNREADS_IONOGRAM_ALIGN);
 
-    public FlowDistribution[] getFlowSignalDistribution(String locus, int slot) {
+
+        ArrayList<Ionogram> ionograms = new ArrayList<Ionogram>();
+        String locus = Locus.getFormattedLocusString(frame.getChrName(), (int) center_location, (int) center_location);
+
+        // we need to map the number of maximum empties per location
+        int[] maxemptyperlocation = new int[alignmentwidth];
+
+        int nrionograms = 0;
+        char[] consensus = new char[alignmentwidth + 1];
+        for (AlignmentInterval interval : dataManager.getLoadedIntervals()) {
+            for (int loc = center_location - nrbases_left_right; loc <= center_location + nrbases_left_right + 1; loc++) {
+                BaseAlignmentCounts ac = (BaseAlignmentCounts) interval.getAlignmentCounts(loc);
+                if (ac != null) {
+                    char bestbase = ac.getBestBaseAt(loc);
+                    consensus[loc - center_location + nrbases_left_right] = bestbase;
+                }
+            }
+            Iterator<Alignment> alignmentIterator = interval.getAlignmentIterator();
+            while (alignmentIterator.hasNext()) {
+                Alignment alignment = alignmentIterator.next();
+                if ((alignment.isNegativeStrand() && !reverse) || (!alignment.isNegativeStrand() && !forward)) {
+                    continue;
+                }
+                if (!alignment.contains(center_location)) {
+                    continue;
+                }
+                if (nrionograms > maxNrReads) {
+                    break;
+                }
+
+                Ionogram iono = new Ionogram(alignment.getReadName(), center_location, !forward);
+                iono.setLocusinfo(locus);
+                iono.setChromosome(alignment.getChromosome());
+
+                nrionograms++;
+                AlignmentBlock[] blocks = alignment.getAlignmentBlocks();
+                for (int i = 0; i < blocks.length; i++) {
+                    // only for matches/mismatches, there is no block for deletions
+                    AlignmentBlock block = blocks[i];
+                    for (int loc = center_location - nrbases_left_right; loc <= center_location + nrbases_left_right; loc++) {
+                        // now add flow values from a few bases to the left and right - including empties!
+                        int relativelocation = loc - center_location + nrbases_left_right;
+                        //  char alignmentbase = (char)alignment.getBase(loc);
+                        char bestbase = consensus[relativelocation];
+
+                        int posinblock = (int) loc - block.getStart();
+                        if (!block.contains((int) loc) || !block.hasFlowSignals()) {
+                            continue;
+                        }
+                        //
+                        FlowSignalSubContext subcontext = block.getFlowSignalSubContext(posinblock);
+                        if (subcontext == null) {
+                            continue;
+                        }
+                        int flownr = subcontext.getFlowOrderIndex();
+                        if (alignment instanceof SamAlignment) {
+                            SamAlignment sam = (SamAlignment) alignment;
+                            String order = sam.getFlowOrder();
+                            if (!forward) {
+                                // for reverse alignments, we should use the reverse or at least the complement because we are displaying
+                                // everything in the forward strand
+                                order = AlignUtil.complement(order);
+                            }
+                            iono.setFloworder(order);
+                        }
+
+                        short flowSignal = subcontext.getCurrentSignal();
+                        // that base is always the FORWARD base, so the complement in a reverse sequence
+                        char base = (char) block.getBase(posinblock);
+                        // now we also have to get the EMTPIES after this flow!
+                        boolean isempty = false;
+                        // skip if this flow values is the same as the one before
+                        FlowValue flowvalue = new FlowValue(flowSignal, flownr, base, relativelocation, isempty, bestbase);
+                        //if (!iono.isSameAsPrev(flowvalue)) {
+                        iono.addFlowValue(flowvalue);
+                        short[] nextempties = subcontext.getNextSignals();
+                        if (nextempties != null) {
+                            // add the emtpies
+                            int nrempties = nextempties.length;
+                            int curmax = maxemptyperlocation[relativelocation];
+                            if (nrempties > curmax) {
+                                maxemptyperlocation[relativelocation] = nrempties;
+                            }
+
+                            isempty = true;
+                            for (int e = 0; e < nrempties; e++) {
+                                int curflowpos = 0;
+                                if (!alignment.isNegativeStrand()) {
+                                    curflowpos = flownr + e + 1;
+                                } else {
+                                    curflowpos = flownr - e - 1;
+                                }
+                                short emptysignal = nextempties[e];
+                                char emptybase = subcontext.getBaseForNextEmpty(e);
+                                // if reverse, use complement!
+                                if (!forward) {
+                                    emptybase = AlignUtil.getComplement(emptybase);
+                                }
+                                FlowValue emptyvalue = new FlowValue(emptysignal, curflowpos, emptybase, relativelocation, isempty, ' ');
+                                // if (!iono.isSameAsPrev(emptyvalue)) {
+                                iono.addFlowValue(emptyvalue);
+                                // }
+                            }
+                        }
+                        // }
+
+                    }
+                }
+                ionograms.add(iono);
+            }
+        }
+        if (nrionograms == 0) {
+           // p("Got no reads in that direction: forward=" + forward);
+            return null;
+        }
+        // now we can start to creat the alignment slots as we know the max number of empties per location
+        IonogramAlignment ionoalign = new IonogramAlignment(frame.getChrName(), new String(consensus), ionograms, maxemptyperlocation, nrbases_left_right, center_location);
+        return ionoalign;
+    }
+    public ScoreDistribution[] getFlowSignalDistribution(String locus, int slot) {
         // one for each base!
         if (ionograms == null || ionograms.isEmpty()) return null;
         ArrayList<TreeMap<Short, Integer>> alleletrees = new ArrayList<TreeMap<Short, Integer>>();
 
         int nrflows = 0;
-        ArrayList<FlowDistribution> alleledist = new ArrayList<FlowDistribution>();
+        ArrayList<ScoreDistribution> alleledist = new ArrayList<ScoreDistribution>();
         String bases = "";
         // also store information on read and position
         boolean forward = false;
@@ -107,7 +236,7 @@ public class IonogramAlignment {
                     readinfos = allelereadinfos.get(whichbase);
                 }
                 short flowSignal = (short) fv.getFlowvalue();
-                ReadInfo readinfo = new ReadInfo(iono.getReadname(), fv.getFlowPosition(), flowSignal, fv.getBase());
+                ReadInfo readinfo = new ReadInfo(iono.getReadname(), fv);
                 readinfos.add(readinfo);
                 if (map.containsKey(flowSignal)) {
                     // increment
@@ -134,15 +263,15 @@ public class IonogramAlignment {
             name += ", " + base + ", " + nrflows + " flows, slot "+slot;
             String info = locus + ", " + bases;
             
-            FlowDistribution dist = new FlowDistribution(slot, nrflows, map, name, base, forward, reverse, info);
+            ScoreDistribution dist = new ScoreDistribution(slot, nrflows, map, name, base, forward, reverse, info);
             dist.setChromosome(chromosome);
             dist.setReadInfos(allelereadinfos.get(which));
             alleledist.add(dist);
             which++;
         }
         
-         FlowDistribution distributions[] = null;
-         distributions = new FlowDistribution[alleledist.size()];
+         ScoreDistribution distributions[] = null;
+         distributions = new ScoreDistribution[alleledist.size()];
             for (int i = 0; i < alleledist.size(); i++) {
                 distributions[i] = alleledist.get(i);
             }

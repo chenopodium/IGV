@@ -129,6 +129,7 @@ public class HttpUtils {
 
         InputStream is = null;
         HttpURLConnection conn = openConnection(url, null);
+       
         try {
             is = conn.getInputStream();
             return readContents(is);
@@ -542,6 +543,7 @@ public class HttpUtils {
             conn.setRequestProperty("Accept", "application/json,text/plain");
         }
 
+        conn.setUseCaches(false);  // <= very important! due to Java 7 pack.gz issue 
         conn.setConnectTimeout(Globals.CONNECT_TIMEOUT);
         conn.setReadTimeout(Globals.READ_TIMEOUT);
         conn.setRequestMethod(method);

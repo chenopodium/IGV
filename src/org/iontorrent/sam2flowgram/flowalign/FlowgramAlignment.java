@@ -1,10 +1,9 @@
 /* Copyright (C) 2010 Ion Torrent Systems, Inc. All Rights Reserved */
 package org.iontorrent.sam2flowgram.flowalign;
 
-import com.iontorrent.data.FlowValue;
+
+import com.iontorrent.rawdataaccess.FlowValue;
 import java.io.PrintStream;
-import java.lang.Math;
-import java.lang.Integer;
 import java.util.Arrays;
 import org.iontorrent.sam2flowgram.util.AlignUtil;
 

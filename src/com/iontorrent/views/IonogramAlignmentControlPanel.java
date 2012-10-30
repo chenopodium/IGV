@@ -4,13 +4,17 @@
  */
 package com.iontorrent.views;
 
-import com.iontorrent.data.FlowDistribution;
+import com.iontorrent.data.ScoreDistribution;
 import com.iontorrent.data.Ionogram;
 import com.iontorrent.data.IonogramAlignment;
+import com.iontorrent.expmodel.ExperimentContext;
+import com.iontorrent.rawdataaccess.FlowValue;
+import com.iontorrent.rawdataaccess.ReadFlow;
+import com.iontorrent.torrentscout.explorer.process.*;
 import com.iontorrent.utils.*;
+import com.iontorrent.wellmodel.WellCoordinate;
 import java.awt.*;
 import java.awt.event.KeyEvent;
-import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.awt.image.RenderedImage;
 import java.io.File;
@@ -43,6 +47,7 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
     private JScrollPane sheader;
     private JLabel corner;
     private boolean flowBased;
+
     /**
      * Creates new form IonogramAlignmentPanel
      */
@@ -61,7 +66,7 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
         main = new BagPanel();
         ToolTipManager.sharedInstance().registerComponent(main);
         flowBased = false;
-        
+
         setAlignment(alignment, location);
         add("Center", main);
 
@@ -70,12 +75,13 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
     public void recomputeAlignment() {
         alignment.recomputeAlignment();
         flowBased = true;
-        
+
         setAlignment(alignment, location);
     }
+
     public void setAlignment(IonogramAlignment alignment, int chromosomepos) {
         location = chromosomepos;
-        if (alignment == null ) {
+        if (alignment == null) {
             p("Got no alignment");
             return;
         }
@@ -86,7 +92,7 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
         this.ignore_events = true;
         spinBin.setValue(iono_height);
         ignore_events = false;
-        
+
         if (sheader != null) {
             main.remove(sheader);
         }
@@ -114,19 +120,19 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
         // first one just shows bases
         IonogramPanel header = new IonogramPanel(ionograms.get(0), alignment, true);
 
-       
-        int slotheight = prefs.getAsInt(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN)+IonogramPanel.TOP;
+
+        int slotheight = prefs.getAsInt(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN) + IonogramPanel.TOP;
         int slotwidth = prefs.getAsInt(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN) + IonogramPanel.BORDER;
         int lblwidth = 40;
         for (Ionogram iono : ionograms) {
-           // p("Adding ionogram to alignmentpanel: " + iono.toString());
+            // p("Adding ionogram to alignmentpanel: " + iono.toString());
             IonogramPanel ionopanel = new IonogramPanel(iono, alignment, false);
             //ionopanel.setToolTipText(iono.getFloworder());
             center.add(ionopanel);
             JLabel lbl = new JLabel(iono.getReadname());
             lbl.setBackground(Color.white);
-            lbl.setToolTipText("<html>"+iono.toHtml()+"</html>");
-          //  p("Got floworder: " + iono.getFloworder());
+            lbl.setToolTipText("<html>" + iono.toHtml() + "</html>");
+            //  p("Got floworder: " + iono.getFloworder());
             lbl.setSize(lblwidth, slotheight);
             lbl.setMinimumSize(new Dimension(30, slotheight));
             lbl.setMaximumSize(new Dimension(lblwidth, slotheight));
@@ -142,7 +148,7 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
         labels.setPreferredSize(new Dimension(lblwidth, totheight));
 
         center.setMinimumSize(new Dimension(totwidth, totheight));
-     //   p("Setting size of center: " + totheight + ", single height=" + slotheight);
+        //   p("Setting size of center: " + totheight + ", single height=" + slotheight);
 
         slabels = new JScrollPane(labels, JScrollPane.VERTICAL_SCROLLBAR_NEVER, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scenter = new JScrollPane(center);
@@ -151,9 +157,11 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
         slabels.getVerticalScrollBar().setModel(scenter.getVerticalScrollBar().getModel());
         sheader.getHorizontalScrollBar().setModel(scenter.getHorizontalScrollBar().getModel());
 
-        
-        corner = new JLabel("<html><b>Base</b> alignment from BAM file at <br>"+alignment.getLocus()+"</html>");
-        if (flowBased) corner.setText("<html><b>Flow space</b> alignment at <br>"+alignment.getLocus()+"</html>");
+
+        corner = new JLabel("<html><b>Base</b> alignment from BAM file at <br>" + alignment.getLocus() + "</html>");
+        if (flowBased) {
+            corner.setText("<html><b>Flow space</b> alignment at <br>" + alignment.getLocus() + "</html>");
+        }
         corner.setBackground(Color.white);
         corner.setSize(lblwidth, slotheight);
         corner.setMaximumSize(new Dimension(lblwidth, slotheight));
@@ -167,18 +175,18 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
         this.repaint();
         main.invalidate();
         main.revalidate();
-        
+
         Container parent = this;
-        while (parent.getParent() != null ) {
+        while (parent.getParent() != null) {
             parent = parent.getParent();
         }
         if (parent != null && parent instanceof JFrame) {
-            JFrame f = (JFrame)parent;
+            JFrame f = (JFrame) parent;
             p("Found parent frame :-)");
             f.setTitle(alignment.getTitle());
         }
         // I know this is a hack, but it just won't repaint... not sure why
-        paintImmediately(0,0,1000,1000);
+        paintImmediately(0, 0, 1000, 1000);
     }
 
     /**
@@ -192,15 +200,16 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
 
         topbar = new javax.swing.JToolBar();
         btnRecompute = new javax.swing.JButton();
-        btnRefresh = new javax.swing.JButton();
         btnFlowDist = new javax.swing.JButton();
+        btnRaw = new javax.swing.JButton();
         btnLeft = new javax.swing.JButton();
         btnRight = new javax.swing.JButton();
         jLabel1 = new javax.swing.JLabel();
         spinBin = new javax.swing.JSpinner();
         btnConfigure = new javax.swing.JButton();
         btnSave = new javax.swing.JButton();
-        btnTSL = new javax.swing.JButton();
+        btnLink = new javax.swing.JButton();
+        btnRefresh = new javax.swing.JButton();
         leftbar = new javax.swing.JToolBar();
         zoomIn = new javax.swing.JButton();
         zoomOut = new javax.swing.JButton();
@@ -221,20 +230,8 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
         });
         topbar.add(btnRecompute);
 
-        btnRefresh.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/view-refresh-3.png"))); // NOI18N
-        btnRefresh.setToolTipText("Reload original alignment from BAM file (base space)");
-        btnRefresh.setFocusable(false);
-        btnRefresh.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-        btnRefresh.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        btnRefresh.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnRefreshActionPerformed(evt);
-            }
-        });
-        topbar.add(btnRefresh);
-
-        btnFlowDist.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/flowdiagram.png"))); // NOI18N
-        btnFlowDist.setToolTipText("show flow signal distribution for currently selected slot");
+        btnFlowDist.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/dist.png"))); // NOI18N
+        btnFlowDist.setToolTipText("show score distribution for currently selected slot");
         btnFlowDist.setFocusable(false);
         btnFlowDist.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnFlowDist.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
@@ -244,6 +241,18 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
             }
         });
         topbar.add(btnFlowDist);
+
+        btnRaw.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/raw.png"))); // NOI18N
+        btnRaw.setToolTipText("Load the raw traces of the selected cells a via IonRetriever (a server side Data API)");
+        btnRaw.setFocusable(false);
+        btnRaw.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        btnRaw.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        btnRaw.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnRawActionPerformed(evt);
+            }
+        });
+        topbar.add(btnRaw);
 
         btnLeft.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/arrow-left.png"))); // NOI18N
         btnLeft.setToolTipText("move to the next base on the left");
@@ -307,17 +316,29 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
         });
         topbar.add(btnSave);
 
-        btnTSL.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/chip_16.png"))); // NOI18N
-        btnTSL.setToolTipText("Open Torrent Scout light in a browser and load the currently shown reads");
-        btnTSL.setFocusable(false);
-        btnTSL.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-        btnTSL.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        btnTSL.addActionListener(new java.awt.event.ActionListener() {
+        btnLink.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/link.png"))); // NOI18N
+        btnLink.setToolTipText("Open Torrent Scout light in a browser and load the currently shown reads");
+        btnLink.setFocusable(false);
+        btnLink.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        btnLink.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        btnLink.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnTSLActionPerformed(evt);
+                btnLinkActionPerformed(evt);
             }
         });
-        topbar.add(btnTSL);
+        topbar.add(btnLink);
+
+        btnRefresh.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/view-refresh-3.png"))); // NOI18N
+        btnRefresh.setToolTipText("Reload original alignment from BAM file (base space)");
+        btnRefresh.setFocusable(false);
+        btnRefresh.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        btnRefresh.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        btnRefresh.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnRefreshActionPerformed(evt);
+            }
+        });
+        topbar.add(btnRefresh);
 
         add(topbar, java.awt.BorderLayout.PAGE_START);
 
@@ -448,16 +469,61 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
     public void refresh() {
         flowBased = false;
         getListener().locationChanged(location);
-        
+
     }
-    private void btnTSLActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnTSLActionPerformed
+    private void btnRawActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRawActionPerformed
+
         
-        String readnames = this.getReadNames();
-        long loc = alignment.getChromosome_center_location();
+        final long loc = alignment.getChromosome_center_location();
+
+        final String chr = alignment.getChromosome();
+        // LinkUtils.linkToTSL(readnames, chr, loc);
+
+        final ArrayList<ReadFlow> readflows = new ArrayList<ReadFlow>();
+
+        int nrselected = 0;
+        for (Ionogram iono : this.alignment.getIonograms()) {
+            int center = alignment.getCenterSlot();
+            if (iono.isSelected(center)) {
+                nrselected++;
+            }
+        }
+        int max = 10;
+        if (nrselected == 0) {
+            JOptionPane.showMessageDialog(IGV.getMainFrame(), "I will get the first " + max + " raw traces in the alignment.\nOtherwise, just select the (center) flows you would like me to get!");
+        }
+        for (Ionogram iono : this.alignment.getIonograms()) {
+            if (readflows.size() > max) {
+                break;
+            }
+            WellCoordinate coord = iono.getCoord();
+
+            iono.getChromosome_center_location();
+            int center = alignment.getCenterSlot();
+            if (nrselected < 1 || iono.isSelected(center)) {
+                FlowValue fv = iono.getSlotrow()[center];
+
+                if (fv != null) {
+                    p("got coord: " + coord + " and fv:" + fv);
+                    ReadFlow rf = new ReadFlow(fv.getFlowPosition(), coord.getX(), coord.getY());
+                    rf.setFlowValue(fv);
+                    readflows.add(rf);
+                }
+            }
+        }
+       
+        PreferenceManager prefs = PreferenceManager.getInstance();
+        String server = prefs.get(PreferenceManager.IONTORRENT_SERVER);        
+        String expinfo = prefs.get(PreferenceManager.IONTORRENT_RESULTS);
         
-        String chr = alignment.getChromosome();
-        LinkUtils.linkToTSL(readnames, chr, loc);
-    }//GEN-LAST:event_btnTSLActionPerformed
+        ExperimentContext exp = new ExperimentContext();
+        exp.setBamFilename(expinfo);
+        exp.setResultsName(expinfo);
+        SignalFetchPanel sig = new SignalFetchPanel(exp, readflows, "location "+chr+":"+location);
+       sig.setServer(server);
+       sig.showPanel();
+        
+    }//GEN-LAST:event_btnRawActionPerformed
 
     private void spinBinStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_spinBinStateChanged
         if (ignore_events) {
@@ -507,20 +573,28 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
         showFlowSignalDistForSlot(this.alignment.getCenterSlot());
     }//GEN-LAST:event_btnFlowDistActionPerformed
 
-    
-    private void showFlowSignalDistForSlot(int slot) {
-        
-        if (ionograms == null || ionograms.isEmpty()) return;
-        final String locus = ionograms.get(0).getLocusinfo();
-        FlowDistribution[] distributions = alignment.getFlowSignalDistribution(locus, slot);
+    private void btnLinkActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLinkActionPerformed
+        String readnames = this.getReadNames();
+        final long loc = alignment.getChromosome_center_location();
+        final String chr = alignment.getChromosome();
+        LinkUtils.linkToTSL(readnames, chr, loc);
+    }//GEN-LAST:event_btnLinkActionPerformed
 
-        final FlowSignalDistributionPanel distributionPanel = new FlowSignalDistributionPanel(distributions);
+    private void showFlowSignalDistForSlot(int slot) {
+
+        if (ionograms == null || ionograms.isEmpty()) {
+            return;
+        }
+        final String locus = ionograms.get(0).getLocusinfo();
+        ScoreDistribution[] distributions = alignment.getFlowSignalDistribution(locus, slot);
+
+        final ScoreDistributionPanel distributionPanel = new ScoreDistributionPanel(distributions);
         LocationListener listener = new LocationListener() {
 
             @Override
             public void locationChanged(int newslot) {
                 log.info("Got new location from panel: " + newslot + ", (old location was: " + location + ")");
-                FlowDistribution[] newdist = alignment.getFlowSignalDistribution(locus, newslot);
+                ScoreDistribution[] newdist = alignment.getFlowSignalDistribution(locus, newslot);
                 distributionPanel.setDistributions(newdist);
                 //frame.jumpTo(frame.getChrName(), location, location);
             }
@@ -529,8 +603,9 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
 
         // listen to left/right mouse clicks from panel and navigate accordingly
         ImageIcon image = new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/chip_16.png"));
-        SimpleDialog dia = new SimpleDialog("Flow Signal Distribution", distributionPanel, 800, 500, image.getImage());    
+        SimpleDialog dia = new SimpleDialog("Score Distribution", distributionPanel, 800, 500, 200, 200, image.getImage());
     }
+
     private void moveLeft() {
         if (getListener() != null) {
             getListener().locationChanged(location - 1);
@@ -595,11 +670,12 @@ public class IonogramAlignmentControlPanel extends javax.swing.JPanel {
     private javax.swing.JButton btnConfigure;
     private javax.swing.JButton btnFlowDist;
     private javax.swing.JButton btnLeft;
+    private javax.swing.JButton btnLink;
+    private javax.swing.JButton btnRaw;
     private javax.swing.JButton btnRecompute;
     private javax.swing.JButton btnRefresh;
     private javax.swing.JButton btnRight;
     private javax.swing.JButton btnSave;
-    private javax.swing.JButton btnTSL;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JToolBar leftbar;
     private javax.swing.JSpinner spinBin;

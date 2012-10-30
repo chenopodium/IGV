@@ -4,11 +4,12 @@
  */
 package com.iontorrent.views;
 
-import com.iontorrent.data.FlowValue;
 import com.iontorrent.data.IonogramAlignment;
 import com.iontorrent.data.Ionogram;
 import com.iontorrent.data.PeakFunction;
+import com.iontorrent.rawdataaccess.FlowValue;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.DecimalFormat;
 import javax.swing.JComponent;
@@ -44,6 +45,7 @@ public class IonogramPanel extends JPanel {
     private Color flowcolor = new Color(220, 220, 220);
     private Color noflowcolor = Color.white;
     private Color highlight = new Color(255, 255, 180);
+    private Color selectedcolor = new Color(255, 180, 180);
     // private boolean NORM;
     private BasicStroke line = new BasicStroke(1);
     private BasicStroke fatline = new BasicStroke(2);
@@ -82,6 +84,18 @@ public class IonogramPanel extends JPanel {
         this.setFocusable(true);
         setFocusTraversalKeysEnabled(false);
         ToolTipManager.sharedInstance().registerComponent(this);
+        this.addMouseListener(new MouseAdapter() {
+             public void mouseClicked(MouseEvent e) {
+                 int slot = e.getX()/slotwidth;
+                  if (slot >= 0 && slot < IonogramPanel.this.alignment.getNrslots()) {
+                      if (!IonogramPanel.this.isHeader) {
+                          p("Selecting slot "+slot);
+                          IonogramPanel.this.ionogram.toggleSelect(slot);
+                          repaint();
+                      }
+                  }
+             }
+        });
     }
 
     @Override
@@ -197,7 +211,12 @@ public class IonogramPanel extends JPanel {
         for (int slot = 0; slot < slotrow.length; slot++) {
             FlowValue fv = slotrow[slot];
             int x = (int) (slot * dx) + x0;
-            if (slot == alignment.getCenterSlot()) {
+            if (!isHeader && ionogram.isSelected(slot)) {
+                g.setColor(selectedcolor);
+                g.fillRect(x, y0 - h, slotwidth, h);
+                
+            }
+            else if (slot == alignment.getCenterSlot()) {
                 g.setColor(highlight);
                 g.fillRect(x, y0 - h, slotwidth, h);
             }

@@ -65,6 +65,7 @@ public class AlignmentDataManager {
     public AlignmentDataManager(ResourceLocator locator, Genome genome) throws IOException {
 
         PreferenceManager prefs = PreferenceManager.getInstance();
+        log.info("About to load bam file");
         reader = new CachingQueryReader(AlignmentReaderFactory.getReader(locator));
         peStats = new HashMap();
         showSpliceJunctions = prefs.getAsBoolean(PreferenceManager.SAM_SHOW_JUNCTION_TRACK);
@@ -81,8 +82,10 @@ public class AlignmentDataManager {
      */
     private void initChrMap(Genome genome) {
         if (genome != null) {
+            log.info("About get sequence names");
             List<String> seqNames = reader.getSequenceNames();
             if (seqNames != null) {
+                log.info("Got "+seqNames.size()+" sequence names");
                 for (String chr : seqNames) {
                     String alias = genome.getChromosomeAlias(chr);
                     chrMappings.put(alias, chr);
