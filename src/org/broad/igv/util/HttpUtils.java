@@ -511,12 +511,12 @@ public class HttpUtils {
 
         HttpURLConnection conn;
 
-        p(" ==== OPEN CONNECTION " + method);
+        //p(" ==== OPEN CONNECTION " + method);
         if (requestProperties != null) {
             Iterator iter = requestProperties.keySet().iterator();
             for (; iter.hasNext();) {
                 String key = (String) iter.next();
-                p("Got request property: " + key + "=" + requestProperties.get(key));
+              //  p("Got request property: " + key + "=" + requestProperties.get(key));
             }
         }
 
@@ -542,6 +542,9 @@ public class HttpUtils {
             }
             conn.setRequestProperty("Accept", "application/json,text/plain");
         }
+        else {
+            conn.setRequestProperty("Accept", "text/plain");
+        }
 
         conn.setUseCaches(false);  // <= very important! due to Java 7 pack.gz issue 
         conn.setConnectTimeout(Globals.CONNECT_TIMEOUT);
@@ -558,7 +561,8 @@ public class HttpUtils {
         if (method.equals("PUT")) {
             return conn;
         } else {
-            int code = conn.getResponseCode();
+
+             int code = conn.getResponseCode();
 
             // Redirects.  These can occur even if followRedirects == true if there is a change in protocol,
             // for example http -> https.
@@ -575,7 +579,7 @@ public class HttpUtils {
             else if (code >= 400) {
                 String message;
                 if (code == 404) {
-                    message = "File not found: " + url.toString();
+                    message = "File/URL not found (404): " + url.toString();
                     throw new FileNotFoundException(message);
                 } else {
                     // if wrong pw, handle this here!
@@ -623,7 +627,7 @@ public class HttpUtils {
 
     private void p(String s) {
         // log.info(s);
-        System.out.println("HttPUtils: " + s);
+        System.out.println("HttpUtils: " + s);
 
     }
 
@@ -658,7 +662,7 @@ public class HttpUtils {
                 if (host.contains("broadinstitute.org")) {
                     byteRangeTestSuccess = testBroadHost(host);
                 } else {
-                    // Generic URL
+                    // Non-broad URL
                     byte[] firstBytes = getFirstBytes(url, 10000);
                     if (firstBytes.length > 1000) {
                         int end = firstBytes.length;
@@ -712,8 +716,11 @@ public class HttpUtils {
         String testURL;
         if (host.endsWith("www.broadinstitute.org")) {
             testURL = "http://www.broadinstitute.org/igvdata/annotations/seq/hg19/chr12.txt";
-        } else {
+        } else if(host.startsWith("igvdata.broadinstitute.org")) {
             testURL = "http://igvdata.broadinstitute.org/genomes/seq/hg19/chr12.txt";
+        } else {
+            testURL = "http://igv.broadinstitute.org/genomes/seq/hg19/chr12.txt";
+
         }
 
         byte[] expectedBytes = {'T', 'C', 'G', 'C', 'T', 'T', 'G', 'A', 'A', 'C', 'C', 'C', 'G', 'G',

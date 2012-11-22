@@ -704,6 +704,41 @@
               </void> 
              </object> 
             </void> 
+            <void method="add"> 
+             <object class="com.jformdesigner.model.FormComponent"> 
+              <string>javax.swing.JCheckBox</string> 
+              <void method="setProperty"> 
+               <string>text</string> 
+               <string>Automatically load default genome if no session of file is specified upon startup</string> 
+              </void> 
+              <void property="name"> 
+               <string>boxAutoLoadGenome</string> 
+              </void> 
+              <void method="addEvent"> 
+               <object class="com.jformdesigner.model.FormEvent"> 
+                <string>java.awt.event.ActionListener</string> 
+                <string>actionPerformed</string> 
+                <string>boxAutoLoadGenomeActionPerformed</string> 
+                <boolean>true</boolean> 
+               </object> 
+              </void> 
+             </object> 
+             <object class="com.jformdesigner.model.FormLayoutConstraints"> 
+              <class>com.jformdesigner.runtime.NullConstraints</class> 
+              <void method="setProperty"> 
+               <string>x</string> 
+               <int>10</int> 
+              </void> 
+              <void method="setProperty"> 
+               <string>y</string> 
+               <int>70</int> 
+              </void> 
+              <void method="setProperty"> 
+               <string>width</string> 
+               <int>405</int> 
+              </void> 
+             </object> 
+            </void> 
            </object> 
            <object class="com.jformdesigner.model.FormLayoutConstraints"> 
             <class>java.lang.String</class> 
@@ -3797,6 +3832,37 @@
             </void> 
             <void method="add"> 
              <object class="com.jformdesigner.model.FormComponent"> 
+              <string>javax.swing.JCheckBox</string> 
+              <void method="setProperty"> 
+               <string>text</string> 
+               <string>Show flanking regions</string> 
+              </void> 
+              <void property="name"> 
+               <string>showJunctionFlankingRegionsCB</string> 
+              </void> 
+              <void method="addEvent"> 
+               <object class="com.jformdesigner.model.FormEvent"> 
+                <string>java.awt.event.ActionListener</string> 
+                <string>actionPerformed</string> 
+                <string>showJunctionFlankingRegionsCBActionPerformed</string> 
+                <boolean>true</boolean> 
+               </object> 
+              </void> 
+             </object> 
+             <object class="com.jformdesigner.model.FormLayoutConstraints"> 
+              <class>com.jformdesigner.runtime.NullConstraints</class> 
+              <void method="setProperty"> 
+               <string>x</string> 
+               <int>5</int> 
+              </void> 
+              <void method="setProperty"> 
+               <string>y</string> 
+               <int>50</int> 
+              </void> 
+             </object> 
+            </void> 
+            <void method="add"> 
+             <object class="com.jformdesigner.model.FormComponent"> 
               <string>javax.swing.JTextField</string> 
               <void property="name"> 
                <string>junctionFlankingTextField</string> 
@@ -3936,7 +4002,7 @@
             </void> 
             <void method="setProperty"> 
              <string>y</string> 
-             <int>361</int> 
+             <int>355</int> 
             </void> 
             <void method="setProperty"> 
              <string>width</string> 
@@ -3944,7 +4010,7 @@
             </void> 
             <void method="setProperty"> 
              <string>height</string> 
-             <int>69</int> 
+             <int>85</int> 
             </void> 
            </object> 
           </void> 
@@ -4359,7 +4425,7 @@
               <string>javax.swing.JLabel</string> 
               <void method="setProperty"> 
                <string>text</string> 
-               <string>Max. number of ionograms in alignment</string> 
+               <string>Max. number of reads  in alignment</string> 
               </void> 
               <void property="name"> 
                <string>label30</string> 
@@ -4437,7 +4503,7 @@
               <string>javax.swing.JLabel</string> 
               <void method="setProperty"> 
                <string>text</string> 
-               <string>Number of base calls around main location to include in ionogram alignment</string> 
+               <string>Number of base calls around main location to include in alignment</string> 
               </void> 
               <void property="name"> 
                <string>label27</string> 
@@ -4507,7 +4573,7 @@
               <string>javax.swing.JLabel</string> 
               <void method="setProperty"> 
                <string>text</string> 
-               <string>Flow signal drawing type:</string> 
+               <string>Alignmentl drawing type:</string> 
               </void> 
               <void property="name"> 
                <string>label32</string> 
@@ -4704,7 +4770,7 @@
               <string>javax.swing.JCheckBox</string> 
               <void method="setProperty"> 
                <string>text</string> 
-               <string>The current BAM file contains flow information (select to show flow menu items)</string> 
+               <string>The current BAM file contains raw flow information (select to show flow menu items)</string> 
               </void> 
               <void property="name"> 
                <string>checkBAMHasFlowValues</string> 

@@ -19,7 +19,6 @@ import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.data.CoverageDataSource;
-import org.broad.igv.data.DataSource;
 import org.broad.igv.feature.FeatureUtils;
 import org.broad.igv.feature.LocusScore;
 import org.broad.igv.feature.genome.Genome;
@@ -27,7 +26,6 @@ import org.broad.igv.goby.GobyCountArchiveDataSource;
 import org.broad.igv.renderer.BarChartRenderer;
 import org.broad.igv.renderer.DataRange;
 import org.broad.igv.renderer.DataRenderer;
-import org.broad.igv.renderer.Renderer;
 import org.broad.igv.tdf.TDFDataSource;
 import org.broad.igv.tdf.TDFReader;
 import org.broad.igv.track.*;
@@ -83,6 +81,12 @@ public class CoverageTrack extends AbstractTrack {
     JMenuItem autoscaleItem;
     Genome genome;
 
+    public void setRenderOptions(AlignmentTrack.RenderOptions renderOptions) {
+        this.renderOptions = renderOptions;
+    }
+
+    private AlignmentTrack.RenderOptions renderOptions = null;
+
 
     public CoverageTrack(ResourceLocator locator, String name, Genome genome) {
         super(locator, locator.getPath() + "_coverage", name);
@@ -106,8 +110,8 @@ public class CoverageTrack extends AbstractTrack {
         this.dataManager = dataManager;
     }
 
-    public void setDataSource(DataSource dataSource) {
-        this.dataSource = (CoverageDataSource) dataSource;
+    public void setDataSource(CoverageDataSource dataSource) {
+        this.dataSource = dataSource;
         dataSourceRenderer = new BarChartRenderer();
         setDataRange(new DataRange(0, 0, 1.5f * (float) dataSource.getDataMax()));
 
@@ -156,13 +160,13 @@ public class CoverageTrack extends AbstractTrack {
             //
             Collection<AlignmentInterval> intervals = null;
             if (dataManager != null) {
+                dataManager.preload(context, renderOptions, true);
                 intervals = dataManager.getLoadedIntervals(context.getReferenceFrame());
             }
             if (intervals != null) {
                 for (AlignmentInterval interval : intervals) {
                     if (interval.contains(context.getChr(), (int) context.getOrigin(), (int) context.getEndLocation())) {
-                        List<AlignmentCounts> counts = interval.getCounts();
-                        intervalRenderer.paint(context, rect, counts);
+                        intervalRenderer.paint(context, rect, interval.getCounts());
                     }
                 }
             }
@@ -206,20 +210,6 @@ public class CoverageTrack extends AbstractTrack {
 
             g.setFont(font);
         }
-    }
-
-    public void setWindowFunction(WindowFunction type) {
-    }
-
-    public WindowFunction getWindowFunction() {
-        return null;
-    }
-
-    public void setRendererClass(Class rc) {
-    }
-
-    public Renderer getRenderer() {
-        return null;
     }
 
     public boolean isLogNormalized() {
@@ -280,7 +270,7 @@ public class CoverageTrack extends AbstractTrack {
      */
     class IntervalRenderer {
 
-        private void paint(RenderContext context, Rectangle rect, List<AlignmentCounts> countList) {
+        private void paint(RenderContext context, Rectangle rect, AlignmentCounts alignmentCounts) {
 
 
             Graphics2D graphics = context.getGraphic2DForColor(coverageGrey);
@@ -304,130 +294,130 @@ public class CoverageTrack extends AbstractTrack {
 
             // First pass, coverage
             int lastpX = -1;
-            for (AlignmentCounts alignmentCounts : countList) {
-                final int start = alignmentCounts.getStart();
-                final int nPoints = alignmentCounts.getNumberOfPoints();
-                boolean isSparse = alignmentCounts instanceof SparseAlignmentCounts;
+            //for (AlignmentCounts alignmentCounts : countList) {
+            int start = alignmentCounts.getStart();
+            int nPoints = alignmentCounts.getNumberOfPoints();
+            boolean isSparse = alignmentCounts instanceof SparseAlignmentCounts;
 
-                for (int idx = 0; idx < nPoints; idx++) {
+            for (int idx = 0; idx < nPoints; idx++) {
 
-                    int pos = isSparse ? ((SparseAlignmentCounts) alignmentCounts).getPosition(idx) : start + idx;
-                    int pX = (int) (rectX + (pos - origin) / scale);
+                int pos = isSparse ? ((SparseAlignmentCounts) alignmentCounts).getPosition(idx) : start + idx;
+                int pX = (int) (rectX + (pos - origin) / scale);
 
-                    if (pX > rectMaxX) {
-                        break; // We're done,  data is position sorted so we're beyond the right-side of the view
+                if (pX > rectMaxX) {
+                    break; // We're done,  data is position sorted so we're beyond the right-side of the view
+                }
+
+                int dX = (int) (rectX + (pos + 1 - origin) / scale) - pX;
+                dX = dX < 1 ? 1 : dX;
+                if (pX + dX > lastpX) {
+                    int pY = (int) rectMaxY - 1;
+                    int totalCount = alignmentCounts.getTotalCount(pos);
+                    double tmp = range.isLog() ? Math.log10(totalCount) / maxRange : totalCount / maxRange;
+                    int height = (int) (tmp * rectHeight);
+
+                    height = Math.min(height, rect.height - 1);
+                    int topY = (pY - height);
+                    if (dX > 3) {
+                        dX--; // Create a little space between bars when there is room.
                     }
+                    if (height > 0) {
+                        graphics.fillRect(pX, topY, dX, height);
 
-                    int dX = (int) (rectX + (pos + 1 - origin) / scale) - pX;
-                    dX = dX < 1 ? 1 : dX;
-                    if (pX + dX > lastpX) {
-                        int pY = (int) rectMaxY - 1;
-                        int totalCount = alignmentCounts.getTotalCount(pos);
-                        double tmp = range.isLog() ? Math.log10(totalCount) / maxRange : totalCount / maxRange;
-                        int height = (int) (tmp * rectHeight);
-
-                        height = Math.min(height, rect.height - 1);
-                        int topY = (pY - height);
-                        if (dX > 3) {
-                            dX--; // Create a little space between bars when there is room.
-                        }
-                        if (height > 0) {
-                            graphics.fillRect(pX, topY, dX, height);
-
-                        }
-                        lastpX = pX + dX;
                     }
+                    lastpX = pX + dX;
                 }
             }
+            //}
 
 
             // Second pass - mark mismatches
             lastpX = -1;
-            for (AlignmentCounts alignmentCounts : countList) {
+            //for (AlignmentCounts alignmentCounts : countList) {
 
-                BisulfiteCounts bisulfiteCounts = alignmentCounts.getBisulfiteCounts();
-                final int intervalEnd = alignmentCounts.getEnd();
-                final int intervalStart = alignmentCounts.getStart();
-                byte[] refBases = null;
+            BisulfiteCounts bisulfiteCounts = alignmentCounts.getBisulfiteCounts();
+            final int intervalEnd = alignmentCounts.getEnd();
+            final int intervalStart = alignmentCounts.getStart();
+            byte[] refBases = null;
 
-                // Dont try to compute mismatches for intervals > 10 MB
-                if ((intervalEnd - intervalStart) < TEN_MB) {
-                    refBases = genome.getSequence(context.getChr(), intervalStart, intervalEnd);
+            // Dont try to compute mismatches for intervals > 10 MB
+            if ((intervalEnd - intervalStart) < TEN_MB) {
+                refBases = genome.getSequence(context.getChr(), intervalStart, intervalEnd);
+            }
+
+
+            start = alignmentCounts.getStart();
+            nPoints = alignmentCounts.getNumberOfPoints();
+            isSparse = alignmentCounts instanceof SparseAlignmentCounts;
+
+            for (int idx = 0; idx < nPoints; idx++) {
+                int pos = isSparse ? ((SparseAlignmentCounts) alignmentCounts).getPosition(idx) : start + idx;
+
+                BisulfiteCounts.Count bc = null;
+                if (bisulfiteMode && bisulfiteCounts != null) {
+                    bc = bisulfiteCounts.getCount(pos);
                 }
 
+                int pX = (int) (rectX + (pos - origin) / scale);
 
-                final int start = alignmentCounts.getStart();
-                final int nPoints = alignmentCounts.getNumberOfPoints();
-                boolean isSparse = alignmentCounts instanceof SparseAlignmentCounts;
+                if (pX > rectMaxX) {
+                    break; // We're done,  data is position sorted so we're beyond the right-side of the view
+                }
 
-                for (int idx = 0; idx < nPoints; idx++) {
-                    int pos = isSparse ? ((SparseAlignmentCounts) alignmentCounts).getPosition(idx) : start + idx;
-
-                    BisulfiteCounts.Count bc = null;
-                    if (bisulfiteMode && bisulfiteCounts != null) {
-                        bc = bisulfiteCounts.getCount(pos);
-                    }
-
-                    int pX = (int) (rectX + (pos - origin) / scale);
-
-                    if (pX > rectMaxX) {
-                        break; // We're done,  data is position sorted so we're beyond the right-side of the view
-                    }
-
-                    int dX = (int) (rectX + (pos + 1 - origin) / scale) - pX;
-                    dX = dX < 1 ? 1 : dX;
-                    if (pX + dX > lastpX) {
+                int dX = (int) (rectX + (pos + 1 - origin) / scale) - pX;
+                dX = dX < 1 ? 1 : dX;
+                if (pX + dX > lastpX) {
 
 
-                        // Test to see if any single nucleotide mismatch  (nucleotide other than the reference)
-                        // has a quality weight > 20% of the total
-                        // Skip this test if the position is in the list of known snps or if the reference is unknown
-                        boolean mismatch = false;
+                    // Test to see if any single nucleotide mismatch  (nucleotide other than the reference)
+                    // has a quality weight > 20% of the total
+                    // Skip this test if the position is in the list of known snps or if the reference is unknown
+                    boolean mismatch = false;
 
-                        if (refBases != null) {
-                            int refIdx = pos - intervalStart;
-                            if (refIdx >= 0 && refIdx < refBases.length) {
-                                if (bisulfiteMode) {
-                                    mismatch = (bc != null && (bc.methylatedCount + bc.unmethylatedCount) > 0);
-                                } else {
-                                    byte ref = refBases[refIdx];
-                                    mismatch = alignmentCounts.isMismatch(pos, ref, context.getChr(), snpThreshold);
-                                }
-                            }
-                        }
-
-                        if (!mismatch) {
-                            continue;
-                        }
-
-                        int pY = (int) rectMaxY - 1;
-
-                        int totalCount = alignmentCounts.getTotalCount(pos);
-                        double tmp = range.isLog() ? Math.log10(totalCount) / maxRange : totalCount / maxRange;
-                        int height = (int) (tmp * rectHeight);
-
-                        height = Math.min(height, rect.height - 1);
-
-                        if (dX > 3) {
-                            dX--; // Create a little space between bars when there is room.
-                        }
-
-                        if (height > 0) {
+                    if (refBases != null) {
+                        int refIdx = pos - intervalStart;
+                        if (refIdx >= 0 && refIdx < refBases.length) {
                             if (bisulfiteMode) {
-                                if (bc != null) {
-                                    drawBarBisulfite(context, pos, rect, totalCount, maxRange,
-                                            pY, pX, dX, bc, range.isLog());
-                                }
+                                mismatch = (bc != null && (bc.methylatedCount + bc.unmethylatedCount) > 0);
                             } else {
-                                drawBar(context, pos, rect, totalCount, maxRange,
-                                        pY, pX, dX, alignmentCounts, range.isLog());
+                                byte ref = refBases[refIdx];
+                                mismatch = alignmentCounts.isMismatch(pos, ref, context.getChr(), snpThreshold);
                             }
                         }
-                        lastpX = pX + dX;
-
                     }
+
+                    if (!mismatch) {
+                        continue;
+                    }
+
+                    int pY = (int) rectMaxY - 1;
+
+                    int totalCount = alignmentCounts.getTotalCount(pos);
+                    double tmp = range.isLog() ? Math.log10(totalCount) / maxRange : totalCount / maxRange;
+                    int height = (int) (tmp * rectHeight);
+
+                    height = Math.min(height, rect.height - 1);
+
+                    if (dX > 3) {
+                        dX--; // Create a little space between bars when there is room.
+                    }
+
+                    if (height > 0) {
+                        if (bisulfiteMode) {
+                            if (bc != null) {
+                                drawBarBisulfite(context, pos, rect, totalCount, maxRange,
+                                        pY, pX, dX, bc, range.isLog());
+                            }
+                        } else {
+                            drawBar(context, pos, rect, totalCount, maxRange,
+                                    pY, pX, dX, alignmentCounts, range.isLog());
+                        }
+                    }
+                    lastpX = pX + dX;
+
                 }
             }
+            //}
 
         }
     }
@@ -782,7 +772,7 @@ public class CoverageTrack extends AbstractTrack {
                         setDataSource(ds);
                         IGV.getInstance().repaintDataPanels();
                     } else if (path.endsWith(".counts")) {
-                        DataSource ds = new GobyCountArchiveDataSource(file);
+                        CoverageDataSource ds = new GobyCountArchiveDataSource(file);
                         setDataSource(ds);
                         IGV.getInstance().repaintDataPanels();
                     } else {

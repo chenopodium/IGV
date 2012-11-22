@@ -30,6 +30,7 @@ package org.broad.igv.ui.panel;
 
 //~--- non-JDK imports --------------------------------------------------------
 
+import org.broad.igv.Globals;
 import org.broad.igv.track.AttributeManager;
 import org.broad.igv.ui.FontManager;
 import org.broad.igv.ui.IGV;
@@ -80,6 +81,7 @@ public class AttributeHeaderPanel extends JPanel implements Paintable {
     protected void paintComponent(final Graphics graphics) {
 
         super.paintComponent(graphics);
+        ((Graphics2D) graphics).setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         List<String> keys = AttributeManager.getInstance().getVisibleAttributes();
 
@@ -102,9 +104,10 @@ public class AttributeHeaderPanel extends JPanel implements Paintable {
             graphics2.transform(transform);
 
             // Now rotate text counter-clockwise 90 degrees
-            transform = AffineTransform.getRotateInstance(-Math.PI / 2);
+            transform = AffineTransform.getQuadrantRotateInstance(-1);
             graphics2.transform(transform);
             graphics2.setFont(font);
+            graphics2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             FontMetrics fm = graphics2.getFontMetrics();
             int fontAscent = fm.getHeight();
 
@@ -113,7 +116,9 @@ public class AttributeHeaderPanel extends JPanel implements Paintable {
             for (String key : keys) {
                 int columnLeftEdge = ((COLUMN_BORDER_WIDTH + ATTRIBUTE_COLUMN_WIDTH) * i++);
                 x = columnLeftEdge + ((COLUMN_BORDER_WIDTH + ATTRIBUTE_COLUMN_WIDTH) - fontAscent) / 2;
-                graphics2.drawString(key, 0, x);
+                String toDraw = key;
+                int stringOffset = 2;
+                graphics2.drawString(toDraw, stringOffset, x);
             }
         }
     }

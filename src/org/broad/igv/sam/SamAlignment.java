@@ -12,24 +12,24 @@ package org.broad.igv.sam;
 
 //~--- non-JDK imports --------------------------------------------------------
 
+import com.iontorrent.expmodel.FlowSeq;
 import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMReadGroupRecord;
 import net.sf.samtools.SAMRecord;
 import org.apache.log4j.Logger;
-import org.broad.igv.Globals;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.feature.LocusScore;
 import org.broad.igv.feature.Strand;
 import org.broad.igv.feature.genome.Genome;
 import org.broad.igv.feature.genome.GenomeManager;
 import org.broad.igv.track.WindowFunction;
-import org.broad.igv.ui.IGV;
 import org.broad.igv.ui.color.ColorUtilities;
 
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
 
 /**
  * @author jrobinso
@@ -73,13 +73,21 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
     private String readGroup;
     private String library;
     private String sample;
-
+    private String keySequence;
+     
     private boolean firstInPair;
     private Strand firstOfPairStrand;
     private Strand secondOfPairStrand;
 
     private String flowOrder;
     
+    private FlowSeq flowseq;
+    private float model_cf;
+    private float model_ie;
+    private float model_dr;
+    private float[] rawflowSignals; 
+    private float[] oldSignals; 
+
     /**
      * Converts a DNA integer value to its reverse compliment integer value.
      */
@@ -102,13 +110,15 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
             'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N'
     };
 
+    public static final String REDUCE_READS_TAG = "RR";
+
     // Default constructor to support unit tests
     //SamAlignment() {}
 
 
     public SamAlignment(SAMRecord record) {
         flowOrder = null;
-        String keySequence = null;
+        keySequence = null;
 
         this.record = record;
 
@@ -151,9 +161,17 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
                 }
             }
         }
-
-        createAlignmentBlocks(record.getCigarString(), record.getReadBases(), record.getBaseQualities(),
-                getFlowSignals(flowOrder, keySequence), flowOrder, this.getFlowSignalsStart());
+        getModelParameters();
+        rawflowSignals =  getFlowSignals(flowOrder, keySequence);
+        oldSignals =  getOldFlowSignals(flowOrder, keySequence);
+//        if (oldSignals != null) {
+//            log.info("Signals for: "+this.getReadName());
+//            for (int f = 0; f < 20 && f < oldSignals.length && f < flowSignals.length; f+=2) {
+//                log.info("flow "+f+", old="+oldSignals[f]+", new="+flowSignals[f]);
+//            }
+//        }
+        createAlignmentBlocks(record.getCigarString(), keySequence+ record.getReadString(), record.getReadBases(), record.getBaseQualities(), decodeReduceCounts(record),
+               rawflowSignals, flowOrder, this.getFlowSignalsStart());
 
         Object colorTag = record.getAttribute("YC");
         if (colorTag != null) {
@@ -169,7 +187,12 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
     public String getFlowOrder() {
         return flowOrder;
     }
-
+    public float[] getRawFlowSignals() {
+        return rawflowSignals;
+    }
+    public float[] getOldSignals() {
+        return oldSignals;
+    }
     private void setMatePair(Genome genome) {
         if (record.getReadPairedFlag()) {
             String mateReferenceName = record.getMateReferenceName();
@@ -204,18 +227,30 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
             }
 
             final char[] tmp = new char[4];
-            if (record.getInferredInsertSize() > 0) {
-                tmp[0] = s1;
-                tmp[1] = o1;
-                tmp[2] = s2;
-                tmp[3] = o2;
-
-            } else {
-                tmp[2] = s1;
-                tmp[3] = o1;
-                tmp[0] = s2;
-                tmp[1] = o2;
+            int isize = record.getInferredInsertSize();
+            int estReadLen = record.getAlignmentEnd() - record.getAlignmentStart() + 1;
+            if (isize == 0) {
+                //isize not recorded.  Need to estimate.  This calculation was validated against an Illumina
+                // -> <- library bam.
+                int estMateEnd = record.getAlignmentStart() < record.getMateAlignmentStart() ?
+                        record.getMateAlignmentStart() + estReadLen : record.getMateAlignmentStart() - estReadLen;
+                isize = estMateEnd - record.getAlignmentStart();
             }
+
+            //if (isize > estReadLen) {
+                if (isize > 0) {
+                    tmp[0] = s1;
+                    tmp[1] = o1;
+                    tmp[2] = s2;
+                    tmp[3] = o2;
+
+                } else {
+                    tmp[2] = s1;
+                    tmp[3] = o1;
+                    tmp[0] = s2;
+                    tmp[1] = o2;
+                }
+           // }
             pairOrientation = new String(tmp);
         }
     }
@@ -267,8 +302,8 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
      * @param readBases
      * @param readBaseQualities
      */
-    private void createAlignmentBlocks(String cigarString, byte[] readBases, byte[] readBaseQualities) {
-        createAlignmentBlocks(cigarString, readBases, readBaseQualities, null, null, -1);
+    private void createAlignmentBlocks(String cigarString, String seqWithKey, byte[] readBases, byte[] readBaseQualities) {
+        createAlignmentBlocks(cigarString, seqWithKey,readBases, readBaseQualities, null, null, null, -1);
     }
 
     /**
@@ -278,13 +313,23 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
      * @param cigarString
      * @param readBases
      * @param readBaseQualities
-     * @param flowSignals       from the FZ tag, null if not present
-     * @param flowOrder         from the RG.FO header tag, null if not present
+     * @param readRepresentativeCounts the representative counts of each base in the read (translated from the reduce reads tag)
+     * @param flowSignals              from the ZM with raw signals, null if not present
+     * @param flowOrder                from the RG.FO header tag, null if not present
      * @param flowOrderStart
      */
-    private void createAlignmentBlocks(String cigarString, byte[] readBases, byte[] readBaseQualities,
-                                       short[] flowSignals, String flowOrder, int flowOrderStart) {
+    private void createAlignmentBlocks(String cigarString, String seqWithKey, byte[] readBases, byte[] readBaseQualities, short[] readRepresentativeCounts,
+                                       float[] flowSignals, String flowOrder, int flowOrderStart) {
 
+        
+     //   log.info("Creating flowseq for alignment block for "+seqWithKey);
+        //xxxx add key signal
+//        FlowSeq flowseq = new FlowSeq(AlignUtil.basesToInt(seqWithKey), AlignUtil.basesToInt(flowOrder));
+//        if (flowseq.getLength()< seqWithKey.length()) {
+//            log.error("Flow sequence too short: "+flowseq.getLength()+", "+flowseq.toString()+",\n floworder="+flowOrder+",\n seqwithkey="+seqWithKey);
+//            return;
+//        }
+        
         boolean showSoftClipped = PreferenceManager.getInstance().getAsBoolean(PreferenceManager.SAM_SHOW_SOFT_CLIPPED);
 
         int nInsertions = 0;
@@ -359,7 +404,8 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
         FlowSignalContextBuilder fBlockBuilder = null;
         if (null != flowSignals) {
             if (0 < readBases.length) {
-                fBlockBuilder = new FlowSignalContextBuilder(flowSignals, flowOrder, flowOrderStart, readBases, fromIdx, this.readNegativeStrandFlag);
+                
+                fBlockBuilder = new FlowSignalContextBuilder(null, this.oldSignals, flowSignals, flowOrder, flowOrderStart, readBases, fromIdx, this.readNegativeStrandFlag);
             }
         }
         prevOp = 0;
@@ -373,6 +419,7 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
 
                     byte[] blockBases = new byte[op.nBases];
                     byte[] blockQualities = new byte[op.nBases];
+                    short[] blockCounts = new short[op.nBases];
                     AlignmentBlock block = null;
 
                     //Default value
@@ -395,16 +442,24 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
                     } else {
                         System.arraycopy(readBaseQualities, fromIdx, blockQualities, 0, op.nBases);
                     }
-                    
+
+                    if (readRepresentativeCounts != null) {
+                        System.arraycopy(readRepresentativeCounts, fromIdx, blockCounts, 0, op.nBases);
+                    }
+
                     if (null != fBlockBuilder) {
-                        block = AlignmentBlock.getInstance(blockStart, blockBases, blockQualities, 
+                        block = AlignmentBlock.getInstance(blockStart, blockBases, blockQualities,
                                 fBlockBuilder.getFlowSignalContext(readBases, fromIdx, op.nBases), this);
+                      //  log.info("Got block: "+block.getBaseAlignment().toString());
                     } else {
                         block = AlignmentBlock.getInstance(blockStart, blockBases, blockQualities, this);
                     }
 
                     if (op.operator == SOFT_CLIP) {
                         block.setSoftClipped(true);
+                    }
+                    if (readRepresentativeCounts != null) {
+                        block.setCounts(blockCounts);
                     }
                     alignmentBlocks[blockIdx++] = block;
 
@@ -427,6 +482,7 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
 
                     byte[] blockBases = new byte[op.nBases];
                     byte[] blockQualities = new byte[op.nBases];
+                    short[] blockCounts = new short[op.nBases];
 
                     if (readBases == null || readBases.length == 0) {
                         Arrays.fill(blockBases, (byte) '=');
@@ -439,14 +495,19 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
                     } else {
                         System.arraycopy(readBaseQualities, fromIdx, blockQualities, 0, op.nBases);
                     }
-                    
+
+                    if (readRepresentativeCounts != null) {
+                        System.arraycopy(readRepresentativeCounts, fromIdx, blockCounts, 0, op.nBases);
+                    }
                     if (null != fBlockBuilder) {
-                        block = AlignmentBlock.getInstance(blockStart, blockBases, blockQualities, 
+                        block = AlignmentBlock.getInstance(blockStart, blockBases, blockQualities,
                                 fBlockBuilder.getFlowSignalContext(readBases, fromIdx, op.nBases), this);
                     } else {
                         block = AlignmentBlock.getInstance(blockStart, blockBases, blockQualities, this);
                     }
-
+                    if (readRepresentativeCounts != null) {
+                        block.setCounts(blockCounts);
+                    }
                     insertions[insertionIdx++] = block;
 
                     fromIdx += op.nBases;
@@ -633,19 +694,20 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
         }
 
         List<SAMRecord.SAMTagAndValue> attributes = record.getAttributes();
+        final int maxLength = 70;
         if (attributes != null && !attributes.isEmpty()) {
 
             for (SAMRecord.SAMTagAndValue tag : attributes) {
-                buf.append("<br>" + tag.tag + " = ");
-
+                final String tagValue = tag.value.toString();
                 if (tag.value.getClass().isArray()) { // ignore array types
-                    buf.append("[not shown]<br>");
+                    //buf.append("[not shown]<br>");
                     continue;
                 }
-
+                if (tagValue == null || tagValue.length()<1) continue;
+                buf.append("<br>" + tag.tag + " = ");
                 // Break tag
-                final String tagValue = tag.value.toString();
-                final int maxLength = 70;
+               
+                
                 if (tagValue.length() > maxLength && truncate) {
                     String[] tokens = tagValue.split("<br>");
                     for (String token : tokens) {
@@ -726,6 +788,39 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
         return secondOfPairStrand;
     }
 
+    /**
+     * @return the keySequence
+     */
+    public String getKeySequence() {
+        return keySequence;
+    }
+
+    /**
+     * @param keySequence the keySequence to set
+     */
+    public void setKeySequence(String keySequence) {
+        this.keySequence = keySequence;
+    }
+
+    public boolean hasComputedErrors() {
+        return getFlowseq() != null;
+    }
+
+    /**
+     * @return the flowseq
+     */
+    public FlowSeq getFlowseq() {
+        return flowseq;
+    }
+
+    /**
+     * @param flowseq the flowseq to set
+     */
+    public void setFlowseq(FlowSeq flowseq) {
+        this.flowseq = flowseq;
+    }
+
+   
     static class CigarOperator {
 
         int nBases;
@@ -745,27 +840,85 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
 
     /**
      * @return start index in the flow signal as specified by the ZF tag, or -1 if not present
-     * or non-numeric
+     *         or non-numeric
      */
     public int getFlowSignalsStart() {
         Object attribute = record.getAttribute(FLOW_SIGNAL_TAG); // NB: from a TMAP optional tag
         int toRet = -1;
-        if(attribute != null && attribute instanceof Integer){
+        if (attribute != null && attribute instanceof Integer) {
             toRet = (Integer) attribute;
         }
         return toRet;
+    }
+    
+    public float getCF() {
+        return model_cf;
+    }
+     public float getDR() {
+        return model_dr;
+    }
+      public float getIE() {
+        return model_ie;
+    }
+     /** ZP will contain a vector of 3 floats that correspond to CF,IE,DR for this read.
+      * 
+      * @return 
+      */
+    public float[] getModelParameters() {
+        Object attribute = record.getAttribute("ZP");
+        float[] result;
+        if (null == attribute) {
+            return null;
+        } else if (attribute instanceof int[]) {
+            int[] values = (int[]) attribute;
+            result = new float[values.length];
+            for (int i = 0; i < values.length; i++) {
+                result[i] = values[i];
+            }
+        } else if (attribute instanceof float[]) {
+            float[] values = (float[]) attribute;
+            result = new float[values.length];
+            for (int i = 0; i < values.length; i++) {
+                result[i] = values[i];
+            }
+         } else if (attribute instanceof double[]) {
+            double[] values = (double[]) attribute;
+            result = new float[values.length];
+            for (int i = 0; i < values.length; i++) {
+                result[i] = (float) values[i];
+            }
+        } else {
+            return null;
+        }
+        if (result.length>0) model_cf = result[0];
+        if (result.length>1) model_ie = result[1];
+        if (result.length>2) model_dr = result[2];
+        return result;
     }
 
     /**
      * @param flowOrder   the flow order corresponding to this read
      * @param keySequence sequence the key sequence corresponding to this read
-     * @return the flow signals in 100x format (SFF), only if they exist (FZ tag),
-     *         if the key sequence and flow order are found in the read group header tag
-     *         (RG.KS and RG.FO).  Note: the array proceeds in the sequencing direction.
+     * @return the raw flow signals
      */
-    public short[] getFlowSignals(String flowOrder, String keySequence) {
-        short[] r = null;
-        int i;
+    
+    private float[] getFlowSignals(String flowOrder, String keySequence) {
+        
+         float[] result = getNewFlowSignals(flowOrder, keySequence);
+         if (result == null){
+             result = getOldFlowSignals(flowOrder, keySequence);
+         }
+         return result;
+    }
+    private float[] getNewFlowSignals(String flowOrder, String keySequence) {        
+         return getFlowSignals_r(flowOrder, keySequence, "ZM", 1.0/2.56 );        
+    }
+    private float[] getOldFlowSignals(String flowOrder, String keySequence) {        
+         return  getFlowSignals_r(flowOrder, keySequence, "FZ", 1.0);
+    }
+    
+    private float[] getFlowSignals_r(String flowOrder, String keySequence, String tag, double scaling) {
+        float[] result;
         int startFlow, keySignalOverlap;
         char firstBase;
 
@@ -785,41 +938,86 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
             firstBase = (char) record.getReadBases()[0];
         }
         keySignalOverlap = 0;
-        for (i = keySequence.length() - 1; 0 <= i && keySequence.charAt(i) == firstBase; i--) {
+        for (int i = keySequence.length() - 1; 0 <= i && keySequence.charAt(i) == firstBase; i--) {
             keySignalOverlap += 100;
         }
 
-        Object attribute = record.getAttribute("FZ");
+        Object attribute = record.getAttribute(tag);
         if (null == attribute) {
             return null;
         } else if (attribute instanceof short[]) {
-            short[] signals = (short[]) attribute;
-            r = new short[signals.length - startFlow];
-            for (i = startFlow; i < signals.length; i++) {
-                r[i - startFlow] = signals[i];
-            }
+            short[] values = (short[]) attribute;
+            result = new float[values.length - startFlow];
+            for (int i = startFlow; i < values.length; i++) {
+                result[i - startFlow] = values[i];
+            }        
         } else if (attribute instanceof int[]) {
-            int[] signals = (int[]) attribute;
-            r = new short[signals.length - startFlow];
-            System.arraycopy(signals, startFlow, r, 0, r.length);
+            int[] values = (int[]) attribute;
+            result = new float[values.length - startFlow];
+            System.arraycopy(values, startFlow, result, 0, result.length);
         } else if (attribute instanceof byte[]) {
-            byte[] signals = (byte[]) attribute;
-            r = new short[signals.length - startFlow];
-            for (i = startFlow; i < signals.length; i++) {
-                r[i - startFlow] = signals[i];
+            byte[] values = (byte[]) attribute;
+            result = new float[values.length - startFlow];
+            for (int i = startFlow; i < values.length; i++) {
+                result[i - startFlow] = values[i];
             }
         } else {
             return null;
         }
         // Subtract the key's contribution to the first base
-        if (0 < keySignalOverlap && 0 < r.length) {
-            if (r[0] <= keySignalOverlap) {
-                r[0] = 0;
+        if (0 < keySignalOverlap && 0 < result.length) {
+            if (result[0] <= keySignalOverlap) {
+                result[0] = 0;
             } else {
-                r[0] -= keySignalOverlap;
+                result[0] -= keySignalOverlap;
             }
         }
+        for (int i = 0; i < result.length; i++) {
+            result[i] = (float)(result[i]*scaling);
+        }
 
-        return r;
+        return result;
     }
+
+    /**
+     * Reduced reads are stored in an array, where the actual
+     * number of reads is stored as an offset from the first location.
+     * Here we decode that array, so it becomes an array where the value
+     * at each location
+     *
+     * @param record the sam record for this read
+     * @return a byte array with the representative counts of each base in this read, or null if this is not a reduced read
+     */
+    static short[] decodeReduceCounts(SAMRecord record) {
+        Object reducedReadsVal = record.getAttribute(REDUCE_READS_TAG);
+        // in case this read doesn't have the RR tag (is not a reduced read) return null
+        // so the subsequent routines know that this is not a reduced read
+        if (reducedReadsVal == null)
+            return null;
+
+        short[] encodedCounts;
+        if (reducedReadsVal instanceof short[]) {
+            encodedCounts = (short[]) reducedReadsVal;
+        } else if (reducedReadsVal instanceof byte[]) {
+            byte[] rrArr = (byte[]) reducedReadsVal;
+            int len = rrArr.length;
+            encodedCounts = new short[len];
+            for (int ii = 0; ii < len; ii++) {
+                encodedCounts[ii] = (short) rrArr[ii];
+            }
+        } else {
+            log.info("Found reduced reads tag, but was unexpected type " + reducedReadsVal.getClass());
+            return null;
+        }
+
+        short[] decodedCounts = new short[encodedCounts.length];
+        short startVal = encodedCounts[0];
+        decodedCounts[0] = startVal;
+        for (int ii = 1; ii < decodedCounts.length; ii++) {
+            decodedCounts[ii] = (short) Math.min(startVal + encodedCounts[ii], Short.MAX_VALUE);
+        }
+        return decodedCounts;
+
+    }
+
 }

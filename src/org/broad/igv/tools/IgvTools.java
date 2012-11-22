@@ -427,7 +427,7 @@ public class IgvTools {
                 separateBasesOption = parser.addBooleanOption("bases");
                 strandOption = parser.addStringOption("strands");
                 queryStringOpt = parser.addStringOption("query");
-                minMapQualityOpt = parser.addStringOption("minMapQuality");
+                minMapQualityOpt = parser.addIntegerOption("minMapQuality");
                 includeDupsOpt = parser.addBooleanOption("includeDuplicates");
                 pairedCoverageOpt = parser.addBooleanOption("pairs");
 
@@ -559,6 +559,7 @@ public class IgvTools {
         try {
             Preprocessor p = new Preprocessor(outputFile, genome, windowFunctions, nLines, null);
             if (inputFileOrDir.isDirectory() || inputFileOrDir.getName().endsWith(".list")) {
+                p.setSizeEstimate(0);
                 List<File> files = getFilesFromDirOrList(inputFileOrDir);
                 for (File f : files) {
                     p.preprocess(f, maxZoomValue, typeString);
@@ -653,13 +654,17 @@ public class IgvTools {
     /**
      * Compute coverage or density of an alignment or feature file.
      *
-     * @param ifile           Alignement or feature file
+     * @param ifile           Alignment or feature file
      * @param ofile           Output file
      * @param genomeId        Genome id (e.g. hg18) or full path to a .genome file (e.g. /xchip/igv/scer2.genome)
      * @param maxZoomValue    Maximum zoom level to precompute.  Default value is 7
      * @param windowFunctions
      * @param windowSizeValue
      * @param extFactorValue
+     * @param trackLine
+     * @param queryString
+     * @param minMapQuality
+     * @param countFlags
      * @throws IOException
      */
     public void doCount(String ifile, String ofile, String genomeId, int maxZoomValue,
@@ -756,18 +761,29 @@ public class IgvTools {
             throw new PreprocessingException(msg);
         }
 
+        String[] fastaTypes = new String[]{"fa", "fna", "fasta"};
+        boolean isFasta = false;
         //We have different naming conventions for different index files
         if (typeString.endsWith("sam") && !outputFileName.endsWith(".sai")) {
             outputFileName += ".sai";
         } else if (typeString.endsWith("bam") && !outputFileName.endsWith(".bai")) {
             outputFileName += ".bai";
-        } else if (typeString.endsWith("fa") && !outputFileName.endsWith(".fai")) {
-            outputFileName += ".fai";
-        } else if (typeString.endsWith("fasta") && !outputFileName.endsWith(".fai")) {
-            outputFileName += ".fai";
-        } else if (!typeString.endsWith("sam") && !typeString.endsWith("bam") && !outputFileName.endsWith(".idx")) {
-            outputFileName += ".idx";
+        } else {
+
+            for (String ft : fastaTypes) {
+                if (typeString.endsWith(ft) && !outputFileName.endsWith(".fai")) {
+                    outputFileName += ".fai";
+                    isFasta = true;
+                    break;
+                }
+            }
+
+
+            if (!isFasta && !outputFileName.endsWith(".idx")) {
+                outputFileName += ".idx";
+            }
         }
+
 
         File outputFile = new File(outputFileName);
 
@@ -777,16 +793,16 @@ public class IgvTools {
                 AlignmentIndexer indexer = AlignmentIndexer.getInstance(inputFile, null, null);
                 indexer.createSamIndex(outputFile);
                 return outputFileName;
-            } else if (typeString.equals(".fa") || typeString.equals(".fasta")) {
+            } else if (isFasta) {
                 FastaUtils.createIndexFile(inputFile.getAbsolutePath(), outputFileName);
                 return outputFileName;
             }
         } catch (Exception e) {
-            e.printStackTrace();
             // Delete output file as it is probably corrupt
             if (outputFile.exists()) {
                 outputFile.delete();
             }
+            throw new RuntimeException(e);
         }
 
 
@@ -955,12 +971,15 @@ public class IgvTools {
                 typeString.endsWith("wig") ||
                 // ifile.toLowerCase().endsWith("cpg.txt") ||
                 typeString.endsWith("ewig") ||
+                typeString.endsWith("map") ||
                 typeString.endsWith("cn") ||
                 typeString.endsWith("snp") ||
                 typeString.endsWith("xcn") ||
                 typeString.endsWith("gct") ||
+                typeString.endsWith("tab") ||
                 typeString.endsWith("mage-tab") ||
                 typeString.endsWith("bedgraph") ||
+                typeString.endsWith("ewig.list") ||
                 Preprocessor.isAlignmentFile(typeString) ||
                 affective)) {
             throw new PreprocessingException("Tile command not supported for files of type: " + typeString);
@@ -1005,7 +1024,7 @@ public class IgvTools {
      * @param file a file or directory.
      * @return
      */
-    private int estimateLineCount(File file) {
+    private int estimateLineCount(File file) throws IOException {
 
         int nLines = 0;
         if (file.isDirectory() || file.getName().endsWith(".list")) {
@@ -1014,6 +1033,25 @@ public class IgvTools {
                 if (!f.isDirectory()) {
                     nLines += ParsingUtils.estimateLineCount(f.getAbsolutePath());
                 }
+            }
+        } else if (file.getName().endsWith(".map")) {
+            BufferedReader reader = null;
+            try {
+                reader = new BufferedReader(new FileReader(file));
+                String nextLine;
+
+                while ((nextLine = reader.readLine()) != null) {
+                    String[] tokens = Globals.whitespacePattern.split(nextLine);
+                    File f = new File(file.getParent(), tokens[1]);
+                    nLines += ParsingUtils.estimateLineCount(f.getAbsolutePath());
+                }
+                return nLines;
+
+            } catch (Exception e) {
+                System.err.println("Error estimating line count: " + e.getMessage());
+                nLines = 0;
+            } finally {
+                if (reader != null) reader.close();
             }
         } else {
             nLines = ParsingUtils.estimateLineCount(file.getAbsolutePath());

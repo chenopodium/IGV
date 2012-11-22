@@ -4,6 +4,7 @@
  */
 package com.iontorrent.data;
 
+import com.iontorrent.expmodel.FlowSeq;
 import com.iontorrent.rawdataaccess.FlowValue;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,7 +17,7 @@ import org.broad.igv.feature.Locus;
 import org.broad.igv.sam.*;
 import org.broad.igv.ui.panel.ReferenceFrame;
 import org.iontorrent.sam2flowgram.flowalign.FlowOrder;
-import org.iontorrent.sam2flowgram.flowalign.FlowSeq;
+
 import org.iontorrent.sam2flowgram.flowalign.FlowgramAlignment;
 import org.iontorrent.sam2flowgram.util.AlignUtil;
 
@@ -136,16 +137,21 @@ public class IonogramAlignment {
                             iono.setFloworder(order);
                         }
 
-                        short flowSignal = subcontext.getCurrentSignal();
+                        FlowValue fblock = subcontext.getCurrentValue();
+                        short rawflowSignal = (short) fblock.getRawFlowvalue();
                         // that base is always the FORWARD base, so the complement in a reverse sequence
                         char base = (char) block.getBase(posinblock);
                         // now we also have to get the EMTPIES after this flow!
                         boolean isempty = false;
                         // skip if this flow values is the same as the one before
-                        FlowValue flowvalue = new FlowValue(flowSignal, flownr, base, relativelocation, isempty, bestbase);
+                        FlowValue flowvalue = new FlowValue(fblock.getHpLen(), rawflowSignal, flownr, base, relativelocation, isempty, bestbase);
+                        flowvalue.setPredictedValue(fblock.getPredictedValue());
+                        flowvalue.setNext(fblock.getNext());
+                        flowvalue.setComputedError(fblock.getComputedError());
+                        flowvalue.setPrev(fblock.getPrev());
                         //if (!iono.isSameAsPrev(flowvalue)) {
-                        iono.addFlowValue(flowvalue);
-                        short[] nextempties = subcontext.getNextSignals();
+                        iono.addFlowValue(flowvalue); 
+                        FlowValue nextempties[]= subcontext.getNextValues();
                         if (nextempties != null) {
                             // add the emtpies
                             int nrempties = nextempties.length;
@@ -162,15 +168,18 @@ public class IonogramAlignment {
                                 } else {
                                     curflowpos = flownr - e - 1;
                                 }
-                                short emptysignal = nextempties[e];
-                                char emptybase = subcontext.getBaseForNextEmpty(e);
-                                // if reverse, use complement!
-                                if (!forward) {
-                                    emptybase = AlignUtil.getComplement(emptybase);
+                                FlowValue fv = nextempties[e];
+                                if (fv != null) {
+                                    short emptysignal =(short) fv.getRawFlowvalue() ;
+                                    char emptybase = subcontext.getBaseForNextEmpty(e);
+                                    // if reverse, use complement!
+                                    if (!forward) {
+                                        emptybase = AlignUtil.getComplement(emptybase);
+                                    }
+                                    FlowValue emptyvalue = new FlowValue(0, emptysignal, curflowpos, emptybase, relativelocation, isempty, ' ');
+                                    // if (!iono.isSameAsPrev(emptyvalue)) {
+                                    iono.addFlowValue(emptyvalue);
                                 }
-                                FlowValue emptyvalue = new FlowValue(emptysignal, curflowpos, emptybase, relativelocation, isempty, ' ');
-                                // if (!iono.isSameAsPrev(emptyvalue)) {
-                                iono.addFlowValue(emptyvalue);
                                 // }
                             }
                         }
@@ -189,13 +198,13 @@ public class IonogramAlignment {
         IonogramAlignment ionoalign = new IonogramAlignment(frame.getChrName(), new String(consensus), ionograms, maxemptyperlocation, nrbases_left_right, center_location);
         return ionoalign;
     }
-    public ScoreDistribution[] getFlowSignalDistribution(String locus, int slot) {
+    public ErrorDistribution[] getFlowSignalDistribution(String locus, int slot) {
         // one for each base!
         if (ionograms == null || ionograms.isEmpty()) return null;
-        ArrayList<TreeMap<Short, Integer>> alleletrees = new ArrayList<TreeMap<Short, Integer>>();
+        ArrayList<ArrayList<FlowValue> > alleletrees = new ArrayList<ArrayList<FlowValue> >();
 
         int nrflows = 0;
-        ArrayList<ScoreDistribution> alleledist = new ArrayList<ScoreDistribution>();
+        ArrayList<ErrorDistribution> alleledist = new ArrayList<ErrorDistribution>();
         String bases = "";
         // also store information on read and position
         boolean forward = false;
@@ -221,36 +230,30 @@ public class IonogramAlignment {
                     }
                 }
                 nrflows++;
-                TreeMap<Short, Integer> map = null;
+                ArrayList<FlowValue> allelelists = null;
                 ArrayList<ReadInfo> readinfos = null;
                 char base = fv.getBase();
                 int whichbase = bases.indexOf(base);
                 if (whichbase < 0) {
                     bases += base;
-                    map = new TreeMap<Short, Integer>();
-                    alleletrees.add(map);
+                    allelelists = new ArrayList<FlowValue>() ;
+                    alleletrees.add(allelelists);
                     readinfos = new ArrayList<ReadInfo>();
                     allelereadinfos.add(readinfos);
                 } else {
-                    map = alleletrees.get(whichbase);
+                    allelelists = alleletrees.get(whichbase);
                     readinfos = allelereadinfos.get(whichbase);
                 }
-                short flowSignal = (short) fv.getFlowvalue();
+                
                 ReadInfo readinfo = new ReadInfo(iono.getReadname(), fv);
                 readinfos.add(readinfo);
-                if (map.containsKey(flowSignal)) {
-                    // increment
-                    map.put(flowSignal, map.get(flowSignal) + 1);
-                } else {
-                    // insert
-                    map.put(flowSignal, 1);
-                }
+                if (allelelists.add(fv));
             }
         }
 
 
         int which = 0;
-        for (TreeMap<Short, Integer> map : alleletrees) {
+        for ( ArrayList<FlowValue> allelelist : alleletrees) {
             String name = "";
             if (forward && reverse) {
                 name += "both strand";
@@ -263,15 +266,15 @@ public class IonogramAlignment {
             name += ", " + base + ", " + nrflows + " flows, slot "+slot;
             String info = locus + ", " + bases;
             
-            ScoreDistribution dist = new ScoreDistribution(slot, nrflows, map, name, base, forward, reverse, info);
+            ErrorDistribution dist = new ErrorDistribution(slot, nrflows, allelelist, name, base, forward, reverse, info);
             dist.setChromosome(chromosome);
             dist.setReadInfos(allelereadinfos.get(which));
             alleledist.add(dist);
             which++;
         }
         
-         ScoreDistribution distributions[] = null;
-         distributions = new ScoreDistribution[alleledist.size()];
+         ErrorDistribution distributions[] = null;
+         distributions = new ErrorDistribution[alleledist.size()];
             for (int i = 0; i < alleledist.size(); i++) {
                 distributions[i] = alleledist.get(i);
             }
@@ -481,7 +484,7 @@ public class IonogramAlignment {
             if (v != null && v.getAlignmentBase() != ' ' && v.getBase() == v.getAlignmentBase()) {                
                 base= v.getAlignmentBase();
                 count++;
-                value += v.getFlowvalue();
+                value += v.getRawFlowvalue();
             }
         }
         int nrbases = (int) Math.max(1, Math.round(value/(double)count/100.0));
@@ -562,7 +565,7 @@ public class IonogramAlignment {
         }
         Ionogram iono = ionograms.get(0);
         String nl = "\n";
-        String res = "Ionogram alignent at " + iono.getLocusinfo() + nl + nl;
+        String res = "Flow alignent at " + iono.getLocusinfo() + nl + nl;
         // I know using String + is usually not recommended
         // but, this method does not have to be fast or efficient, so for readability
         // + is still much nicer than all those appends :-)
@@ -579,7 +582,7 @@ public class IonogramAlignment {
                 if (v == null) {
                     res += ",";
                 } else {
-                    res = res + v.getFlowvalue() + ", ";
+                    res = res + v.getRawFlowvalue() + ", ";
                 }
             }
             res += nl;
@@ -664,14 +667,14 @@ public class IonogramAlignment {
     }
 
     public int getMaxValue() {
-        int max = 0;
+        double max = 0;
         for (Ionogram iono : ionograms) {
-            int v = iono.getMaxValue();
+            double v = iono.getMaxValue();
             if (v > max) {
                 max = v;
             }
         }
-        return max;
+        return (int)max;
     }
 
     /**

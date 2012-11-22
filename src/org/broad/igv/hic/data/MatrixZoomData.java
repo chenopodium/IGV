@@ -7,16 +7,19 @@ import org.broad.igv.feature.Chromosome;
 import org.broad.igv.hic.matrix.BasicMatrix;
 import org.broad.igv.hic.matrix.RealMatrixWrapper;
 import org.broad.igv.hic.tools.Preprocessor;
+import org.broad.igv.hic.track.HiCFixedGridAxis;
+import org.broad.igv.hic.track.HiCFragmentAxis;
+import org.broad.igv.hic.track.HiCGridAxis;
 import org.broad.igv.util.FileUtils;
-import org.broad.igv.util.HttpUtils;
+import org.broad.igv.util.ParsingUtils;
+import org.broad.igv.util.collections.DoubleArrayList;
 import org.broad.tribble.util.LittleEndianInputStream;
 import org.broad.tribble.util.LittleEndianOutputStream;
 
 import javax.swing.*;
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
+import java.util.List;
 
 /**
  * @author jrobinso
@@ -24,10 +27,14 @@ import java.util.concurrent.Future;
  */
 public class MatrixZoomData {
 
+    HiCGridAxis xGridAxis;
+    HiCGridAxis yGridAxis;
+
     private Chromosome chr1;  // Redundant, but convenient
     private Chromosome chr2;  // Redundant, but convenient
 
-    private int zoom;
+    private int zoom;        // doesn't seem to be used
+    private int fileBinSize;     // needed for fragment maps
     private int binSize;         // bin size in bp
     private int blockBinCount;   // block size in bins
     private int blockColumnCount;     // number of block columns
@@ -40,8 +47,8 @@ public class MatrixZoomData {
     private DatasetReader reader;
 
     private BasicMatrix pearsons;
-    private RealMatrix oe;
     private double[] eigenvector;
+    private int[] nonCentromereColumns;
 
     public void setPearsons(BasicMatrix bm) {
         this.pearsons = bm;
@@ -71,15 +78,47 @@ public class MatrixZoomData {
 
         this.chr1 = chr1;
         this.chr2 = chr2;
-        this.zoom = dis.readInt();
 
-        if (reader.getVersion() >= 1) {
-            dis.readInt();              // sum but we're not using this anymore
+        // THIS INSTANCEOF SWITCH IS TRULY AWFUL -- but temporary until all old files are converted
+        if (reader instanceof DatasetReaderV1) {
+            this.zoom = dis.readInt();
+            if (reader.getVersion() >= 1) {
+                dis.readInt();              // sum but we're not using this anymore
+            }
+        } else {
+            String unit = dis.readString();
+            this.zoom = dis.readInt();
+            float sumCounts = dis.readFloat();
+            float avgCounts = dis.readFloat();
+            float stdDev = dis.readFloat();
+            float percent95 = dis.readFloat();
         }
 
-        this.binSize = dis.readInt();
+        fileBinSize = dis.readInt();
+
         this.blockBinCount = dis.readInt();
         this.blockColumnCount = dis.readInt();
+        if (fileBinSize > 1) {
+            binSize = fileBinSize;
+            xGridAxis = new HiCFixedGridAxis(blockBinCount * blockColumnCount, binSize);
+            yGridAxis = new HiCFixedGridAxis(blockBinCount * blockColumnCount, binSize);
+        } else {
+            // TODO -- read bins from file, fake it for now.  The
+            int nBins = blockBinCount * blockColumnCount;
+            binSize = (int) ((double) chr1.getLength() / (blockBinCount * blockColumnCount));
+            HiCFragmentAxis.Bin[] bins = new HiCFragmentAxis.Bin[nBins];
+            for (int i = 0; i < nBins; i++) {
+                int gStart = (int) (binSize * i);
+                int gEnd = (int) (binSize * (i + 1));
+                bins[i] = new HiCFragmentAxis.Bin(gStart, (gEnd - gStart));
+
+            }
+
+            xGridAxis = new HiCFragmentAxis(bins);
+            yGridAxis = new HiCFragmentAxis(bins);
+
+        }
+
 
         int nBlocks = dis.readInt();
         this.blockIndex = new HashMap<Integer, Preprocessor.IndexEntry>(nBlocks);
@@ -97,16 +136,34 @@ public class MatrixZoomData {
         // If there's a pearson file available initialize it now
         String rootPath = FileUtils.getParent(reader.getPath());
         String folder = rootPath + "/" + chr1.getName();
-        String file = "pearsons" + "_" + chr1.getName() + "_" + chr2.getName() + "_" + binSize + ".bin";
+        String file = "pearsons" + "_" + chr1.getName() + "_" + chr2.getName() + "_" + fileBinSize + ".bin";
         String fullPath = folder + "/" + file;
-        if(FileUtils.resourceExists(fullPath)) {
+        if (FileUtils.resourceExists(fullPath)) {
             pearsons = ScratchPad.readPearsons(fullPath);
         }
 
+        // If there's an eigenvector file load it
+        String eigenFile = "eigen" + "_" + chr1.getName() + "_" + chr2.getName() + "_" + fileBinSize + ".wig";
+        String fullEigenPath = folder + "/" + eigenFile;
+        if (FileUtils.resourceExists(fullEigenPath)) {
+            readEigenvector(fullEigenPath);
+        }
+
+
+    }
+
+    public int getZoomMultiplier() {
+        return binSize / 5000;
     }
 
 
+    public HiCGridAxis getxGridAxis() {
+        return xGridAxis;
+    }
 
+    public HiCGridAxis getyGridAxis() {
+        return yGridAxis;
+    }
 
     public int getBinSize() {
         return binSize;
@@ -191,117 +248,128 @@ public class MatrixZoomData {
         return eigenvector;
     }
 
+    private void readEigenvector(String fullPath) {
+
+        if (FileUtils.resourceExists(fullPath)) {
+            //Lots of assumptions made here about structure of wig file
+            BufferedReader br = null;
+
+            try {
+                br = ParsingUtils.openBufferedReader(fullPath);
+                String nextLine = br.readLine();  // The track line, ignored
+                DoubleArrayList arrayList = new DoubleArrayList(10000);  // TODO -- can size this exactly
+                while ((nextLine = br.readLine()) != null) {
+                    if (nextLine.startsWith("track") || nextLine.startsWith("fixedStep") || nextLine.startsWith("#")) {
+                        continue;
+                    }
+                    try {
+                        arrayList.add(Double.parseDouble(nextLine));
+                    } catch (NumberFormatException e) {
+                        arrayList.add(Double.NaN);
+                    }
+                }
+                eigenvector = arrayList.toArray();
+            } catch (IOException e) {
+                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            } finally {
+                if (br != null) try {
+                    br.close();
+                } catch (IOException e) {
+                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                }
+            }
+
+        }
+
+    }
+
 
     public double[] computeEigenvector(DensityFunction df, int which) {
-
+        //SparseRealMatrix oe = computeOE(df);
         if (pearsons == null) {
             pearsons = computePearsons(df);
         }
-        int size = pearsons.getColumnDimension();
-        eigenvector = new double[size];
-        int numgood = 0;
-
-        for (int i = 0; i < size; i++) {
-            eigenvector[i] = Double.NaN;
-            if (!isZeros(oe.getRow(i))) {
-                eigenvector[i] = 1;
-                numgood++;
-            }
-        }
-        int[] cols = new int[numgood];
-        numgood = 0;
-        for (int i = 0; i < size; i++)
-            if (!Double.isNaN(eigenvector[i]))
-                cols[numgood++] = i;
 
         RealMatrix subMatrix = null;
         if (pearsons instanceof RealMatrixWrapper) {
 
-            subMatrix = ((RealMatrixWrapper) pearsons).getMatrix().getSubMatrix(cols, cols);
+            subMatrix = ((RealMatrixWrapper) pearsons).getMatrix().getSubMatrix(nonCentromereColumns, nonCentromereColumns);
 
             if (which >= subMatrix.getColumnDimension() || which < 0)
                 throw new NumberFormatException("Maximum eigenvector is " + subMatrix.getColumnDimension());
 
 
         } else {
+            JOptionPane.showMessageDialog(null, "Eigenvector file not found");
+            eigenvector = new double[0];
+            return eigenvector;
             // TODO -- make submatrix from pearsons
-            throw new RuntimeException("Eigenvector calculation not implementated for matrix class: "
-                    + pearsons.getClass().getName());
+            // Can't do this on precomputed matrix because we don't know the "nonCentromereColumns".
+//            RealMatrix rm = new org.apache.commons.math.linear.BlockRealMatrix(pearsons.getRowDimension(), pearsons.getColumnDimension());
+//            try {
+//                for(int i=0; i<pearsons.getRowDimension(); i++) {
+//                    for(int j=0; j<pearsons.getColumnDimension(); j++) {
+//                        rm.setEntry(i, j, pearsons.getEntry(i, j));
+//                    }
+//                }
+//            } catch (Exception e) {
+//                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+//            }
+//
+//            subMatrix = rm.getSubMatrix(nonCentromereColumns, nonCentromereColumns);
+
         }
 
-        RealVector rv = (new EigenDecompositionImpl(subMatrix, 0)).getEigenvector(which);
+        RealVector rv;
+        rv = (new EigenDecompositionImpl(subMatrix, 0)).getEigenvector(which);
+
         double[] ev = rv.toArray();
-        numgood = 0;
-        for (int i = 0; i < size; i++) {
-            if (Double.isNaN(eigenvector[i]))
-                eigenvector[i] = 0;
-            else
-                eigenvector[i] = ev[numgood++];
-        }
 
+        int size = pearsons.getColumnDimension();
+        eigenvector = new double[size];
+        int num = 0;
+        for (int i = 0; i < size; i++) {
+            if (i == nonCentromereColumns[num]) {
+                eigenvector[i] = ev[num];
+                num++;
+            } else
+                eigenvector[i] = 0;
+        }
         return eigenvector;
+
     }
 
     public BasicMatrix getPearsons() {
         return pearsons;
     }
 
-    public RealMatrixWrapper computePearsons(DensityFunction df) {
+    public BasicMatrix computePearsons(DensityFunction df) {
+        RealMatrix oe = computeOE(df);
 
-        if (oe == null)
-            oe = computeOE(df);
+        // below subtracts the empirical mean - necessary for mean-centered eigenvector
+        int size = oe.getRowDimension();
+        int num = 0;
+        for (int i = 0; i < size; i++) {
+            if (num < nonCentromereColumns.length && i == nonCentromereColumns[num]) {
+                RealVector v = oe.getRowVector(i);
+                double m = getVectorMean(v);
+                RealVector newV = v.mapSubtract(m);
+                oe.setRowVector(i, newV);
+                num++;
+            }
+        }
 
         RealMatrix rm = (new PearsonsCorrelation()).computeCorrelationMatrix(oe);
-        RealMatrixWrapper pearsons = new RealMatrixWrapper(rm);
+        RealVector v = new ArrayRealVector(size);
+        num = 0;
+        for (int i = 0; i < size; i++) {
+            if (num < nonCentromereColumns.length && i != nonCentromereColumns[num]) {
+                rm.setRowVector(i, v);
+                rm.setColumnVector(i, v);
+            } else num++;
+        }
+        pearsons = new RealMatrixWrapper(rm);
         return pearsons;
-    }
-
-    private RealMatrix readRealMatrix(String filename) throws IOException {
-        LittleEndianInputStream is = null;
-        RealMatrix rm = null;
-        try {
-            is = new LittleEndianInputStream(new BufferedInputStream(new FileInputStream(filename + this.zoom)));
-
-            int rows = is.readInt();
-            int cols = is.readInt();
-            double[][] matrix = new double[rows][cols];
-            for (int i = 0; i < rows; i++) {
-                for (int j = 0; j < cols; j++) {
-                    matrix[i][j] = is.readDouble();
-                }
-            }
-            rm = new BlockRealMatrix(rows, cols);
-            rm.setSubMatrix(matrix, 0, 0);
-        } catch (IOException error) {
-            System.err.println("IO error when saving Pearson's: " + error);
-        } finally {
-            if (is != null)
-                is.close();
-        }
-        return rm;
-    }
-
-    private void outputRealMatrix(RealMatrix rm) throws IOException {
-        LittleEndianOutputStream os = null;
-        try {
-            os = new LittleEndianOutputStream(new BufferedOutputStream(new FileOutputStream("pearsons" + this.zoom + ".bin")));
-
-            int rows = rm.getRowDimension();
-            int cols = rm.getColumnDimension();
-            os.writeInt(rows);
-            os.writeInt(cols);
-            double[][] matrix = rm.getData();
-            for (int i = 0; i < rows; i++) {
-                for (int j = 0; j < cols; j++) {
-                    os.writeDouble(matrix[i][j]);
-                }
-            }
-        } catch (IOException error) {
-            System.err.println("IO error when saving Pearson's: " + error);
-        } finally {
-            if (os != null)
-                os.close();
-        }
     }
 
     private boolean isZeros(double[] array) {
@@ -330,21 +398,23 @@ public class MatrixZoomData {
             throw new RuntimeException("Cannot yet compute Pearson's for different chromosomes");
         }
 
-        int nBins = chr1.getLength() / binSize + 1;
+        int nBins = blockBinCount * blockColumnCount;
+        //int nBins = chr1.getLength() / binSize + 1;
 
         SparseRealMatrix rm = new OpenMapRealMatrix(nBins, nBins);
 
         List<Integer> blockNumbers = new ArrayList<Integer>(blockIndex.keySet());
+
         for (int blockNumber : blockNumbers) {
             Block b = readBlock(blockNumber);
             if (b != null) {
                 for (ContactRecord rec : b.getContactRecords()) {
-                    int x = rec.getX();// * binSize;
-                    int y = rec.getY();// * binSize;
+                    int x = rec.getBinX();// * binSize;
+                    int y = rec.getBinY();// * binSize;
                     int dist = Math.abs(x - y);
                     double expected = df.getDensity(chr1.getIndex(), dist);
-                    double normCounts = (rec.getCounts() / expected);
-
+                    double observed = rec.getCounts(); //df.getNormalizedCount(rec.getCounts(), chr1.getIndex(), x * binSize, chr2.getIndex(), y * binSize);
+                    double normCounts = observed / expected;
                     rm.addToEntry(x, y, normCounts);
                     if (x != y) {
                         rm.addToEntry(y, x, normCounts);
@@ -354,31 +424,20 @@ public class MatrixZoomData {
         }
         int size = rm.getRowDimension();
         BitSet bitSet = new BitSet(size);
-        double[] nans = new double[size];
-        for (int i = 0; i < size; i++)
-            nans[i] = Double.NaN;
 
         for (int i = 0; i < size; i++) {
             if (isZeros(rm.getRow(i))) {
                 bitSet.set(i);
             }
         }
+        nonCentromereColumns = new int[size - bitSet.cardinality()];
 
+        int num = 0;
         for (int i = 0; i < size; i++) {
-            if (bitSet.get(i)) {
-                rm.setRow(i, nans);
-                rm.setColumn(i, nans);
+            if (!bitSet.get(i)) {
+                nonCentromereColumns[num++] = i;
             }
         }
-
-        for (int i = 0; i < size; i++) {
-            RealVector v = rm.getRowVector(i);
-            double m = getVectorMean(v);
-            RealVector newV = v.mapSubtract(m);
-            rm.setRowVector(i, newV);
-        }
-        PearsonsResetNan resetNan = new PearsonsResetNan();
-        rm.walkInOptimizedOrder(resetNan);
 
         return rm;
     }
@@ -423,19 +482,27 @@ public class MatrixZoomData {
     }
     // Dump the contents to standard out
 
-    public void dump() {
+    public void dump(LittleEndianOutputStream les) throws IOException {
 
         // Get the block index keys, and sort
         List<Integer> blockNumbers = new ArrayList<Integer>(blockIndex.keySet());
         Collections.sort(blockNumbers);
 
-        System.out.println("# " + chr1.getName() + " - " + chr2.getName());
+        if (les == null)
+            System.out.println("# " + chr1.getName() + " - " + chr2.getName());
+
 
         for (int blockNumber : blockNumbers) {
             Block b = readBlock(blockNumber);
             if (b != null) {
                 for (ContactRecord rec : b.getContactRecords()) {
-                    System.out.println(rec.getX() * binSize + "\t" + rec.getY() * binSize + "\t" + rec.getCounts());
+                    if (les == null)
+                        System.out.println(rec.getBinX() * fileBinSize + "\t" + rec.getBinY() * fileBinSize + "\t" + rec.getCounts());
+                    else {
+                        les.writeInt(rec.getBinX());
+                        les.writeInt(rec.getBinY());
+                        les.writeFloat(rec.getCounts());
+                    }
                 }
             }
         }
@@ -446,44 +513,71 @@ public class MatrixZoomData {
      *
      * @param df
      * @param isOE
+     * @param les
      */
-    public void dumpOE(DensityFunction df, boolean isOE) {
-        oe = computeOE(df);
-        if (isOE) {
+    public void dumpOE(DensityFunction df, boolean isOE, LittleEndianOutputStream les) throws IOException {
 
+        if (isOE) {
+            SparseRealMatrix oe = computeOE(df);
             int rows = oe.getRowDimension();
             int cols = oe.getColumnDimension();
-            System.out.println(rows + " " + cols);
-            double[][] matrix = oe.getData();
+            assert (rows == cols);
+            if (les != null)
+                les.writeInt(rows);
+            else
+                System.out.println(rows + " " + cols);
+            int num = 0;
             for (int i = 0; i < rows; i++) {
-                for (int j = 0; j < cols; j++) {
-                    System.out.print(matrix[i][j] + " ");
+                if (num >= nonCentromereColumns.length || i == nonCentromereColumns[num]) {
+                    double[] row = oe.getRow(i);
+                    int num2 = 0;
+                    for (int j = 0; j < cols; j++) {
+                        float output = Float.NaN;
+                        if (num2 >= nonCentromereColumns.length || j == nonCentromereColumns[num2]) {
+                            output = (float) row[j];
+                            num2++;
+                        }
+                        if (les != null)
+                            les.writeFloat(output);
+                        else
+                            System.out.print(output + " ");
+                    }
+                    num++;
+                } else {
+                    for (int j = 0; j < cols; j++) {
+                        if (les != null)
+                            les.writeFloat(Float.NaN);
+                        else
+                            System.out.print(Float.NaN + " ");
+                    }
                 }
-                System.out.println();
+                if (les == null)
+                    System.out.println();
             }
-            System.out.println();
+            if (les == null)
+                System.out.println();
         } else {
 
-            RealMatrix rm = (new PearsonsCorrelation()).computeCorrelationMatrix(oe);
+            RealMatrix rm = ((RealMatrixWrapper) computePearsons(df)).getMatrix();
             int rows = rm.getRowDimension();
             int cols = rm.getColumnDimension();
-            System.out.println(rows + " " + cols);
+            if (les != null)
+                les.writeInt(rows);
+            else
+                System.out.println(rows + " " + cols);
             double[][] matrix = rm.getData();
             for (int i = 0; i < rows; i++) {
                 for (int j = 0; j < cols; j++) {
-                    System.out.print(matrix[i][j] + " ");
+                    if (les != null)
+                        les.writeFloat((float) matrix[i][j]);
+                    else
+                        System.out.print(matrix[i][j] + " ");
                 }
-                System.out.println();
+                if (les == null)
+                    System.out.println();
             }
-            System.out.println();
-        }
-    }
-
-    private class PearsonsResetNan extends DefaultRealMatrixChangingVisitor {
-        public double visit(int row, int column, double value) {
-            if (Double.isNaN(value))
-                return 0;
-            return value;
+            if (les == null)
+                System.out.println();
         }
     }
 

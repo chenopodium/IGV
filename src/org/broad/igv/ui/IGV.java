@@ -61,6 +61,7 @@ import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.lang.ref.SoftReference;
+import java.lang.reflect.InvocationTargetException;
 import java.net.NoRouteToHostException;
 import java.util.*;
 import java.util.List;
@@ -140,6 +141,11 @@ public class IGV {
             throw new RuntimeException("IGV has not been initialized.  Must call createInstance(Frame) first");
         }
         return theInstance;
+    }
+
+    //For testing
+    static void destroyInstance() {
+        theInstance = null;
     }
 
     public static boolean hasInstance() {
@@ -323,11 +329,26 @@ public class IGV {
     }
 
     public void chromosomeChangeEvent(String chrName, boolean updateCommandBar) {
-
         contentPane.chromosomeChanged(chrName);
         repaintDataAndHeaderPanels(updateCommandBar);
         contentPane.getCommandBar().updateComponentStates();
 
+    }
+
+    public void repaintStatusAndZoomSlider() {
+        contentPane.getCommandBar().repaint();
+    }
+
+    /**
+     * Repaints dataAndHeaderPanels as well as
+     * zoom controls IFF IGV has instance && not headless.
+     * Mostly use for testing
+     */
+    public static void repaintPanelsHeadlessSafe() {
+        if (IGV.hasInstance() && !Globals.isHeadless()) {
+            IGV.getInstance().repaintDataAndHeaderPanels();
+            IGV.getInstance().repaintStatusAndZoomSlider();
+        }
     }
 
     /**
@@ -338,10 +359,14 @@ public class IGV {
         repaintDataAndHeaderPanels(true);
     }
 
+    public void repaintDataPanels() {
+        repaintDataAndHeaderPanels(false);
+    }
+
     /**
      * Repaint the header and data panels.
      * <p/>
-     * Note:  If running in Batch mode a monitor is used to force synchrnous painting.  This is neccessary as the
+     * Note:  If running in Batch mode we force synchronous painting.  This is necessary as the
      * paint() command triggers loading of data.  If allowed to proceed asynchronously the "snapshot" batch command
      * might execute before the data from a previous command has loaded.
      *
@@ -349,40 +374,33 @@ public class IGV {
      */
     public void repaintDataAndHeaderPanels(boolean updateCommandBar) {
         if (Globals.isBatch()) {
+            Runnable r = new Runnable() {
+                public void run() {
+                    contentPane.revalidateDataPanels();
+                    rootPane.paintImmediately(rootPane.getBounds());
+                }
+            };
             if (SwingUtilities.isEventDispatchThread()) {
-                rootPane.paintImmediately(rootPane.getBounds());
+                r.run();
             } else {
-                synchronized (this) {
-                    Runnable r = new Runnable() {
-                        public void run() {
-                            synchronized (IGV.this) {
-                                rootPane.paintImmediately(rootPane.getBounds());
-                                IGV.this.notify();
-                            }
-                        }
-                    };
-                    UIUtilities.invokeOnEventThread(r);
-                    try {
-                        // Wait a maximum of 5 minutes
-                        this.wait(5 * 60 * 1000);
-                    } catch (InterruptedException e) {
-                        // Just continue
-                    }
+                try {
+                    SwingUtilities.invokeAndWait(r);
+                } catch (InterruptedException e) {
+                    // Just continue
+                    log.error(e);
+                } catch (InvocationTargetException e) {
+                    log.error(e.getMessage());
+                    throw new RuntimeException(e);
                 }
             }
         } else {
+            contentPane.revalidateDataPanels();
             rootPane.repaint();
         }
+
         if (updateCommandBar) {
             contentPane.updateCurrentCoordinates();
         }
-    }
-
-    /**
-     * Repaint the data panels.  Deprecated, but kept for backwards compatibility.
-     */
-    public void repaintDataPanels() {
-        repaintDataAndHeaderPanels(false);
     }
 
     public void repaintNamePanels() {
@@ -392,13 +410,8 @@ public class IGV {
 
     }
 
-    public void repaintStatusAndZoomSlider() {
-        contentPane.getCommandBar().repaint();
-    }
-
-
-    public void selectGenomeFromList(String genome) {
-        contentPane.getCommandBar().selectGenomeFromList(genome);
+    public void selectGenomeFromList(String genomeId) {
+        contentPane.getCommandBar().selectGenome(genomeId);
     }
 
     public Collection<String> getSelectableGenomeIDs() {
@@ -440,10 +453,8 @@ public class IGV {
                     genomeId, genomeFileName, monitor);
 
             if (genomeListItem != null) {
-                enableRemoveGenomes();
-
-                contentPane.getCommandBar().addToUserDefinedGenomeItemList(genomeListItem);
-                contentPane.getCommandBar().selectGenomeFromListWithNoImport(genomeListItem.getId());
+                contentPane.getCommandBar().refreshGenomeListComboBox();
+                contentPane.getCommandBar().selectGenome(genomeListItem.getId());
             }
             if (monitor != null) {
                 monitor.fireProgressChange(100);
@@ -492,11 +503,6 @@ public class IGV {
         return contentPane.getCommandBar().getGenomeDisplayNames();
     }
 
-    public Collection<String> getGenomeIds() {
-        return contentPane.getCommandBar().getGenomeIds();
-    }
-
-
     /**
      * Load a .genome file directly.  This method really belongs in IGVMenuBar.
      *
@@ -521,9 +527,10 @@ public class IGV {
             // If a file selection was made
             if (file != null) {
                 if (monitor != null) {
+                    
                     bar = ProgressBar.showProgressDialog(mainFrame, "Loading Genome...", monitor, false);
                 }
-
+                log.info("IGV.doLoadGenome");
                 loadGenome(file.getAbsolutePath(), monitor);
 
             }
@@ -552,7 +559,7 @@ public class IGV {
         }
 
         resetSession(null);
-
+        log.info("IGV.loadGenome");
         Genome genome = getGenomeManager().loadGenome(path, monitor);
         //If genome loading cancelled
         if (genome == null) return;
@@ -560,16 +567,13 @@ public class IGV {
         final String name = genome.getDisplayName();
         final String id = genome.getId();
 
-        GenomeListItem genomeListItem = new GenomeListItem(name, path, id, true);
-        getGenomeManager().addUserDefineGenomeItem(genomeListItem);
+        GenomeListItem genomeListItem = new GenomeListItem(name, path, id);
+        getGenomeManager().addGenomeItem(genomeListItem);
 
-        contentPane.getCommandBar().addToUserDefinedGenomeItemList(genomeListItem);
-        contentPane.getCommandBar().updateGenome(genome);
-        contentPane.getCommandBar().selectGenomeFromListWithNoImport(genomeListItem.getId());
-
-
-        // Reset the session (unload all tracks)
-
+        IGVCommandBar cmdBar = contentPane.getCommandBar();
+        cmdBar.refreshGenomeListComboBox();
+        cmdBar.selectGenome(genomeListItem.getId());
+        cmdBar.updateChromosFromGenome(genome);
     }
 
 
@@ -649,7 +653,7 @@ public class IGV {
                     }
 
                     contentPane.getMainPanel().invalidate();
-                    IGV.getInstance().showLoadedTrackCount();
+                    showLoadedTrackCount();
 
                     boolean affective = PreferenceManager.getInstance().getAsBoolean(PreferenceManager.AFFECTIVE_ENABLE);
                     if (affective) {
@@ -712,10 +716,6 @@ public class IGV {
                 return "Set gene list";
             }
         });
-        //  }
-        // });
-
-
     }
 
     public void setDefaultFrame(String searchString) {
@@ -730,21 +730,13 @@ public class IGV {
         }
 
         contentPane.getCommandBar().setGeneListMode(FrameManager.isGeneListMode());
-        contentPane.getMainPanel().revalidate();
         contentPane.getMainPanel().applicationHeaderPanel.revalidate();
+        contentPane.getMainPanel().validate();
         contentPane.getMainPanel().repaint();
     }
 
-
-    public void enableRemoveGenomes() {
-
-        menuBar.enableRemoveGenomes();
-
-    }
-
-
     final public void doViewPreferences() {
-             doViewPreferences(null);
+        doViewPreferences(null);
     }
 
     /**
@@ -892,21 +884,22 @@ public class IGV {
 
     final public void createSnapshot(final Component target, final File defaultFile) {
 
-        CursorToken token = WaitCursorManager.showWaitCursor();
-        contentPane.getStatusBar().setMessage("Exporting image: " + defaultFile.getAbsolutePath());
         File file = selectSnapshotFile(defaultFile);
         if (file == null) {
             return;
         }
 
+        CursorToken token = null;
         try {
+            token = WaitCursorManager.showWaitCursor();
+            contentPane.getStatusBar().setMessage("Exporting image: " + defaultFile.getAbsolutePath());
             createSnapshotNonInteractive(target, file);
         } catch (IOException e) {
             log.error("Error creating exporting image ", e);
             MessageUtils.showMessage(("Error creating the image file: " + defaultFile + "<br> "
                     + e.getMessage()));
         } finally {
-            WaitCursorManager.removeWaitCursor(token);
+            if (token != null) WaitCursorManager.removeWaitCursor(token);
             resetStatusMessage();
         }
 
@@ -1225,13 +1218,7 @@ public class IGV {
                 restoreSessionSynchronous(sessionPath, locus, merge);
             }
         };
-
-        if (SwingUtilities.isEventDispatchThread()) {
-            LongRunningTask.submit(runnable);
-        } else {
-            runnable.run();
-        }
-
+        LongRunningTask.submit(runnable);
     }
 
     /**
@@ -1318,9 +1305,9 @@ public class IGV {
 
     }
 
-
-    public void rebuildGenomeDropdownList(Set excludedArchivesUrls) {
-        contentPane.getCommandBar().rebuildGenomeItemList(excludedArchivesUrls);
+    public void rebuildGenomeDropdownList() {
+        GenomeManager.getInstance().buildGenomeItemList();
+        contentPane.getCommandBar().refreshGenomeListComboBox();
     }
 
     public void showLoadedTrackCount() {
@@ -1358,7 +1345,7 @@ public class IGV {
         List<ReferenceFrame> frames = FrameManager.getFrames();
         if (frames.size() == loci.size()) {
             for (int i = 0; i < loci.size(); i++) {
-                frames.get(i).setInterval(new Locus(loci.get(i)));
+                frames.get(i).jumpTo(new Locus(loci.get(i)));
             }
             repaint();
         } else {
@@ -1434,9 +1421,12 @@ public class IGV {
         menuBar.getViewMenu().add(showPeakMenuItem);
     }
 
-    public boolean isSuppressTooltip() {
+    public boolean isShowDetailsOnClick() {
+        return contentPane != null && contentPane.getCommandBar().getDetailsBehavior() == IGVCommandBar.SHOW_DETAILS_BEHAVIOR.CLICK;
+    }
 
-        return contentPane != null && contentPane.getCommandBar().isSuppressTooltip();
+    public boolean isShowDetailsOnHover() {
+        return contentPane != null && contentPane.getCommandBar().getDetailsBehavior() == IGVCommandBar.SHOW_DETAILS_BEHAVIOR.HOVER;
     }
 
     public void openStatusWindow() {
@@ -1465,13 +1455,18 @@ public class IGV {
         List<Thread> threads = new ArrayList<Thread>(locators.size());
 
         for (final ResourceLocator locator : locators) {
-
+            log.info("Loading " + locator.getPath());
             // If its a local file, check explicitly for existence (rather than rely on exception)
             if (locator.isLocal()) {
-                log.info("Loading local file "+locator.getPath());
                 File trackSetFile = new File(locator.getPath());
                 if (!trackSetFile.exists()) {
-                    messages.append("File not found: " + locator.getPath() + "\n");
+                    if (locator.getPath().indexOf("=")<0)  {
+                        messages.append("loadResources: File not found: " + locator.getPath() + "\n");
+                    }
+                    else {
+                        // should be parameter=value
+                        
+                    }
                     continue;
                 }
             }
@@ -1498,7 +1493,7 @@ public class IGV {
                         }
                     } catch (Exception e) {
                         log.error("Error loading tracks", e);
-                        messages.append("Error loading " + locator + ":<br>" + e.getMessage());
+                        messages.append("Error loading " + locator + ": " + e.getMessage());
                     }
                 }
             };
@@ -1549,6 +1544,10 @@ public class IGV {
                 track.setAttributeValue("NAME", track.getName());
                 track.setAttributeValue("DATA FILE", fn);
                 track.setAttributeValue("DATA TYPE", track.getTrackType().toString());
+
+                if (track instanceof TrackGroupEventListener) {
+                    addGroupEventListener((TrackGroupEventListener) track);
+                }
             }
         }
 
@@ -1958,7 +1957,7 @@ public class IGV {
 
         panel.addTrack(newSeqTrack);
         if (newGeneTrack != null) {
-        panel.addTrack(newGeneTrack);
+            panel.addTrack(newGeneTrack);
         }
 
     }
@@ -2214,12 +2213,15 @@ public class IGV {
 
             final PreferenceManager preferenceManager = PreferenceManager.getInstance();
             if (igvArgs.getGenomeId() != null) {
-                log.info("Got genome from igvARgs: "+igvArgs.getGenomeId());
-                selectGenomeFromList(igvArgs.getGenomeId());
+                contentPane.getCommandBar().selectGenome(igvArgs.getGenomeId());
             } else if (igvArgs.getSessionFile() == null) {
-                log.info("Got no genome and no sesssion file, will use default genome");
                 String genomeId = preferenceManager.getDefaultGenome();
-                contentPane.getCommandBar().selectGenomeFromList(genomeId);
+                // Chantal Roth: XXX: turned off automatic loading of genome if nothing has been specified via session or similar                
+                //if (PreferenceManager.getInstance().getAsBoolean(PreferenceManager.STARTUP_AUTOLOAD_GENOME)) {
+                    contentPane.getCommandBar().selectGenome(genomeId);
+                //}
+               // else log.info("turned off automatic loading of genome "+genomeId+", see preferenes");
+               // 
             }
 
             //If there is an argument assume it is a session file or url
@@ -2251,9 +2253,8 @@ public class IGV {
                         }
                     }
                     if (!success) {
-                        log.info("Got a session file, but could not load it. Using default genome now.");
                         String genomeId = preferenceManager.getDefaultGenome();
-                        contentPane.getCommandBar().selectGenomeFromList(genomeId);
+                        contentPane.getCommandBar().selectGenome(genomeId);
 
                     }
                 } else if (igvArgs.getDataFileString() != null) {
@@ -2311,6 +2312,10 @@ public class IGV {
 
                 }
             });
+
+            synchronized (IGV.getInstance()) {
+                IGV.getInstance().notifyAll();
+            }
         }
     }
 
@@ -2343,7 +2348,7 @@ public class IGV {
      * Wrapper for igv.wait(timeout)
      *
      * @param timeout
-     * @return True if method completed before timeout or interruption, otherwise false
+     * @return True if method completed before interruption (not necessarily before timeout), otherwise false
      */
     public boolean waitForNotify(long timeout) {
         boolean completed = false;

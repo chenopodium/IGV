@@ -103,6 +103,8 @@ public class RulerPanel extends JPanel {
 
         super.paintComponent(g);
 
+        ((Graphics2D) g).setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
         render(g);
 
 
@@ -283,8 +285,9 @@ public class RulerPanel extends JPanel {
             }
             int chrLength = c.getLength();
 
-            int x = (int) (offset / (locationUnit * frame.getScale()));
-            int dw = (int) (chrLength / (locationUnit * frame.getScale()));
+            double scale = frame.getScale();
+            int x = (int) (offset / (locationUnit * scale));
+            int dw = (int) (chrLength / (locationUnit * scale));
 
             // Dont draw very small chromosome & contigs in whole genome view
             if (dw > 1) {

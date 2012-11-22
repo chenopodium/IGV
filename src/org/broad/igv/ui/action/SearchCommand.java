@@ -25,7 +25,7 @@ import org.broad.igv.ui.IGV;
 import org.broad.igv.ui.panel.ReferenceFrame;
 import org.broad.igv.ui.util.MessageUtils;
 import org.broad.tribble.Feature;
-
+ 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
@@ -175,8 +175,7 @@ public class SearchCommand implements Command {
                     break;
                 case CHROMOSOME:
                     referenceFrame.setChromosomeName(result.chr, true);
-                    IGV.getInstance().repaintDataAndHeaderPanels();
-                    IGV.getInstance().repaintStatusAndZoomSlider();
+                    IGV.repaintPanelsHeadlessSafe();
                     break;
                 case ERROR:
                 default: {

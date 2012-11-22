@@ -18,6 +18,7 @@
  */
 package org.broad.igv.ui.panel;
 
+import com.google.common.base.Objects;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.PreferenceManager;
@@ -100,6 +101,7 @@ public class DataPanel extends JComponent implements Paintable {
     public void paintComponent(final Graphics g) {
 
         super.paintComponent(g);
+        ((Graphics2D) g).setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         RenderContext context = null;
         try {
 
@@ -347,7 +349,7 @@ public class DataPanel extends JComponent implements Paintable {
 
     @Override
     public void setToolTipText(String text) {
-        if (!tooltipText.equals(text)) {
+        if (!Objects.equal(tooltipText, text)) {
             IGV.getInstance().setStatusWindowText(text);
             this.tooltipText = text;
             putClientProperty(TOOL_TIP_TEXT_KEY, text);
@@ -355,10 +357,17 @@ public class DataPanel extends JComponent implements Paintable {
 
     }
 
+    /**
+     * {@inheritDoc}
+     * <p/>
+     * The tooltip text may be null, in which case no tooltip is displayed
+     */
     @Override
     final public String getToolTipText() {
-        if (IGV.getInstance().isSuppressTooltip() || currentTool instanceof RegionOfInterestTool) {
-            return "";
+        //TODO Suppress tooltips instead. This is hard to get exactly right
+        //TODO with our different tooltip settings
+        if (currentTool instanceof RegionOfInterestTool) {
+            return null;
         }
         return tooltipText;
     }
@@ -371,6 +380,13 @@ public class DataPanel extends JComponent implements Paintable {
      * @param y Mouse y position in pixels
      */
     public void updateTooltipText(int x, int y) {
+
+        //Tooltip here specifically means text that is shown on hover
+        //We disable it unless that option is specified
+        if (!IGV.getInstance().isShowDetailsOnHover()) {
+            setToolTipText(null);
+            return;
+        }
 
         double position = frame.getChromosomePosition(x);
 
@@ -425,7 +441,7 @@ public class DataPanel extends JComponent implements Paintable {
                 setToolTipText(puText);
             }
         } else {
-            setToolTipText("");
+            setToolTipText(null);
         }
     }
 
@@ -607,7 +623,7 @@ public class DataPanel extends JComponent implements Paintable {
          * The shift and alt keys are alternative  zoom options
          * shift zooms in by 8x,  alt zooms out by 2x
          * <p/>
-         * TODO -- the "currenTool" is also a mouselistener, so there are two.  This makes mouse event handling
+         * TODO -- the "currentTool" is also a mouselistener, so there are two.  This makes mouse event handling
          * TODO -- needlessly complicated, which handler has preference, etc.  Move this code to the default
          * TODO -- PanAndZoomTool
          *

@@ -1,6 +1,7 @@
 package org.broad.igv.hic.data;
 
 import org.broad.igv.feature.Chromosome;
+import org.broad.igv.hic.tools.Preprocessor;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -15,11 +16,17 @@ public class Dataset {
     private boolean caching = true;
 
     //Chromosome lookup table
-    public  Chromosome [] chromosomes;
+    public Chromosome[] chromosomes;
 
     Map<String, Matrix> matrices = new HashMap<String, Matrix>(25 * 25);
 
     private DatasetReader reader;
+    private Map<String, DensityFunction> df;
+    private String genomeId;
+
+    private int[] bpBinSizes;
+    private int[] fragBinSizes;
+
 
     public Dataset(DatasetReader reader) {
         this.reader = reader;
@@ -38,7 +45,7 @@ public class Dataset {
             try {
                 m = reader.readMatrix(key);
 
-                if(caching) matrices.put(key, m);
+                if (caching) matrices.put(key, m);
             } catch (IOException e) {
                 e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
             }
@@ -48,12 +55,66 @@ public class Dataset {
 
     }
 
+    public int getNumberZooms() {
+        return Preprocessor.bpBinSizes.length;
+    }
+
+
+    public int getZoom(int index) {
+        return Preprocessor.bpBinSizes[index];
+    }
+
+
+    /**
+     * Function needed for legacy datasets.
+     *
+     * @param zoom
+     * @return
+     */
+    public DensityFunction getDensityFunction(int zoom) {
+
+        if (df == null) return null;
+
+        int binSize = Preprocessor.bpBinSizes[zoom];
+        String unit = binSize == 1 ? "FRAG" : "BP";
+
+        return getExpectedValues(unit, binSize);
+    }
+
+    public DensityFunction getExpectedValues(String unit, int binSize) {
+
+        String key = unit + "_" + binSize;
+
+        return df.get(key);
+    }
+
+
+    public void setDensityFunctionMap(Map<String, DensityFunction> df) {
+        this.df = df;
+    }
+
     public Chromosome[] getChromosomes() {
         return chromosomes;
     }
 
     public void setChromosomes(Chromosome[] chromosomes) {
         this.chromosomes = chromosomes;
+    }
+
+    public int getVersion() {
+        return reader.getVersion();
+    }
+
+    public void setGenomeId(String genomeId) {
+        this.genomeId = genomeId;
+    }
+
+    public void setBpBinSizes(int[] bpBinSizes) {
+        this.bpBinSizes = bpBinSizes;
+    }
+
+    public void setFragBinSizes(int[] fragBinSizes) {
+        this.fragBinSizes = fragBinSizes;
     }
 
 }

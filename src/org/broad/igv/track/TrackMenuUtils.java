@@ -28,6 +28,7 @@ import org.broad.igv.ui.UIConstants;
 import org.broad.igv.ui.panel.FrameManager;
 import org.broad.igv.ui.panel.IGVPopupMenu;
 import org.broad.igv.ui.panel.ReferenceFrame;
+import org.broad.igv.ui.util.MessageUtils;
 import org.broad.igv.ui.util.UIUtilities;
 import org.broad.igv.util.StringUtils;
 import org.broad.igv.util.stats.KMPlotFrame;
@@ -99,8 +100,10 @@ public class TrackMenuUtils {
             }
 
             private void close() {
-                IGV.getInstance().clearSelections();
-                IGV.getInstance().repaint();
+                if (IGV.hasInstance()) {
+                    IGV.getInstance().clearSelections();
+                    IGV.getInstance().repaint();
+                }
             }
 
         });
@@ -192,7 +195,7 @@ public class TrackMenuUtils {
             log.debug("enter getDataPopupMenu");
         }
 
-        final String[] labels = {"Heatmap", "Bar Chart", "Scatterplot", "Line Plot"};
+        final String[] labels = {"Heatmap", "Bar Chart", "Points", "Line Plot"};
         final Class[] renderers = {HeatmapRenderer.class, BarChartRenderer.class,
                 PointsRenderer.class, LineplotRenderer.class
         };
@@ -253,7 +256,7 @@ public class TrackMenuUtils {
             menu.add(statisticsHeading);
 
             for (final WindowFunction wf : ORDERED_WINDOW_FUNCTIONS) {
-                JCheckBoxMenuItem item = new JCheckBoxMenuItem(wf.getDisplayName());
+                JCheckBoxMenuItem item = new JCheckBoxMenuItem(wf.getValue());
                 if (avaibleWindowFunctions.contains(wf) || currentWindowFunctions.contains(wf)) {
                     if (currentWindowFunctions.contains(wf)) {
                         item.setSelected(true);
@@ -467,12 +470,15 @@ public class TrackMenuUtils {
                     float mid = 0;
                     float min = Float.MAX_VALUE;
                     float max = Float.MIN_VALUE;
-                    boolean drawBaseline = false;
+                    boolean drawBaseline = true;
+                    boolean isLog = true;
                     for (Track t : selectedTracks) {
                         DataRange dr = t.getDataRange();
                         min = Math.min(min, dr.getMinimum());
                         max = Math.max(max, dr.getMaximum());
                         mid += dr.getBaseline();
+                        drawBaseline &= dr.isDrawBaseline();
+                        isLog &= dr.isLog();
                     }
                     mid /= selectedTracks.size();
                     if (mid < min) {
@@ -481,7 +487,7 @@ public class TrackMenuUtils {
                         min = max;
                     }
 
-                    DataRange prevAxisDefinition = new DataRange(min, mid, max, drawBaseline);
+                    DataRange prevAxisDefinition = new DataRange(min, mid, max, drawBaseline, isLog);
                     DataRangeDialog dlg = new DataRangeDialog(IGV.getMainFrame(), prevAxisDefinition);
                     dlg.setVisible(true);
                     if (!dlg.isCanceled()) {
@@ -490,13 +496,11 @@ public class TrackMenuUtils {
                         mid = dlg.getBase();
                         mid = Math.max(min, Math.min(mid, max));
 
-                        DataRange axisDefinition = new DataRange(dlg.getMin(), dlg.getBase(), dlg.getMax());
+                        DataRange axisDefinition = new DataRange(dlg.getMin(), mid, dlg.getMax(),
+                                drawBaseline, dlg.isLog());
 
                         for (Track track : selectedTracks) {
                             track.setDataRange(axisDefinition);
-                            if (track instanceof DataTrack) {
-                                ((DataTrack) track).setAutoscale(false);
-                            }
                         }
                         IGV.getInstance().repaint();
                     }
@@ -557,7 +561,7 @@ public class TrackMenuUtils {
         } else {
             boolean autoScale = false;
             for (Track t : selectedTracks) {
-                if (t instanceof DataTrack && ((DataTrack) t).isAutoscale()) {
+                if (t instanceof DataTrack && ((DataTrack) t).isAutoScale()) {
                     autoScale = true;
                     break;
                 }
@@ -571,7 +575,7 @@ public class TrackMenuUtils {
                     boolean autoScale = autoscaleItem.isSelected();
                     for (Track t : selectedTracks) {
                         if (t instanceof DataTrack) {
-                            ((DataTrack) t).setAutoscale(autoScale);
+                            ((DataTrack) t).setAutoScale(autoScale);
                         }
                     }
                     IGV.getInstance().repaintDataPanels();
@@ -621,18 +625,18 @@ public class TrackMenuUtils {
         Map<Track.DisplayMode, Integer> counts = new HashMap<Track.DisplayMode, Integer>(Track.DisplayMode.values().length);
         Track.DisplayMode currentMode = null;
 
-        for(Track t: tracks){
+        for (Track t : tracks) {
             Track.DisplayMode mode = t.getDisplayMode();
-            if(counts.containsKey(mode)){
+            if (counts.containsKey(mode)) {
                 counts.put(mode, counts.get(mode) + 1);
-            }else{
+            } else {
                 counts.put(mode, 1);
             }
         }
 
         int maxCount = -1;
-        for(Map.Entry<Track.DisplayMode, Integer> count: counts.entrySet()){
-            if(count.getValue() > maxCount){
+        for (Map.Entry<Track.DisplayMode, Integer> count : counts.entrySet()) {
+            if (count.getValue() > maxCount) {
                 currentMode = count.getKey();
                 maxCount = count.getValue();
             }
@@ -644,7 +648,7 @@ public class TrackMenuUtils {
         modes.put("Expanded", Track.DisplayMode.EXPANDED);
         modes.put("Squished", Track.DisplayMode.SQUISHED);
         boolean showAS = Boolean.parseBoolean(System.getProperty("showAS", "false"));
-        if(showAS){
+        if (showAS) {
             modes.put("Alternative Splice", Track.DisplayMode.ALTERNATIVE_SPLICE);
         }
         for (final Map.Entry<String, Track.DisplayMode> entry : modes.entrySet()) {
@@ -785,8 +789,8 @@ public class TrackMenuUtils {
 
 
         int origValue = featureTracks.iterator().next().getVisibilityWindow();
-        int origValueKB = Math.max(1, origValue / 1000);
-        int value = getIntValue("Visibility window (kb)", origValueKB);
+        double origValueKB = (origValue / 1000.0);
+        double value = getNumericValue("Visibility window (kb)", origValueKB);
         if (value == Integer.MIN_VALUE) {
             return;
         }
@@ -838,6 +842,27 @@ public class TrackMenuUtils {
             } catch (NumberFormatException numberFormatException) {
                 JOptionPane.showMessageDialog(IGV.getMainFrame(),
                         parameter + " must be an integer number.");
+            }
+        }
+    }
+
+    public static double getNumericValue(String parameter, double value) {
+
+        while (true) {
+
+            String height = JOptionPane.showInputDialog(
+                    IGV.getMainFrame(), parameter + ": ",
+                    String.valueOf(value));
+
+            if ((height == null) || height.trim().equals("")) {
+                return Double.MIN_VALUE;   // <= the logical "null" value
+            }
+
+            try {
+                value = Double.parseDouble(height);
+                return value;
+            } catch (NumberFormatException numberFormatException) {
+                MessageUtils.showMessage(parameter + " must be a number.");
             }
         }
     }
@@ -949,8 +974,10 @@ public class TrackMenuUtils {
     }
 
     public static void refresh() {
-        IGV.getInstance().showLoadedTrackCount();
-        IGV.getInstance().doRefresh();
+        if (IGV.hasInstance()) {
+            IGV.getInstance().showLoadedTrackCount();
+            IGV.getInstance().doRefresh();
+        }
     }
 
     public static JMenuItem getChangeTrackHeightItem(final Collection<Track> selectedTracks) {

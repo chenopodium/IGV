@@ -2,6 +2,7 @@
 package org.iontorrent.sam2flowgram.flowalign;
 
 
+import com.iontorrent.expmodel.FlowSeq;
 import com.iontorrent.rawdataaccess.FlowValue;
 import java.io.PrintStream;
 import java.util.Arrays;
@@ -77,7 +78,7 @@ public class FlowgramAlignment {
     /**
      * The best alignment score found so far.
      */
-    private int score;
+    private double score;
     // Depend on the alignment order 
     /**
      * The flow order for the alignment, including deleted reference bases.
@@ -86,11 +87,11 @@ public class FlowgramAlignment {
     /**
      * The query or read sequence in the alignment, including gaps.
      */
-    public int qseq[] = null; // read
+    public double qseq[] = null; // read
     /**
      * The target or reference sequence in the alignment, including gaps.
      */
-    public int tseq[] = null; // reference
+    public double tseq[] = null; // reference
     /**
      * The alignment string.
      */
@@ -141,9 +142,9 @@ public class FlowgramAlignment {
     private int[] tflowpos_to_tbasepos;
     private int[] tbasepos_to_tflowpos;
     /**
-     * The penalty for phasing a flow.
+     * The penalty for gap.
      */
-    public static final int FLOW_SPACE_PHASE_PENALTY = 1;
+    public static final int FLOW_SPACE_GAP_PENALTY = 1;
 
     // qseq - query - read
     // tseq - target - reference
@@ -160,7 +161,7 @@ public class FlowgramAlignment {
             FlowOrder qseqFlowOrder)
             throws Exception {
         this(flowQseq, tseq, qseqFlowOrder, false, false,
-                FLOW_SPACE_PHASE_PENALTY);
+                FLOW_SPACE_GAP_PENALTY);
     }
 
     /**
@@ -175,15 +176,15 @@ public class FlowgramAlignment {
      * of the target, true otherwise
      * @param endLocal false if the we must end the alignment at the end of the
      * target, true otherwise
-     * @param phasePenalty the penalty for phasing in the alignment.
+     * @param gapPenalty the penalty for gap in the alignment.
      */
     public FlowgramAlignment(FlowSeq flowQseq, byte tseq[], FlowOrder qseqFlowOrder,
-            boolean startLocal, boolean endLocal, int phasePenalty)
+            boolean startLocal, boolean endLocal, int gapPenalty)
             throws Exception {
-        this.computeAlignment(flowQseq, tseq, qseqFlowOrder, startLocal, endLocal, phasePenalty);
+        this.computeAlignment(flowQseq, tseq, qseqFlowOrder, startLocal, endLocal, gapPenalty);
     }
 
-    public FlowgramAlignment(FlowSeq flowQseq, String consensus, FlowOrder qorder, boolean startLocal, boolean endLocal, int phasePenalty)
+    public FlowgramAlignment(FlowSeq flowQseq, String consensus, FlowOrder qorder, boolean startLocal, boolean endLocal, int gapPenalty)
      throws Exception {
         byte[] targetseq = new byte[consensus.length()];
         int r = 0;
@@ -196,7 +197,7 @@ public class FlowgramAlignment {
             }
         }
        
-        computeAlignment(flowQseq, targetseq, qorder, startLocal, endLocal, phasePenalty);
+        computeAlignment(flowQseq, targetseq, qorder, startLocal, endLocal, gapPenalty);
     }
     
         
@@ -225,12 +226,12 @@ public class FlowgramAlignment {
         // init
         this.mem = flowQseq.getLength() + flowTseq.getLength();
         this.flowOrder = new byte[mem];
-        this.qseq = new int[mem];
+        this.qseq = new double[mem];
         this.alignpos_to_qpos = new int[mem];
         this.alignpos_to_tpos = new int[mem];
         this.qpos_to_alignpos = new int[mem];
         this.tpos_to_alignpos = new int[mem];
-        this.tseq = new int[mem];
+        this.tseq = new double[mem];
         this.aln = new char[mem];
         this.length = 0;
 
@@ -266,13 +267,14 @@ public class FlowgramAlignment {
      * of the target, true otherwise
      * @param endLocal false if the we must end the alignment at the end of the
      * target, true otherwise
-     * @param phasePenalty the penalty for phasing in the alignment.
+     * @param gapPenalty the penalty for gap in the alignment.
      */
     public void computeAlignment(FlowSeq flowQseq, byte targetseq[], FlowOrder qseqFlowOrder,
-            boolean startLocal, boolean endLocal, int phasePenalty)
+            boolean startLocal, boolean endLocal, int gapPenalty)
             throws Exception {
         int i, j, k;
-        int vScoreP, vScoreE, vFromP, vFromE;
+        double vScoreP, vScoreE;
+        int vFromP, vFromE;
         int cType, iFrom;
         int bestI, bestJ, bestCType;
         
@@ -288,9 +290,9 @@ public class FlowgramAlignment {
                 //j = (i < qseqFlowOrder.jumpRev[k]) ? 0 : (i - qseqFlowOrder.jumpRev[k]);
                 //j = (i < qseqFlowOrder.jumpRev[k]) ? 0 : (i - qseqFlowOrder.jumpRev[k] + 1);
                 j = (i < qseqFlowOrder.jumpRev[k]) ? 0 : (i - qseqFlowOrder.jumpRev[k] + 1);
-                gapSumsI[i] = phasePenalty;
+                gapSumsI[i] = gapPenalty;
                 while (j <= i) {
-                    gapSumsI[i] += flowQseq.getSignal(j);
+                    gapSumsI[i] += flowQseq.getScore(j);
                     j++;
                 }
                 /*
@@ -312,7 +314,7 @@ public class FlowgramAlignment {
                 iFrom = ((i < qseqFlowOrder.jumpRev[k]) ? 0 : (i - qseqFlowOrder.jumpRev[k]));
 
                 // vertical
-                // only allow phasing from an insertion
+                // only allow gap from an insertion
                 if (0 == iFrom) {
                     dp[i][0].insScore = 0 - gapSumsI[i - 1];
                     dp[i][0].insFrom = FROM_PHASEDINS;
@@ -329,11 +331,11 @@ public class FlowgramAlignment {
         // align
         for (i = 1; i <= flowQseq.getLength(); i++) { // query
             k = (i - 1) % qseqFlowOrder.getLength();
-            int qflowvalue = flowQseq.getSignal(i - 1);
+            double qflowvalue = flowQseq.getScore(i - 1);
             iFrom = ((i < qseqFlowOrder.jumpRev[k]) ? 0 : (i - qseqFlowOrder.jumpRev[k]));
             for (j = 1; j <= flowTseq.getLength(); j++) { // target
                 // horizontal
-                int tflowvalue = flowTseq.getSignal(j - 1);
+                double tflowvalue = flowTseq.getScore(j - 1);
                 if (dp[i][j - 1].delScore < dp[i][j - 1].matchScore) {
                     if (dp[i][j - 1].insScore <= dp[i][j - 1].matchScore) {
                         dp[i][j].delScore = dp[i][j - 1].matchScore - tflowvalue;
@@ -361,7 +363,7 @@ public class FlowgramAlignment {
                 // 4. empth from ins
                 // Note: use the NEXT reference base for flow order matching
                 if (j == flowTseq.getLength() // no next reference base
-                        || (1 == i) // always start with leading phasing
+                        || (1 == i) // always start with leading gap
                         || (qseqFlowOrder.flowOrder[(i - 1) % qseqFlowOrder.getLength()] == tseqFlowOrder.flowOrder[j % tseqFlowOrder.getLength()])) {
                     vScoreE = MINOR_INF;
                     vFromE = FROM_MATCHEMPTY;
@@ -402,7 +404,7 @@ public class FlowgramAlignment {
                     dp[i][j].matchScore = MINOR_INF;
                     dp[i][j].matchFrom = FROM_S;
                 } else {
-                    int signaldiff = ((qflowvalue < tflowvalue) ? (tflowvalue - qflowvalue) : (qflowvalue - tflowvalue));
+                    double signaldiff = ((qflowvalue < tflowvalue) ? (tflowvalue - qflowvalue) : (qflowvalue - tflowvalue));
                     // NB: do not penalize it full on the first or last flow
                     if (i == 1 || i == flowQseq.getLength()) {
                         signaldiff = AlignUtil.getFlowSignalFromBaseCall(getBC(qflowvalue));
@@ -456,7 +458,7 @@ public class FlowgramAlignment {
         // We also need to return where the start end in the target to update start/end position(s).
         if (endLocal) {
             for (j = 1; j <= flowTseq.getLength(); j++) { // target
-                 int tflowvalue = flowTseq.getSignal(j - 1);
+                 double tflowvalue = flowTseq.getScore(j - 1);
                 /*
                  * System.err.println("j=" + j + " " +
                  * tseqFlowOrder.flowOrder[(j-1) % tseqFlowOrder.getLength()] + " " +
@@ -518,7 +520,7 @@ public class FlowgramAlignment {
         // Calculate tseqEnd
         this.tseqEnd = 0;
         for (j = 0; j < bestJ; j++) {
-            this.tseqEnd += getBC(flowTseq.getSignal(j));
+            this.tseqEnd += getBC(flowTseq.getScore(j));
             //      System.err.println(SamToFlowgramAlignUtil.DNA[tseqFlowOrder.flowOrder[j]] + " " + flowTseq.flow[j] + " " + this.tseqEnd);
         }
         this.tseqEnd--;
@@ -605,7 +607,7 @@ public class FlowgramAlignment {
         // Calculate tseqStart
         this.tseqStart = 0;
         for (i = 0; i < j; i++) {
-            this.tseqStart += getBC(flowTseq.getSignal(i));
+            this.tseqStart += getBC(flowTseq.getScore(i));
         }
 
         // reverse the arrays tseq, qseq, aln, flowOrder
@@ -673,17 +675,17 @@ public class FlowgramAlignment {
             byte by;
 
             int irev = this.getLength() - i - 1;
-            b = this.qseq[i];
+            double d = this.qseq[i];
             this.qseq[i] = this.qseq[irev];
-            this.qseq[irev] = b;
+            this.qseq[irev] = d;
 
             c = this.aln[i];
             this.aln[i] = this.aln[irev];
             this.aln[irev] = c;
 
-            b = this.tseq[i];
+            d = this.tseq[i];
             this.tseq[i] = this.tseq[irev];
-            this.tseq[irev] = b;
+            this.tseq[irev] = d;
 
             by = this.flowOrder[i];
             this.flowOrder[i] = this.flowOrder[irev];
@@ -764,7 +766,7 @@ public class FlowgramAlignment {
     public void reverseCompliment() {
         int i;
         for (i = 0; i < this.getLength() / 2; i++) {
-            int b;
+            double b;
             char c;
             byte by;
 
@@ -816,15 +818,15 @@ public class FlowgramAlignment {
         /**
          * Stores the score for extending with a match.
          */
-        public int matchScore;
+        public double matchScore;
         /**
          * Stores the score for extending with a insertion.
          */
-        public int insScore;
+        public double insScore;
         /**
          * Stores the score for extending with a deletion.
          */
-        public int delScore;
+        public double delScore;
         /**
          * Stores the previous cell in the path to a match.
          */
@@ -873,18 +875,18 @@ public class FlowgramAlignment {
         }
         // add in the alignment
         this.flowOrder[this.getLength()] = base;
-        int qseqN = 0;
+        double qseqN = 0;
         if (positionInQseq >= 0) {
-            qseqN = this.flowQseq.getSignal(positionInQseq);
+            qseqN = this.flowQseq.getScore(positionInQseq);
             this.alignpos_to_qpos[length] = positionInQseq;
             this.qpos_to_alignpos[positionInQseq] = length;
         } else {
             qseqN = positionInQseq;
         }
 
-        int tseqN = 0;
+        double tseqN = 0;
         if (positionInTseq >= 0) {
-            tseqN = this.flowTseq.getSignal(positionInTseq);
+            tseqN = this.flowTseq.getScore(positionInTseq);
             this.alignpos_to_tpos[length] = positionInTseq;
             this.tpos_to_alignpos[positionInTseq] = length;
         } else {
@@ -944,7 +946,7 @@ public class FlowgramAlignment {
                         && (ALN_MATCH == this.aln[k] || ALN_MISMATCH == this.aln[k])
                         //&& this.tseq[k] == 0
                         && this.flowOrder[k] == this.flowOrder[j]) {
-                    int tmpInt;
+                    double tmpInt;
                     byte tmpByte;
                     char tmpChar;
 
@@ -973,7 +975,7 @@ public class FlowgramAlignment {
         return adjusted;
     }
 
-    private int getBC(int FS) {
+    private int getBC(double FS) {
         return AlignUtil.getBaseCallFromFlowSignal(FS);
     }
 
@@ -1098,14 +1100,14 @@ public class FlowgramAlignment {
         if (removeDel) {
             // save temp
             byte tmpFlowOrder[] = this.flowOrder;
-            int tmpQseq[] = this.qseq;
+            double tmpQseq[] = this.qseq;
             char tmpAln[] = this.aln;
-            int tmpTseq[] = this.tseq;
+            double tmpTseq[] = this.tseq;
             // realloc
             int newalignlen = this.aln.length - numRemoveDel;
-            this.qseq = new int[this.qseq.length - numRemoveDel];
+            this.qseq = new double[this.qseq.length - numRemoveDel];
             this.aln = new char[newalignlen];
-            this.tseq = new int[this.tseq.length - numRemoveDel];
+            this.tseq = new double[this.tseq.length - numRemoveDel];
             this.alignpos_to_qpos = new int[newalignlen];
             this.alignpos_to_tpos = new int[newalignlen];
             this.qpos_to_alignpos = new int[newalignlen];
@@ -1141,7 +1143,7 @@ public class FlowgramAlignment {
         stream.println(this.getAlignmentString(colWidth, align));
     }
 
-    private int charWidth(int val) {
+    private int charWidth(double val) {
         if (val <= 0) {
             return 1;
         } else {
@@ -1154,7 +1156,7 @@ public class FlowgramAlignment {
             // tseq
             if (ALN_INS == this.aln[alignpos]) {
                 // stseq.append(ALN_INS);
-                int signal = this.qseq[alignpos];
+                double signal = this.qseq[alignpos];
                 if (signal <= 50) {
                     // does not count as insertion, it is just an empty flow!
                     aln[alignpos] = ALN_MATCH;
@@ -1232,7 +1234,7 @@ public class FlowgramAlignment {
                     }
                 }
                 // stseq.append(ALN_INS);
-                int signal = this.qseq[alignpos];
+                double signal = this.qseq[alignpos];
                 stseq.append((int) Math.round(signal / 100) * 100);
                 if (signal <= 50) {
                     // does not count as insertion, it is just an empty flow!
@@ -1271,7 +1273,7 @@ public class FlowgramAlignment {
         return this.getAlignmentString(Integer.MAX_VALUE, false);
     }
 
-    public int getScore() {
+    public double getScore() {
         return this.score;
     }
 }

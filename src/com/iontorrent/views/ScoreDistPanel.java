@@ -4,24 +4,17 @@
  */
 package com.iontorrent.views;
 
-import com.iontorrent.data.IonogramAlignment;
-import com.iontorrent.data.ScoreDistribution;
+import com.iontorrent.data.ErrorDistribution;
 import com.iontorrent.data.ReadInfo;
 
 import com.iontorrent.expmodel.ExperimentContext;
+import com.iontorrent.rawdataaccess.FlowValue;
 import com.iontorrent.rawdataaccess.ReadFlow;
-import com.iontorrent.torrentscout.explorer.ExplorerContext;
-import com.iontorrent.torrentscout.explorer.fit.FitFunctionsFactory;
-import com.iontorrent.torrentscout.explorer.fit.PeakFunction;
-import com.iontorrent.torrentscout.explorer.process.CurveView;
-import com.iontorrent.torrentscout.explorer.process.DataContext;
-import com.iontorrent.torrentscout.explorer.process.ReadFlowCurvePanel;
 import com.iontorrent.torrentscout.explorer.process.SignalFetchPanel;
 import com.iontorrent.utils.FileTools;
 import com.iontorrent.utils.LinkUtils;
 import com.iontorrent.utils.LocationListener;
 import com.iontorrent.wellmodel.WellCoordinate;
-import com.iontorrent.wellmodel.WellFlowDataResult;
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
@@ -32,8 +25,7 @@ import java.awt.geom.AffineTransform;
 import java.awt.geom.GeneralPath;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.*;
@@ -66,20 +58,20 @@ public class ScoreDistPanel extends javax.swing.JPanel {
     public static final int TYPE_LINE = 1;
     public static final int TYPE_AREA = 2;
     public static final int TYPE_STACKED = 3;
+    
     boolean interactive;
     // for y label
     private int maxcount;
-    
     private static org.apache.log4j.Logger log = org.apache.log4j.Logger.getLogger(ScoreDistPanel.class);
     /**
      * bar or line chart - only static until we move it into user preferences
      */
     private int chart_type = -1;
     /**
-     * The data: key is the score value, such as 654, and the value is how
-     * often it was found
+     * The data: key is the score value, such as 654, and the value is how often
+     * it was found
      */
-    private ArrayList<ScoreDistribution> distributions;
+    private ArrayList<ErrorDistribution> distributions;
     /**
      * one distribution for each base
      */
@@ -102,7 +94,8 @@ public class ScoreDistPanel extends javax.swing.JPanel {
     /**
      * jfreechart
      */
-    private JComponent chartpanel;
+    private JTabbedPane tab;
+    
     private JFreeChart freechart;
     /**
      * for navigation left and right
@@ -133,23 +126,24 @@ public class ScoreDistPanel extends javax.swing.JPanel {
     /**
      * max x val in chart
      */
-    private int maxx;
+    private double maxx;
+    private double minx;
     /**
      * to avoid infinite loops in event handling
      */
     private boolean ignore_events;
 
-    public ScoreDistPanel(String base, ArrayList<ScoreDistribution> distributions) {
+    public ScoreDistPanel(String base, ArrayList<ErrorDistribution> distributions) {
         this(base, distributions, true);
     }
 
-    public ScoreDistPanel(String base, ArrayList<ScoreDistribution> distributions, boolean interactive) {
+    public ScoreDistPanel(String base, ArrayList<ErrorDistribution> distributions, boolean interactive) {
         this.distributions = distributions;
         this.interactive = true;
         this.base = base;
         initComponents();
         this.setFocusable(true);
-         getPreferences();
+        getPreferences();
         setFocusTraversalKeysEnabled(false);
         addKeyListener(new java.awt.event.KeyAdapter() {
 
@@ -157,18 +151,18 @@ public class ScoreDistPanel extends javax.swing.JPanel {
                 formKeyTyped(evt);
             }
         });
-       
+
     }
 
-    public static ArrayList<ScoreDistPanel> createPanels(ScoreDistribution distributions[], int maxPerBase) {
+    public static ArrayList<ScoreDistPanel> createPanels(ErrorDistribution distributions[], int maxPerBase) {
         ArrayList<ScoreDistPanel> panels = new ArrayList<ScoreDistPanel>();
         char[] gatc = {'G', 'A', 'T', 'C'};
-        
+
         int max = 0;
         for (char base : gatc) {
-            sp("Creating chart for: "+base);
-            ArrayList<ScoreDistribution> distperbase = new ArrayList<ScoreDistribution>();
-            for (ScoreDistribution dist : distributions) {
+            sp("Creating chart for: " + base);
+            ArrayList<ErrorDistribution> distperbase = new ArrayList<ErrorDistribution>();
+            for (ErrorDistribution dist : distributions) {
                 if (dist.getBase() == base) {
                     // could be a potential candidate - but maybe also filter                    
                     distperbase.add(dist);
@@ -177,29 +171,40 @@ public class ScoreDistPanel extends javax.swing.JPanel {
             if (distperbase.size() > 0) {
                 ScoreDistPanel pan = new ScoreDistPanel("" + base, distperbase);
                 int count = pan.getMaxCount();
-                if (count > max) max = count;
+                if (count > max) {
+                    max = count;
+                }
                 panels.add(pan);
             }
         }
-        sp("Got maxy: "+max);
+        sp("Got maxy: " + max);
         // now set max count for each panel
-        for (ScoreDistPanel pan: panels) {
+        for (ScoreDistPanel pan : panels) {
             pan.setMaxCount(max);
             pan.recreateChart();
         }
         return panels;
     }
+
     private void setMaxCount(int maxcount) {
         this.maxcount = maxcount;
     }
+
     public int getMaxCount() {
+        return getMaxCount(-1);
+    }
+
+    public int getMaxCount(int hplen) {
         int max = 0;
-        for (ScoreDistribution dist: distributions) {
-            int count = dist.getMaxCount(binsize);
-            if (count > max) max = count;
+        for (ErrorDistribution dist : distributions) {
+            int count = dist.getMaxCount(binsize, hplen, false);
+            if (count > max) {
+                max = count;
+            }
         }
         return max;
     }
+
     private static void sp(String msg) {
         log.info(msg);
     }
@@ -221,10 +226,10 @@ public class ScoreDistPanel extends javax.swing.JPanel {
 
         binsize = PreferenceManager.getInstance().getAsInt(PreferenceManager.IONTORRENT_FLOWDIST_BINSIZE);
         if (binsize < 1) {
-            binsize = 25;
+            binsize = 5;
         }
-        if (binsize > 100) {
-            binsize = 100;
+        if (binsize > 50) {
+            binsize = 50;
         }
     }
 
@@ -250,28 +255,86 @@ public class ScoreDistPanel extends javax.swing.JPanel {
             }
             return;
         }
-        if (chartpanel != null) {
-            remove(chartpanel);
+        
+        if (tab != null) {
+            remove(tab);
         }
-        chartpanel = createChart();
-        add("Center", chartpanel);
+        tab = new JTabbedPane();
+        // get most hplen, the add tabs?
+        int[] hps = getMostLikelyHpLengths();
+        p("Got most likely hp lengths: "+Arrays.toString(hps));
+        for (int hp: hps) {
+            if (hp > 0) {
+                JComponent chartpanel = createChart(hp);
+                tab.addTab("HP "+hp, chartpanel);
+            }
+        }
+        add("Center", tab);
         // with freechart, one sometimes just doesn't get a repaint... 
         this.invalidate();
-        chartpanel.invalidate();
-        chartpanel.repaint();
+        tab.invalidate();
+        tab.repaint();
         this.repaint();
         this.paintAll(getGraphics());
+    }
 
+    public int[] getMostLikelyHpLengths() {
+        HashMap<Integer, Integer> hpmap = new HashMap<Integer, Integer>();
+        int max1 = 0;
+        int max2 = 0;
+        int max3 = 0;
+        int hp1 = 0;
+        int hp2 = 0;
+        int hp3 = 0;
+        for (int i = 0; i < distributions.size(); i++) {
+            for (FlowValue fv : distributions.get(i).getFlowValues()) {
+                if (fv != null) {
+                    int hp = fv.getHpLen();
+                    int count = 0;
+                    if (hpmap.containsKey(hp)) count = hpmap.get(hp);                        
+                    count++;
+                    hpmap.put(hp, count);
+                }
+            }
+        }
+        for (Iterator<Integer> it = hpmap.keySet().iterator(); it.hasNext();) {
+            int hp = it.next();
+            int count = hpmap.get(hp);
+            if (count > max1) {
+                max1 = count;
+                hp1 = hp;
+            }
+        }
+        for (Iterator<Integer> it = hpmap.keySet().iterator(); it.hasNext();) {
+            int hp = it.next();
+            int count = hpmap.get(hp);
+            if (count > max2 && count < max1 && hp != hp1) {
+                max2 = count;
+                hp2 = hp;
+            }
+        }
+        for (Iterator<Integer> it = hpmap.keySet().iterator(); it.hasNext();) {
+            int hp = it.next();
+            int count = hpmap.get(hp);
+            if (count > max3 && count<max2 && count < max1 && hp != hp1 && hp != hp2) {
+                max3 = count;
+                hp3 = hp;
+            }
+        }
+        int[] res = {hp1, hp2, hp3};
+        if (!hpmap.containsKey(hp3)) res[2] = -1;
+        if (!hpmap.containsKey(hp2)) res[1] = -1;
+        return res;
     }
 
     public JComponent getCenter() {
-        return chartpanel;
+        return tab;
     }
 
-    private CategoryDataset createCategoryDataset() {
+    private CategoryDataset createCategoryDataset(int hplen) {
         DefaultCategoryDataset dataset = new DefaultCategoryDataset();
         for (int i = 0; i < distributions.size(); i++) {
-            int[] data = distributions.get(i).getBinnedData(binsize);
+            int[] data = distributions.get(i).getBinnedData(binsize, hplen, false);
             String seriename = distributions.get(i).getName();
             for (int j = 0; j < data.length; j++) {
                 String cat = "" + (binsize * j);
@@ -282,23 +345,21 @@ public class ScoreDistPanel extends javax.swing.JPanel {
         return dataset;
     }
 
-    private XYSeriesCollection createXYDataset() {
+    private XYSeriesCollection createXYDataset(int hplen) {
         XYSeriesCollection dataset = new XYSeriesCollection();
-        maxx = 0;
         for (int i = 0; i < distributions.size(); i++) {
-            TreeMap<Short, Integer> map = distributions.get(i).getMap();
-            dataset.addSeries(createDataset(distributions.get(i)));
+            dataset.addSeries(createDataset(distributions.get(i), hplen));
         }
-        maxx += 100;
+        
         return dataset;
     }
 
-    private JComponent createChart() {
-        maxx = 0;
+    private JComponent createChart(int hplen) {
+        
         this.location = distributions.get(0).getLocation();
         String information = distributions.get(0).getInformation();
-        String plotTitle = "Score Distribution";
-        String xaxis = "score value";
+        String plotTitle = "Error distribution for HP "+hplen;
+        String xaxis = "error";
         String yaxis = "count";
 
 
@@ -309,7 +370,7 @@ public class ScoreDistPanel extends javax.swing.JPanel {
         // XYSplineRenderer renderer = new XYSplineRenderer();
 
         if (chart_type == TYPE_BAR || chart_type == TYPE_STACKED) {
-            CategoryDataset dataset = createCategoryDataset();
+            CategoryDataset dataset = createCategoryDataset(hplen);
             freechart = ChartFactory.createBarChart(
                     plotTitle, // chart title
                     xaxis, // domain axis label
@@ -359,7 +420,7 @@ public class ScoreDistPanel extends javax.swing.JPanel {
         } else {
             XYSeriesCollection dataset = null;
             AbstractXYItemRenderer renderer = null;
-            dataset = createXYDataset();
+            dataset = createXYDataset(hplen);
             XYPlot plot = null;
             if (chart_type == TYPE_LINE) {
                 renderer = new XYLineAndShapeRenderer();
@@ -376,12 +437,8 @@ public class ScoreDistPanel extends javax.swing.JPanel {
             plot.setDomainGridlinesVisible(true);
             int series = dataset.getSeriesCount();
             //  plot.setDomainGridlinePaint(Color.gray.darker());  
-            for (int x = 100; x < maxx; x += 100) {
-                final Marker line = new ValueMarker(x);
-                line.setPaint(Color.gray.darker());
-                plot.addDomainMarker(line);
-            }
-
+            final Marker line = new ValueMarker(0);
+            line.setPaint(Color.gray.darker());
 
             for (int s = 0; s < series; s++) {
                 char base = distributions.get(s).getBase();
@@ -416,16 +473,17 @@ public class ScoreDistPanel extends javax.swing.JPanel {
 
         xax.setMinorTickCount(1);
         //xax.setTickUnit(new NumberTickUnit(50));
-        xax.setTickUnit(new BcTickUnit(base, 25));
+        xax.setTickUnit(new ErrorTickUnit(hplen, base, 25));
         xax.setTickMarksVisible(true);
         xax.setMinorTickMarksVisible(true);
+        xax.setRange(minx, maxx);
         freechart.setTitle(plotTitle);
         String bininfo = "bin size=" + binsize;
         // also add nr of flows
 
-        yax.setRange(0, maxcount+1);
+        yax.setRange(0, maxcount + 1);
         int totflows = 0;
-        for (ScoreDistribution dist : distributions) {
+        for (ErrorDistribution dist : distributions) {
             totflows += dist.getNrFlows();
         }
         bininfo += ", nr reads=" + totflows;
@@ -466,14 +524,17 @@ public class ScoreDistPanel extends javax.swing.JPanel {
 
     }
 
-    private XYSeries createDataset(ScoreDistribution dist) {
-        int[] bins = dist.getBinnedData(binsize);
+    private XYSeries createDataset(ErrorDistribution dist, int hplen) {
+        int[] bins = dist.getBinnedData(binsize, hplen, false);
         if (maxx < dist.getMaxX()) {
             maxx = dist.getMaxX();
         }
+        if (minx > dist.getMinX()) {
+            minx = dist.getMinX();
+        }
         XYSeries xy = new XYSeries(dist.getName());
         for (int b = 0; b < bins.length; b++) {
-            xy.add(b * binsize, bins[b]);
+            xy.add(b * binsize + minx, bins[b]);
         }
         return xy;
     }
@@ -638,7 +699,7 @@ public class ScoreDistPanel extends javax.swing.JPanel {
         jLabel1.setText("Bin size:");
         buttonToolBar.add(jLabel1);
 
-        spinBin.setModel(new javax.swing.SpinnerNumberModel(25, 1, 200, 5));
+        spinBin.setModel(new javax.swing.SpinnerNumberModel(10, 1, 50, 5));
         spinBin.setMaximumSize(new java.awt.Dimension(50, 19));
         spinBin.setMinimumSize(new java.awt.Dimension(47, 18));
         spinBin.setPreferredSize(new java.awt.Dimension(47, 18));
@@ -727,7 +788,7 @@ public class ScoreDistPanel extends javax.swing.JPanel {
 
     private void doSaveDataAction() {
         // get file name from user
-        filename = FileTools.getFile("File to store score distribution", ".csv", filename, true);
+        filename = FileTools.getFile("File to store error distribution", ".csv", filename, true);
         if (filename == null || filename.length() < 1) {
             return;
         }
@@ -828,7 +889,7 @@ public class ScoreDistPanel extends javax.swing.JPanel {
 
         int max = 10;
 
-        for (ScoreDistribution dist : this.distributions) {
+        for (ErrorDistribution dist : this.distributions) {
             ArrayList<ReadInfo> infos = dist.getReadInfos();
             if (readflows.size() > max) {
                 break;
@@ -838,22 +899,22 @@ public class ScoreDistPanel extends javax.swing.JPanel {
                     break;
                 }
                 WellCoordinate coord = ri.getCoord();
-               ReadFlow rf = new ReadFlow(ri.getFlowPosition(), coord.getX(), coord.getY());
+                ReadFlow rf = new ReadFlow(ri.getFlowPosition(), coord.getX(), coord.getY());
                 rf.setFlowValue(ri.getFlowValue());
                 readflows.add(rf);
             }
         }
-          PreferenceManager prefs = PreferenceManager.getInstance();
-       String server = prefs.get(PreferenceManager.IONTORRENT_SERVER);        
-        String expinfo = prefs.get(PreferenceManager.IONTORRENT_RESULTS);
-        
+        PreferenceManager prefs = PreferenceManager.getInstance();
+        String server = prefs.get(PreferenceManager.IONTORRENT_SERVER);
+        String expinfo = prefs.get(PreferenceManager.BAM_FILE);
+
         ExperimentContext exp = new ExperimentContext();
-        exp.setBamFilename(expinfo);
-        exp.setResultsName(expinfo);
+        exp.setExperimentInfo(expinfo);
+
         SignalFetchPanel sig = new SignalFetchPanel(exp, readflows, distributions.get(0).getInformation());
-       sig.setServer(server);
-       sig.showPanel();
-       
+        sig.setServer(server);
+        sig.showPanel();
+
     }//GEN-LAST:event_btnRawActionPerformed
 
     public void handleKeyEvent(KeyEvent e) {
@@ -884,24 +945,25 @@ public class ScoreDistPanel extends javax.swing.JPanel {
     private javax.swing.JSpinner spinBin;
     // End of variables declaration//GEN-END:variables
 
-    public void setDistributions(ScoreDistribution[] newdist) {
-        ArrayList<ScoreDistribution> distperbase = new ArrayList<ScoreDistribution>();
-        for (ScoreDistribution dist : newdist) {
+    public void setDistributions(ErrorDistribution[] newdist) {
+        ArrayList<ErrorDistribution> distperbase = new ArrayList<ErrorDistribution>();
+        for (ErrorDistribution dist : newdist) {
             this.location = dist.getLocation();
-            p("Got location: "+location);
-            if (base.equals(""+dist.getBase())) {
+            p("Got location: " + location);
+            if (base.equals("" + dist.getBase())) {
                 // could be a potential candidate - but maybe also filter                    
                 distperbase.add(dist);
             }
         }
 
         this.distributions = distperbase;
-       
+
     }
 
     public String getBase() {
         return base;
     }
+
     /**
      * @return the listener
      */

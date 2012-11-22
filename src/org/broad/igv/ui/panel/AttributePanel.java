@@ -67,6 +67,7 @@ public class AttributePanel extends TrackPanelComponent implements Packable, Pai
     protected void paintComponent(Graphics g) {
 
         super.paintComponent(g);
+        ((Graphics2D) g).setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         Rectangle visibleRect = getVisibleRect();
         removeMousableRegions();
         paintOffscreen((Graphics2D) g, visibleRect);
@@ -136,8 +137,9 @@ public class AttributePanel extends TrackPanelComponent implements Packable, Pai
                             }
 
                             if (track.isVisible()) {
+                                int border = trackHeight < 5 ? 0 : 1;
                                 if (regionY + trackHeight >= rect.y) {
-                                    Rectangle trackRectangle = new Rectangle(left, regionY, getWidth(), trackHeight);
+                                    Rectangle trackRectangle = new Rectangle(left, regionY+border, getWidth(), trackHeight-border);
                                     track.renderAttributes(graphics2D, trackRectangle, rect, names, mouseRegions);
                                     //regionY = draw(names, track, regionX, regionY, attributeColumnWidth, track.getHeight(), graphics2D);
                                 }
@@ -166,13 +168,6 @@ public class AttributePanel extends TrackPanelComponent implements Packable, Pai
             }
 
         }
-
-        Color c = g.getColor();
-        g.setColor(Color.darkGray);
-        g.drawRect(rect.x, rect.y, rect.width, rect.height);
-        g.setColor(c);            //super.paintBorder(g);
-        //super.paintBorder(g);
-
 
     }
 

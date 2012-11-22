@@ -4,10 +4,10 @@
  */
 package com.iontorrent.data;
 
+import com.iontorrent.expmodel.FlowSeq;
 import com.iontorrent.rawdataaccess.FlowValue;
 import com.iontorrent.wellmodel.WellCoordinate;
 import java.util.ArrayList;
-import org.iontorrent.sam2flowgram.flowalign.FlowSeq;
 
 /**
  * The inogram of a part of an alignment, including the empties
@@ -72,7 +72,7 @@ public class Ionogram {
     public String toShortString() {
         String s = readname+"@ "+getLocusinfo()+": ";        
         for (FlowValue fv: getFlowvalues()) {
-            s += fv.getBase()+" ("+fv.getFlowvalue()+") "+" ";
+            s += fv.getBase()+" ("+fv.getRawFlowvalue()+") "+" ";
         }
         return s;
     }
@@ -140,8 +140,8 @@ public class Ionogram {
             readname = readname.substring(col + 1);
             readname = readname.replace(":", "_");
             int ul = readname.indexOf("_");
-            int x = Integer.parseInt(readname.substring(0, ul));
-            int y = Integer.parseInt(readname.substring(ul+1));
+            int y = Integer.parseInt(readname.substring(0, ul));
+            int x = Integer.parseInt(readname.substring(ul+1));
             return new WellCoordinate(x, y);
     }
     /**
@@ -201,10 +201,10 @@ public class Ionogram {
         selected[slot] = !selected[slot];
     }
     
-    public int getMaxValue() {
-        int max = 0;
+    public double getMaxValue() {
+        double max = 0;
         for (FlowValue f: flowvalues) {
-            if (f.getFlowvalue() > max) max = f.getFlowvalue();
+            if (f.getRawFlowvalue() > max) max = f.getRawFlowvalue();
         }
         return max;
     }

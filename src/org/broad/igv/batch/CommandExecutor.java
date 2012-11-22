@@ -13,7 +13,6 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-
 package org.broad.igv.batch;
 
 import org.apache.log4j.Logger;
@@ -37,16 +36,16 @@ import java.io.IOException;
 import java.net.URLDecoder;
 import java.util.*;
 import java.util.List;
+import javax.swing.JOptionPane;
+import org.broad.igv.renderer.DataRange;
 import org.broad.igv.ui.panel.TrackPanel;
 
- public class CommandExecutor {
+public class CommandExecutor {
 
     private static Logger log = Logger.getLogger(CommandExecutor.class);
-
     private File snapshotDirectory;
     private IGV igv;
     private int sleepInterval = 2000;
-
 
     public CommandExecutor() {
         igv = IGV.getInstance();
@@ -70,7 +69,7 @@ import org.broad.igv.ui.panel.TrackPanel;
 
 
         System.out.println();
-        log.debug("Executing: " + command);
+        log.info("Executing: " + command);
         try {
             if (args.size() > 0) {
 
@@ -84,16 +83,21 @@ import org.broad.igv.ui.panel.TrackPanel;
                     result = cmd;
                 } else if (cmd.equalsIgnoreCase("gotoimmediate")) {
                     return gotoImmediate(args);
+                } else if (cmd.equalsIgnoreCase("msg")) {
+                   if (param1 != null) JOptionPane.showMessageDialog(IGV.getMainFrame(), param1);
+                   result = param1;
                 } else if (cmd.equalsIgnoreCase("goto")) {
                     result = goto1(args);
-                } else if (cmd.equalsIgnoreCase("snapshot_fs")) { 
+                } else if (cmd.equalsIgnoreCase("snapshot_fs")) {
                     // create image of flow signal distributon
                     // first goto that position
-                    log.info("Goto "+args);
+                    log.info("Goto " + args);
                     result = goto1(args);
                     boolean close = false;
-                    if (param3 != null) close = param3.equalsIgnoreCase("TRUE");
-                    result = createFsSnapshot(param2, close);
+                    if (param3 != null) {
+                        close = param3.equalsIgnoreCase("TRUE");
+                    }
+                    result = createErrorSnapshot(param2, close);
                     // 
                 } else if (cmd.equalsIgnoreCase("gototrack")) {
                     boolean res = IGV.getInstance().scrollToTrack(param1);
@@ -155,10 +159,12 @@ import org.broad.igv.ui.panel.TrackPanel;
                 LRUCache.clearCaches();
             }
             log.debug("Finished execution: " + command + "  sleeping ....");
-            if (sleepInterval > 0) try {
-                Thread.sleep(sleepInterval);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+            if (sleepInterval > 0) {
+                try {
+                    Thread.sleep(sleepInterval);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
             log.debug("Finished sleeping");
 
@@ -176,40 +182,71 @@ import org.broad.igv.ui.panel.TrackPanel;
         igv.setGenomeTracks(GenomeManager.getInstance().getCurrentGenome().getGeneTrack());
     }
 
-    private String createFsSnapshot( String filename, boolean closeAfter) {
+    private String setDataRange(String dataRangeString, String trackName) {
+        List<Track> tracks = igv.getAllTracks();
+        String[] tokens = dataRangeString.split(",");
+        //Min,max or min,baseline,max
+        DataRange range;
+        try {
+            if (tokens.length == 2) {
+                range = new DataRange(Float.parseFloat(tokens[0]), Float.parseFloat(tokens[1]));
+            } else if (tokens.length == 3) {
+                range = new DataRange(Float.parseFloat(tokens[0]), Float.parseFloat(tokens[1]), Float.parseFloat(tokens[2]));
+            } else {
+                throw new IllegalArgumentException(String.format("ERROR: parsing %s for data range. \n"
+                        + "String must be of form <min,max> or <min,baseline,max>", dataRangeString));
+            }
+        } catch (NumberFormatException e) {
+            return "ERROR: Could not parse input string as a Float. " + e.getMessage();
+        } catch (IllegalArgumentException e) {
+            return e.getMessage();
+        }
+        for (Track track : tracks) {
+            if (trackName == null || trackName.equalsIgnoreCase(track.getName())) {
+                track.setDataRange(range);
+            }
+        }
+        return "OK";
+    }
+
+    private String createErrorSnapshot(String filename, boolean closeAfter) {
         if (filename == null) {
             String locus = FrameManager.getDefaultFrame().getFormattedLocusString();
-            filename = locus.replaceAll(":", "_").replace("-", "_").replace(",", "_")+"_fs" ;
+            filename = locus.replaceAll(":", "_").replace("-", "_").replace(",", "_") + "_fs";
         }
 
         File file = snapshotDirectory == null ? new File(filename) : new File(snapshotDirectory, filename);
-        log.info("createFsSnapshot: " + file.getAbsolutePath());
+        log.info("createErrorSnapshot: " + file.getAbsolutePath());
         boolean ok = false;
         try {
-           // List<TrackPanel> panels = IGV.getInstance().getTrackPanels();
-           // for (TrackPanel tp: panels) {
-                 List<Track> tracks = IGV.getInstance().getAllTracks();
-                 log.info("Trying to find alignment track");
-                for (Track track : tracks) {
-                    log.info("Got track: "+track.getName());
-                    if (track instanceof AlignmentTrack) {
-                        AlignmentTrack atrack = (AlignmentTrack) track;                        
-                        log.info("Found alingment track, exporting image to "+filename);
-                        atrack.createFlowSignalScreenShot(true, false, filename+ "f.png", closeAfter);
-                        atrack.createFlowSignalScreenShot(false, true, filename+ "r.png",closeAfter);
-                        ok =true;
-                    }
+            // List<TrackPanel> panels = IGV.getInstance().getTrackPanels();
+            // for (TrackPanel tp: panels) {
+            List<Track> tracks = IGV.getInstance().getAllTracks();
+            log.info("Trying to find alignment track");
+            for (Track track : tracks) {
+                log.info("Got track: " + track.getName());
+                if (track instanceof AlignmentTrack) {
+                    AlignmentTrack atrack = (AlignmentTrack) track;
+                    log.info("Found alingment track, exporting image to " + filename);
+                    atrack.createErrorDistScreenShot(true, false, filename + "f", closeAfter);
+                    atrack.createErrorDistScreenShot(false, true, filename + "r", closeAfter);
+                    ok = true;
                 }
-           // }
-            
+            }
+            // }
+
         } catch (Exception e) {
             log.error(e);
             return e.getMessage();
         }
-       
-         if (ok) return "OK";
-         else return "NOT OK";
+
+        if (ok) {
+            return "OK";
+        } else {
+            return "NOT OK";
+        }
     }
+
     private String setViewAsPairs(String vAPString, String trackName) {
         List<Track> tracks = igv.getAllTracks();
         boolean vAP = "false".equalsIgnoreCase(vAPString) ? false : true;
@@ -280,34 +317,38 @@ import org.broad.igv.ui.panel.TrackPanel;
         return "OK";
     }
 
-
     private String genome(String param1) {
         if (param1 == null) {
             return "ERROR missing genome parameter";
         }
-        String result;
+        String result = "OK";
         String genomeID = param1;
 
-        if (igv.getGenomeIds().contains(genomeID)) {
-            igv.selectGenomeFromList(genomeID);
-        } else {
-            String genomePath = genomeID;
-            if (!ParsingUtils.pathExists(genomePath)) {
-                String workingDirectory = (new File("tmp")).getParent();
-                genomePath = FileUtils.getAbsolutePath(genomeID, workingDirectory);
-            }
-            if (ParsingUtils.pathExists(genomePath)) {
-                try {
-                    igv.loadGenome(genomePath, null);
-                } catch (IOException e) {
-                    throw new RuntimeException("Error loading genome: " + genomeID);
-                }
-            } else {
-                MessageUtils.showMessage("Warning: Could not locate genome: " + genomeID);
-            }
+        //Genome in combo box
+        igv.selectGenomeFromList(genomeID);
+        if (GenomeManager.getInstance().getCurrentGenome().getId().equals(genomeID)) {
+            return result;
         }
 
-        result = "OK";
+        String genomePath = genomeID;
+        if (!ParsingUtils.pathExists(genomePath)) {
+            String workingDirectory = (new File("tmp")).getParent();
+            genomePath = FileUtils.getAbsolutePath(genomeID, workingDirectory);
+        }
+        if (ParsingUtils.pathExists(genomePath)) {
+            try {
+                log.info("CommandExecutor.genome");
+                igv.loadGenome(genomePath, null);
+            } catch (IOException e) {
+                throw new RuntimeException("Error loading genome: " + genomeID);
+            }
+        } else {
+            result = "ERROR: Could not locate genome: " + genomeID;
+            MessageUtils.showMessage(result);
+            MessageUtils.showMessage("Warning: Could not locate genome: " + genomeID);
+        }
+
+
         return result;
     }
 
@@ -371,20 +412,20 @@ import org.broad.igv.ui.panel.TrackPanel;
 
         String[] files = fileString.split(",");
         String[] names = nameString != null ? nameString.split(",") : null;
-        if(files.length == 1) {
+        if (files.length == 1) {
             // String might be URL encoded
             files = fileString.split("%2C");
             names = nameString != null ? nameString.split("%2C") : null;
         }
 
-        if(names != null && names.length != files.length) {
+        if (names != null && names.length != files.length) {
             return "Error: If files is a comma-separated list, names must also be a comma-separated list of the same length";
         }
 
         // Must decode remote file paths, but leave local paths as is
-        for(int i=0; i<files.length; i++) {
-            if(FileUtils.isRemote(files[i])) {
-                files[i] =  URLDecoder.decode(files[i], "UTF-8");
+        for (int i = 0; i < files.length; i++) {
+            if (FileUtils.isRemote(files[i])) {
+                files[i] = URLDecoder.decode(files[i], "UTF-8");
             }
         }
 
@@ -412,18 +453,20 @@ import org.broad.igv.ui.panel.TrackPanel;
 
         // Loop through files
         int fi = 0;
-        for (String f : files) {           
+        for (String f : files) {
             // Skip already loaded files TODO -- make this optional?  Check for change?
-            if (loadedFiles.contains(f)) continue;
+            if (loadedFiles.contains(f)) {
+                continue;
+            }
 
             if (f.endsWith(".xml") || f.endsWith(".php") || f.endsWith(".php3") || f.endsWith(".session")) {
                 sessionPaths.add(f);
             } else {
                 ResourceLocator rl;
-                if(HttpUtils.isURL(f)){
+                if (HttpUtils.isURL(f)) {
                     String fDecoded = StringUtils.decodeURL(f);
                     rl = new ResourceLocator(fDecoded);
-                }else{
+                } else {
                     rl = new ResourceLocator(f);
                 }
 
@@ -477,7 +520,6 @@ import org.broad.igv.ui.panel.TrackPanel;
 //        }
 //        return buf.toString();
     }
-
 
     private String bringToFront() {
         // Trick to force window to front, the setAlwaysOnTop works on a Mac,  toFront() does nothing.
@@ -538,7 +580,6 @@ import org.broad.igv.ui.panel.TrackPanel;
         igv.repaintDataPanels();
     }
 
-
     private void expand(String trackName) {
         if (trackName == null) {
             igv.expandTracks();
@@ -568,7 +609,6 @@ import org.broad.igv.ui.panel.TrackPanel;
             igv.addRegionOfInterest(roi);
         }
     }
-
 
     private void sort(String sortArg, String locusString, String param3, String param4) {
         RegionScoreType regionSortOption = getRegionSortOption(sortArg);
@@ -602,7 +642,9 @@ import org.broad.igv.ui.panel.TrackPanel;
                 }
             }
             //Convert from 1-based to 0-based
-            if (location != null) location--;
+            if (location != null) {
+                location--;
+            }
             igv.sortAlignmentTracks(getAlignmentSortOption(sortArg), location, tag);
         }
         igv.repaintDataPanels();
@@ -612,7 +654,6 @@ import org.broad.igv.ui.panel.TrackPanel;
         igv.groupAlignmentTracks(getAlignmentGroupOption(sortArg));
         igv.repaintDataPanels();
     }
-
 
     private String createSnapshot(String filename) {
         if (filename == null) {
@@ -633,7 +674,9 @@ import org.broad.igv.ui.panel.TrackPanel;
     }
 
     private static RegionScoreType getRegionSortOption(String str) {
-        if (str == null) return null;
+        if (str == null) {
+            return null;
+        }
         String option = str.toUpperCase();
         try {
             return RegionScoreType.valueOf(option);

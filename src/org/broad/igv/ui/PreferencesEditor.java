@@ -16,7 +16,7 @@
  * SHALL KNOW OF THE POSSIBILITY OF THE FOREGOING.
  */
 package org.broad.igv.ui;
-
+ 
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.border.*;
@@ -256,6 +256,12 @@ public class PreferencesEditor extends javax.swing.JDialog {
         updatedPreferenceMap.put(PreferenceManager.IONTORRENT_BAM_HAS_FLOWVALUES, ""+sel);
     }
 
+    
+    private void boxAutoLoadGenomeActionPerformed(ActionEvent e) {
+        boolean sel = this.boxAutoLoadGenome.isSelected();  
+        updatedPreferenceMap.put(PreferenceManager.STARTUP_AUTOLOAD_GENOME, ""+sel);
+    }
+
     public PreferencesEditor(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
@@ -304,6 +310,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
         label7 = new JLabel();
         backgroundColorPanel = new JPanel();
         resetBackgroundButton = new JButton();
+        boxAutoLoadGenome = new JCheckBox();
         tracksPanel = new JPanel();
         jPanel6 = new JPanel();
         jLabel5 = new JLabel();
@@ -393,6 +400,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
         label9 = new JLabel();
         panel3 = new JPanel();
         showJunctionTrackCB = new JCheckBox();
+        showJunctionFlankingRegionsCB = new JCheckBox();
         junctionFlankingTextField = new JTextField();
         label15 = new JLabel();
         label16 = new JLabel();
@@ -679,6 +687,17 @@ public class PreferencesEditor extends javax.swing.JDialog {
                     });
                     jPanel10.add(resetBackgroundButton);
                     resetBackgroundButton.setBounds(315, 474, 150, resetBackgroundButton.getPreferredSize().height);
+
+                    //---- boxAutoLoadGenome ----
+                    boxAutoLoadGenome.setText("Automatically load default genome if no session of file is specified upon startup");
+                    boxAutoLoadGenome.addActionListener(new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            boxAutoLoadGenomeActionPerformed(e);
+                        }
+                    });
+                    jPanel10.add(boxAutoLoadGenome);
+                    boxAutoLoadGenome.setBounds(10, 70, 405, boxAutoLoadGenome.getPreferredSize().height);
 
                     { // compute preferred size
                         Dimension preferredSize = new Dimension();
@@ -1708,6 +1727,17 @@ public class PreferencesEditor extends javax.swing.JDialog {
                     panel3.add(showJunctionTrackCB);
                     showJunctionTrackCB.setBounds(new Rectangle(new Point(5, 25), showJunctionTrackCB.getPreferredSize()));
 
+                    //---- showJunctionFlankingRegionsCB ----
+                    showJunctionFlankingRegionsCB.setText("Show flanking regions");
+                    showJunctionFlankingRegionsCB.addActionListener(new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            showJunctionFlankingRegionsCBActionPerformed(e);
+                        }
+                    });
+                    panel3.add(showJunctionFlankingRegionsCB);
+                    showJunctionFlankingRegionsCB.setBounds(new Rectangle(new Point(5, 50), showJunctionFlankingRegionsCB.getPreferredSize()));
+
                     //---- junctionFlankingTextField ----
                     junctionFlankingTextField.addActionListener(new ActionListener() {
                         @Override
@@ -1765,7 +1795,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
                     }
                 }
                 alignmentPanel.add(panel3);
-                panel3.setBounds(10, 361, 755, 69);
+                panel3.setBounds(10, 355, 755, 85);
 
                 { // compute preferred size
                     Dimension preferredSize = new Dimension();
@@ -1905,7 +1935,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
                     panel7.setLayout(null);
 
                     //---- label30 ----
-                    label30.setText("Max. number of ionograms in alignment");
+                    label30.setText("Max. number of reads  in alignment");
                     panel7.add(label30);
                     label30.setBounds(new Rectangle(new Point(15, 25), label30.getPreferredSize()));
 
@@ -1929,7 +1959,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
                     textNrIonograms.setBounds(390, 20, 105, textNrIonograms.getPreferredSize().height);
 
                     //---- label27 ----
-                    label27.setText("Number of base calls around main location to include in ionogram alignment");
+                    label27.setText("Number of base calls around main location to include in alignment");
                     panel7.add(label27);
                     label27.setBounds(15, 45, 365, label27.getPreferredSize().height);
 
@@ -1951,7 +1981,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
                     textNrBases.setBounds(390, 45, 105, textNrBases.getPreferredSize().height);
 
                     //---- label32 ----
-                    label32.setText("Flow signal drawing type:");
+                    label32.setText("Alignmentl drawing type:");
                     panel7.add(label32);
                     label32.setBounds(15, 65, 150, 14);
 
@@ -2037,7 +2067,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
                     panel9.setLayout(null);
 
                     //---- checkBAMHasFlowValues ----
-                    checkBAMHasFlowValues.setText("The current BAM file contains flow information (select to show flow menu items)");
+                    checkBAMHasFlowValues.setText("The current BAM file contains raw flow information (select to show flow menu items)");
                     checkBAMHasFlowValues.addActionListener(new ActionListener() {
                         @Override
                         public void actionPerformed(ActionEvent e) {
@@ -3223,7 +3253,11 @@ public class PreferencesEditor extends javax.swing.JDialog {
                 String.valueOf(showSoftClippedCB.isSelected()));
     }
 
-
+  private void showJunctionFlankingRegionsCBActionPerformed(java.awt.event.ActionEvent evt) {
+        final boolean junctionFlankingRegionsEnabled = showJunctionFlankingRegionsCB.isSelected();
+        updatedPreferenceMap.put(PreferenceManager.SAM_SHOW_JUNCTION_FLANKINGREGIONS,
+                String.valueOf(junctionFlankingRegionsEnabled));
+    }
     private void isizeComputeCBActionPerformed(ActionEvent e) {
         final boolean selected = isizeComputeCB.isSelected();
         updatedPreferenceMap.put(PreferenceManager.SAM_COMPUTE_ISIZES, String.valueOf(selected));
@@ -3982,6 +4016,9 @@ public class PreferencesEditor extends javax.swing.JDialog {
 
         final boolean junctionTrackEnabled = prefMgr.getAsBoolean(PreferenceManager.SAM_SHOW_JUNCTION_TRACK);
         showJunctionTrackCB.setSelected(junctionTrackEnabled);
+        showJunctionFlankingRegionsCB.setSelected(prefMgr.getAsBoolean(
+                PreferenceManager.SAM_SHOW_JUNCTION_FLANKINGREGIONS));
+        showJunctionFlankingRegionsCB.setEnabled(junctionTrackEnabled);
         junctionFlankingTextField.setText(prefMgr.get(PreferenceManager.SAM_JUNCTION_MIN_FLANKING_WIDTH));
         junctionCoverageTextField.setText(prefMgr.get(PreferenceManager.SAM_JUNCTION_MIN_COVERAGE));
         junctionFlankingTextField.setEnabled(junctionTrackEnabled);
@@ -4158,6 +4195,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
     private JLabel label7;
     private JPanel backgroundColorPanel;
     private JButton resetBackgroundButton;
+    private JCheckBox boxAutoLoadGenome;
     private JPanel tracksPanel;
     private JPanel jPanel6;
     private JLabel jLabel5;
@@ -4247,6 +4285,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
     private JLabel label9;
     private JPanel panel3;
     private JCheckBox showJunctionTrackCB;
+    private JCheckBox showJunctionFlankingRegionsCB;
     private JTextField junctionFlankingTextField;
     private JLabel label15;
     private JLabel label16;

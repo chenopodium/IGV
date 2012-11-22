@@ -1,5 +1,7 @@
 package org.broad.igv.sam;
 
+import com.iontorrent.rawdataaccess.FlowValue;
+
 /**
  * Represents a flow signals context in an alignment block focused on a given base.  Added to support IonTorrent alignments.
  *
@@ -8,54 +10,47 @@ package org.broad.igv.sam;
  * Modified by Chantal Roth, 6/21/2012
  */
 public class FlowSignalSubContext {
-    private short[][] signals = null;
-    private char[][] bases = null;
     private int flowOrderIndex;
     
     public static final int PREV = 0;
     public static final int CURR = 1;
     public static final int NEXT = 2;
     
-    public FlowSignalSubContext(short[][] signals, char[][] bases, int flowOrderIndex) {
-        this.signals = signals;
-        this.bases = bases;
+    FlowValue[][] flowvalues;
+    
+    public FlowSignalSubContext(FlowValue[][] flowvalues, int flowOrderIndex) {
+       this.flowvalues = flowvalues;
         this.flowOrderIndex = flowOrderIndex;
     }   
     public int getFlowOrderIndex() {
         return flowOrderIndex;
     }
-    public short[] getPreviousSignals() {
-        return signals[PREV];
+    public FlowValue[] getPreviousValues() {
+        return flowvalues[PREV];
     }
-    public short[] getCurrentSignals() {
-        return signals[CURR];
+    public FlowValue[] getCurrentValues() {
+        return flowvalues[CURR];
     }
-     public short getCurrentSignal() {
-        return signals[CURR][0];
+     public FlowValue getCurrentValue() {
+        return flowvalues[CURR][0];
     }
-     public short[] getNextSignals() {
-        return signals[NEXT];
+     public FlowValue[] getNextValues() {
+        return flowvalues[NEXT];
     }
 
     public int getNrSignalTypes() {
-        return signals.length;
+        return flowvalues.length;
     }
 
-    public short[] getSignalsOfType(int type) {
-        return signals[type];
+    public FlowValue[] getValuesOfType(int type) {
+        return flowvalues[type];
     }
     public char getBaseForNextEmpty(int emptypos) {
-        return bases[NEXT][emptypos];
+        return flowvalues[NEXT][emptypos].getBase();
     }
 
-    public char[] getBasesOfType(int type) {
-        return bases[type];
-    }
 
-    public short[][] getSignals() {
-        return signals;
-    }
-     public char[][] getBases() {
-        return bases;
+    public FlowValue[][] getFlowValues() {
+        return flowvalues;
     }
 } 

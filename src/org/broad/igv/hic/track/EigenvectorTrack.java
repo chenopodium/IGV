@@ -1,8 +1,13 @@
 package org.broad.igv.hic.track;
 
+import org.apache.commons.math.stat.StatUtils;
+import org.broad.igv.data.WiggleDataset;
+import org.broad.igv.hic.Context;
+import org.broad.igv.hic.HiC;
 import org.broad.igv.renderer.Renderer;
 import org.broad.igv.track.AbstractTrack;
 import org.broad.igv.track.RenderContext;
+import org.broad.igv.util.collections.DoubleArrayList;
 
 import java.awt.*;
 
@@ -10,24 +15,38 @@ import java.awt.*;
  * @author Jim Robinson
  * @date 4/13/12
  */
-public class EigenvectorTrack extends AbstractTrack {
+public class EigenvectorTrack extends HiCTrack {
 
 
-    double step;
+    public static final Color COLOR = Color.blue.darker();
+    double scale;
     double[] data;
     private double dataMax;
+    private double median;
+    HiC hic;
+    int currentZoom = -1;
 
-    public EigenvectorTrack(String id, String name) {
-        super(id, name);
+    public EigenvectorTrack(String id, String name, HiC hic) {
+        this.hic = hic;
     }
 
-    public void setData(double step, double[] data) {
-        this.step = step;
+    private void setData(double scale, double[] data) {
+        this.scale = scale;
         this.data = data;
+
+        DoubleArrayList tmp = new DoubleArrayList(data.length);
+        for (int i = 0; i < data.length; i++) {
+            if (!Double.isNaN(data[i])) {
+                tmp.add(data[i]);
+            }
+        }
+        double[] tmpArray = tmp.toArray();
+        this.median = StatUtils.percentile(tmpArray, 50);
         dataMax = 0;
-        for (double aData : data) {
+        for (double aData : tmpArray) {
             if (Math.abs(aData) > dataMax) dataMax = Math.abs(aData);
         }
+
 
     }
 
@@ -35,39 +54,59 @@ public class EigenvectorTrack extends AbstractTrack {
      * Render the track in the supplied rectangle.  It is the responsibility of the track to draw within the
      * bounds of the rectangle.
      *
-     * @param context the render context
-     * @param rect    the track bounds, relative to the enclosing DataPanel bounds.
+     * @param g2d  the graphics context
+     * @param rect the track bounds, relative to the enclosing DataPanel bounds.
      */
-    public void render(RenderContext context, Rectangle rect) {
+    public void render(Graphics2D g2d, Context context, Rectangle rect) {
 
-        if (data == null) return;
+        int zoom = hic.zd.getZoom();
+        if (zoom != currentZoom) {
+
+            double[] eigen = hic.getEigenvector(0);
+            if (eigen == null) return;
+
+            currentZoom = zoom;
+            setData(context.getScaleFactor(), eigen);
+        }
+
+        if (data == null || data.length == 0) return;
 
         int h = rect.height / 2;
-        Graphics2D g2d = context.getGraphics();
-        g2d.setColor(Color.blue.darker());
+        g2d.setColor(COLOR);
 
-        int lastXPixel = -1;
+        for (int bin = context.getBinOrigin(); bin < data.length; bin++) {
 
-        for (int i = 0; i < data.length; i++) {
+            if (Double.isNaN(data[bin])) continue;
 
-            int genomicPosition = (int) (step * i);
-            int xPixel = context.bpToScreenPixel(genomicPosition);
+            int xPixelLeft = rect.x + (int) ((bin - context.getBinOrigin()) * scale); //context.getScreenPosition (genomicPosition);
+            int xPixelRight = rect.x + (int) ((bin + 1 - context.getBinOrigin()) * scale);
 
-            if (xPixel > lastXPixel && lastXPixel >= 0) {
 
-                int myh = (int) ((data[i] / dataMax) * h);
-                if (data[i] > 0) {
-                    g2d.fillRect(lastXPixel, rect.y + h - myh, (xPixel - lastXPixel), myh);
-                } else {
-                    g2d.fillRect(lastXPixel, rect.y + h, xPixel - lastXPixel, -myh);
-                }
+            if (xPixelRight < rect.x) {
+                continue;
+            } else if (xPixelLeft > rect.x + rect.width) {
+                break;
             }
-            lastXPixel = xPixel;
+
+            double x = data[bin] - median;
+            double max = dataMax - median;
+
+            int myh = (int) ((x / max) * h);
+            if (x > 0) {
+                g2d.fillRect(xPixelLeft, rect.y + h - myh, (xPixelRight - xPixelLeft), myh);
+            } else {
+                g2d.fillRect(xPixelLeft, rect.y + h, (xPixelRight - xPixelLeft), -myh);
+            }
+
         }
 
     }
 
     public Renderer getRenderer() {
         return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    public void forceRefresh() {
+        currentZoom = -1;
     }
 }

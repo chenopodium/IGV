@@ -18,6 +18,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -160,6 +161,16 @@ public class StringUtils {
         }
     }
 
+     public static String encodeURL(String s) {
+        if (s == null) {
+            return null;
+        }
+        try {
+            return URLEncoder.encode(s, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            return URLEncoder.encode(s);
+        }
+    }
     /**
      * Copy a text string to the clipboard
      *

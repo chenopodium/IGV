@@ -1,19 +1,12 @@
 /*
- * Copyright (c) 2007-2011 by The Broad Institute of MIT and Harvard.  All Rights Reserved.
+ * Copyright (c) 2007-2012 The Broad Institute, Inc.
+ * SOFTWARE COPYRIGHT NOTICE
+ * This software and its documentation are the copyright of the Broad Institute, Inc. All rights are reserved.
+ *
+ * This software is supplied without any warranty or guaranteed support whatsoever. The Broad Institute is not responsible for its use, misuse, or functionality.
  *
  * This software is licensed under the terms of the GNU Lesser General Public License (LGPL),
  * Version 2.1 which is available at http://www.opensource.org/licenses/lgpl-2.1.php.
- *
- * THE SOFTWARE IS PROVIDED "AS IS." THE BROAD AND MIT MAKE NO REPRESENTATIONS OR
- * WARRANTES OF ANY KIND CONCERNING THE SOFTWARE, EXPRESS OR IMPLIED, INCLUDING,
- * WITHOUT LIMITATION, WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
- * PURPOSE, NONINFRINGEMENT, OR THE ABSENCE OF LATENT OR OTHER DEFECTS, WHETHER
- * OR NOT DISCOVERABLE.  IN NO EVENT SHALL THE BROAD OR MIT, OR THEIR RESPECTIVE
- * TRUSTEES, DIRECTORS, OFFICERS, EMPLOYEES, AND AFFILIATES BE LIABLE FOR ANY DAMAGES
- * OF ANY KIND, INCLUDING, WITHOUT LIMITATION, INCIDENTAL OR CONSEQUENTIAL DAMAGES,
- * ECONOMIC DAMAGES OR INJURY TO PROPERTY AND LOST PROFITS, REGARDLESS OF WHETHER
- * THE BROAD OR MIT SHALL BE ADVISED, SHALL HAVE OTHER REASON TO KNOW, OR IN FACT
- * SHALL KNOW OF THE POSSIBILITY OF THE FOREGOING.
  */
 package org.broad.igv.util;
 
@@ -23,13 +16,11 @@ import org.broad.igv.Globals;
 import org.broad.igv.ui.util.MessageUtils;
 
 import java.io.*;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
 
 /**
@@ -491,20 +482,21 @@ public class FileUtils {
      * @return
      */
     public static String getAbsolutePath(String inputPath, String referencePath) {
+        if (isRemote(inputPath)) {
+            return inputPath;
+        }
+        File inFile = new File(inputPath);
+        if (inFile.isAbsolute()) {
+            return inFile.getAbsolutePath();
+        }
+
         String absolutePath;
 
         if (isRemote(referencePath)) {
-            if (isRemote(inputPath)) {
-                return inputPath;
-            }
             int idx = referencePath.lastIndexOf("/");
             String basePath = referencePath.substring(0, idx);
             absolutePath = basePath + "/" + inputPath;
         } else {
-            File inFile = new File(inputPath);
-            if (inFile.isAbsolute()) {
-                return inFile.getAbsolutePath();
-            }
             File parent = new File(referencePath).getParentFile();
             File file = new File(parent, inputPath);
             absolutePath = file.getAbsolutePath();
@@ -532,5 +524,56 @@ public class FileUtils {
         String piPath = getPlatformIndependentPath(path);
         int lastSlashIdx = piPath.lastIndexOf("/");
         return lastSlashIdx <= 0 ? path : path.substring(0, lastSlashIdx);
+    }
+
+    /**
+     * Checks the system path for the provided executable.
+     * If {@code executable} is a path (contains a path separator)
+     * then it is returned unaltered
+     *
+     * @param executable
+     * @return
+     */
+    public static String findExecutableOnPath(String executable) {
+        if (executable.contains(File.separator)) return executable;
+
+        String systemPath = System.getenv("PATH");
+        if (systemPath == null) systemPath = System.getenv("path");
+
+        String[] pathDirs = systemPath.split(File.pathSeparator);
+
+        String fullPath = executable;
+        for (String pathDir : pathDirs) {
+            File file = new File(pathDir, executable);
+            if (file.isFile()) {
+                fullPath = file.getAbsolutePath();
+                break;
+            }
+        }
+        return fullPath;
+    }
+
+    /**
+     * Convert a list of ":" separated paths, relative to rootPath,
+     * into file URLs
+     *
+     * @param libs
+     * @param rootPath
+     * @return
+     */
+    public static URL[] getURLsFromString(String libs, String rootPath) {
+        String[] sLibs = libs.split(":");
+        List<URL> libURLList = new ArrayList<URL>(sLibs.length);
+        String pluginDir = (new File(rootPath)).getParent();
+        for (String s : sLibs) {
+            File fi = new File(pluginDir, s);
+            try {
+                libURLList.add(new URL("file:" + fi.getAbsolutePath()));
+            } catch (MalformedURLException e) {
+                log.error("Error adding to libs: " + fi.getAbsolutePath());
+                log.error(e);
+            }
+        }
+        return libURLList.toArray(new URL[0]);
     }
 }

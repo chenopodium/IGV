@@ -1,25 +1,14 @@
 /*
- * Copyright (c) 2007-2011 by The Broad Institute of MIT and Harvard.  All Rights Reserved.
+ * Copyright (c) 2007-2012 The Broad Institute, Inc.
+ * SOFTWARE COPYRIGHT NOTICE
+ * This software and its documentation are the copyright of the Broad Institute, Inc. All rights are reserved.
+ *
+ * This software is supplied without any warranty or guaranteed support whatsoever. The Broad Institute is not responsible for its use, misuse, or functionality.
  *
  * This software is licensed under the terms of the GNU Lesser General Public License (LGPL),
  * Version 2.1 which is available at http://www.opensource.org/licenses/lgpl-2.1.php.
- *
- * THE SOFTWARE IS PROVIDED "AS IS." THE BROAD AND MIT MAKE NO REPRESENTATIONS OR
- * WARRANTES OF ANY KIND CONCERNING THE SOFTWARE, EXPRESS OR IMPLIED, INCLUDING,
- * WITHOUT LIMITATION, WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
- * PURPOSE, NONINFRINGEMENT, OR THE ABSENCE OF LATENT OR OTHER DEFECTS, WHETHER
- * OR NOT DISCOVERABLE.  IN NO EVENT SHALL THE BROAD OR MIT, OR THEIR RESPECTIVE
- * TRUSTEES, DIRECTORS, OFFICERS, EMPLOYEES, AND AFFILIATES BE LIABLE FOR ANY DAMAGES
- * OF ANY KIND, INCLUDING, WITHOUT LIMITATION, INCIDENTAL OR CONSEQUENTIAL DAMAGES,
- * ECONOMIC DAMAGES OR INJURY TO PROPERTY AND LOST PROFITS, REGARDLESS OF WHETHER
- * THE BROAD OR MIT SHALL BE ADVISED, SHALL HAVE OTHER REASON TO KNOW, OR IN FACT
- * SHALL KNOW OF THE POSSIBILITY OF THE FOREGOING.
  */
 package org.broad.igv.feature.genome;
-
-import java.awt.*;
-import java.awt.event.*;
-import javax.swing.border.*;
 
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
@@ -28,6 +17,11 @@ import org.broad.igv.ui.IGV;
 import org.broad.igv.ui.util.FileDialogUtils;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.TitledBorder;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.Serializable;
 import java.util.Collection;
@@ -180,7 +174,7 @@ public class GenomeBuilderPane extends javax.swing.JPanel implements Serializabl
             return false;
         }
 
-        Collection<String> inUseIds = igv.getGenomeIds();
+        Collection<String> inUseIds = igv.getSelectableGenomeIDs();
         if (inUseIds.contains(id)) {
             JOptionPane.showMessageDialog(this,
                     "The genome ID '" + id + "' is already in use - please select another!");
@@ -294,9 +288,9 @@ public class GenomeBuilderPane extends javax.swing.JPanel implements Serializabl
                 fastaFileTextField.setBounds(145, 88, 548, 29);
 
                 //---- fastaFileButton ----
-                fastaFileButton.setLabel("...");
                 fastaFileButton.setText("Browse");
                 fastaFileButton.addActionListener(new ActionListener() {
+                    @Override
                     public void actionPerformed(ActionEvent e) {
                         fastaFileButtonActionPerformed(e);
                     }
@@ -309,7 +303,7 @@ public class GenomeBuilderPane extends javax.swing.JPanel implements Serializabl
             //======== panel1 ========
             {
                 panel1.setBorder(new TitledBorder(null, "Optional", TitledBorder.LEADING, TitledBorder.DEFAULT_POSITION,
-                    new Font("Lucida Grande", Font.BOLD, 13)));
+                        new Font("Lucida Grande", Font.BOLD, 13)));
                 panel1.setLayout(null);
 
                 //---- cytobandFileLabel ----
@@ -325,9 +319,9 @@ public class GenomeBuilderPane extends javax.swing.JPanel implements Serializabl
                 cytobandFileTextField.setBounds(145, 22, 548, 29);
 
                 //---- cytobandFileButton ----
-                cytobandFileButton.setLabel("...");
                 cytobandFileButton.setText("Browse");
                 cytobandFileButton.addActionListener(new ActionListener() {
+                    @Override
                     public void actionPerformed(ActionEvent e) {
                         cytobandFileButtonActionPerformed(e);
                     }
@@ -348,9 +342,9 @@ public class GenomeBuilderPane extends javax.swing.JPanel implements Serializabl
                 refFlatFileTextField.setBounds(145, 56, 548, 29);
 
                 //---- refFlatFileButton ----
-                refFlatFileButton.setLabel("...");
                 refFlatFileButton.setText("Browse");
                 refFlatFileButton.addActionListener(new ActionListener() {
+                    @Override
                     public void actionPerformed(ActionEvent e) {
                         refFlatFileButtonActionPerformed(e);
                     }
@@ -370,9 +364,9 @@ public class GenomeBuilderPane extends javax.swing.JPanel implements Serializabl
                 chrAliasField.setBounds(145, 90, 548, 29);
 
                 //---- chrAliasButton ----
-                chrAliasButton.setLabel("...");
                 chrAliasButton.setText("Browse");
                 chrAliasButton.addActionListener(new ActionListener() {
+                    @Override
                     public void actionPerformed(ActionEvent e) {
                         chrAliasButtonActionPerformed(e);
                     }

@@ -12,7 +12,6 @@
 package org.broad.igv.ui;
 
 import junit.framework.Assert;
-import org.broad.igv.AbstractHeadedTest;
 import org.broad.igv.Globals;
 import org.broad.igv.track.Track;
 import org.broad.igv.ui.panel.FrameManager;
@@ -20,6 +19,7 @@ import org.broad.igv.ui.panel.ReferenceFrame;
 import org.broad.igv.util.ResourceLocator;
 import org.broad.igv.util.TestUtils;
 import org.fest.swing.fixture.FrameFixture;
+import org.fest.swing.fixture.JButtonFixture;
 import org.fest.swing.fixture.JComboBoxFixture;
 import org.fest.swing.fixture.JPanelFixture;
 import org.junit.Test;
@@ -69,6 +69,24 @@ public class IGVTestHeaded extends AbstractHeadedTest {
         Assert.assertEquals(1461, igv.getAllTracks().size());
     }
 
+    /**
+     * Test loading a UCSC session, with some files that don't exist and some that do
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testLoadUCSCSessionBadFiles() throws Exception {
+        String sessionPath = TestUtils.DATA_DIR + "sessions/nonexistent_files.session";
+        IGV igv = IGV.getInstance();
+
+        TestUtils.loadSession(igv, sessionPath);
+
+        Assert.assertEquals(2, igv.getVisibleTrackCount());
+        for (Track track : igv.getAllTracks()) {
+            assertTrue(track.getName().contains("Test Bed"));
+        }
+    }
+
     @Test
     public void testHome() throws Exception {
         IGV igv = IGV.getInstance();
@@ -86,17 +104,19 @@ public class IGVTestHeaded extends AbstractHeadedTest {
 
 
         FrameFixture frameFixture = new FrameFixture(IGV.getMainFrame());
-        frameFixture.button("homeButton").click();
+        //Make sure frame has focus, or else homeButton won't work
+        JButtonFixture homeButton = frameFixture.button("homeButton");
+        homeButton.focus();
+        homeButton.requireFocused();
+        homeButton.click();
 
-        IGV.getInstance().waitForNotify(500);
+        igv.waitForNotify(500);
 
         Assert.assertEquals(Globals.CHR_ALL, frame.getChrName());
 
         //In all genome view these should be the same
         assertEquals(frame.getChromosomeLength(), frame.getCurrentRange().getEnd());
         Assert.assertEquals(0.0, frame.getOrigin());
-
-
     }
 
     /**

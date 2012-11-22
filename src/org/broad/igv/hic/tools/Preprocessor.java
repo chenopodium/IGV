@@ -2,9 +2,11 @@ package org.broad.igv.hic.tools;
 
 //import org.broad.igv.hic.MainWindow;
 
+import org.apache.commons.math.stat.StatUtils;
+import org.broad.igv.Globals;
 import org.broad.igv.feature.Chromosome;
-import org.broad.igv.hic.HiCGlobals;
 import org.broad.igv.hic.data.*;
+import org.broad.igv.tdf.BufferedByteWriter;
 import org.broad.igv.util.CompressionUtils;
 import org.broad.tribble.util.LittleEndianOutputStream;
 
@@ -13,16 +15,24 @@ import java.util.*;
 
 /**
  * @author jrobinso
- * @date Aug 16, 2010
+ * @since Aug 16, 2010
  */
 public class Preprocessor {
+
+    // Base-pair resultions
+    public static final int[] bpBinSizes = {2500000, 1000000, 500000, 250000, 100000, 50000, 25000, 10000, 5000};
+    public static final String[] bpResLabels = {"2.5 MB", "1 MB", "500 KB", "250 KB", "100 KB", "50 KB", "25 KB", "10 KB", "5 KB"};
+
+    // Fragment resolutions
+    public static final int[] fragBinSizes = {500, 200, 100, 50, 20, 5, 2, 1};
+    public static final String[] fragResLabels = {"500f", "200f", "100f", "50f", "20f", "5f", "2f", "1f"};
 
     int nThreads = 0;
 
     private List<Chromosome> chromosomes;
 
     // Map of name -> index
-    private Map<String, Integer> chromosomeOrdinals;
+    private Map<String, Integer> chromosomeIndexes;
 
     private File outputFile;
     private LittleEndianOutputStream fos;
@@ -32,25 +42,33 @@ public class Preprocessor {
     private Map<String, Long> blockIndexPositions;
     private Map<String, IndexEntry[]> blockIndexMap;
 
-    private int countThreshold;
-    private boolean diagonalsOnly;
-    private boolean loadDensities;
+    private int countThreshold = 0;
+    private boolean diagonalsOnly = false;
+    private String fragmentFileName = null;
+    private FragmentCalculation fragmentCalculation = null;
     private Set<String> includedChromosomes;
+    private String genomeId;
 
-    public Preprocessor(File outputFile, List<Chromosome> chromosomes) {
+    /**
+     * The position of the field containing the masterIndex position
+     */
+    private long masterIndexPositionPosition;
+
+    private Map<String, ExpectedValueCalculation> expectedValueCalculations;
+
+    public Preprocessor(File outputFile, String genomeId, List<Chromosome> chromosomes) {
+        this.genomeId = genomeId;
         this.outputFile = outputFile;
-        this.chromosomes = chromosomes;
-        matrixPositions = new LinkedHashMap<String, IndexEntry>();
-        blockIndexPositions = new LinkedHashMap<String, Long>();
-        blockIndexMap = new LinkedHashMap<String, IndexEntry[]>();
+        this.matrixPositions = new LinkedHashMap<String, IndexEntry>();
+        this.blockIndexPositions = new LinkedHashMap<String, Long>();
+        this.blockIndexMap = new LinkedHashMap<String, IndexEntry[]>();
 
-        countThreshold = 0;
-        diagonalsOnly = false;
-        loadDensities = false;
-        chromosomeOrdinals = new Hashtable<String, Integer>();
+        this.chromosomes = chromosomes;
+        chromosomeIndexes = new Hashtable<String, Integer>();
         for (int i = 0; i < chromosomes.size(); i++) {
-            chromosomeOrdinals.put(chromosomes.get(i).getName(), i);
+            chromosomeIndexes.put(chromosomes.get(i).getName(), i);
         }
+
     }
 
     public void setNumberOfThreads(int n) {
@@ -69,24 +87,56 @@ public class Preprocessor {
         this.includedChromosomes = includedChromosomes;
     }
 
-    public void setLoadDensities(boolean loadDensities) {
-        this.loadDensities = loadDensities;
+    public void setFragmentFile(String fragmentFileName) {
+        this.fragmentFileName = fragmentFileName;
     }
 
     public void preprocess(final List<String> inputFileList) throws IOException {
 
         try {
-            System.out.println("Start preprocess");
-            if (loadDensities) {
-                File densitiesFile = new File(outputFile.getPath() + ".densities");
-                calculateDensities(inputFileList, densitiesFile);
+            if (fragmentFileName != null) {
+                fragmentCalculation = new FragmentCalculation(fragmentFileName, chromosomes);
+            } else {
+                System.out.println("WARNING: Not including fragment map");
             }
 
+            expectedValueCalculations = new LinkedHashMap<String, ExpectedValueCalculation>();
+            for (int z = 0; z < bpBinSizes.length; z++) {
+                ExpectedValueCalculation calc = new ExpectedValueCalculation(chromosomes, bpBinSizes[z], null);
+                String key = "BP_" + bpBinSizes[z];
+                expectedValueCalculations.put(key, calc);
+            }
+            if (fragmentCalculation != null) {
+                for (int z = 0; z < fragBinSizes.length; z++) {
+                    ExpectedValueCalculation calc = new ExpectedValueCalculation(chromosomes, fragBinSizes[z], fragmentCalculation);
+                    String key = "FRAG_" + fragBinSizes[z];
+                    expectedValueCalculations.put(key, calc);
+                }
+            }
+
+
+            System.out.println("Start preprocess");
             fos = new LittleEndianOutputStream(new BufferedOutputStream(new FileOutputStream(outputFile)));
 
+            // Magic number
+            byte[] magicBytes = "HIC".getBytes();
+            fos.write(magicBytes[0]);
+            fos.write(magicBytes[1]);
+            fos.write(magicBytes[2]);
+            fos.write(0);
+
+            // Version
+            fos.writeInt(4);
+
             // Placeholder for master index position, replaced with actual position after all contents are written
+            masterIndexPositionPosition = fos.getWrittenCount();
             fos.writeLong(0l);
 
+
+            // Genome ID
+            fos.writeString(genomeId);
+
+            // Sequence dictionary
             int nChrs = chromosomes.size();
             fos.writeInt(nChrs);
             for (Chromosome chromosome : chromosomes) {
@@ -94,15 +144,45 @@ public class Preprocessor {
                 fos.writeInt(chromosome.getLength());
             }
 
-            // Attribute dictionary -- only 1 attribute for now, version
-            int nAttributes = 1;
+            //BP resolution levels
+            int nBpRes = bpBinSizes.length;
+            fos.writeInt(nBpRes);
+            for (int i = 0; i < nBpRes; i++) {
+                fos.writeInt(bpBinSizes[i]);
+            }
+
+            //fragment resolutions
+            int nFragRes = fragmentCalculation == null ? 0 : fragBinSizes.length;
+            fos.writeInt(nFragRes);
+            for (int i = 0; i < nFragRes; i++) {
+                fos.writeInt(fragBinSizes[i]);
+            }
+
+            // fragment sites
+            if (nFragRes > 0) {
+                for (Chromosome chromosome : chromosomes) {
+                    int[] sites = fragmentCalculation.getSites(chromosome.getName());
+                    int nSites = sites == null ? 0 : sites.length;
+                    fos.writeInt(nSites);
+                    for (int i = 0; i < nSites; i++) {
+                        fos.writeInt(sites[i]);
+                    }
+                }
+            }
+
+            //hemi-frag levels (reserved for future use)
+            int nHemiFrags = 0;
+            fos.writeInt(nHemiFrags);
+
+
+            // Attribute dictionary
+            int nAttributes = 0;
             fos.writeInt(nAttributes);
-            fos.writeString("Version");
-            fos.writeString("1");
+            //fos.writeString("theKey");
+            //fos.writeString("theValue");
+            //... repeat for each attribute
 
             // Compute matrices.  Note that c2 is always >= c1
-            List<Thread> threads = new ArrayList();
-            final List<MatrixPP> matrices = new ArrayList<MatrixPP>();
             for (int c1 = 0; c1 < nChrs; c1++) {
                 for (int c2 = c1; c2 < nChrs; c2++) {
 
@@ -120,47 +200,16 @@ public class Preprocessor {
                         }
                     }
 
-                    if (nThreads <= 1) {
-                        MatrixPP matrix = computeMatrix(inputFileList, c1, c2);
-                        if (matrix != null) {
-                            writeMatrix(matrix);
-                        }
-                    } else {
-                        final int fc1 = c1;
-                        final int fc2 = c2;
-                        Runnable runnable = new Runnable() {
-                            public void run() {
-                                try {
-                                    MatrixPP matrix = computeMatrix(inputFileList, fc1, fc2);
-                                    if (matrix != null) {
-                                        matrices.add(matrix);
-                                    }
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
-
-                            }
-                        };
-                        threads.add(new Thread(runnable));
-
-                        // Thread queue is full.  Process it
-                        if (threads.size() >= nThreads) {
-                            processThreads(threads, matrices);
-                            threads.clear();
-                            matrices.clear();
-                        }
+                    MatrixPP matrix = computeMatrix(inputFileList, c1, c2);
+                    if (matrix != null) {
+                        writeMatrix(matrix);
                     }
                 }
             } // End of double loop through chromosomes
 
-            // Process any leftover threads
-            if (threads.size() > 0) {
-                processThreads(threads, matrices);
-            }
-
 
             masterIndexPosition = fos.getWrittenCount();
-            writeMasterIndex();
+            writeFooter();
 
 
         } finally {
@@ -188,66 +237,23 @@ public class Preprocessor {
         }
     }
 
-    /**
-     * Calculate observed/expected and write to a densities file that can be loaded later with
-     * the Hi-C viewer.
-     *
-     * @param paths         Files to calculate densities on
-     * @param densitiesFile Output file for densities
-     * @throws IOException
-     */
-    private void calculateDensities(List<String> paths, File densitiesFile) throws IOException {
-        // Limit calcs to 10KB
-        /*int[] gridSizeArray = new int[8];
-        for (int i = 0; i < 8; i++) {
-            gridSizeArray[i] = i];
-        } */
-
-        DensityCalculation[] calcs = new DensityCalculation[HiCGlobals.zoomBinSizes.length];
-        for (int z = 0; z < HiCGlobals.zoomBinSizes.length; z++) {
-            calcs[z] = new DensityCalculation(chromosomes, HiCGlobals.zoomBinSizes[z]);
-        }
-
-        for (String path : paths) {
-            PairIterator iter = (path.endsWith(".bin")) ?
-                    new BinPairIterator(path) :
-                    new AsciiPairIterator(path, chromosomeOrdinals);
-            while (iter.hasNext()) {
-                AlignmentPair pair = iter.next();
-                if (pair.getChr1() == pair.getChr2()) {
-                    int dist = Math.abs(pair.getPos1() - pair.getPos2());
-
-                    int index = pair.getChr1();
-                    for (int z = 0; z < HiCGlobals.zoomBinSizes.length; z++) {
-                        calcs[z].addDistance(index, dist);
-                    }
-                }
-            }
-        }
-        for (int z = 0; z < HiCGlobals.zoomBinSizes.length; z++) {
-            calcs[z].computeDensity();
-        }
-
-        outputDensities(calcs, densitiesFile);
-
-    }
 
     /**
-     * Compute matrix for the given chromosome combination.  This resultes in full pass through the input files
+     * Compute matrix for the given chromosome combination.  This results in full pass through the input files
      * for each chromosome combination.  This is done to save memory, at the expense of longer running times.
      *
-     * @param inputFileList
-     * @param c1
-     * @param c2
-     * @return
+     * @param inputFileList List of files to read
+     * @param c1            Chromosome 1 -- always <= c2
+     * @param c2            Chromosome 2
+     * @return Matrix with counts in each bin
      * @throws IOException
      */
     public MatrixPP computeMatrix(List<String> inputFileList, int c1, int c2) throws IOException {
 
         boolean isWholeGenome = (c1 == 0 && c2 == 0);
 
-        MatrixPP matrix = null;
-
+        MatrixPP matrix;
+        // NOTE: always true that c1 <= c2
         if (isWholeGenome) {
             int genomeLength = chromosomes.get(0).getLength();  // <= whole genome in KB
             int binSize = genomeLength / 500;
@@ -256,11 +262,14 @@ public class Preprocessor {
             matrix = new MatrixPP(c1, c2);
         }
 
+        // TODO -- in the future this value will be read from the file, might not be 1
+        float score = 1.0f;
+
         for (String file : inputFileList) {
 
             PairIterator iter = (file.endsWith(".bin")) ?
-                    new BinPairIterator(file) :
-                    new AsciiPairIterator(file, chromosomeOrdinals);
+                    new BinPairIterator(file, chromosomeIndexes) :
+                    new AsciiPairIterator(file, chromosomeIndexes);
 
             while (iter.hasNext()) {
 
@@ -272,9 +281,16 @@ public class Preprocessor {
                 if (isWholeGenome) {
                     pos1 = getGenomicPosition(chr1, pos1);
                     pos2 = getGenomicPosition(chr2, pos2);
-                    incrementCount(matrix, c1, pos1, c2, pos2);
+                    matrix.incrementCount(pos1, pos2, score);
                 } else if ((c1 == chr1 && c2 == chr2) || (c1 == chr2 && c2 == chr1)) {
-                    incrementCount(matrix, chr1, pos1, chr2, pos2);
+                    // we know c1 <= c2 and that's how the matrix is formed.
+                    // pos1 goes with chr1 and pos2 goes with chr2
+                    if (c1 == chr1) {
+                        matrix.incrementCount(pos1, pos2, score);
+                    } else {// c1 == chr2
+                        matrix.incrementCount(pos2, pos1, score);
+                    }
+
                 }
 
             }
@@ -299,39 +315,18 @@ public class Preprocessor {
 
     }
 
-    private static void incrementCount(MatrixPP matrix, int chr1, int pos1, int chr2, int pos2) {
-
-        if (chr2 > chr1) {
-            //transpose
-            int tc2 = chr2;
-            int tp2 = pos2;
-            chr2 = chr1;
-            pos2 = pos1;
-            chr1 = tc2;
-            pos1 = tp2;
-        }
-
-        matrix.incrementCount(pos1, pos2);
-
-        if (chr1 == chr2) {
-            int dist = Math.abs(pos1 - pos2);
-            //densityCalculation.addDistance(chr1, dist);
-        }
-    }
-
-
     public void updateIndexPositions() throws IOException {
         RandomAccessFile raf = null;
         try {
             raf = new RandomAccessFile(outputFile, "rw");
 
-            // Master index -- first entry in file (change later)
-            raf.getChannel().position(0);
+            // Master index
+            raf.getChannel().position(masterIndexPositionPosition);
             BufferedByteWriter buffer = new BufferedByteWriter();
             buffer.putLong(masterIndexPosition);
             raf.write(buffer.getBytes());
 
-            // Block indeces
+            // Block indices
             for (String key : blockIndexPositions.keySet()) {
                 long pos = blockIndexPositions.get(key);
                 IndexEntry[] blockIndex = blockIndexMap.get(key);
@@ -343,10 +338,10 @@ public class Preprocessor {
 
                     // Write as little endian
                     buffer = new BufferedByteWriter();
-                    for (int i = 0; i < blockIndex.length; i++) {
-                        buffer.putInt(blockIndex[i].id);
-                        buffer.putLong(blockIndex[i].position);
-                        buffer.putInt(blockIndex[i].size);
+                    for (IndexEntry aBlockIndex : blockIndex) {
+                        buffer.putInt(aBlockIndex.id);
+                        buffer.putLong(aBlockIndex.position);
+                        buffer.putInt(aBlockIndex.size);
                     }
                     raf.write(buffer.getBytes());
                 }
@@ -356,38 +351,52 @@ public class Preprocessor {
         }
     }
 
-    public void writeMasterIndex() throws IOException {
+    public void writeFooter() throws IOException {
 
         BufferedByteWriter buffer = new BufferedByteWriter();
         buffer.putInt(matrixPositions.size());
         for (Map.Entry<String, IndexEntry> entry : matrixPositions.entrySet()) {
-            buffer.putString(entry.getKey());
+            buffer.putNullTerminatedString(entry.getKey());
             buffer.putLong(entry.getValue().position);
             buffer.putInt(entry.getValue().size);
         }
 
-        //writeExpectedValues(buffer);
+
+        buffer.putInt(expectedValueCalculations.size());
+        for (Map.Entry<String, ExpectedValueCalculation> entry : expectedValueCalculations.entrySet()) {
+            String key = entry.getKey();
+            ExpectedValueCalculation ev = entry.getValue();
+
+            ev.computeDensity();
+
+            int binSize = ev.getGridSize();
+            String unit = ev.isFrag ? "FRAG" : "BP";
+
+            buffer.putNullTerminatedString(unit);
+            buffer.putInt(binSize);
+
+            // The density values
+            double[] expectedValues = ev.getDensityAvg();
+            buffer.putInt(expectedValues.length);
+            for (int i = 0; i < expectedValues.length; i++) {
+                buffer.putDouble(expectedValues[i]);
+            }
+
+            // Map of chromosome index -> normalization factor
+            Map<Integer, Double> normalizationFactors = ev.getNormalizationFactors();
+            buffer.putInt(normalizationFactors.size());
+            for (Map.Entry<Integer, Double> normFactor : normalizationFactors.entrySet()) {
+                buffer.putInt(normFactor.getKey());
+                buffer.putDouble(normFactor.getValue());
+                System.out.println(normFactor.getKey() + "  " + normFactor.getValue());
+            }
+
+        }
 
         byte[] bytes = buffer.getBytes();
         fos.writeInt(bytes.length);
         fos.write(bytes);
     }
-
-    private void outputDensities(DensityCalculation[] calcs, File outputFile) throws IOException {
-
-        LittleEndianOutputStream os = null;
-        try {
-            os = new LittleEndianOutputStream(new BufferedOutputStream(new FileOutputStream(outputFile)));
-
-            os.writeInt(calcs.length);
-            for (int i = 0; i < calcs.length; i++) {
-                calcs[i].outputBinary(os);
-            }
-        } finally {
-            if (os != null) os.close();
-        }
-    }
-
 
     public synchronized void writeMatrix(MatrixPP matrix) throws IOException {
 
@@ -395,34 +404,51 @@ public class Preprocessor {
 
         long position = fos.getWrittenCount();
 
-        fos.writeInt(matrix.getChr1());
-        fos.writeInt(matrix.getChr2());
-        fos.writeInt(matrix.getZoomData().length);
+        fos.writeInt(matrix.getChr1Idx());
+        fos.writeInt(matrix.getChr2Idx());
+        int numResolutions = 0;
+
         for (MatrixZoomDataPP zd : matrix.getZoomData()) {
-            writeZoomHeader(zd);
+            if (zd != null) {
+                numResolutions++;
+            }
         }
+        fos.writeInt(numResolutions);
+
+        //fos.writeInt(matrix.getZoomData().length);
+        for (MatrixZoomDataPP zd : matrix.getZoomData()) {
+            if (zd != null)
+                writeZoomHeader(zd);
+        }
+
         int size = (int) (fos.getWrittenCount() - position);
         matrixPositions.put(matrix.getKey(), new IndexEntry(position, size));
 
         for (MatrixZoomDataPP zd : matrix.getZoomData()) {
-            IndexEntry[] blockIndex = writeZoomData(zd);
-            final String blockKey = getBlockKey(zd);
-            blockIndexMap.put(blockKey, blockIndex);
+            if (zd != null) {
+                IndexEntry[] blockIndex = writeZoomData(zd);
+                final String blockKey = getBlockKey(zd);
+                blockIndexMap.put(blockKey, blockIndex);
+            }
         }
 
         System.out.println("Done writing matrix: " + matrix.getKey());
     }
 
     private String getBlockKey(MatrixZoomDataPP zd) {
-        return zd.getChr1() + "_" + zd.getChr2() + "_" + zd.getZoom();
+        return zd.getChr1() + "_" + zd.getChr2() + "_" + zd.getUnit() + "_" + zd.getBinSize();
     }
 
     private void writeZoomHeader(MatrixZoomDataPP zd) throws IOException {
 
         int numberOfBlocks = zd.getBlocks().size();
 
-        fos.writeInt(zd.getZoom());
-        fos.writeInt(zd.getSum());
+        fos.writeString(zd.getUnit());  // Unit, ether "BP" or "FRAG"
+        fos.writeInt(zd.getZoom());     // zoom index,  lowest res is zero
+        fos.writeFloat((float) zd.getSum());      // sum
+        fos.writeFloat((float) zd.getAverage());
+        fos.writeFloat((float) zd.getStdDev());
+        fos.writeFloat((float) zd.getPercent95());
         fos.writeInt(zd.getBinSize());
         fos.writeInt(zd.getBlockBinCount());
         fos.writeInt(zd.getBlockColumnCount());
@@ -446,7 +472,7 @@ public class Preprocessor {
         int i = 0;
         for (Map.Entry<Integer, Block> entry : blocks.entrySet()) {
 
-            int blockNumber = entry.getKey().intValue();
+            int blockNumber = entry.getKey();
             Block block = entry.getValue();
 
             long position = fos.getWrittenCount();
@@ -463,7 +489,7 @@ public class Preprocessor {
     /**
      * Note -- compressed
      *
-     * @param block
+     * @param block Block to write
      * @throws IOException
      */
     private void writeContactRecords(Block block) throws IOException {
@@ -488,69 +514,15 @@ public class Preprocessor {
         buffer.putInt(nRecords);
         for (ContactRecord rec : records) {
             if (rec.getCounts() >= countThreshold) {
-                buffer.putInt(rec.getX());
-                buffer.putInt(rec.getY());
-                buffer.putInt(rec.getCounts());
+                buffer.putInt(rec.getBinX());
+                buffer.putInt(rec.getBinY());
+                buffer.putFloat(rec.getCounts());
             }
         }
 
         byte[] bytes = buffer.getBytes();
         byte[] compressedBytes = CompressionUtils.compress(bytes);
         fos.write(compressedBytes);
-
-    }
-
-
-    static public class BufferedByteWriter {
-
-        ByteArrayOutputStream buffer;
-        LittleEndianOutputStream dos;
-
-        public BufferedByteWriter() {
-            this(8192);
-        }
-
-
-        public BufferedByteWriter(int size) {
-            if (size <= 0) {
-                throw new IllegalArgumentException("Buffer size <= 0");
-            }
-            buffer = new ByteArrayOutputStream(size);
-            dos = new LittleEndianOutputStream(buffer);
-        }
-
-        public byte[] getBytes() {
-            return buffer.toByteArray();
-        }
-
-        private void put(byte[] b) throws IOException {
-            dos.write(b);
-        }
-
-        private void put(byte b) throws IOException {
-            dos.write(b);
-        }
-
-        private void putShort(short v) throws IOException {
-
-            dos.writeShort(v);
-        }
-
-        public void putInt(int v) throws IOException {
-            dos.writeInt(v);
-        }
-
-        public void putDouble(double v) throws IOException {
-            dos.writeDouble(v);
-        }
-
-        public void putLong(long v) throws IOException {
-            dos.writeLong(v);
-        }
-
-        public void putString(String string) throws IOException {
-            dos.writeString(string);
-        }
 
     }
 
@@ -574,12 +546,12 @@ public class Preprocessor {
 
     /**
      * @author jrobinso
-     * @date Aug 12, 2010
+     * @since Aug 12, 2010
      */
     class MatrixPP {
 
-        private int chr1;
-        private int chr2;
+        private int chr1Idx;
+        private int chr2Idx;
         private MatrixZoomDataPP[] zoomData;
 
 
@@ -587,24 +559,49 @@ public class Preprocessor {
          * Constructor for creating a matrix and initializing zoomed data at predefined resolution scales.  This
          * constructor is used when parsing alignment files.
          *
-         * @param chr1
-         * @param chr2
+         * @param chr1Idx Chromosome 1
+         * @param chr2Idx Chromosome 2
          */
-        MatrixPP(int chr1, int chr2) {
-            this.chr1 = chr1;
-            this.chr2 = chr2;
-            zoomData = new MatrixZoomDataPP[HiCGlobals.zoomBinSizes.length];
-            for (int zoom = 0; zoom < HiCGlobals.zoomBinSizes.length; zoom++) {
-                int binSize = HiCGlobals.zoomBinSizes[zoom];
+        MatrixPP(int chr1Idx, int chr2Idx) {
+            this.chr1Idx = chr1Idx;
+            this.chr2Idx = chr2Idx;
+
+            int nResolutions = bpBinSizes.length;
+            if (fragmentCalculation != null) {
+                nResolutions += fragBinSizes.length;
+            }
+
+            zoomData = new MatrixZoomDataPP[nResolutions];
+
+            int zoom = 0; //
+            for (int idx = 0; idx < bpBinSizes.length; idx++) {
+                int binSize = bpBinSizes[zoom];
+                Chromosome chrom1 = chromosomes.get(chr1Idx);
+                Chromosome chrom2 = chromosomes.get(chr2Idx);
 
                 // Size block (submatrices) to be ~500 bins wide.
-                Chromosome chrom1 = chromosomes.get(chr1);
-                Chromosome chrom2 = chromosomes.get(chr2);
                 int len = Math.max(chrom1.getLength(), chrom2.getLength());
                 int nBins = len / binSize;   // Size of chrom in bins
                 int nColumns = Math.max(1, nBins / 500);
+                zoomData[idx] = new MatrixZoomDataPP(chrom1, chrom2, binSize, nColumns, zoom, false);
+                zoom++;
 
-                zoomData[zoom] = new MatrixZoomDataPP(chr1, chr2, binSize, nColumns, zoom);
+            }
+
+            if (fragmentCalculation != null) {
+                Chromosome chrom1 = chromosomes.get(chr1Idx);
+                Chromosome chrom2 = chromosomes.get(chr2Idx);
+                int nFragBins1 = Math.max(fragmentCalculation.getNumberFragments(chrom1.getName()),
+                        fragmentCalculation.getNumberFragments(chrom2.getName()));
+
+                zoom = 0;
+                for (int idx = bpBinSizes.length; idx < nResolutions; idx++) {
+                    int binSize = fragBinSizes[zoom];
+                    int nBins = nFragBins1 / binSize;
+                    int nColumns = Math.max(1, nBins / 500);
+                    zoomData[idx] = new MatrixZoomDataPP(chrom1, chrom2, binSize, nColumns, zoom, true);
+                    zoom++;
+                }
             }
         }
 
@@ -612,49 +609,45 @@ public class Preprocessor {
          * Constructor for creating a matrix with a single zoom level at a specified bin size.  This is provided
          * primarily for constructing a whole-genome view.
          *
-         * @param chr1
-         * @param chr2
-         * @param binSize
+         * @param chr1Idx    Chromosome 1
+         * @param chr2Idx    Chromosome 2
+         * @param binSize Bin size
          */
-        MatrixPP(int chr1, int chr2, int binSize) {
-            this.chr1 = chr1;
-            this.chr2 = chr2;
+        MatrixPP(int chr1Idx, int chr2Idx, int binSize) {
+            this.chr1Idx = chr1Idx;
+            this.chr2Idx = chr2Idx;
             zoomData = new MatrixZoomDataPP[1];
             int nBlocks = 1;
-            zoomData[0] = new MatrixZoomDataPP(chr1, chr2, binSize, nBlocks, 0);
+            zoomData[0] = new MatrixZoomDataPP(chromosomes.get(chr1Idx), chromosomes.get(chr2Idx), binSize, nBlocks, 0, false);
 
         }
 
-
-        String generateKey(int chr1, int chr2) {
-            return "" + chr1 + "_" + chr2;
-        }
 
         String getKey() {
-            return generateKey(chr1, chr2);
+            return "" + chr1Idx + "_" + chr2Idx;
         }
 
 
-        void incrementCount(int pos1, int pos2) {
+        void incrementCount(int pos1, int pos2, float score) {
 
-            for (int i = 0; i < zoomData.length; i++) {
-                zoomData[i].incrementCount(pos1, pos2);
+            for (MatrixZoomDataPP aZoomData : zoomData) {
+                aZoomData.incrementCount(pos1, pos2, score);
             }
-
         }
 
         void parsingComplete() {
             for (MatrixZoomDataPP zd : zoomData) {
-                zd.parsingComplete();
+                if (zd != null) // fragment level could be null
+                    zd.parsingComplete();
             }
         }
 
-        int getChr1() {
-            return chr1;
+        int getChr1Idx() {
+            return chr1Idx;
         }
 
-        int getChr2() {
-            return chr2;
+        int getChr2Idx() {
+            return chr2Idx;
         }
 
         MatrixZoomDataPP[] getZoomData() {
@@ -666,37 +659,115 @@ public class Preprocessor {
 
     /**
      * @author jrobinso
-     * @date Aug 10, 2010
+     * @since Aug 10, 2010
      */
     class MatrixZoomDataPP {
 
-        private int chr1;  // Redundant, but convenient    BinDatasetReader
-        private int chr2;  // Redundant, but convenient
+        private Chromosome chr1;  // Redundant, but convenient    BinDatasetReader
+        private Chromosome chr2;  // Redundant, but convenient
 
-        private int sum;
+        private double sum;
+        private double average;    // Number of occupied cells;
+        private double stdDev;
+        private double percent95;
+
         private int zoom;
         private int binSize;         // bin size in bp
         private int blockBinCount;   // block size in bins
         private int blockColumnCount;     // number of block columns
 
+        boolean isFrag;
+
         private LinkedHashMap<Integer, Block> blocks;
         private Map<Integer, Preprocessor.IndexEntry> blockIndex;
 
-        int getSum() {
+
+        /**
+         * Representation of MatrixZoomData used for preprocessing
+         *
+         * @param chr1             index of first chromosome  (x-axis)
+         * @param chr2             index of second chromosome
+         * @param binSize          size of each grid bin in bp
+         * @param blockColumnCount number of block columns
+         * @param zoom             integer zoom (resolution) level index.  TODO Is this needed?
+         */
+        MatrixZoomDataPP(Chromosome chr1, Chromosome chr2, int binSize, int blockColumnCount, int zoom, boolean isFrag) {
+
+            this.sum = 0;
+            this.chr1 = chr1;
+            this.chr2 = chr2;
+            this.binSize = binSize;
+            this.blockColumnCount = blockColumnCount;
+            this.zoom = zoom;
+            this.isFrag = isFrag;
+
+            // Get length in proper units
+            int len = isFrag ? fragmentCalculation.getNumberFragments(chr1.getName()) : chr1.getLength();
+
+            int nBinsX = len / binSize + 1;
+
+            blockBinCount = nBinsX / blockColumnCount + 1;
+            blocks = new LinkedHashMap<Integer, Block>(blockColumnCount * blockColumnCount);
+        }
+
+        String getUnit() {
+            return isFrag ? "FRAG" : "BP";
+        }
+
+        double getSum() {
             return sum;
         }
+
+        double getAverage() {
+            return average;
+        }
+
+        public double getStdDev() {
+            return stdDev;
+        }
+
+        public double getPercent95() {
+            return percent95;
+        }
+
+        private void computeStats() {
+            int cellCount = 0;
+            average = 0;
+            double sum = 0;
+            for (Block b : blocks.values()) {
+                for (ContactRecord cr : b.getContractRecordValues()) {
+                    sum += cr.getCounts();
+                    cellCount++;
+                }
+            }
+            average = sum / cellCount;
+
+            double sumSq = 0;
+            int idx = 0;
+            double[] values = new double[cellCount];
+            for (Block b : blocks.values()) {
+                for (ContactRecord cr : b.getContractRecordValues()) {
+                    double diff = cr.getCounts() - average;
+                    sumSq += (diff * diff);
+                    values[idx++] = cr.getCounts();
+                }
+            }
+            stdDev = Math.sqrt(sumSq / cellCount);
+            percent95 = StatUtils.percentile(values, 90);
+        }
+
 
         int getBinSize() {
             return binSize;
         }
 
 
-        int getChr1() {
+        Chromosome getChr1() {
             return chr1;
         }
 
 
-        int getChr2() {
+        Chromosome getChr2() {
             return chr2;
         }
 
@@ -716,46 +787,38 @@ public class Preprocessor {
             return blocks;
         }
 
-
         /**
-         * Representation of MatrixZoomData used for preprocessing
+         * Increment the count for the bin represented by the GENOMIC position (pos1, pos2)
          *
-         * @param chr1             index of first chromosome  (x-axis)
-         * @param chr2
-         * @param binSize          size of each grid bin in bp
-         * @param blockColumnCount number of block columns
-         * @param zoom             integer zoom (resolution) level index.  TODO Is this needed?
+         * @param gPos1
+         * @param gPos2
          */
-        MatrixZoomDataPP(int chr1, int chr2, int binSize, int blockColumnCount, int zoom) {
+        public void incrementCount(int gPos1, int gPos2, float score) {
 
-            this.sum = 0;
-            this.chr1 = chr1;
-            this.chr2 = chr2;
-            this.binSize = binSize;
-            this.blockColumnCount = blockColumnCount;
-            this.zoom = zoom;
+            sum += score;
+            // Convert to proper units,  fragments or base-pairs
 
+            int pos1 = isFrag ? fragmentCalculation.getBin(chr1.getName(), gPos1) : gPos1;
+            int pos2 = isFrag ? fragmentCalculation.getBin(chr2.getName(), gPos2) : gPos2;
+            if (pos1 < 0 || pos2 < 0) return;
 
-            int nBinsX = chromosomes.get(chr1).getLength() / binSize + 1;
-            blockBinCount = nBinsX / blockColumnCount + 1;
-            blocks = new LinkedHashMap<Integer, Block>(blockColumnCount * blockColumnCount);
-        }
+            int xBin = pos1 / binSize;
+            int yBin = pos2 / binSize;
 
-
-        public void incrementCount(int pos1, int pos2) {
-
-            sum++;
-
-            int xBin = pos1 / getBinSize();
-            int yBin = pos2 / getBinSize();
-            if (chr1 == chr2) {
+            if (chr1.equals(chr2)) {
                 int b1 = Math.min(xBin, yBin);
                 int b2 = Math.max(xBin, yBin);
                 xBin = b1;
                 yBin = b2;
 
-                if(b1 != b2) {
+                if (b1 != b2) {
                     sum++;  // <= count for mirror cell.
+                }
+
+                String evKey = (isFrag ? "FRAG_" : "BP_") + binSize;
+                ExpectedValueCalculation ev = expectedValueCalculations.get(evKey);
+                if (ev != null) {
+                    ev.addDistance(chr1.getIndex(), xBin, yBin);
                 }
             }
 
@@ -769,14 +832,15 @@ public class Preprocessor {
                 block = new Block(blockNumber);
                 blocks.put(blockNumber, block);
             }
-            block.incrementCount(xBin, yBin);
-
+            block.incrementCount(xBin, yBin, score);
         }
 
         void parsingComplete() {
             for (Block b : blocks.values()) {
                 b.parsingComplete();
+
             }
+            computeStats();
         }
 
 

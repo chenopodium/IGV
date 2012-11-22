@@ -77,9 +77,8 @@ public class ThumbnailPanel extends JComponent implements Serializable {
 
     public void setImage(Image image) {
         this.image = image;
-        int maxLen = Math.max(hic.xContext.getChrLength(), hic.yContext.getChrLength());
-        xScale = ((double) maxLen) / getWidth();
-        yScale = xScale;
+        xScale = ((double) hic.zd.getxGridAxis().getBinCount()) / getWidth();
+        yScale = ((double) hic.zd.getyGridAxis().getBinCount()) / getWidth();
     }
 
     public String getName() {
@@ -93,6 +92,7 @@ public class ThumbnailPanel extends JComponent implements Serializable {
     @Override
     protected void paintComponent(Graphics g) {
 
+        ((Graphics2D) g).setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         if (image != null) {
             g.drawImage(image, 0, 0, null);
             renderVisibleWindow((Graphics2D) g);
@@ -104,20 +104,22 @@ public class ThumbnailPanel extends JComponent implements Serializable {
 
         if (hic != null && hic.xContext != null) {
 
+            Rectangle outerRectangle = new Rectangle(0, 0, getBounds().width, getBounds().height);
+
             int wPixels = mainWindow.getHeatmapPanel().getWidth();
             int hPixels = mainWindow.getHeatmapPanel().getHeight();
 
-            int originX = hic.xContext.getOrigin();
+            int originX = hic.xContext.getBinOrigin();
             int x = (int) (originX / xScale);
 
-            int originY = hic.yContext.getOrigin();
+            int originY = hic.yContext.getBinOrigin();
             int y = (int) (originY / yScale);
 
-            int wBP = (int) (hic.xContext.getScale() * wPixels);
-            int w = (int) (wBP / xScale);
+            double wBins = wPixels / hic.xContext.getScaleFactor();
+            int w = (int) (wBins / xScale);
 
-            int yBP = (int) (hic.yContext.getScale() * hPixels);
-            int h = (int) (yBP / yScale);
+            double yBins = hPixels / hic.yContext.getScaleFactor();
+            int h = (int) (yBins / yScale);
 
             if (w < 4) {
                 int delta = 4 - w;
@@ -130,7 +132,6 @@ public class ThumbnailPanel extends JComponent implements Serializable {
                 h = 4;
             }
 
-            Rectangle outerRectangle = new Rectangle(0, 0, getBounds().width, getBounds().height);
             innerRectangle = new Rectangle(x, y, w, h);
             Shape shape = new SquareDonut(outerRectangle, innerRectangle);
 

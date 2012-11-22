@@ -1,5 +1,6 @@
 package org.broad.igv.sam;
 
+import com.iontorrent.rawdataaccess.FlowValue;
 import java.util.Arrays;
 
 /**
@@ -10,28 +11,26 @@ import java.util.Arrays;
  * modified by Chantal Roth
  */
 public class FlowSignalContext {
-    private short[][][]signals = null;
-    private char[][][]bases = null;
+     FlowValue[][][] flowvalues;
     private int[] flowOrderIndices;
 
-    public FlowSignalContext(short[][][] signals, char[][][] bases, int[] flowOrderIndices) {
-        this.signals = signals;
-        this.bases = bases;
+    public FlowSignalContext(FlowValue[][][] flowvalues, int[] flowOrderIndices) {
+        this.flowvalues = flowvalues;
         this.flowOrderIndices = flowOrderIndices;
     }
+    public FlowValue[][][]  getFlowvalues() {
+        return flowvalues;
+    }
     public int getNrSignals() {
-        return signals.length;
+        return flowvalues.length;
     }
     public int getNrBases() {
-        return bases.length;
+        return flowvalues.length;
     }
-    public short[][] getSignalForOffset(int offset) {
-        return signals[offset];
+    public FlowValue[][] getValuesForOffset(int offset) {
+        return flowvalues[offset];
     }
     
-    public char[][] getBasesForOffset(int offset) {
-        return bases[offset];
-    }
     public int getFlowOrderIndexForOffset(int offset) {
         return flowOrderIndices[offset];
     }

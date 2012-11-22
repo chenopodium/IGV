@@ -15,6 +15,7 @@
  */
 package org.broad.igv.sam;
 
+import com.iontorrent.rawdataaccess.FlowValue;
 import org.broad.igv.feature.Strand;
 import org.broad.igv.track.WindowFunction;
 
@@ -107,54 +108,90 @@ public abstract class AbstractAlignment implements Alignment {
         for (AlignmentBlock block : this.alignmentBlocks) {
             if (block.contains(basePosition)) {
                 int offset = basePosition - block.getStart();
-                byte qual = block.qualities[offset];
+                byte qual = block.getQuality(offset);
                 return qual;
             }
         }
         return 0;
     }
 
-    private void bufAppendFlowSignals(AlignmentBlock block, StringBuffer buf, int offset) {
-        if (block.hasFlowSignals()) {
-            // flow signals
-            int i, j, n = 0;
-            FlowSignalSubContext f = block.getFlowSignalSubContext(offset);
-            if (null != f && null != f.getSignals() && null != f.getBases()) {
-                buf.append("FZ = ");
-                StringBuffer spos = new StringBuffer();
-                spos.append("Flow position = ").append(f.getFlowOrderIndex());
-
-                for (i = 0; i < f.getNrSignalTypes(); i++) {
-                    short[] signals = f.getSignalsOfType(i);
-                    char[] bases = f.getBasesOfType(i);
-                    if (null != signals && 0 < signals.length) {
-                        if (1 == i) {
-                            if (0 < n) {
-                                buf.append(",");
-                            }
-                            buf.append("[");
-                        }
-                        for (j = 0; j < signals.length; j++) {
-                            if (1 != i && 0 < n) {
-                                buf.append(",");
-                            }
-                            buf.append(bases[j]);
-                            buf.append(signals[j]);
-
-                            n++;
-                        }
-                        if (1 == i) {
-                            buf.append("]");
-                        }
+    protected void listValues(FlowSignalSubContext context, StringBuffer buf, String type) {
+        int n = 0;
+        for (int i = 0; i < context.getNrSignalTypes(); i++) {
+            FlowValue[] flowvalues = context.getValuesOfType(i);
+            if (null != flowvalues && 0 < flowvalues.length) {
+                if (i == 1) {
+                    if (n > 0) {
+                        buf.append(",");
                     }
+                    buf.append("[");
                 }
-                buf.append("<br>").append(spos);
-                buf.append("<br>");
+                for (int j = 0; j < flowvalues.length; j++) {
+                    if (1 != i && 0 < n) {
+                        buf.append(",");
+                    }
+                    if (type.equalsIgnoreCase("RAWERROR")) {
+                        buf.append((int) flowvalues[j].getRawError());
+                    } else if (type.equalsIgnoreCase("VALUE")) {
+                        buf.append((int) flowvalues[j].getRawFlowvalue());
+                    }
+                    if (type.equalsIgnoreCase("ERROR")) {
+                        buf.append((int) flowvalues[j].getComputedError());
+                    }
+                    char base = flowvalues[j].getBase();
+                    if (flowvalues[j].isEmpty()) {
+                        base = Character.toLowerCase(base);
+                    }
+                    buf.append(base);
+                    n++;
+                }
+                if (1 == i) {
+                    buf.append("]");
+                }
+            }
+        }
+        buf.append("<br>");
+
+    }
+
+    private byte[] getQualityArray() {
+        int totLen = 0;
+        for (AlignmentBlock block : this.alignmentBlocks) {
+            totLen += block.getQualities().length;
+        }
+        byte[] allQualities = new byte[totLen];
+        int start = 0;
+        for (AlignmentBlock block : this.alignmentBlocks) {
+            System.arraycopy(block.getQualities(), 0, allQualities, start, block.getQualities().length);
+            start += block.getQualities().length;
+        }
+        return allQualities;
+    }
+
+    private void bufAppendFlowInfo(AlignmentBlock block, StringBuffer buf, int offset) {
+        if (block.hasFlowSignals()) {
+            // flow signals           
+            FlowSignalSubContext f = block.getFlowSignalSubContext(offset);
+            if (f != null && f.getFlowValues() != null && f.getFlowValues().length > 0) {
+                buf.append("ZM = ");
+                listValues(f, buf, "VALUE");
+                FlowValue fv = f.getCurrentValue();
+                if (fv != null) {
+                    buf.append(fv.toHtml());
+                }
                 // maybe also add flow order?                
+                SamAlignment sam = (SamAlignment) this;
+                if (sam.hasComputedErrors()) {
+                    buf.append("Raw errors = ");
+                    listValues(f, buf, "RAWERROR");
+                    buf.append("Error % = ");
+                    listValues(f, buf, "ERROR");
+                }
             }
         }
     }
 
+    @Override
     public String getValueString(double position, WindowFunction windowFunction) {
         StringBuffer buf = null;
 
@@ -180,7 +217,7 @@ public abstract class AbstractAlignment implements Alignment {
                         for (offset = 0; offset < block.getBases().length; offset++) {
                             byte base = block.getBase(offset);
                             buf.append((char) base + ": ");
-                            bufAppendFlowSignals(block, buf, offset);
+                            bufAppendFlowInfo(block, buf, offset);
                         }
                         buf.append("----------------------"); // NB: no <br> required
                         return buf.toString();
@@ -218,9 +255,12 @@ public abstract class AbstractAlignment implements Alignment {
                 byte quality = block.getQuality(offset);
                 buf.append("Base = " + (char) base + "<br>");
                 buf.append("Base phred quality = " + quality + "<br>");
-                // flow signals
+                if (block.hasCounts()) {
+                    buf.append("Count = " + block.getCount(offset) + "<br>");
+                }
+                // raw flow signals
                 if (block.hasFlowSignals()) {
-                    bufAppendFlowSignals(block, buf, offset);
+                    bufAppendFlowInfo(block, buf, offset);
                 }
             }
         }
@@ -318,5 +358,4 @@ public abstract class AbstractAlignment implements Alignment {
     public Strand getReadStrand() {
         return isNegativeStrand() ? Strand.NEGATIVE : Strand.POSITIVE;
     }
-
 }

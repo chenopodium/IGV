@@ -28,8 +28,8 @@ public class ReadInfo {
             readname = readname.substring(col + 1);
             readname = readname.replace(":", "_");
             int ul = readname.indexOf("_");
-            int x = Integer.parseInt(readname.substring(0, ul));
-            int y = Integer.parseInt(readname.substring(ul+1));
+            int y = Integer.parseInt(readname.substring(0, ul));
+            int x = Integer.parseInt(readname.substring(ul+1));
             return new WellCoordinate(x, y);
     }
     public char getBase() {
@@ -43,11 +43,11 @@ public class ReadInfo {
         return readname;
     }
     public static String getHeader() {
-       return "Read name, flow position, base, flow value";
+       return "Read name, flow position, base, raw signal";
     }
     public String toCsv() {
         StringBuilder b = new StringBuilder();
-        b = b.append(readname).append(",").append(this.getFlowPosition()).append(",").append(fv.getBase()).append(",").append(fv.getFlowvalue());
+        b = b.append(readname).append(",").append(this.getFlowPosition()).append(",").append(fv.getBase()).append(",").append(fv.getRawFlowvalue());
         return b.toString();
     }
     public String toString() {

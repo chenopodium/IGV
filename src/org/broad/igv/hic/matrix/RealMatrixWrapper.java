@@ -5,6 +5,8 @@ import org.apache.commons.math.stat.StatUtils;
 import org.broad.igv.util.collections.DoubleArrayList;
 
 /**
+ * Wrpas a apache commons RealMatrix.  We don't expose the apache class so we can use other implementations.
+ *
  * @author jrobinso
  *         Date: 7/13/12
  *         Time: 1:02 PM
@@ -33,6 +35,10 @@ public class RealMatrixWrapper implements BasicMatrix {
     @Override
     public int getColumnDimension() {
         return matrix.getColumnDimension();
+    }
+
+    public double[] getRow(int index) {
+        return matrix.getRow(index);
     }
 
     public BasicMatrix getSubMatrix(int startRow, int endRow, int startCol, int endCol) {

@@ -53,6 +53,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import java.util.List;
+import org.broad.igv.util.collections.CollUtils;
 
 /**
  * Class to parse an IGV session file
@@ -298,7 +299,7 @@ public class IGVSessionReader implements SessionReader {
     }
 
 
-    private void processRootNode(Session session, Node node, HashMap additionalInformation) {
+   private void processRootNode(Session session, Node node, HashMap additionalInformation) {
 
         if ((node == null) || (session == null)) {
             MessageUtils.showMessage("Invalid session file: root node not found");
@@ -324,7 +325,7 @@ public class IGVSessionReader implements SessionReader {
                 // Selecting a genome will actually "reset" the session so we have to
                 // save the path and restore it.
                 String sessionPath = session.getPath();
-                if (IGV.getInstance().getGenomeIds().contains(genomeId)) {
+                if (IGV.getInstance().getSelectableGenomeIDs().contains(genomeId)) {
                     IGV.getInstance().selectGenomeFromList(genomeId);
                 } else {
                     String genomePath = genomeId;
@@ -333,6 +334,7 @@ public class IGVSessionReader implements SessionReader {
                     }
                     if (ParsingUtils.pathExists(genomePath)) {
                         try {
+                            log.info("processRootNode");
                             IGV.getInstance().loadGenome(genomePath, null);
                         } catch (IOException e) {
                             throw new RuntimeException("Error loading genome: " + genomeId);
@@ -412,6 +414,7 @@ public class IGVSessionReader implements SessionReader {
 
         String nodeName = element.getNodeName();
 
+        log.info("Loading session. SessionElement: "+nodeName);
         if (nodeName.equalsIgnoreCase(SessionElement.RESOURCES.getText()) ||
                 nodeName.equalsIgnoreCase(SessionElement.FILES.getText())) {
             processResources(session, (Element) element, additionalInformation);
@@ -593,6 +596,7 @@ public class IGVSessionReader implements SessionReader {
         // Older sessions used the "name" attribute for the path.
         String path = getAttribute(element, SessionAttribute.PATH.getText());
 
+        log.info("LoadSession.processResource: "+nodeName+", path="+path);
         if (oldSession && name != null) {
             path = name;
             int idx = name.lastIndexOf("/");
@@ -779,7 +783,7 @@ public class IGVSessionReader implements SessionReader {
                             int start = ParsingUtils.parseInt(startString);
                             int end = ParsingUtils.parseInt(endString);
                             org.broad.igv.feature.Locus locus = new Locus(chr, start, end);
-                            f.setInterval(locus);
+                           // f.setInterval(locus);
                         } catch (NumberFormatException e) {
                             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
                         }
@@ -913,34 +917,17 @@ public class IGVSessionReader implements SessionReader {
 
         String id = getAttribute(element, SessionAttribute.ID.getText());
 
-        // TODo -- put in utility method, extacts attributes from element **Definitely need to do this
-        HashMap<String, String> tAttributes = new HashMap();
-        HashMap<String, String> drAttributes = null;
+        Map<String, String> tAttributes = Utilities.getAttributes(element);
 
-        NamedNodeMap tNodeMap = element.getAttributes();
-        for (int i = 0; i < tNodeMap.getLength(); i++) {
-            Node node = tNodeMap.item(i);
-            String value = node.getNodeValue();
-            if (value != null && value.length() > 0) {
-                tAttributes.put(node.getNodeName(), value);
-            }
-        }
+        Map<String, String> drAttributes = null;
 
 
         if (element.hasChildNodes()) {
-            drAttributes = new HashMap();
             Node childNode = element.getFirstChild();
             Node sibNode = childNode.getNextSibling();
             String sibName = sibNode.getNodeName();
             if (sibName.equals(SessionElement.DATA_RANGE.getText())) {
-                NamedNodeMap drNodeMap = sibNode.getAttributes();
-                for (int i = 0; i < drNodeMap.getLength(); i++) {
-                    Node node = drNodeMap.item(i);
-                    String value = node.getNodeValue();
-                    if (value != null && value.length() > 0) {
-                        drAttributes.put(node.getNodeName(), value);
-                    }
-                }
+                drAttributes = Utilities.getAttributes(sibNode);
             }
         }
 
@@ -1026,29 +1013,7 @@ public class IGVSessionReader implements SessionReader {
             return;
         }
 
-        TrackType trackType = TrackType.OTHER;
-
-        if (TrackType.ALLELE_SPECIFIC_COPY_NUMBER.name().equalsIgnoreCase(type)) {
-            trackType = TrackType.ALLELE_SPECIFIC_COPY_NUMBER;
-        } else if (TrackType.CHIP.name().equalsIgnoreCase(type)) {
-            trackType = TrackType.CHIP;
-        } else if (TrackType.COPY_NUMBER.name().equalsIgnoreCase(type)) {
-            trackType = TrackType.COPY_NUMBER;
-        } else if (TrackType.DNA_METHYLATION.name().equalsIgnoreCase(type)) {
-            trackType = TrackType.DNA_METHYLATION;
-        } else if (TrackType.OTHER.name().equalsIgnoreCase(type)) {
-            trackType = TrackType.OTHER;
-        } else if (TrackType.GENE_EXPRESSION.name().equalsIgnoreCase(type)) {
-            trackType = TrackType.GENE_EXPRESSION;
-        } else if (TrackType.LOH.name().equalsIgnoreCase(type)) {
-            trackType = TrackType.LOH;
-        } else if (TrackType.MUTATION.name().equalsIgnoreCase(type)) {
-            trackType = TrackType.MUTATION;
-        } else if (TrackType.PHASTCON.name().equalsIgnoreCase(type)) {
-            trackType = TrackType.PHASTCON;
-        } else if (TrackType.TILING_ARRAY.name().equalsIgnoreCase(type)) {
-            trackType = TrackType.TILING_ARRAY;
-        }
+        TrackType trackType = CollUtils.valueOf(TrackType.class, type.toUpperCase(), TrackType.OTHER);
 
         // TODO -- refactor to remove instanceof / cast.  Currently only ContinuousColorScale is handled
         ColorScale colorScale = ColorScaleFactory.getScaleFromString(value);

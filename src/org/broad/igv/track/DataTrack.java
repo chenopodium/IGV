@@ -48,7 +48,6 @@ public abstract class DataTrack extends AbstractTrack {
 
     private static Logger log = Logger.getLogger(DataTrack.class);
     private DataRenderer renderer;
-    private boolean autoscale;
 
     // TODO -- memory leak.  This needs to get cleared when the gene list changes
     private HashMap<String, LoadedDataInterval> loadedIntervalCache = new HashMap(200);
@@ -57,16 +56,8 @@ public abstract class DataTrack extends AbstractTrack {
 
     public DataTrack(ResourceLocator locator, String id, String name) {
         super(locator, id, name);
-        autoscale = PreferenceManager.getInstance().getAsBoolean(PreferenceManager.CHART_AUTOSCALE);
+        autoScale = PreferenceManager.getInstance().getAsBoolean(PreferenceManager.CHART_AUTOSCALE);
 
-    }
-
-    public boolean isAutoscale() {
-        return autoscale;
-    }
-
-    public void setAutoscale(boolean autoscale) {
-        this.autoscale = autoscale;
     }
 
     public void render(RenderContext context, Rectangle rect) {
@@ -93,7 +84,7 @@ public abstract class DataTrack extends AbstractTrack {
             inViewScores = load(context, chr, adjustedStart, adjustedEnd, zoom);
         }
 
-        if (autoscale && !FrameManager.isGeneListMode()) {
+        if (autoScale && !FrameManager.isGeneListMode() && !FrameManager.isExomeMode()) {
 
             InViewInterval inter = computeScale(start, end, inViewScores);
             if (inter.endIdx > inter.startIdx) {
@@ -131,8 +122,29 @@ public abstract class DataTrack extends AbstractTrack {
             int delta = (end - start) / 2;
             int adjustedStart = Math.max(0, start - delta);
             int adjustedEnd = end + delta;
-            load(context, chr, adjustedStart, adjustedEnd, zoom);
+            List<LocusScore> scores = load(context, chr, adjustedStart, adjustedEnd, zoom);
+
+            if (autoScale && FrameManager.isExomeMode()) {
+                InViewInterval inter = computeScale(start, end, scores);
+                if (inter.endIdx > inter.startIdx) {
+
+                    DataRange dr = getDataRange();
+                    float min = Math.min(0, inter.dataMin);
+                    float base = Math.max(min, dr.getBaseline());
+                    float max = inter.dataMax;
+                    // Pathological case where min ~= max  (no data in view)
+                    if (max - min <= (2 * Float.MIN_VALUE)) {
+                        max = min + 1;
+                    }
+
+                    DataRange newDR = new DataRange(min, base, max, dr.isDrawBaseline());
+                    newDR.setType(dr.getType());
+                    setDataRange(newDR);
+                }
+            }
+
         }
+
 
     }
 
@@ -174,7 +186,7 @@ public abstract class DataTrack extends AbstractTrack {
         try {
             renderer = (DataRenderer) rc.newInstance();
         } catch (Exception ex) {
-            log.error("Error instatiating renderer ", ex);
+            log.error("Error instantiating renderer ", ex);
         }
     }
 
@@ -281,7 +293,7 @@ public abstract class DataTrack extends AbstractTrack {
     @Override
     public Map<String, String> getPersistentState() {
         Map<String, String> properties = super.getPersistentState();
-        properties.put("autoscale", String.valueOf(autoscale));
+        properties.put("autoScale", String.valueOf(autoScale));
         return properties;
     }
 
@@ -289,13 +301,13 @@ public abstract class DataTrack extends AbstractTrack {
     @Override
     public void restorePersistentState(Map<String, String> attributes) {
         super.restorePersistentState(attributes);
-        String as = attributes.get("autoscale");
+        String as = attributes.get("autoScale");
         if (as != null) {
             try {
-                autoscale = Boolean.parseBoolean(as);
+                autoScale = Boolean.parseBoolean(as);
 
             } catch (Exception e) {
-                log.error("Error restoring session.  Invalid autoscale value: " + autoscale);
+                log.error("Error restoring session.  Invalid autoScale value: " + autoScale);
 
             }
         }

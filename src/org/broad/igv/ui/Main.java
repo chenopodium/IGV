@@ -1,26 +1,18 @@
 /*
- * Copyright (c) 2007-2011 by The Broad Institute of MIT and Harvard.  All Rights Reserved.
+ * Copyright (c) 2007-2012 The Broad Institute, Inc.
+ * SOFTWARE COPYRIGHT NOTICE
+ * This software and its documentation are the copyright of the Broad Institute, Inc. All rights are reserved.
  *
- * This software is licensed under the terms of the GNU Lesser General Public License (LGPL), 
+ * This software is supplied without any warranty or guaranteed support whatsoever. The Broad Institute is not responsible for its use, misuse, or functionality.
+ *
+ * This software is licensed under the terms of the GNU Lesser General Public License (LGPL),
  * Version 2.1 which is available at http://www.opensource.org/licenses/lgpl-2.1.php.
- *
- * THE SOFTWARE IS PROVIDED "AS IS." THE BROAD AND MIT MAKE NO REPRESENTATIONS OR
- * WARRANTES OF ANY KIND CONCERNING THE SOFTWARE, EXPRESS OR IMPLIED, INCLUDING,
- * WITHOUT LIMITATION, WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
- * PURPOSE, NONINFRINGEMENT, OR THE ABSENCE OF LATENT OR OTHER DEFECTS, WHETHER
- * OR NOT DISCOVERABLE.  IN NO EVENT SHALL THE BROAD OR MIT, OR THEIR RESPECTIVE
- * TRUSTEES, DIRECTORS, OFFICERS, EMPLOYEES, AND AFFILIATES BE LIABLE FOR ANY DAMAGES
- * OF ANY KIND, INCLUDING, WITHOUT LIMITATION, INCIDENTAL OR CONSEQUENTIAL DAMAGES,
- * ECONOMIC DAMAGES OR INJURY TO PROPERTY AND LOST PROFITS, REGARDLESS OF WHETHER
- * THE BROAD OR MIT SHALL BE ADVISED, SHALL HAVE OTHER REASON TO KNOW, OR IN FACT
- * SHALL KNOW OF THE POSSIBILITY OF THE FOREGOING.
  */
-
 package org.broad.igv.ui;
 
 import com.jidesoft.plaf.LookAndFeelFactory;
 import jargs.gnu.CmdLineParser;
-import org.apache.log4j.*;
+import org.apache.log4j.Logger;
 import org.broad.igv.DirectoryManager;
 import org.broad.igv.Globals;
 import org.broad.igv.PreferenceManager;
@@ -33,28 +25,22 @@ import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
-
 /**
- * Utility class for launching IGV.  Provides a "main" method and an "open"  method for opening IGV in a supplied Frame.
+ * Utility class for launching IGV. Provides a "main" method and an "open"
+ * method for opening IGV in a supplied Frame.
  * <p/>
  * Note: The "open" methods must be executed on the event thread, for example
  * <p/>
- * public static void main(String[] args) {
- * EventQueue.invokeLater(new Runnable() {
- * public void run() {
- * Frame frame = new Frame();
- * org.broad.igv.ui.Main.open(frame);
- * }
- * );
- * }
+ * public static void main(String[] args) { EventQueue.invokeLater(new
+ * Runnable() { public void run() { Frame frame = new Frame();
+ * org.broad.igv.ui.Main.open(frame); } ); }
  *
- * @author jrobinso
- * @date Feb 7, 2011
+ * @author jrobinso @date Feb 7, 2011
  */
 public class Main {
 
     private static Logger log = Logger.getLogger(Main.class);
-   
+
     /**
      * Launch an igv instance as a stand-alone application in its own Frame.
      *
@@ -69,15 +55,17 @@ public class Main {
         JFrame frame = new JFrame();
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         ImageIcon icon = new ImageIcon(Main.class.getResource("mainframeicon.png"));
-        if (icon != null) frame.setIconImage(icon.getImage());
+        if (icon != null) {
+            frame.setIconImage(icon.getImage());
+        }
         open(frame, args);
 
     }
 
     private static void initApplication() {
         DirectoryManager.initializeLog();
-        
         log.info("Startup  " + Globals.applicationString());
+        log.info("Java " + System.getProperty(Globals.JAVA_VERSION_STRING));
         log.info("Default User Directory: " + DirectoryManager.getUserDirectory());
         System.setProperty("http.agent", Globals.applicationString());
 
@@ -101,7 +89,6 @@ public class Main {
 
     }
 
-
     /**
      * Open an IGV instance in the supplied Frame.
      *
@@ -112,18 +99,18 @@ public class Main {
         open(frame, new String[]{});
     }
 
-
     /**
      * Open an IGV instance in the supplied frame.
      *
      * @param frame
-     * @param args  command-line arguments
+     * @param args command-line arguments
      */
     public static void open(Frame frame, String[] args) {
 
         // Add a listener for the "close" icon, unless its a JFrame
         if (!(frame instanceof JFrame)) {
             frame.addWindowListener(new WindowAdapter() {
+
                 @Override
                 public void windowClosing(WindowEvent windowEvent) {
                     windowEvent.getComponent().setVisible(false);
@@ -134,17 +121,14 @@ public class Main {
         // Turn on tooltip in case it was disabled for a temporary keyboard event, e.g. alt-tab
         frame.addWindowListener(new WindowAdapter() {
 
+            @Override
             public void windowActivated(WindowEvent e) {
-                if (IGV.hasInstance() && !IGV.getInstance().isSuppressTooltip()) {
-                    ToolTipManager.sharedInstance().setEnabled(true);
-                }
+                ToolTipManager.sharedInstance().setEnabled(true);
             }
 
             @Override
             public void windowGainedFocus(WindowEvent windowEvent) {
-                if (IGV.hasInstance() && !IGV.getInstance().isSuppressTooltip()) {
-                    ToolTipManager.sharedInstance().setEnabled(true);
-                }
+                this.windowActivated(windowEvent);
             }
         });
 
@@ -170,8 +154,6 @@ public class Main {
 
         // TODO Should this be done here?  Will this step on other key dispatchers?
         KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(new GlobalKeyDispatcher());
-
-
     }
 
     private static void initializeLookAndFeel() {
@@ -202,6 +184,7 @@ public class Main {
      * Class to encapsulate IGV command line arguments.
      */
     static public class IGVArgs {
+
         private String batchFile = null;
         private String sessionFile = null;
         private String dataFileString = null;
@@ -221,8 +204,8 @@ public class Main {
         }
 
         /**
-         * Parse arguments.  All arguments are optional,  a full set of arguments are
-         * firstArg  locusString  -b batchFile -p preferences
+         * Parse arguments. All arguments are optional, a full set of arguments
+         * are firstArg locusString -b batchFile -p preferences
          */
         private void parseArgs(String[] args) {
             CmdLineParser parser = new CmdLineParser();
@@ -253,103 +236,87 @@ public class Main {
 
             String[] nonOptionArgs = parser.getRemainingArgs();
             if (nonOptionArgs != null && nonOptionArgs.length > 0) {
-                String firstArg = StringUtils.decodeURL(nonOptionArgs[0]);  // TODO -- why is this url decoded?
-                if (firstArg != null && !firstArg.equals("ignore")) {
-                    log.info("Loading: " + firstArg);
-                    if (firstArg.endsWith(".xml") || firstArg.endsWith(".php") || firstArg.endsWith(".php3")
-                            || firstArg.endsWith(".session")) {
-                        sessionFile = firstArg;
-                    } else {
-                        dataFileString = firstArg;
-                    }
-                }
-//                if (nonOptionArgs.length > 1) {
-//                    locusString = nonOptionArgs[1];
-//                }
-                // How about checking for equals just for additional parameters? 
-                // Is the equals sign a legal character in a locus string?
-                if (nonOptionArgs.length > 1) {
-                    // check if arg contains = for all args
-                    for (String arg: nonOptionArgs ) {
-                        arg = checkEqualsAndExtractParamter(arg);
-                        if (arg != null) locusString = arg;
-
-                    }
-
-                }
-
-// Alternative implementation
-//                String firstArg = StringUtils.decodeURL(nonOptionArgs[0]);
-//                firstArg=checkEqualsAndExtractParamter(firstArg);
+                //               String firstArg = StringUtils.decodeURL(nonOptionArgs[0]);  // TODO -- why is this url decoded?
 //                if (firstArg != null && !firstArg.equals("ignore")) {
 //                    log.info("Loading: " + firstArg);
 //                    if (firstArg.endsWith(".xml") || firstArg.endsWith(".php") || firstArg.endsWith(".php3")
 //                            || firstArg.endsWith(".session")) {
 //                        sessionFile = firstArg;
-//
 //                    } else {
 //                        dataFileString = firstArg;
 //                    }
 //                }
-//
 //                if (nonOptionArgs.length > 1) {
-//                    // check if arg contains = for all args
-//                    for (String arg: nonOptionArgs ) {
-//                        arg = checkEqualsAndExtractParamter(arg);
-//                        if (arg != null) locusString = arg;
-//
-//                    }
-//
+//                    locusString = nonOptionArgs[1];
 //                }
+
+// Alternative implementation
+                String firstArg = StringUtils.decodeURL(nonOptionArgs[0]);
+                firstArg = checkEqualsAndExtractParamter(firstArg);
+                if (firstArg != null && !firstArg.equals("ignore")) {
+                    log.info("Loading: " + firstArg);
+                    if (firstArg.endsWith(".xml") || firstArg.endsWith(".php") || firstArg.endsWith(".php3")
+                            || firstArg.endsWith(".session")) {
+                        sessionFile = firstArg;
+
+                    } else {
+                        dataFileString = firstArg;
+                    }
+                }
+
+                if (nonOptionArgs.length > 1) {
+                    // check if arg contains = for all args
+                    for (String arg : nonOptionArgs) {
+                        arg = checkEqualsAndExtractParamter(arg);
+                        if (arg != null) {
+                            locusString = arg;
+                        }
+
+                    }
+
+                }
             }
         }
 
         private String checkEqualsAndExtractParamter(String arg) {
-            if (arg == null) return null;
+            if (arg == null) {
+                return null;
+            }
             int eq = arg.indexOf("=");
             if (eq > 0) {
                 // we got a key=value
                 String key = arg.substring(0, eq);
-                String val = arg.substring(eq+1);
-                
+                String val = arg.substring(eq + 1);
+
                 if (key.equalsIgnoreCase("server")) {
                     PreferenceManager.getInstance().put(PreferenceManager.IONTORRENT_SERVER, val);
-                    log.info("Got server: "+key+"="+val);
+                    log.info("Got server: " + key + "=" + val);
                     return null;
-                }
-                else if (key.equalsIgnoreCase("sessionURL") || key.equalsIgnoreCase("file")) {
-                   
+                } else if (key.equalsIgnoreCase("sessionURL") || key.equalsIgnoreCase("file")) {
+
                     if (val.endsWith(".xml") || val.endsWith(".php") || val.endsWith(".php3")
                             || val.endsWith(".session")) {
-                        log.info("Got session: "+key+"="+val);
+                        log.info("Got session: " + key + "=" + val);
                         sessionFile = val;
 
                     } else {
-                        log.info("Got dataFileString: "+key+"="+val);
+                        log.info("Got dataFileString: " + key + "=" + val);
                         dataFileString = val;
                     }
                     return null;
-                }
-                else if (key.equalsIgnoreCase("locus") || key.equalsIgnoreCase("position")) {
-                    log.info("Got locus: "+key+"="+val);
+                } else if (key.equalsIgnoreCase("batchFile") || key.equalsIgnoreCase("batch")) {
+                    log.info("Got batch file: " + key + "=" + val);
+                    batchFile = val;
+                    return null;
+                } else if (key.equalsIgnoreCase("locus") || key.equalsIgnoreCase("position")) {
+                    log.info("Got locus: " + key + "=" + val);
                     locusString = val;
                     return null;
-                }
-                 else if (key.equalsIgnoreCase("genome") ) {
-                    log.info("Got genome: "+key+"="+val);
-                    genomeId = val;
+                } else {
+                    log.info("Currently not handled: " + key + "=" + val);
                     return null;
                 }
-                 else if (key.startsWith("property") || key.startsWith("preferences") ) {
-                    log.info("Got propertyOverrides: "+key+"="+val);
-                    propertyOverrides = val;
-                    return null;
-                }
-                else {
-                    log.info("Currently not handled: "+key+"="+val);
-                    return null;
-                }
-                
+
             }
             return arg;
         }
@@ -398,5 +365,4 @@ public class Main {
             return name;
         }
     }
-
 }

@@ -20,6 +20,7 @@ import org.broad.igv.renderer.ColorScaleFactory;
 import org.broad.igv.renderer.ContinuousColorScale;
 import org.broad.igv.track.TrackType;
 import org.broad.igv.ui.AboutDialog;
+import org.broad.igv.ui.IGVCommandBar;
 import org.broad.igv.ui.UIConstants;
 import org.broad.igv.ui.color.ColorUtilities;
 import org.broad.igv.ui.color.PaletteColorTable;
@@ -32,6 +33,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.List;
+import org.broad.igv.feature.genome.GenomeListItem;
 
 /**
  * Manages user preferences.
@@ -63,6 +65,8 @@ public class PreferenceManager implements PropertyManager {
     public static final String IONTORRENT_FLOWDIST_CHARTTYPE = "IONTORRENT.FLOWDIST_CHARTTYPE";
     public static final String IONTORRENT_SERVER = "IONTORRENT.SERVER";
     public static final String IONTORRENT_RESULTS = "IONTORRENT.RESULTS";
+    public static final String STARTUP_AUTOLOAD_GENOME = "STARTUP.AUTOLOAD_GENOME";
+    public static final String BAM_FILE = "BAM.FILENAME";
     /** the number of bases to the left and right of the current location we wish to include in the ionogram alignment view */
     public static final String IONTORRENT_NRBASES_IONOGRAM_ALIGN= "IONTORRENT.NRBASES_IONOGRAM_ALIGN";
     /** the currently preferred height of one line in the ionogram alignment (can be zoomed, and we want to remember the setting */
@@ -109,6 +113,8 @@ public class PreferenceManager implements PropertyManager {
     public static final String SAM_JUNCTION_MIN_FLANKING_WIDTH = "SAM.JUNCTION_MIN_FLANKING_WIDTH";
     public static final String SAM_JUNCTION_MIN_COVERAGE = "SAM.JUNCTION_MIN_COVERAGE";
 
+    //dhmay adding 20120731
+    public static final String SAM_SHOW_JUNCTION_FLANKINGREGIONS = "SAM.SHOW_JUNCTION_FLANKINGREGIONS";
     public static final String SAM_NOMESEQ_ENABLED = "SAM.NOMESEQ_ENABLED";
     public static final String SAM_COUNT_DELETED_BASES_COVERED = "SAM.COUNT_DELETED_BASES_COVERED";
 
@@ -136,6 +142,9 @@ public class PreferenceManager implements PropertyManager {
     final static public String LAST_SESSION_DIRECTORY = "LAST_SESSION_DIRECTORY";
     final static public String DEFAULT_GENOME_KEY = "DEFAULT_GENOME_KEY";
     final static public String LAST_CHROMOSOME_VIEWED_KEY = "LAST_CHROMOSOME_VIEWED_KEY";
+    final static public String HISTORY_DELIMITER = ";";
+    final static public String GENOME_ID_DISPLAY_LIST_KEY = "GENOME_LIST";
+    final static public String DETAILS_BEHAVIOR_KEY = "DETAILS_BEHAVIOR";
 
     final public static String MUTATION_COLOR_TABLE = "MUTATION_COLOR_TABLE";
     final public static String MUTATION_INDEL_COLOR_KEY = "MUTATION_INDEL_COLOR_KEY";
@@ -148,6 +157,7 @@ public class PreferenceManager implements PropertyManager {
     final public static String OVERLAY_MUTATION_TRACKS = "OVERLAY_TRACKS_KEY";
     final public static String SHOW_ORPHANED_MUTATIONS = "SHOW_ORPHANED_MUTATIONS";
     final public static String OVERLAY_ATTRIBUTE_KEY = "OVERLAY_ATTRIBUTE_KEY";
+    final public static String OVERLAY_MUTATIONS_WHOLE_GENOME = "OVERLAY_MUTATIONS_WHOLE_GENOME";
     final public static String COLOR_MUTATIONS = "COVER_OVERLAY_KEY";
     final public static String TRACK_ATTRIBUTE_NAME_KEY = "TRACK_ATTRIBUTE_NAME_KEY";
     final public static String DATA_SERVER_URL_KEY = "MASTER_RESOURCE_FILE_KEY";
@@ -221,7 +231,7 @@ public class PreferenceManager implements PropertyManager {
     public static final String DB_HOST = "DB_HOST";
     public static final String DB_NAME = "DB_NAME";
     public static final String DB_PORT = "DB_PORT";
-    final public static String DEFAULT_GENOME_URL = "http://www.broadinstitute.org/igv/projects/genomes/genomes.txt";
+    final public static String DEFAULT_GENOME_URL = "http://igv.broadinstitute.org/genomes/genomes.txt";
     final public static String DEFAULT_DATA_URL = "http://www.broadinstitute.org/igvdata/$$_dataServerRegistry.txt";
 
 
@@ -271,7 +281,16 @@ public class PreferenceManager implements PropertyManager {
         return get(key, defaultValues.get(key));
     }
 
-
+ /**
+     * Get the default value for the specified key.
+     * May be null.
+     *
+     * @param key
+     * @return
+     */
+    public String getDefaultValue(String key) {
+        return defaultValues.get(key);
+    }
     /**
      * Return the preference as a boolean value.
      *
@@ -938,6 +957,7 @@ public class PreferenceManager implements PropertyManager {
         defaultValues.put(OVERLAY_MUTATION_TRACKS, "true");
         defaultValues.put(SHOW_ORPHANED_MUTATIONS, "true");
         defaultValues.put(COLOR_MUTATIONS, "false");
+        defaultValues.put(OVERLAY_MUTATIONS_WHOLE_GENOME, "true");
         defaultValues.put(SHOW_SINGLE_TRACK_PANE_KEY, "false");
         defaultValues.put(PORT_ENABLED, "true");
         defaultValues.put(EXPAND_FEAUTRE_TRACKS, "false");
@@ -1002,13 +1022,13 @@ public class PreferenceManager implements PropertyManager {
         defaultValues.put(SAM_SHOW_JUNCTION_TRACK, "false");
         defaultValues.put(SAM_JUNCTION_MIN_FLANKING_WIDTH, "0");
         defaultValues.put(SAM_JUNCTION_MIN_COVERAGE, "1");
+        defaultValues.put(SAM_SHOW_JUNCTION_FLANKINGREGIONS, "true");
         defaultValues.put(SAM_NOMESEQ_ENABLED, "false");
         defaultValues.put(SAM_COUNT_DELETED_BASES_COVERED, "false");
 
         defaultValues.put(NORMALIZE_COVERAGE, "false");
 
         defaultValues.put(SHOW_GENOME_SERVER_WARNING, "true");
-        defaultValues.put(SHOW_SIZE_WARNING, "true");
 
         defaultValues.put(SEARCH_ZOOM, "true");
 
@@ -1084,7 +1104,7 @@ public class PreferenceManager implements PropertyManager {
         defaultValues.put(TOOLTIP_INITIAL_DELAY, "50");
         defaultValues.put(TOOLTIP_RESHOW_DELAY, "50");
         defaultValues.put(TOOLTIP_DISMISS_DELAY, "60000");
-
+        defaultValues.put(DETAILS_BEHAVIOR_KEY, IGVCommandBar.SHOW_DETAILS_BEHAVIOR.HOVER.name());
     }
 
     /**
@@ -1100,5 +1120,34 @@ public class PreferenceManager implements PropertyManager {
         }
     }
 
+    public static String generateGenomeIdString(Collection<GenomeListItem> genomeListItems) {
+        String genomeString = "";
+
+        for (GenomeListItem serverItem : genomeListItems) {
+            genomeString += serverItem.getId() + HISTORY_DELIMITER;
+        }
+
+        genomeString = genomeString.substring(0, genomeString.length() - 1);
+        return genomeString;
+    }
+
+    public void saveGenomeIdDisplayList(Collection<GenomeListItem> genomeListItems) {
+        preferences.put(GENOME_ID_DISPLAY_LIST_KEY, generateGenomeIdString(genomeListItems));
+    }
+
+    /**
+     * Returns a list of genomeIds to display in the combo box
+     *
+     * @return
+     */
+    public String[] getGenomeIdDisplayList() {
+        String genomeIds = get(GENOME_ID_DISPLAY_LIST_KEY);
+        if (genomeIds == null) {
+            return new String[0];
+        } else {
+            return genomeIds.split(HISTORY_DELIMITER);
+        }
+
+    }
 }
  

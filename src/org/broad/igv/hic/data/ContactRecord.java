@@ -11,52 +11,52 @@ public class ContactRecord implements Comparable<ContactRecord> {
     /**
      * Bin number in x coordinate
      */
-    private int x;
+    private int binX;
 
     /**
      * Bin number in y coordinate
      */
-    private int y;
+    private int binY;
 
     /**
-     * Total number of counts
+     * Total number of counts, or cumulative score
      */
-    private int counts;
+    private float counts;
 
-    public ContactRecord(int block, int x, int y, int counts) {
+    public ContactRecord(int block, int binX, int binY, float counts) {
         this.blockNumber = block;
-        this.x = x;
-        this.y = y;
+        this.binX = binX;
+        this.binY = binY;
         this.counts = counts;
     }
 
-    public void incrementCount() {
-        counts++;
+    public void incrementCount(float score) {
+        counts += score;
     }
 
     public int getBlockNumber() {
         return blockNumber;
     }
 
-    public int getX() {
-        return x;
+    public int getBinX() {
+        return binX;
     }
 
-    public int getY() {
-        return y;
+    public int getBinY() {
+        return binY;
     }
 
-    public int getCounts() {
+    public float getCounts() {
         return counts;
     }
 
     @Override
     public int compareTo(ContactRecord contactRecord) {
-        if(this.x != contactRecord.x) {
-            return x - contactRecord.x;
+        if(this.binX != contactRecord.binX) {
+            return binX - contactRecord.binX;
         }
-        else if(this.y != contactRecord.y) {
-            return y - contactRecord.y;
+        else if(this.binY != contactRecord.binY) {
+            return binY - contactRecord.binY;
         }
         else return 0;
     }

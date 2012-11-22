@@ -15,7 +15,7 @@ import com.iontorrent.data.*;
 import com.iontorrent.utils.LocationListener;
 import com.iontorrent.utils.SimpleDialog;
 import com.iontorrent.views.ScoreDistributionPanel;
-import com.iontorrent.views.IonogramAlignmentControlPanel;
+import com.iontorrent.views.AlignmentControlPanel;
 import com.iontorrent.views.ScoreDistPanel;
 
 import java.awt.*;
@@ -33,6 +33,7 @@ import javax.swing.*;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.PreferenceManager;
+import org.broad.igv.data.CoverageDataSource;
 import org.broad.igv.data.DataSource;
 import org.broad.igv.feature.FeatureUtils;
 import org.broad.igv.feature.Locus;
@@ -40,7 +41,6 @@ import org.broad.igv.feature.genome.Genome;
 import org.broad.igv.goby.GobyCountArchiveDataSource;
 import org.broad.igv.lists.GeneList;
 import org.broad.igv.renderer.GraphicUtils;
-import org.broad.igv.renderer.Renderer;
 import org.broad.igv.session.Session;
 import org.broad.igv.tdf.TDFDataSource;
 import org.broad.igv.tdf.TDFReader;
@@ -59,6 +59,7 @@ import org.broad.igv.ui.util.MessageUtils;
 import org.broad.igv.ui.util.UIUtilities;
 import org.broad.igv.util.Pair;
 import org.broad.igv.util.ResourceLocator;
+import org.broad.igv.util.collections.CollUtils;
 
 /**
  * @author jrobinso
@@ -73,36 +74,17 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
     static final int DS_MARGIN_2 = 5;
 
     public enum ShadeBasesOption {
-
-        NONE, QUALITY, FLOW_SIGNAL_DEVIATION_READ, FLOW_SIGNAL_DEVIATION_REFERENCE;
+        NONE, QUALITY, ERROR_READ
     }
 
     public enum ExperimentType {
-
-        RNA, BISULFITE, OTHER;
-
-        static ExperimentType strToValue(String str) {
-            try {
-                return valueOf(str);
-            } catch (Exception e) {
-                return ExperimentType.OTHER;
+        RNA, BISULFITE, OTHER
             }
-        }
-    }
 
     public enum ColorOption {
-
         INSERT_SIZE, READ_STRAND, FIRST_OF_PAIR_STRAND, PAIR_ORIENTATION, SAMPLE, READ_GROUP, BISULFITE, NOMESEQ,
-        TAG, NONE, UNEXPECTED_PAIR;
-
-        static ColorOption strToValue(String str) {
-            try {
-                return valueOf(str);
-            } catch (Exception e) {
-                return ColorOption.NONE;
+        TAG, NONE, UNEXPECTED_PAIR
             }
-        }
-    }
 
     public enum SortOption {
 
@@ -118,30 +100,12 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
     }
 
     public enum GroupOption {
-
-        STRAND, SAMPLE, READ_GROUP, FIRST_OF_PAIR_STRAND, TAG, NONE;
-
-        static GroupOption strToValue(String str) {
-            try {
-                return valueOf(str);
-            } catch (Exception e) {
-                return GroupOption.NONE;
+        STRAND, SAMPLE, READ_GROUP, FIRST_OF_PAIR_STRAND, TAG, PAIR_INVERTED, MATE_CHROMOSOME, NONE
             }
-        }
-    }
 
     public enum BisulfiteContext {
-
-        CG, CHH, CHG, HCG, GCH, WCG;
-
-        static BisulfiteContext strToValue(String str) {
-            try {
-                return valueOf(str);
-            } catch (Exception e) {
-                return BisulfiteContext.CG;
+        CG, CHH, CHG, HCG, GCH, WCG
             }
-        }
-    }
     protected static final Map<BisulfiteContext, String> bisulfiteContextToPubString = new HashMap<BisulfiteContext, String>();
 
     static {
@@ -303,8 +267,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
     @Override
     public void preload(RenderContext context) {
-        System.out.println("preload " + (int) context.getOrigin() + "-" + (int) context.getEndLocation());
-        dataManager.preload(context, renderOptions, renderOptions.bisulfiteContext, true);
+        dataManager.preload(context, renderOptions, true);
     }
 
     @Override
@@ -342,27 +305,21 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
     private void renderDownsampledIntervals(RenderContext context, Rectangle downsampleRect) {
 
         // Might be offscreen
-        if (!context.getVisibleRect().intersects(downsampleRect)) {
-            return;
-        }
+        if (!context.getVisibleRect().intersects(downsampleRect)) return;
 
         final Collection<AlignmentInterval> loadedIntervals = dataManager.getLoadedIntervals(context.getReferenceFrame());
-        if (loadedIntervals == null) {
-            return;
-        }
+        if (loadedIntervals == null) return;
 
         Graphics2D g = context.getGraphic2DForColor(Color.black);
 
         for (AlignmentInterval loadedInterval : loadedIntervals) {
-            List<CachingQueryReader.DownsampledInterval> intervals = loadedInterval.getDownsampledIntervals();
-            for (CachingQueryReader.DownsampledInterval interval : intervals) {
+            List<DownsampledInterval> intervals = loadedInterval.getDownsampledIntervals();
+            for (DownsampledInterval interval : intervals) {
                 int x0 = context.bpToScreenPixel(interval.getStart());
                 int x1 = context.bpToScreenPixel(interval.getEnd());
                 int w = Math.max(1, x1 - x0);
                 // If there is room, leave a gap on one side
-                if (w > 5) {
-                    w--;
-                }
+                if (w > 5) w--;
                 // Greyscale from 0 -> 100 downsampled
                 //int gray = 200 - interval.getCount();
                 //Color color = (gray <= 0 ? Color.black : ColorUtilities.getGrayscaleColor(gray));
@@ -374,8 +331,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
     private void renderAlignments(RenderContext context, Rectangle inputRect) {
 
         //log.debug("Render features");
-        Map<String, List<AlignmentInterval.Row>> groups =
-                dataManager.getGroups(context, renderOptions, renderOptions.bisulfiteContext);
+        Map<String, List<AlignmentInterval.Row>> groups = dataManager.getGroups(context, renderOptions);
 
         Map<String, PEStats> peStats = dataManager.getPEStats();
         if (peStats != null) {
@@ -499,11 +455,11 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
     /**
      * Copy the contents of the popup text to the system clipboard.
      */
-    public void copyFlowSignalDistribution(final TrackClickEvent e, int location) {
-        ArrayList<ScoreDistribution> dists = getFlowSignalDistribution(e.getFrame(), location);
+    public void copyErrorDistribution(final TrackClickEvent e, int location) {
+        ArrayList<ErrorDistribution> dists = getErrorDistribution(e.getFrame(), location);
         Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
         String json = "";
-        for (ScoreDistribution dist : dists) {
+        for (ErrorDistribution dist : dists) {
             json += dist.toJson() + "\n";
         }
         clipboard.setContents(new StringSelection(json), null);
@@ -512,13 +468,13 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
     /**
      * by default, returns both for forward and backward strand
      */
-    private ArrayList<ScoreDistribution> getFlowSignalDistribution(ReferenceFrame frame, int location) {
-        return getFlowSignalDistribution(frame, location, true, true);
+    private ArrayList<ErrorDistribution> getErrorDistribution(ReferenceFrame frame, int location) {
+        return getErrorDistribution(frame, location, true, true);
     }
 
-    private ArrayList<ScoreDistribution> getFlowSignalDistribution(ReferenceFrame frame, int location, boolean forward, boolean reverse) {
+    private ArrayList<ErrorDistribution> getErrorDistribution(ReferenceFrame frame, int location, boolean forward, boolean reverse) {
 
-        return ScoreDistribution.extractFlowDistributions(dataManager, frame, location, forward, reverse);
+        return ErrorDistribution.extractErrorDistributions(dataManager, frame, location, forward, reverse);
     }
 
     private IonogramAlignment getIonogramAlignment(ReferenceFrame frame, int center_location, int nrbases_left_right, boolean forward) {
@@ -606,23 +562,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         }
     }
 
-    public void setWindowFunction(WindowFunction type) {
-        // ignored
-    }
-
-    public WindowFunction getWindowFunction() {
-        return null;
-    }
-
-    public void setRendererClass(Class rc) {
-        // ignored
-    }
-
-    // SamTracks use a custom renderer, not derived from Renderer
-    public Renderer getRenderer() {
-        return null;
-    }
-
     public boolean isLogNormalized() {
         return false;
     }
@@ -639,11 +578,9 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 return null;
             } else {
                 for (AlignmentInterval loadedInterval : loadedIntervals) {
-                    List<CachingQueryReader.DownsampledInterval> intervals = loadedInterval.getDownsampledIntervals();
-                    CachingQueryReader.DownsampledInterval interval = (CachingQueryReader.DownsampledInterval) FeatureUtils.getFeatureAt(position, 0, intervals);
-                    if (interval != null) {
-                        return interval.getValueString();
-                    }
+                    List<DownsampledInterval> intervals = loadedInterval.getDownsampledIntervals();
+                    DownsampledInterval interval = (DownsampledInterval) FeatureUtils.getFeatureAt(position, 0, intervals);
+                    if (interval != null) return interval.getValueString();
                 }
                 return null;
             }
@@ -667,13 +604,12 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
         }
     }
-
     private Alignment getAlignmentAt(double position, int y, ReferenceFrame frame) {
 
         if (alignmentsRect == null) {
             return null;   // <= not loaded yet
         }
-        Map<String, List<AlignmentInterval.Row>> groups = dataManager.getGroupedAlignments(frame);
+        Map<String, List<AlignmentInterval.Row>> groups = dataManager.getGroupedAlignmentsContaining(position, frame);
 
         if (groups == null || groups.isEmpty()) {
             return null;
@@ -752,7 +688,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             }
 
         }
-        if (IGV.getInstance().isSuppressTooltip()) {
+        if (IGV.getInstance().isShowDetailsOnClick()) {
             openTooltipWindow(te);
         }
         return false;
@@ -909,7 +845,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             minInsertSizePercentile = prefs.getAsFloat(PreferenceManager.SAM_MIN_INSERT_SIZE_PERCENTILE);
             maxInsertSizePercentile = prefs.getAsFloat(PreferenceManager.SAM_MAX_INSERT_SIZE_PERCENTILE);
             showAllBases = DEFAULT_SHOWALLBASES;
-            colorOption = ColorOption.strToValue(prefs.get(PreferenceManager.SAM_COLOR_BY));
+            colorOption = CollUtils.valueOf(ColorOption.class, prefs.get(PreferenceManager.SAM_COLOR_BY), ColorOption.NONE);
             groupByOption = null;
             flagZeroQualityAlignments = prefs.getAsBoolean(PreferenceManager.SAM_FLAG_ZERO_QUALITY);
             bisulfiteContext = DEFAULT_BISULFITE_CONTEXT;
@@ -1006,52 +942,32 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                     shadeBasesOption = ShadeBasesOption.QUALITY;
                 }
             }
-            value = attributes.get("shadeBasesOption");
-            if (value != null) {
-                try {
-                    shadeBasesOption = ShadeBasesOption.valueOf(value);
-                } catch (Exception e) {
-                    log.error("Error converting shadeBasesOption", e);
-                    shadeBasesOption = ShadeBasesOption.QUALITY;
+            shadeBasesOption = getFromMap(attributes, "shadeBasesOption", ShadeBasesOption.class, ShadeBasesOption.QUALITY);
+            colorOption = getFromMap(attributes, "colorOption", ColorOption.class, ColorOption.NONE);
+            groupByOption = getFromMap(attributes, "groupByOption", GroupOption.class, GroupOption.NONE);
+            bisulfiteContext = getFromMap(attributes, "bisulfiteContextRenderOption", BisulfiteContext.class, BisulfiteContext.CG);
+
+
+            groupByTag = getFromMap(attributes, "groupByTag", groupByTag);
+            sortByTag = getFromMap(attributes, "sortByTag", sortByTag);
+            colorByTag = getFromMap(attributes, "colorByTag", colorByTag);
                 }
+
+        private <T extends Enum<T>> T getFromMap(Map<String, String> attributes, String key, Class<T> clazz, T defaultValue) {
+            String value = attributes.get(key);
+            if (value == null) {
+                return defaultValue;
             }
-            value = attributes.get("shadeCenters");
-            if (value != null) {
-                shadeCenters = Boolean.parseBoolean(value);
+            return CollUtils.<T>valueOf(clazz, value, defaultValue);
             }
-            value = attributes.get("flagUnmappedPairs");
-            if (value != null) {
-                flagUnmappedPairs = Boolean.parseBoolean(value);
+
+        private String getFromMap(Map<String, String> attributes, String key, String defaultValue) {
+            String value = attributes.get(key);
+            if (value == null) {
+                return defaultValue;
             }
-            value = attributes.get("showAllBases");
-            if (value != null) {
-                showAllBases = Boolean.parseBoolean(value);
+            return value;
             }
-            value = attributes.get("colorOption");
-            if (value != null) {
-                colorOption = ColorOption.strToValue(value);
-            }
-            value = attributes.get("groupByOption");
-            if (value != null) {
-                groupByOption = GroupOption.strToValue(value);
-            }
-            value = attributes.get("bisulfiteContextRenderOption");
-            if (value != null) {
-                bisulfiteContext = BisulfiteContext.strToValue(value);
-            }
-            value = attributes.get("groupByTag");
-            if (value != null) {
-                groupByTag = value;
-            }
-            value = attributes.get("sortByTag");
-            if (value != null) {
-                sortByTag = value;
-            }
-            value = attributes.get("colorByTag");
-            if (value != null) {
-                colorByTag = value;
-            }
-        }
 
         public boolean isPairedArcView() {
             return pairedArcView;
@@ -1164,7 +1080,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             addCopyToClipboardItem(e);
 
             if (ionTorrent) {
-                addCopyFlowSignalDistributionToClipboardItem(e);
+                addCopyErrorDistributionToClipboardItem(e);
                 addIonTorrentAuxiliaryViews(e);
             }
 
@@ -1301,6 +1217,8 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             mappings.put("first-in-pair strand", GroupOption.FIRST_OF_PAIR_STRAND);
             mappings.put("sample", GroupOption.SAMPLE);
             mappings.put("read group", GroupOption.READ_GROUP);
+            //mappings.put("inversion", GroupOption.PAIR_INVERTED);
+            //mappings.put("chromosome of mate", GroupOption.MATE_CHROMOSOME);
 
             for (Map.Entry<String, GroupOption> el : mappings.entrySet()) {
                 JCheckBoxMenuItem mi = getGroupMenuItem(el.getKey(), el.getValue());
@@ -1517,9 +1435,9 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             add(item);
         }
 
-        public void addCopyFlowSignalDistributionToClipboardItem(final TrackClickEvent te) {
+        public void addCopyErrorDistributionToClipboardItem(final TrackClickEvent te) {
             final MouseEvent me = te.getMouseEvent();
-            JMenuItem item = new JMenuItem("Copy the flow signal distrubtion for this base to the clipboard");
+            JMenuItem item = new JMenuItem("Copy the error distribution of the raw flow signal for this base to the clipboard");
             final ReferenceFrame frame = te.getFrame();
             if (frame == null) {
                 item.setEnabled(false);
@@ -1530,7 +1448,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 item.addActionListener(new ActionListener() {
 
                     public void actionPerformed(ActionEvent aEvt) {
-                        copyFlowSignalDistribution(te, location);
+                        copyErrorDistribution(te, location);
                     }
                 });
             }
@@ -1726,9 +1644,8 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 Map<String, ShadeBasesOption> mappings = new LinkedHashMap<String, ShadeBasesOption>();
                 mappings.put("none", ShadeBasesOption.NONE);
                 mappings.put("quality", ShadeBasesOption.QUALITY);
-                mappings.put("read flow signal deviation", ShadeBasesOption.FLOW_SIGNAL_DEVIATION_READ);
-                mappings.put("reference flow signal deviation", ShadeBasesOption.FLOW_SIGNAL_DEVIATION_REFERENCE);
-
+                mappings.put("read flow error", ShadeBasesOption.ERROR_READ);
+               
                 for (Map.Entry<String, ShadeBasesOption> el : mappings.entrySet()) {
                     JCheckBoxMenuItem mi = getShadeBasesMenuItem(el.getKey(), el.getValue());
                     groupMenu.add(mi);
@@ -1834,7 +1751,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                                     getCoverageTrack().setDataSource(ds);
                                     refresh();
                                 } else if (path.endsWith(".counts")) {
-                                    DataSource ds = new GobyCountArchiveDataSource(file);
+                                    CoverageDataSource ds = new GobyCountArchiveDataSource(file);
                                     getCoverageTrack().setDataSource(ds);
                                     refresh();
                                 } else {
@@ -1851,7 +1768,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
         private void addIonTorrentAuxiliaryViews(final TrackClickEvent e) {
 
-            JMenu groupMenu = new JMenu("View flow score distrubtion for");
+            JMenu groupMenu = new JMenu("View flow error distrubtion for");
             ButtonGroup group = new ButtonGroup();
 
 
@@ -1873,7 +1790,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             groupMenu.add(itemr);
             group.add(itemr);
 
-            final JMenuItem itemIonoAlignment = new JCheckBoxMenuItem("View ionogram alignment");
+            final JMenuItem itemIonoAlignment = new JCheckBoxMenuItem("View flow based alignment");
 
 
             final ReferenceFrame frame = e.getFrame();
@@ -1889,25 +1806,25 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 item.addActionListener(new ActionListener() {
 
                     public void actionPerformed(ActionEvent aEvt) {
-                        showFlowSignalDistribution(location, e.getFrame(), true, true);
+                        showErrorDistribution(location, e.getFrame(), true, true);
                     }
                 });
                 itemf.addActionListener(new ActionListener() {
 
                     public void actionPerformed(ActionEvent aEvt) {
-                        showFlowSignalDistribution(location, e.getFrame(), true, false);
+                        showErrorDistribution(location, e.getFrame(), true, false);
                     }
                 });
                 itemr.addActionListener(new ActionListener() {
 
                     public void actionPerformed(ActionEvent aEvt) {
-                        showFlowSignalDistribution(location, e.getFrame(), false, true);
+                        showErrorDistribution(location, e.getFrame(), false, true);
                     }
                 });
                 itemb.addActionListener(new ActionListener() {
 
                     public void actionPerformed(ActionEvent aEvt) {
-                        showFlowSignalDistribution(location, e.getFrame(), false, false);
+                        showErrorDistribution(location, e.getFrame(), false, false);
                     }
                 });
                 itemIonoAlignment.addActionListener(new ActionListener() {
@@ -1937,8 +1854,8 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         // now we get the flow values for each read at each location 
         final IonogramAlignment forward_align = getIonogramAlignment(frame, center_location, nrbases_left_right, true);
         final IonogramAlignment reverse_align = getIonogramAlignment(frame, center_location, nrbases_left_right, false);
-        final IonogramAlignmentControlPanel forpanel = new IonogramAlignmentControlPanel(center_location, forward_align);;
-        final IonogramAlignmentControlPanel revpanel = new IonogramAlignmentControlPanel(center_location, reverse_align);;
+        final AlignmentControlPanel forpanel = new AlignmentControlPanel(center_location, forward_align);;
+        final AlignmentControlPanel revpanel = new AlignmentControlPanel(center_location, reverse_align);;
 
         String locus = Locus.getFormattedLocusString(frame.getChrName(), (int) center_location, (int) center_location);
         LocationListener listener = new LocationListener() {
@@ -1950,11 +1867,11 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 if (forward_align != null) {
                     IonogramAlignment forward = getIonogramAlignment(frame, newLocation, bases, true);
                     forpanel.setAlignment(forward, newLocation);
-                    forward.setTitle("Ionogram Alignment (forward) at " + locus);
+                    forward.setTitle("Flow Alignment (forward) at " + locus);
                 }
                 if (reverse_align != null) {
                     IonogramAlignment reverse = getIonogramAlignment(frame, newLocation, bases, false);
-                    reverse.setTitle("Ionogram Alignment (reverse) at " + locus);
+                    reverse.setTitle("Flow Alignment (reverse) at " + locus);
                     revpanel.setAlignment(reverse, newLocation);
                 }
                 frame.centerOnLocation(newLocation + 1);
@@ -1971,21 +1888,24 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             revpanel.setListener(listener);
         }
         ImageIcon image = new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/msa.gif"));
-        SimpleDialog fdia = new SimpleDialog("Ionogram Alignment (forward) at " + locus, forpanel, 800, 500, 200, 200, image.getImage());
+        SimpleDialog fdia = new SimpleDialog("Flow Alignment (forward) at " + locus, forpanel, 800, 500, 200, 200, image.getImage());
         fdia.setLocation(200, 100);
-        SimpleDialog rdia = new SimpleDialog("Ionogram Alignment (reverse) at " + locus, revpanel, 800, 500, 200, 800, image.getImage());
+        SimpleDialog rdia = new SimpleDialog("Flow Alignment (reverse) at " + locus, revpanel, 800, 500, 200, 800, image.getImage());
         rdia.setLocation(200, 600);
     }
 
     /**
      * if neither forward nor reverse, create 2 charts in one
      */
-    private void showFlowSignalDistribution(final int location, final ReferenceFrame frame, final boolean forward, final boolean reverse) {
-        ScoreDistribution[] distributions = getFlowDistributions(forward, reverse, frame, location);
+    private void showErrorDistribution(final int location, final ReferenceFrame frame, final boolean forward, final boolean reverse) {
+        ErrorDistribution[] distributions = getErrorDistributions(forward, reverse, frame, location);
 
+        if (distributions == null || distributions.length<1) return;
         // one for each base in the list, filtered?
         ImageIcon image = new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/chip_16.png"));
         boolean newway = true;
+        boolean oldway = false;//distributions[0].isHasOldData();
+        
         Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
         
         int x = (int) Math.max(100, screen.getWidth() / 2 - 400);
@@ -1998,7 +1918,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                     @Override
                     public void locationChanged(int newLocation) {
                         log.info("Got new location from panel: " + newLocation + ", (old location was: " + location + ")");
-                        ScoreDistribution[] newdist = getFlowDistributions(forward, reverse, frame, newLocation);
+                        ErrorDistribution[] newdist = getErrorDistributions(forward, reverse, frame, newLocation);
                         panel.setDistributions(newdist);
                         // xxx compute new maxy
                         panel.recreateChart();
@@ -2010,7 +1930,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                     }
                 };
                 panel.setListener(listener);
-                SimpleDialog dia = new SimpleDialog("Score Distribution "+panel.getBase(), panel, 800, 500, x, y, image.getImage());
+                SimpleDialog dia = new SimpleDialog("Error Distribution "+panel.getBase(), panel, 800, 500, x, y, image.getImage());
                 y += 500;
                 if (y > 1000) {
                     y = 200;
@@ -2018,14 +1938,14 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 }
             }
         }
-        else {
+        if (!newway || oldway) {
             final ScoreDistributionPanel distributionPanel = new ScoreDistributionPanel(distributions);
             LocationListener listener = new LocationListener() {
 
                 @Override
                 public void locationChanged(int newLocation) {
                     log.info("Got new location from panel: " + newLocation + ", (old location was: " + location + ")");
-                    ScoreDistribution[] newdist = getFlowDistributions(forward, reverse, frame, newLocation);
+                    ErrorDistribution[] newdist = getErrorDistributions(forward, reverse, frame, newLocation);
                     distributionPanel.setDistributions(newdist);
                     //frame.jumpTo(frame.getChrName(), location, location);
 
@@ -2038,46 +1958,53 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
             // listen to left/right mouse clicks from panel and navigate accordingly
 
-            SimpleDialog dia = new SimpleDialog("Score Distribution", distributionPanel, 800, 500, x, y, image.getImage());
+            SimpleDialog dia = new SimpleDialog("Old Error Distribution", distributionPanel, 800, 500, x, y, image.getImage());
         }
     }
 
-    public void createFlowSignalScreenShot(boolean forward, boolean reverse, String filename, boolean closeAfter) {
+    public void createErrorDistScreenShot(boolean forward, boolean reverse, String filename, boolean closeAfter) {
         ReferenceFrame frame = FrameManager.getDefaultFrame();
         int location = (int) (frame.getOrigin() + frame.getEnd()) / 2;
         log.info("Frame center=" + frame.getCenter());
         log.info("Got location " + location);
-        ScoreDistribution[] distributions = getFlowDistributions(forward, reverse, frame, location);
+        ErrorDistribution[] distributions = getErrorDistributions(forward, reverse, frame, location);
 
-        ScoreDistributionPanel distributionPanel = new ScoreDistributionPanel(distributions, false);
-        JFrame f = new JFrame();
-        f.getContentPane().add(distributionPanel);
-        f.setSize(800, 600);
-        f.setVisible(true);
-        try {
-            log.info("createFlowSignalScreenShot: Trying to write image to " + filename);;
-            IGV.getInstance().createSnapshotNonInteractive(distributionPanel.getCenter(), new File(filename));
-        } catch (Exception ex) {
-            log.error(ex);
-        }
-        if (closeAfter) {
-            f.dispose();
+        
+        final ArrayList<ScoreDistPanel> panels = ScoreDistPanel.createPanels(distributions, 2);
+        int count = 0;
+        for (ScoreDistPanel pan: panels) {
+
+            JFrame f = new JFrame();
+            f.getContentPane().add(pan);
+            f.setSize(800, 600);
+            f.setVisible(true);
+            try {
+                String file = filename+count+".png";
+                count++;
+                log.info("createErrorDistScreenShot: Trying to write image to " + file);
+                IGV.getInstance().createSnapshotNonInteractive(pan.getCenter(), new File(file));
+            } catch (Exception ex) {
+                log.error(ex);
+            }
+            if (closeAfter) {
+                f.dispose();
+            }
         }
 
     }
 
-    private ScoreDistribution[] getFlowDistributions(boolean forward, boolean reverse, ReferenceFrame frame, int location) {
-        ScoreDistribution distributions[] = null;
+    private ErrorDistribution[] getErrorDistributions(boolean forward, boolean reverse, ReferenceFrame frame, int location) {
+        ErrorDistribution distributions[] = null;
         if (forward || reverse) {
-            ArrayList<ScoreDistribution> dists = getFlowSignalDistribution(frame, location, forward, reverse);
-            distributions = new ScoreDistribution[dists.size()];
+            ArrayList<ErrorDistribution> dists = getErrorDistribution(frame, location, forward, reverse);
+            distributions = new ErrorDistribution[dists.size()];
             for (int i = 0; i < dists.size(); i++) {
                 distributions[i] = dists.get(i);
             }
         } else {
-            ArrayList<ScoreDistribution> distsf = getFlowSignalDistribution(frame, location, true, false);
-            ArrayList<ScoreDistribution> distsr = getFlowSignalDistribution(frame, location, false, true);
-            distributions = new ScoreDistribution[distsf.size() + distsr.size()];
+            ArrayList<ErrorDistribution> distsf = getErrorDistribution(frame, location, true, false);
+            ArrayList<ErrorDistribution> distsr = getErrorDistribution(frame, location, false, true);
+            distributions = new ErrorDistribution[distsf.size() + distsr.size()];
             for (int i = 0; i < distsf.size(); i++) {
                 distributions[i] = distsf.get(i);
             }

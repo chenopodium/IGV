@@ -13,7 +13,6 @@ package org.broad.igv.util;
 //~--- non-JDK imports --------------------------------------------------------
 
 import biz.source_code.base64Coder.Base64Coder;
-import org.apache.commons.collections.Predicate;
 import org.apache.log4j.Logger;
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
@@ -33,9 +32,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
-import java.util.Collection;
 import java.util.Comparator;
-import java.util.Iterator;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.zip.CRC32;
 
@@ -96,6 +95,20 @@ public class Utilities {
         Document xmlDocument = documentBuilder.parse(inStream);
 
         return xmlDocument;
+    }
+
+    public static Map<String, String> getAttributes(Node node) {
+        HashMap<String, String> attributes = new HashMap();
+
+        NamedNodeMap tNodeMap = node.getAttributes();
+        for (int i = 0; i < tNodeMap.getLength(); i++) {
+            Node nd = tNodeMap.item(i);
+            String value = nd.getNodeValue();
+            if (value != null && value.length() > 0) {
+                attributes.put(nd.getNodeName(), value);
+            }
+        }
+        return attributes;
     }
 
     public static String getString(Document document) {
@@ -201,26 +214,5 @@ public class Utilities {
 
         return fileName;
     }
-
-    /**
-     * Filters the provided collection in place. Only those objects for which
-     * predicate(object) returns true will be kept. Collection must support object
-     * removal.
-     *
-     * @param objects
-     * @param predicate
-     * @param <T>
-     */
-    public static <T> void filter(Collection<? extends T> objects, Predicate<T> predicate) {
-        if (objects == null) return;
-        Iterator<? extends T> iter = objects.iterator();
-        while (iter.hasNext()) {
-            T next = iter.next();
-            if (!predicate.evaluate(next)) {
-                iter.remove();
-            }
-        }
-    }
-
 
 }

@@ -15,7 +15,7 @@
 
 package org.broad.igv.cbio;
 
-import org.apache.commons.collections.Predicate;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.broad.igv.DirectoryManager;
 import org.broad.igv.PreferenceManager;
@@ -25,7 +25,7 @@ import org.broad.igv.ui.WaitCursorManager;
 import org.broad.igv.ui.util.*;
 import org.broad.igv.util.BrowserLauncher;
 import org.broad.igv.util.HttpUtils;
-import org.broad.igv.util.StringUtils;
+import org.broad.igv.util.LongRunningTask;
 import org.w3c.dom.Node;
 
 import javax.swing.*;
@@ -34,13 +34,11 @@ import javax.swing.border.EtchedBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
+import java.awt.event.*;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -58,13 +56,7 @@ public class FilterGeneNetworkUI extends JDialog {
 
     private Logger log = Logger.getLogger(FilterGeneNetworkUI.class);
 
-    /*
-    If we would like to skip showing filter dialog for a small number of genes
-    Set to -1 for now, should never skip
-    */
-    private static final int MAX_GENES_JUSTSHOW = -1;
-
-    private GeneList geneList;
+    private GeneList seedGeneList;
     private List<AttributeFilter> filterRows = new ArrayList<AttributeFilter>(1);
     GeneNetwork network = null;
 
@@ -75,13 +67,10 @@ public class FilterGeneNetworkUI extends JDialog {
     private static List<String> columnNames;
     private static Map<Integer, String> columnNumToKeyMap;
 
-    public static String keyToLabel(String key) {
-        String label = key.replace('_', ' ');
-        label = label.replace("PERCENT", "%");
-        //Looks kinda funny with 'CNA' term
-        //label = StringUtils.capWords(label);
-        return label;
-    }
+    /**
+     * For change events, we keep track of where we started from
+     */
+    private Component lastSelectedTab;
 
     static {
         String[] firstLabels = {"Gene label", "Interactions"};
@@ -94,44 +83,50 @@ public class FilterGeneNetworkUI extends JDialog {
         for (String key : GeneNetwork.attributeMap.keySet()) {
             columnNumToKeyMap.put(ind, key);
             ind++;
-            columnNames.add(keyToLabel(key));
+            columnNames.add(AttributeFilter.keyToLabel(key));
 
         }
 
     }
 
-    public FilterGeneNetworkUI(Frame owner, GeneList geneList) {
+    public FilterGeneNetworkUI(Frame owner, GeneList seedGeneList) {
         super(owner);
-        this.geneList = geneList;
+        this.seedGeneList = seedGeneList;
     }
 
     @Override
     public void setVisible(boolean visible) {
         if (visible && network == null) {
-            loadcBioData(this.geneList.getLoci());
-
+            loadcBioData();
         } else {
-            if (network.vertexSet().size() < MAX_GENES_JUSTSHOW) {
-                showNetwork();
-            } else {
-                super.setVisible(visible);
-            }
+            super.setVisible(visible);
         }
     }
 
-    private void loadcBioData(final List<String> geneLoci) {
-
+    private void loadcBioData() {
+        network = null;
+        final List<String> geneLoci = seedGeneList.getLoci();
         final IndefiniteProgressMonitor indefMonitor = new IndefiniteProgressMonitor(60);
         final ProgressBar progressBar = ProgressBar.showProgressDialog((Frame) getOwner(), "Loading cBio data...", indefMonitor, true);
         progressBar.setIndeterminate(true);
         indefMonitor.start();
 
-        final Runnable showUI = new Runnable() {
+        //Since we load the data asynchronously, we run this when finished
+        final Runnable updateUI = new Runnable() {
             @Override
             public void run() {
-                initComponents();
+                boolean needSetup = !FilterGeneNetworkUI.this.isVisible();
+                if (needSetup) {
+                    initComponents();
+                }
+
+                setGeneNetworkNeedsUpdate(false);
+                tabbedPane.setSelectedComponent(filterPane);
                 initComponentData();
-                setVisible(true);
+
+                if (needSetup) {
+                    FilterGeneNetworkUI.super.setVisible(true);
+                }
             }
         };
 
@@ -148,7 +143,7 @@ public class FilterGeneNetworkUI extends JDialog {
                         MessageUtils.showMessage("No results found for " + HttpUtils.buildURLString(geneLoci, ", "));
                     } else {
                         network.annotateAll(IGV.getInstance().getAllTracks());
-                        UIUtilities.invokeOnEventThread(showUI);
+                        UIUtilities.invokeOnEventThread(updateUI);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -165,20 +160,7 @@ public class FilterGeneNetworkUI extends JDialog {
             }
         };
 
-        // If we're on the dispatch thread spawn a worker, otherwise just execute.
-        if (SwingUtilities.isEventDispatchThread()) {
-            SwingWorker worker = new SwingWorker() {
-                @Override
-                protected Object doInBackground() throws Exception {
-                    runnable.run();
-                    return null;
-                }
-            };
-
-            worker.execute();
-        } else {
-            runnable.run();
-        }
+        LongRunningTask.submit(runnable);
     }
 
 
@@ -195,15 +177,117 @@ public class FilterGeneNetworkUI extends JDialog {
      * AFTER loading network.
      */
     private void initComponentData() {
-        add();
+        refreshSeedGenesTextArea();
+
+        if (this.filterRows.size() == 0) {
+            add();
+        }
 
         initThresholdsMap();
-
         loadThresholds();
 
         listModel = new GraphListModel();
         geneTable.setModel(listModel);
+        initRenderers();
+
         applySoftFilters();
+    }
+
+    private void modifyForSelection(JComponent component, boolean isSelected) {
+        if (isSelected) {
+            component.setForeground(geneTable.getSelectionForeground());
+            component.setBackground(geneTable.getSelectionBackground());
+            component.setOpaque(isSelected);
+        }
+    }
+
+    private void initRenderers() {
+        //Bold seed genes and format numbers nicely
+        TableCellRenderer stringRenderer = new TableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                JLabel comp = new JLabel();
+                if (value != null) {
+                    boolean isSeedGene = seedGeneList.getLoci().contains(value);
+                    comp.setText(String.valueOf(value));
+                    if (isSeedGene) {
+                        comp.setFont(comp.getFont().deriveFont(comp.getFont().getStyle() | Font.BOLD));
+                    }
+                }
+                modifyForSelection(comp, isSelected);
+                return comp;
+            }
+        };
+
+        TableCellRenderer intRenderer = new TableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                JLabel comp = new JLabel("" + value);
+                modifyForSelection(comp, isSelected);
+                return comp;
+            }
+        };
+
+
+        TableCellRenderer doubleRenderer = new TableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+
+                JLabel comp = new JLabel();
+                if (value != null) {
+                    String sVal;
+                    Double dPerc = (Double) value;
+                    if (dPerc == 0.0d) {
+                        sVal = "0.0";
+                    } else {
+                        //If small, show in exponential format
+                        //Otherwise just show 1 decimal place
+                        String fmt = "%2.1f";
+                        if (dPerc < 0.1d) {
+                            fmt = "%2.1e";
+                        }
+                        sVal = String.format(fmt, dPerc);
+                    }
+                    comp.setText(sVal);
+                }
+                modifyForSelection(comp, isSelected);
+                return comp;
+            }
+        };
+
+        geneTable.setDefaultRenderer(String.class, stringRenderer);
+        geneTable.setDefaultRenderer(Integer.class, intRenderer);
+        geneTable.setDefaultRenderer(Double.class, doubleRenderer);
+    }
+
+    /**
+     * Update the displayed text area to show the genes in {@code seedGeneList}
+     * See {@linkplain #getNewSeedGeneList}
+     */
+    private void refreshSeedGenesTextArea() {
+        String seedGenesString = StringUtils.join(seedGeneList.getLoci(), "\n");
+        seedGenesText.setText(seedGenesString);
+    }
+
+    /**
+     * Get the text content of {@code seedGenestext} and parse it into
+     * a GeneList.
+     * See {@linkplain #refreshSeedGenesTextArea()}
+     *
+     * @return new seedGeneList, which may be the same as the old
+     */
+    private GeneList getNewSeedGeneList() {
+        String[] genes = seedGenesText.getText().toUpperCase().split("[\\r\\n]{1,2}");
+        boolean updated = !Arrays.equals(seedGeneList.getLoci().toArray(), genes);
+        if (updated) {
+            return new GeneList(null, Arrays.asList(genes));
+        } else {
+            return seedGeneList;
+        }
+    }
+
+    private boolean checkNewSeedGeneList() {
+        return getNewSeedGeneList() != seedGeneList;
     }
 
     private void remove(AttributeFilter row) {
@@ -212,7 +296,12 @@ public class FilterGeneNetworkUI extends JDialog {
         int numRows = filterRows.size();
         filterRows.get(numRows - 1).setIsLast(true);
         filterRows.get(0).setShowDel(numRows >= 2);
-        validateTree();
+
+        validate();
+
+        adjustWindowHeight(-row.getPanel().getHeight());
+
+        applySoftFilters();
     }
 
 
@@ -255,7 +344,32 @@ public class FilterGeneNetworkUI extends JDialog {
         filterRows.get(numRows - 1).setIsLast(true);
         filterRows.get(0).setShowDel(numRows >= 2);
 
-        validateTree();
+        validate();
+
+        adjustWindowHeight(row.getPanel().getHeight());
+    }
+
+    /**
+     * When adding/removing rows, we change the height of some components
+     * This method may have no effect
+     *
+     * @param heightDelta Number of pixels to increase (negative values allowed)
+     *                    the tab pane and dialog itself
+     */
+    private void adjustWindowHeight(int heightDelta) {
+
+        int newWinHeight = getHeight() + heightDelta;
+        if (filterRows.size() >= 4 && (newWinHeight < Toolkit.getDefaultToolkit().getScreenSize().getHeight() - 100)) {
+            Dimension newSize = tabbedPane.getPreferredSize();
+            newSize.setSize(newSize.getWidth(), newSize.getHeight() + heightDelta);
+            tabbedPane.setPreferredSize(newSize);
+
+            newSize = getSize();
+            newSize.setSize(newSize.getWidth(), newWinHeight);
+            setSize(newSize);
+
+            validate();
+        }
 
     }
 
@@ -264,38 +378,48 @@ public class FilterGeneNetworkUI extends JDialog {
     }
 
     private void applySoftFilters() {
-        network.clearAllFilters();
+        network.reset();
 
-        //TODO This is only AND, should also include OR
-        for (AttributeFilter filter : this.filterRows) {
-            String filt_el = (String) filter.getAttrName().getSelectedItem();
-            if (GeneNetwork.attributeMap.containsKey(filt_el) || GeneNetwork.PERCENT_ALTERED.equals(filt_el)) {
-                float min = Float.parseFloat(filter.minVal.getText());
-                float max = Float.parseFloat(filter.maxVal.getText());
-                network.filterNodesRange(filt_el, min / 100, max / 100);
+        if (showSeedOnly.isSelected()) {
+            //Redundant, as filterGenes already preserves query genes
+            //But we want to be explicit
+            network.filterGenes(GeneNetwork.inQuery);
+        } else {
+            //TODO This is only AND, should also include OR
+            for (AttributeFilter filter : this.filterRows) {
+                String filt_el = (String) filter.getAttrName().getSelectedItem();
+                if (GeneNetwork.attributeMap.containsKey(filt_el) || GeneNetwork.PERCENT_ALTERED.equals(filt_el)) {
+                    float min = Float.parseFloat(filter.minVal.getText());
+                    float max = Float.parseFloat(filter.maxVal.getText());
+                    network.filterGenesRange(filt_el, min / 100, max / 100);
+                }
+            }
+            if (!keepIsolated.isSelected()) {
+                network.pruneGraph();
             }
         }
-        if (!keepIsolated.isSelected()) {
-            network.pruneGraph();
-        }
 
-        totNumGenes.setText("Total Genes: " + network.vertexSetFiltered().size());
+        totNumGenes.setText("Total Genes: " + network.geneVertexSet().size());
 
         this.listModel.markDirty();
     }
 
-    /**
-     * TODO This should run on a separate thread
-     */
     private void showNetwork() {
 
-        try {
-            String url = network.outputForcBioView();
-            url = "file://" + url;
-            BrowserLauncher.openURL(url);
-        } catch (IOException err) {
-            MessageUtils.showMessage("Error opening network for viewing. " + err.getMessage());
-        }
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    String url = network.outputForcBioView();
+                    url = "file://" + url;
+                    BrowserLauncher.openURL(url);
+                } catch (IOException err) {
+                    log.error(err);
+                    MessageUtils.showMessage("Error opening network for viewing. " + err.getMessage());
+                }
+            }
+        };
+        LongRunningTask.submit(runnable);
     }
 
     /**
@@ -313,28 +437,7 @@ public class FilterGeneNetworkUI extends JDialog {
     }
 
     private void okButtonActionPerformed(ActionEvent e) {
-        //If any rows are selected, we only keep those
-        //We lookup by name, because table could get sorted
-        int[] keepRows = getModelIndices();
-        if (keepRows.length > 0) {
-            final Set<Node> keepNodes = new HashSet<Node>(keepRows.length);
-            GraphListModel model = (GraphListModel) geneTable.getModel();
-            List<Node> vertices = model.getVertices();
-            for (Integer loc : keepRows) {
-                keepNodes.add(vertices.get(loc));
-            }
-
-            Predicate<Node> selectedPredicated = new Predicate<Node>() {
-
-                @Override
-                public boolean evaluate(Node object) {
-                    return keepNodes.contains(object);
-                }
-            };
-            network.filterNodes(selectedPredicated);
-        }
-
-        setVisible(false);
+        //setVisible(false);
         showNetwork();
     }
 
@@ -348,7 +451,7 @@ public class FilterGeneNetworkUI extends JDialog {
     private void refreshFilters() {
         this.applySoftFilters();
         listModel.markDirty();
-        this.validateTree();
+        this.validate();
     }
 
     private void refFilterActionPerformed(ActionEvent e) {
@@ -381,15 +484,25 @@ public class FilterGeneNetworkUI extends JDialog {
     }
 
     private void tabbedPaneStateChanged(ChangeEvent e) {
-        int thresholdTabNum = tabbedPane.indexOfTab("Thresholds");
-        if (thresholdTabNum < 0) {
+        if (tabbedPane == null || thresholdsPane == null) {
             //Component not built yet
             return;
         }
-        Component thresholdTab = tabbedPane.getComponentAt(thresholdTabNum);
-        if (!tabbedPane.getSelectedComponent().equals(thresholdTab) && !saveThresholds()) {
-            tabbedPane.setSelectedComponent(thresholdTab);
+
+        if (lastSelectedTab != null) {
+
+            //If the user enters an invalid threshold, we don't let them switch away
+            if (lastSelectedTab == seedGenesPane && !saveThresholds()) {
+                tabbedPane.setSelectedComponent(thresholdsPane);
+            }
+
+            //Reload network when we change away from seed genes pane
+            //No-op if unchanged
+//            if (lastSelectedTab == seedGenesPane) {
+//                updateNetwork();
+//            }
         }
+        lastSelectedTab = tabbedPane.getSelectedComponent();
     }
 
     private void saveButtonActionPerformed(ActionEvent e) {
@@ -403,27 +516,90 @@ public class FilterGeneNetworkUI extends JDialog {
         }
     }
 
+    private void resetToDefaultsButtonActionPerformed(ActionEvent e) {
+        for (Map.Entry<String, JTextField> entry : thresholdsMap.entrySet()) {
+            String value = PreferenceManager.getInstance().getDefaultValue(entry.getKey());
+            entry.getValue().setText(value);
+        }
+        saveThresholds();
+    }
+
+    private void cancel2ActionPerformed(ActionEvent e) {
+        cancelButton.doClick();
+    }
+
+    private void retrieveNetworkButtonActionPerformed(ActionEvent e) {
+        updateNetwork();
+    }
+
+    private void updateNetwork() {
+        GeneList newSeedGeneList = getNewSeedGeneList();
+        boolean updated = newSeedGeneList != seedGeneList;
+        if (updated) {
+            seedGeneList = newSeedGeneList;
+            loadcBioData();
+        }
+    }
+
+    private void resetSeedGeneTextAreaButtonActionPerformed(ActionEvent e) {
+        refreshSeedGenesTextArea();
+        setGeneNetworkNeedsUpdate(false);
+    }
+
+    private void seedGenesTextKeyReleased(KeyEvent e) {
+        boolean updated = checkNewSeedGeneList();
+        setGeneNetworkNeedsUpdate(updated);
+    }
+
+    private void setGeneNetworkNeedsUpdate(boolean updated) {
+        boolean tabsEnabled = !updated;
+        int filterIndex = tabbedPane.indexOfComponent(filterPane);
+        int thresholdsIndex = tabbedPane.indexOfComponent(thresholdsPane);
+        int[] indexes = {filterIndex, thresholdsIndex};
+        Color color = tabsEnabled ? Color.black : Color.gray;
+        for (int index : indexes) {
+            tabbedPane.setEnabledAt(index, tabsEnabled);
+            tabbedPane.setForegroundAt(index, color);
+        }
+
+        retrieveNetworkButton.setEnabled(updated);
+    }
+
+    private void showSeedOnlyActionPerformed(ActionEvent e) {
+        refreshFilters();
+    }
+
 
     private void initComponents() {
         // JFormDesigner - Component initialization - DO NOT MODIFY  //GEN-BEGIN:initComponents
         // Generated using JFormDesigner non-commercial license
         tabbedPane = new JTabbedPane();
-        dialogPane = new JPanel();
+        seedGenesPane = new JPanel();
+        vSpacer1 = new JPanel(null);
+        label5 = new JLabel();
+        scrollPane2 = new JScrollPane();
+        seedGenesText = new JTextArea();
+        textPane1 = new JTextPane();
+        seedButtonBar = new JPanel();
+        retrieveNetworkButton = new JButton();
+        resetSeedGeneTextAreaButton = new JButton();
+        cancel2 = new JButton();
+        filterPane = new JPanel();
         panel1 = new JPanel();
         addRow = new JButton();
         contentPane = new JPanel();
         scrollPane1 = new JScrollPane();
         geneTable = new JTable();
-        panel3 = new JPanel();
         buttonBar = new JPanel();
         totNumGenes = new JLabel();
+        showSeedOnly = new JToggleButton();
+        refFilter = new JButton();
         keepIsolated = new JCheckBox();
         okButton = new JButton();
-        refFilter = new JButton();
         cancelButton = new JButton();
-        helpButton = new JButton();
         saveButton = new JButton();
-        thresholds = new JPanel();
+        helpButton = new JButton();
+        thresholdsPane = new JPanel();
         contentPanel = new JPanel();
         label2 = new JLabel();
         label3 = new JLabel();
@@ -442,17 +618,20 @@ public class FilterGeneNetworkUI extends JDialog {
         separator2 = new JSeparator();
         panel2 = new JPanel();
         textArea1 = new JTextArea();
+        resetToDefaultsButton = new JButton();
 
         //======== this ========
         setMinimumSize(new Dimension(600, 22));
+        setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        setModal(true);
         setModalityType(Dialog.ModalityType.DOCUMENT_MODAL);
         Container contentPane2 = getContentPane();
         contentPane2.setLayout(new BorderLayout());
 
         //======== tabbedPane ========
         {
-            tabbedPane.setPreferredSize(new Dimension(550, 346));
-            tabbedPane.setMinimumSize(new Dimension(550, 346));
+            tabbedPane.setPreferredSize(new Dimension(571, 400));
+            tabbedPane.setMinimumSize(new Dimension(571, 346));
             tabbedPane.addChangeListener(new ChangeListener() {
                 @Override
                 public void stateChanged(ChangeEvent e) {
@@ -460,16 +639,111 @@ public class FilterGeneNetworkUI extends JDialog {
                 }
             });
 
-            //======== dialogPane ========
+            //======== seedGenesPane ========
             {
-                dialogPane.setBorder(new EmptyBorder(12, 12, 12, 12));
-                dialogPane.setMinimumSize(new Dimension(443, 300));
-                dialogPane.setPreferredSize(new Dimension(443, 300));
-                dialogPane.setLayout(new GridBagLayout());
-                ((GridBagLayout) dialogPane.getLayout()).columnWidths = new int[]{0, 0};
-                ((GridBagLayout) dialogPane.getLayout()).rowHeights = new int[]{0, 0, 0, 0, 0, 0};
-                ((GridBagLayout) dialogPane.getLayout()).columnWeights = new double[]{1.0, 1.0E-4};
-                ((GridBagLayout) dialogPane.getLayout()).rowWeights = new double[]{0.0, 0.0, 1.0, 0.0, 0.0, 1.0E-4};
+                seedGenesPane.setLayout(new GridBagLayout());
+                ((GridBagLayout) seedGenesPane.getLayout()).rowHeights = new int[]{0, 0, 0, 0, 0, 0};
+                ((GridBagLayout) seedGenesPane.getLayout()).rowWeights = new double[]{0.0, 0.0, 0.0, 0.0, 0.0, 1.0E-4};
+                seedGenesPane.add(vSpacer1, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
+                        GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                        new Insets(0, 0, 5, 0), 0, 0));
+
+                //---- label5 ----
+                label5.setText("Seed Genes (one per line):");
+                label5.setLabelFor(seedGenesText);
+                seedGenesPane.add(label5, new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
+                        GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                        new Insets(0, 0, 5, 0), 0, 0));
+
+                //======== scrollPane2 ========
+                {
+                    scrollPane2.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+
+                    //---- seedGenesText ----
+                    seedGenesText.setRows(12);
+                    seedGenesText.setToolTipText("cBio will be queried to find what genes interact with these genes");
+                    seedGenesText.setDragEnabled(false);
+                    seedGenesText.addKeyListener(new KeyAdapter() {
+                        @Override
+                        public void keyReleased(KeyEvent e) {
+                            seedGenesTextKeyReleased(e);
+                        }
+                    });
+                    scrollPane2.setViewportView(seedGenesText);
+                }
+                seedGenesPane.add(scrollPane2, new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0,
+                        GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                        new Insets(0, 0, 5, 0), 0, 0));
+
+                //---- textPane1 ----
+                textPane1.setBorder(null);
+                textPane1.setEditable(false);
+                textPane1.setText("IGV will query cBio to find genes which interact with the seed genes entered here.");
+                textPane1.setBackground(UIManager.getColor("Button.background"));
+                seedGenesPane.add(textPane1, new GridBagConstraints(0, 3, 1, 1, 0.0, 0.0,
+                        GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                        new Insets(0, 0, 5, 0), 0, 0));
+
+                //======== seedButtonBar ========
+                {
+                    seedButtonBar.setLayout(new GridBagLayout());
+                    ((GridBagLayout) seedButtonBar.getLayout()).columnWidths = new int[]{0, 0, 0, 0};
+                    ((GridBagLayout) seedButtonBar.getLayout()).rowHeights = new int[]{0, 0};
+                    ((GridBagLayout) seedButtonBar.getLayout()).columnWeights = new double[]{0.0, 0.0, 0.0, 1.0E-4};
+                    ((GridBagLayout) seedButtonBar.getLayout()).rowWeights = new double[]{0.0, 1.0E-4};
+
+                    //---- retrieveNetworkButton ----
+                    retrieveNetworkButton.setText("Retrieve Network");
+                    retrieveNetworkButton.addActionListener(new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            retrieveNetworkButtonActionPerformed(e);
+                        }
+                    });
+                    seedButtonBar.add(retrieveNetworkButton, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
+                            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                            new Insets(0, 0, 0, 5), 0, 0));
+
+                    //---- resetSeedGeneTextAreaButton ----
+                    resetSeedGeneTextAreaButton.setText("Reset to Original");
+                    resetSeedGeneTextAreaButton.addActionListener(new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            resetSeedGeneTextAreaButtonActionPerformed(e);
+                        }
+                    });
+                    seedButtonBar.add(resetSeedGeneTextAreaButton, new GridBagConstraints(1, 0, 1, 1, 0.0, 0.0,
+                            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                            new Insets(0, 0, 0, 5), 0, 0));
+
+                    //---- cancel2 ----
+                    cancel2.setText("Cancel");
+                    cancel2.addActionListener(new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            cancel2ActionPerformed(e);
+                        }
+                    });
+                    seedButtonBar.add(cancel2, new GridBagConstraints(2, 0, 1, 1, 0.0, 0.0,
+                            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                            new Insets(0, 0, 0, 0), 0, 0));
+                }
+                seedGenesPane.add(seedButtonBar, new GridBagConstraints(0, 4, 1, 1, 0.0, 0.0,
+                        GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                        new Insets(0, 0, 0, 0), 0, 0));
+            }
+            tabbedPane.addTab("Seed Genes", seedGenesPane);
+
+
+            //======== filterPane ========
+            {
+                filterPane.setBorder(new EmptyBorder(12, 12, 12, 12));
+                filterPane.setMinimumSize(new Dimension(443, 300));
+                filterPane.setLayout(new GridBagLayout());
+                ((GridBagLayout) filterPane.getLayout()).columnWidths = new int[]{0, 0};
+                ((GridBagLayout) filterPane.getLayout()).rowHeights = new int[]{0, 0, 0, 0, 0, 0};
+                ((GridBagLayout) filterPane.getLayout()).columnWeights = new double[]{1.0, 1.0E-4};
+                ((GridBagLayout) filterPane.getLayout()).rowWeights = new double[]{0.0, 0.0, 1.0, 0.0, 0.0, 1.0E-4};
 
                 //======== panel1 ========
                 {
@@ -495,7 +769,7 @@ public class FilterGeneNetworkUI extends JDialog {
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 0, 0), 0, 0));
                 }
-                dialogPane.add(panel1, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
+                filterPane.add(panel1, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
                         GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                         new Insets(0, 0, 0, 0), 0, 0));
 
@@ -503,42 +777,48 @@ public class FilterGeneNetworkUI extends JDialog {
                 {
                     contentPane.setLayout(new BoxLayout(contentPane, BoxLayout.Y_AXIS));
                 }
-                dialogPane.add(contentPane, new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
+                filterPane.add(contentPane, new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
+                        GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                        new Insets(0, 0, 0, 0), 0, 0));
+
+                //======== scrollPane1 ========
+                {
+
+                    //---- geneTable ----
+                    geneTable.setAutoCreateRowSorter(true);
+                    scrollPane1.setViewportView(geneTable);
+                }
+                filterPane.add(scrollPane1, new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0,
                         GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                         new Insets(0, 0, 0, 0), 0, 0));
 
                 //======== buttonBar ========
                 {
                     buttonBar.setBorder(new EmptyBorder(12, 0, 0, 0));
+                    buttonBar.setMaximumSize(new Dimension(2147483647, 137));
+                    buttonBar.setPreferredSize(new Dimension(421, 100));
+                    buttonBar.setMinimumSize(new Dimension(421, 80));
                     buttonBar.setLayout(new GridBagLayout());
                     ((GridBagLayout) buttonBar.getLayout()).columnWidths = new int[]{0, 85, 85, 80};
                     ((GridBagLayout) buttonBar.getLayout()).columnWeights = new double[]{1.0, 0.0, 0.0, 0.0};
 
                     //---- totNumGenes ----
                     totNumGenes.setText("Total Genes: #");
-                    buttonBar.add(totNumGenes, new GridBagConstraints(0, 0, 2, 1, 0.0, 0.0,
+                    buttonBar.add(totNumGenes, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
 
-                    //---- keepIsolated ----
-                    keepIsolated.setText("Keep Isolated Genes");
-                    keepIsolated.setVisible(false);
-                    buttonBar.add(keepIsolated, new GridBagConstraints(0, 3, 2, 1, 0.0, 0.0,
-                            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                            new Insets(0, 0, 5, 5), 0, 0));
-
-                    //---- okButton ----
-                    okButton.setText("View Network");
-                    okButton.setToolTipText("Display the network in a web browser");
-                    okButton.addActionListener(new ActionListener() {
+                    //---- showSeedOnly ----
+                    showSeedOnly.setText("Seed Genes Only");
+                    showSeedOnly.addActionListener(new ActionListener() {
                         @Override
                         public void actionPerformed(ActionEvent e) {
-                            okButtonActionPerformed(e);
+                            showSeedOnlyActionPerformed(e);
                         }
                     });
-                    buttonBar.add(okButton, new GridBagConstraints(0, 4, 1, 1, 0.0, 0.0,
+                    buttonBar.add(showSeedOnly, new GridBagConstraints(1, 0, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                            new Insets(0, 0, 0, 5), 0, 0));
+                            new Insets(0, 0, 5, 5), 0, 0));
 
                     //---- refFilter ----
                     refFilter.setText("Refresh Filter");
@@ -549,9 +829,29 @@ public class FilterGeneNetworkUI extends JDialog {
                             refFilterActionPerformed(e);
                         }
                     });
-                    buttonBar.add(refFilter, new GridBagConstraints(1, 2, 1, 1, 0.0, 0.0,
+                    buttonBar.add(refFilter, new GridBagConstraints(2, 0, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
+
+                    //---- keepIsolated ----
+                    keepIsolated.setText("Keep Isolated Genes");
+                    keepIsolated.setVisible(false);
+                    buttonBar.add(keepIsolated, new GridBagConstraints(3, 0, 1, 1, 0.0, 0.0,
+                            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                            new Insets(0, 0, 5, 0), 0, 0));
+
+                    //---- okButton ----
+                    okButton.setText("View Network");
+                    okButton.setToolTipText("Display the network in a web browser");
+                    okButton.addActionListener(new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            okButtonActionPerformed(e);
+                        }
+                    });
+                    buttonBar.add(okButton, new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
+                            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                            new Insets(0, 0, 0, 5), 0, 0));
 
                     //---- cancelButton ----
                     cancelButton.setText("Cancel");
@@ -561,16 +861,9 @@ public class FilterGeneNetworkUI extends JDialog {
                             cancelButtonActionPerformed(e);
                         }
                     });
-                    buttonBar.add(cancelButton, new GridBagConstraints(3, 4, 1, 1, 0.0, 0.0,
+                    buttonBar.add(cancelButton, new GridBagConstraints(3, 1, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 0, 0), 0, 0));
-
-                    //---- helpButton ----
-                    helpButton.setText("Help");
-                    helpButton.setVisible(false);
-                    buttonBar.add(helpButton, new GridBagConstraints(3, 2, 1, 1, 0.0, 0.0,
-                            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                            new Insets(0, 0, 5, 0), 0, 0));
 
                     //---- saveButton ----
                     saveButton.setText("Save Table");
@@ -580,22 +873,29 @@ public class FilterGeneNetworkUI extends JDialog {
                             saveButtonActionPerformed(e);
                         }
                     });
-                    buttonBar.add(saveButton, new GridBagConstraints(1, 4, 1, 1, 0.0, 0.0,
+                    buttonBar.add(saveButton, new GridBagConstraints(1, 1, 1, 1, 0.0, 0.0,
+                            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                            new Insets(0, 0, 0, 5), 0, 0));
+
+                    //---- helpButton ----
+                    helpButton.setText("Help");
+                    helpButton.setVisible(false);
+                    buttonBar.add(helpButton, new GridBagConstraints(2, 1, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 0, 5), 0, 0));
                 }
-                dialogPane.add(buttonBar, new GridBagConstraints(0, 3, 1, 1, 0.0, 0.0,
-                        GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                filterPane.add(buttonBar, new GridBagConstraints(0, 3, 1, 1, 0.0, 0.0,
+                        GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
                         new Insets(0, 0, 0, 0), 0, 0));
             }
-            tabbedPane.addTab("Filter", dialogPane);
+            tabbedPane.addTab("Filter", filterPane);
 
 
-            //======== thresholds ========
+            //======== thresholdsPane ========
             {
-                thresholds.setPreferredSize(new Dimension(550, 196));
-                thresholds.setMinimumSize(new Dimension(550, 196));
-                thresholds.setLayout(null);
+                thresholdsPane.setPreferredSize(new Dimension(550, 196));
+                thresholdsPane.setMinimumSize(new Dimension(550, 196));
+                thresholdsPane.setLayout(null);
 
                 //======== contentPanel ========
                 {
@@ -621,12 +921,12 @@ public class FilterGeneNetworkUI extends JDialog {
                     label3.setBounds(360, 96, label3.getPreferredSize().width, 18);
 
                     //---- delInput ----
-                    delInput.setText("0.7");
+                    delInput.setText("0.9");
                     delInput.setMinimumSize(new Dimension(34, 28));
                     delInput.setPreferredSize(new Dimension(45, 28));
                     delInput.setMaximumSize(new Dimension(50, 2147483647));
                     contentPanel.add(delInput);
-                    delInput.setBounds(new Rectangle(new Point(240, 162), delInput.getPreferredSize()));
+                    delInput.setBounds(new Rectangle(new Point(430, 91), delInput.getPreferredSize()));
 
                     //---- label4 ----
                     label4.setText("Up:");
@@ -638,11 +938,11 @@ public class FilterGeneNetworkUI extends JDialog {
                     label4.setBounds(130, 168, label4.getPreferredSize().width, 18);
 
                     //---- expUpInput ----
-                    expUpInput.setText("0.1");
+                    expUpInput.setText("1.0");
                     expUpInput.setMinimumSize(new Dimension(34, 28));
                     expUpInput.setPreferredSize(new Dimension(45, 28));
                     contentPanel.add(expUpInput);
-                    expUpInput.setBounds(new Rectangle(new Point(430, 91), expUpInput.getPreferredSize()));
+                    expUpInput.setBounds(new Rectangle(new Point(240, 162), expUpInput.getPreferredSize()));
 
                     //---- label7 ----
                     label7.setText("Down:");
@@ -654,7 +954,7 @@ public class FilterGeneNetworkUI extends JDialog {
                     label7.setBounds(300, 168, label7.getPreferredSize().width, 18);
 
                     //---- expDownInput ----
-                    expDownInput.setText("0.1");
+                    expDownInput.setText("1.0");
                     expDownInput.setPreferredSize(new Dimension(45, 28));
                     expDownInput.setMinimumSize(new Dimension(34, 28));
                     expDownInput.setMaximumSize(new Dimension(50, 2147483647));
@@ -662,7 +962,7 @@ public class FilterGeneNetworkUI extends JDialog {
                     expDownInput.setBounds(new Rectangle(new Point(430, 162), expDownInput.getPreferredSize()));
 
                     //---- ampInput ----
-                    ampInput.setText("0.7");
+                    ampInput.setText("0.9");
                     ampInput.setMinimumSize(new Dimension(34, 28));
                     ampInput.setPreferredSize(new Dimension(45, 28));
                     contentPanel.add(ampInput);
@@ -720,7 +1020,7 @@ public class FilterGeneNetworkUI extends JDialog {
                         contentPanel.setPreferredSize(preferredSize);
                     }
                 }
-                thresholds.add(contentPanel);
+                thresholdsPane.add(contentPanel);
                 contentPanel.setBounds(12, 80, 500, 210);
 
                 //======== panel2 ========
@@ -741,7 +1041,7 @@ public class FilterGeneNetworkUI extends JDialog {
                         panel2.setPreferredSize(preferredSize);
                     }
                 }
-                thresholds.add(panel2);
+                thresholdsPane.add(panel2);
                 panel2.setBounds(new Rectangle(new Point(55, 25), panel2.getPreferredSize()));
 
                 //---- textArea1 ----
@@ -749,24 +1049,35 @@ public class FilterGeneNetworkUI extends JDialog {
                 textArea1.setEditable(false);
                 textArea1.setLineWrap(true);
                 textArea1.setBackground(UIManager.getColor("Button.background"));
-                thresholds.add(textArea1);
+                thresholdsPane.add(textArea1);
                 textArea1.setBounds(15, 10, 430, 40);
+
+                //---- resetToDefaultsButton ----
+                resetToDefaultsButton.setText("Reset to Defaults");
+                resetToDefaultsButton.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        resetToDefaultsButtonActionPerformed(e);
+                    }
+                });
+                thresholdsPane.add(resetToDefaultsButton);
+                resetToDefaultsButton.setBounds(new Rectangle(new Point(10, 50), resetToDefaultsButton.getPreferredSize()));
 
                 { // compute preferred size
                     Dimension preferredSize = new Dimension();
-                    for (int i = 0; i < thresholds.getComponentCount(); i++) {
-                        Rectangle bounds = thresholds.getComponent(i).getBounds();
+                    for (int i = 0; i < thresholdsPane.getComponentCount(); i++) {
+                        Rectangle bounds = thresholdsPane.getComponent(i).getBounds();
                         preferredSize.width = Math.max(bounds.x + bounds.width, preferredSize.width);
                         preferredSize.height = Math.max(bounds.y + bounds.height, preferredSize.height);
                     }
-                    Insets insets = thresholds.getInsets();
+                    Insets insets = thresholdsPane.getInsets();
                     preferredSize.width += insets.right;
                     preferredSize.height += insets.bottom;
-                    thresholds.setMinimumSize(preferredSize);
-                    thresholds.setPreferredSize(preferredSize);
+                    thresholdsPane.setMinimumSize(preferredSize);
+                    thresholdsPane.setPreferredSize(preferredSize);
                 }
             }
-            tabbedPane.addTab("Thresholds", thresholds);
+            tabbedPane.addTab("Thresholds", thresholdsPane);
 
         }
         contentPane2.add(tabbedPane, BorderLayout.NORTH);
@@ -778,22 +1089,32 @@ public class FilterGeneNetworkUI extends JDialog {
     // JFormDesigner - Variables declaration - DO NOT MODIFY  //GEN-BEGIN:variables
     // Generated using JFormDesigner non-commercial license
     private JTabbedPane tabbedPane;
-    private JPanel dialogPane;
+    private JPanel seedGenesPane;
+    private JPanel vSpacer1;
+    private JLabel label5;
+    private JScrollPane scrollPane2;
+    private JTextArea seedGenesText;
+    private JTextPane textPane1;
+    private JPanel seedButtonBar;
+    private JButton retrieveNetworkButton;
+    private JButton resetSeedGeneTextAreaButton;
+    private JButton cancel2;
+    private JPanel filterPane;
     private JPanel panel1;
     private JButton addRow;
     private JPanel contentPane;
     private JScrollPane scrollPane1;
     private JTable geneTable;
-    private JPanel panel3;
     private JPanel buttonBar;
     private JLabel totNumGenes;
+    private JToggleButton showSeedOnly;
+    private JButton refFilter;
     private JCheckBox keepIsolated;
     private JButton okButton;
-    private JButton refFilter;
     private JButton cancelButton;
-    private JButton helpButton;
     private JButton saveButton;
-    private JPanel thresholds;
+    private JButton helpButton;
+    private JPanel thresholdsPane;
     private JPanel contentPanel;
     private JLabel label2;
     private JLabel label3;
@@ -812,6 +1133,7 @@ public class FilterGeneNetworkUI extends JDialog {
     private JSeparator separator2;
     private JPanel panel2;
     private JTextArea textArea1;
+    private JButton resetToDefaultsButton;
     // JFormDesigner - End of variables declaration  //GEN-END:variables
 
 
@@ -850,26 +1172,36 @@ public class FilterGeneNetworkUI extends JDialog {
 
     private class GraphListModel extends AbstractTableModel {
 
-        private List<Node> vertices = null;
+        private List<Node> geneVertices = null;
 
-        private List<Node> getVertices() {
-            if (vertices == null) {
-                Set<Node> nodes = network.vertexSetFiltered();
-                vertices = Arrays.asList(nodes.toArray(new Node[0]));
+        private List<Node> getGeneVertices() {
+            if (geneVertices == null) {
+                Set<Node> nodes = network.geneVertexSet();
+                geneVertices = Arrays.asList(nodes.toArray(new Node[0]));
             }
-            return vertices;
-
-            //Collections.sort(vertexNames);
+            return geneVertices;
         }
 
         public void markDirty() {
-            this.vertices = null;
+            this.geneVertices = null;
             this.fireTableStructureChanged();
         }
 
         @Override
         public int getRowCount() {
-            return getVertices().size();
+            return getGeneVertices().size();
+        }
+
+        @Override
+        public Class<?> getColumnClass(int columnIndex) {
+            switch (columnIndex) {
+                case 0:
+                    return String.class;
+                case 1:
+                    return Integer.class;
+                default:
+                    return Double.class;
+            }
         }
 
         @Override
@@ -884,13 +1216,13 @@ public class FilterGeneNetworkUI extends JDialog {
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
 
-            Node n = getVertices().get(rowIndex);
+            Node n = getGeneVertices().get(rowIndex);
             String nm = GeneNetwork.getNodeKeyData(n, "label");
             switch (columnIndex) {
                 case 0:
                     return nm;
                 case 1:
-                    return network.edgesOfFiltered(n).size();
+                    return network.edgesOf(n).size();
                 default:
                     String key = columnNumToKeyMap.get(columnIndex);
                     if (key == null) {
@@ -903,17 +1235,7 @@ public class FilterGeneNetworkUI extends JDialog {
 
                     //Change from fraction to percent
                     double dPerc = Double.parseDouble(val) * 100;
-
-                    if (dPerc == 0.0d) return "0.0";
-                    //If above 1, just show integer. If small, show in exponential format
-                    String fmt = "%2.1f";
-                    if (dPerc < 0.1d) {
-                        fmt = "%2.1e";
-                    }
-
-                    String sVal = String.format(fmt, dPerc);
-                    return sVal;
-
+                    return dPerc;
             }
         }
 

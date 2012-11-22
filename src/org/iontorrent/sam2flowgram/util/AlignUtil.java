@@ -333,7 +333,7 @@ public class AlignUtil {
      * @param flowSignal the 100 scaled flow signal
      * @return the base call represented by this flow signal
      */
-    public static int getBaseCallFromFlowSignal(int flowSignal) {
+    public static int getBaseCallFromFlowSignal(double flowSignal) {
         //System.err.println(flowSignal + " => " + (int)((flowSignal + 50.0) / 100.0));
         return (int) ((flowSignal + 50.0) / 100.0);
     }

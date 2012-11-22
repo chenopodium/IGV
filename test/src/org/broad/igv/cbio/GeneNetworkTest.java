@@ -12,11 +12,12 @@
 package org.broad.igv.cbio;
 
 import biz.source_code.base64Coder.Base64Coder;
-import org.apache.commons.collections.Predicate;
+import com.google.common.base.Predicate;
 import org.broad.igv.AbstractHeadlessTest;
 import org.broad.igv.track.Track;
 import org.broad.igv.track.TrackLoader;
 import org.broad.igv.util.*;
+import org.broad.igv.util.collections.CollUtils;
 import org.jgrapht.EdgeFactory;
 import org.jgrapht.VertexFactory;
 import org.jgrapht.generate.WheelGraphGenerator;
@@ -30,7 +31,7 @@ import org.w3c.dom.Node;
 
 import javax.imageio.metadata.IIOMetadataNode;
 import java.io.*;
-import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -54,7 +55,8 @@ import static org.junit.Assert.*;
  */
 public class GeneNetworkTest extends AbstractHeadlessTest {
 
-    private static String testpath = TestUtils.DATA_DIR + "tp53network.xml";
+    private static String testpath = TestUtils.DATA_DIR + "xml/tp53network.xml";
+    private static String drugTestPath = TestUtils.DATA_DIR + "xml/EGFR_withdrugs.xml.gz";
     private GeneNetwork network;
 
     @Before
@@ -85,11 +87,35 @@ public class GeneNetworkTest extends AbstractHeadlessTest {
         assertTrue("Failed to load network", network.loadNetwork(testpath) > 0);
     }
 
+    /**
+     * Test that we don't filter out drug nodes
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testFilterWithDrugs() throws Exception {
+        assertTrue("Failed to load network", network.loadNetwork(drugTestPath) > 0);
+        Collection<Node> nonGenesBeforeFilter = CollUtils.filteredCopy(network.vertexSet(), GeneNetwork.isNotGene);
+        assertTrue("Bad test setup, no non-gene nodes", nonGenesBeforeFilter.size() > 0);
+
+        doTestAnnotation(network);
+        int genesRemoved = network.filterGenesRange(GeneNetwork.PERCENT_MUTATED, 0, 10.0f);
+        assertTrue("Bad test setup, Filter didn't remove any genes", genesRemoved > 0);
+
+        Set<Node> nonGenesAfterFilter =
+                new HashSet<Node>(CollUtils.filteredCopy(network.vertexSet(), GeneNetwork.isNotGene));
+        for (Node nonGene : nonGenesBeforeFilter) {
+            String msg = String.format("Filtered out node %s which we shouldn't have", GeneNetwork.getNodeKeyData(nonGene, GeneNetwork.LABEL));
+            assertTrue(msg, nonGenesAfterFilter.contains(nonGene));
+        }
+
+    }
+
     @Test
     public void testFilter() throws Exception {
         Predicate tPred = new Predicate() {
 
-            public boolean evaluate(Object object) {
+            public boolean apply(Object object) {
                 Node node = (Node) object;
                 NamedNodeMap map = node.getAttributes();
                 if (map == null) {
@@ -101,50 +127,25 @@ public class GeneNetworkTest extends AbstractHeadlessTest {
         };
 
         network.loadNetwork(testpath);
-        boolean removed = network.filterNodes(tPred) > 0;
-        assertTrue(removed);
+        int initSize = network.vertexSet().size();
+        int numRemoved = network.filterGenes(tPred);
+        assertTrue(numRemoved > 0);
 
         //Test that we can get the filtered edges of a node
         Set<Node> keptNodes = new HashSet<Node>();
-        for (Node n : network.vertexSetFiltered()) {
-            for (Node e : network.edgesOfFiltered(n)) {
+        for (Node n : network.geneVertexSet()) {
+            for (Node e : network.edgesOf(n)) {
                 keptNodes.add(network.getEdgeSource(e));
                 keptNodes.add(network.getEdgeTarget(e));
             }
         }
-        assertEquals(network.vertexSetFiltered().size(), keptNodes.size());
-        assertTrue("Soft filtering not performed", keptNodes.size() < network.vertexSet().size());
-    }
-
-    /**
-     * Load some data from cbio.
-     * Checks that we are looking at the right urls
-     *
-     * @throws Exception
-     */
-    @Test
-    public void testDownloadCBIO() throws Exception {
-        String[] gene_list = new String[]{"egfr", "brca1", "jun"};
-        GeneNetwork anno = GeneNetwork.getFromCBIO(Arrays.asList(gene_list));
-        assertNotNull(anno);
-    }
-
-    /**
-     * Load some data from cbio.
-     * Checks that we are looking at the right urls
-     *
-     * @throws Exception
-     */
-    @Test(expected = IOException.class)
-    public void testDownloadCBIOFail() throws Exception {
-        String[] gene_list = new String[]{"egfr", "brca1", "jun"};
-        GeneNetwork.BASE_URL += "MAKEITFAIL";
-        GeneNetwork anno = GeneNetwork.getFromCBIO(Arrays.asList(gene_list));
+        assertEquals(network.geneVertexSet().size(), keptNodes.size());
+        assertTrue("Filtering not performed", keptNodes.size() < initSize);
     }
 
     @Test
     public void testOutputNoGzip() throws Exception {
-        String networkPath = TestUtils.DATA_DIR + "egfr_brca1.xml.gz";
+        String networkPath = TestUtils.DATA_DIR + "xml/egfr_brca1.xml.gz";
         //String networkPath = testpath;
         assertTrue(network.loadNetwork(networkPath) > 0);
         String outPath = TestUtils.DATA_DIR + "out/test.xml";
@@ -153,7 +154,7 @@ public class GeneNetworkTest extends AbstractHeadlessTest {
 
     @Test
     public void testOutputGzip() throws Exception {
-        String networkPath = TestUtils.DATA_DIR + "egfr_brca1.xml.gz";
+        String networkPath = TestUtils.DATA_DIR + "xml/egfr_brca1.xml.gz";
         assertTrue(network.loadNetwork(networkPath) > 0);
         String outPath = TestUtils.DATA_DIR + "out/test.xml.gz";
         tstOutputNetwork(network, outPath);
@@ -184,18 +185,22 @@ public class GeneNetworkTest extends AbstractHeadlessTest {
 
     }
 
-
-    @Test
-    public void testAnnotateAll() throws Exception {
-
-        String networkPath = TestUtils.DATA_DIR + "egfr_brca1.xml.gz";
-        assertTrue(network.loadNetwork(networkPath) > 0);
+    private void doTestAnnotation(GeneNetwork network) throws Exception {
 
         //Load some tracks
         String dataPath = TestUtils.DATA_DIR + "seg/Broad.080528.subtypes.seg.gz";
         ResourceLocator locator = new ResourceLocator(dataPath);
         List<Track> tracks = new TrackLoader().load(locator, genome);
         network.annotateAll(tracks);
+    }
+
+
+    @Test
+    public void testAnnotateAll() throws Exception {
+
+        String networkPath = TestUtils.DATA_DIR + "xml/egfr_brca1.xml.gz";
+        assertTrue(network.loadNetwork(networkPath) > 0);
+        doTestAnnotation(network);
 
         //Check data
         Set<Node> nodes = network.vertexSet();
@@ -222,12 +227,12 @@ public class GeneNetworkTest extends AbstractHeadlessTest {
     @Test
     public void testFilterGraph() throws Exception {
         GeneNetwork geneNetwork = new GeneNetwork();
-        assertTrue(geneNetwork.loadNetwork(TestUtils.DATA_DIR + "egfr_brca1.xml.gz") > 0);
+        assertTrue(geneNetwork.loadNetwork(TestUtils.DATA_DIR + "xml/egfr_brca1.xml.gz") > 0);
 
         final String badname = "NA";
 
         Predicate<Node> has_evidence = new Predicate<Node>() {
-            public boolean evaluate(Node object) {
+            public boolean apply(Node object) {
                 String label = GeneNetwork.getNodeKeyData(object, "EXPERIMENTAL_TYPE");
                 return label != null && !label.equals(badname);
             }
@@ -237,9 +242,8 @@ public class GeneNetworkTest extends AbstractHeadlessTest {
         //This is true if any modifications are made.
         assertTrue(geneNetwork.filterEdges(has_evidence) > 0);
 
-        geneNetwork.finalizeFilters();
         for (Node e : geneNetwork.edgeSet()) {
-            assertTrue(has_evidence.evaluate(e));
+            assertTrue(has_evidence.apply(e));
         }
     }
 
@@ -279,16 +283,16 @@ public class GeneNetworkTest extends AbstractHeadlessTest {
         //At this point, toRem should be isolated
         assertEquals(0, graph.edgesOf(toRem).size());
         assertTrue(graph.pruneGraph());
-        graph.finalizeFilters();
 
         assertEquals(size - 1, graph.vertexSet().size());
         assertEquals(exp_edges - 3, graph.edgeSet().size());
+
         assertFalse(graph.containsVertex(toRem));
     }
 
     @Test
     public void testOutputForcBioView() throws Exception {
-        assertTrue(network.loadNetwork(TestUtils.DATA_DIR + "tp53network.xml") > 0);
+        assertTrue(network.loadNetwork(testpath) > 0);
         String outPath = network.outputForcBioView();
 
         //Now attempt to read back in
@@ -313,24 +317,6 @@ public class GeneNetworkTest extends AbstractHeadlessTest {
             assertEquals(outLines[count], line);
             count++;
         }
-    }
-
-    @Test
-    public void testCaching() throws Exception {
-        String[] geneArray = new String[]{"sox1", "brca1", "DIRAS3"};
-        List<String> geneList = Arrays.asList(geneArray);
-        GeneNetwork anno = GeneNetwork.getFromCBIO(geneList);
-
-        assertTrue(HttpUtils.isRemoteURL(anno.getSourcePath()));
-
-        //Check that cached file exists
-        String url = GeneNetwork.getURLForGeneList(geneList);
-        File cachedFile = GeneNetwork.getCachedFile(url);
-        assertTrue(cachedFile.exists());
-
-        //This one should be loaded from local file
-        GeneNetwork anno2 = GeneNetwork.getFromCBIO(geneList);
-        assertFalse(HttpUtils.isRemoteURL(anno2.getSourcePath()));
     }
 
     public static class SimpleVertexFactory implements VertexFactory<Node> {

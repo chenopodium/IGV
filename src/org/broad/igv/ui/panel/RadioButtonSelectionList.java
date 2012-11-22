@@ -89,7 +89,7 @@ public class RadioButtonSelectionList extends CheckBoxList {
             //Doesn't really matter to the compiled program, only makes
             //editing the dialog easier
             try{
-                this._checkBox = (JCheckBox) button;
+                this._checkBox = button;
             }catch(NoSuchFieldError e){
 
             }

@@ -24,20 +24,23 @@ package org.broad.igv.sam;
 
 import org.apache.log4j.Logger;
 import org.broad.igv.PreferenceManager;
-import org.broad.igv.feature.*;
+import org.broad.igv.feature.SpliceJunctionFeature;
 import org.broad.igv.feature.genome.Genome;
-import org.broad.igv.renderer.*;
+import org.broad.igv.renderer.DataRange;
+import org.broad.igv.renderer.SpliceJunctionRenderer;
 import org.broad.igv.track.*;
 import org.broad.igv.ui.IGV;
 import org.broad.igv.ui.event.AlignmentTrackEvent;
 import org.broad.igv.ui.event.AlignmentTrackEventListener;
+import org.broad.igv.ui.panel.FrameManager;
 import org.broad.igv.ui.panel.IGVPopupMenu;
 import org.broad.igv.util.ResourceLocator;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -126,17 +129,20 @@ public class SpliceJunctionFinderTrack extends FeatureTrack implements Alignment
     protected void loadFeatures(String chr, int start, int end, RenderContext context) {
         parent = context.getPanel();
         final Collection<AlignmentInterval> loadedIntervals = dataManager.getLoadedIntervals(context.getReferenceFrame());
-        for (AlignmentInterval loadedInterval : loadedIntervals) {
-            if (loadedInterval != null) {
-                List<SpliceJunctionFeature> features = loadedInterval.getSpliceJunctions();
-                if (features == null) {
-                    features = Collections.emptyList();
+        if (loadedIntervals != null) {
+            packedFeaturesMap.setLocusList(FrameManager.getFrames());
+            for (AlignmentInterval loadedInterval : loadedIntervals) {
+                if (loadedInterval != null) {
+                    List<SpliceJunctionFeature> features = loadedInterval.getSpliceJunctions();
+                    if (features == null) {
+                        features = Collections.emptyList();
+                    }
+                    int intervalStart = loadedInterval.getStart();
+                    int intervalEnd = loadedInterval.getEnd();
+                    PackedFeatures pf = new PackedFeaturesSpliceJunctions(chr, intervalStart, intervalEnd, features.iterator(), getName());
+                    packedFeaturesMap.put(pf);
+                    if (context.getPanel() != null) context.getPanel().repaint();
                 }
-                int intervalStart = loadedInterval.getStart();
-                int intervalEnd = loadedInterval.getEnd();
-                PackedFeatures pf = new PackedFeaturesSpliceJunctions(chr, intervalStart, intervalEnd, features.iterator(), getName());
-                packedFeaturesMap.put(context.getReferenceFrame().getName(), pf);
-                if (context.getPanel() != null) context.getPanel().repaint();
             }
         }
     }

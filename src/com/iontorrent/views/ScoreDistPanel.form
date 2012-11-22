@@ -137,7 +137,7 @@
         <Component class="javax.swing.JSpinner" name="spinBin">
           <Properties>
             <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
-              <SpinnerModel initial="25" maximum="200" minimum="1" numberType="java.lang.Integer" stepSize="5" type="number"/>
+              <SpinnerModel initial="10" maximum="50" minimum="1" numberType="java.lang.Integer" stepSize="5" type="number"/>
             </Property>
             <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
               <Dimension value="[50, 19]"/>

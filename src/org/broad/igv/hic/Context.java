@@ -1,8 +1,10 @@
 package org.broad.igv.hic;
 
 //import org.broad.igv.hic.data.Chromosome;
+
 import org.broad.igv.feature.Chromosome;
-import org.broad.igv.ui.panel.ReferenceFrame;
+import org.broad.igv.hic.track.HiCFixedGridAxis;
+import org.broad.igv.hic.track.HiCGridAxis;
 
 /**
  * @author jrobinso
@@ -12,57 +14,50 @@ public class Context {
 
     private Chromosome chromosome;
     private int zoom = 4;
-    private int origin = 0;
-    private double scale;
-    ReferenceFrame referenceFrame;
+
+    private double scaleFactor = 1;
+
+    private int binOrigin = 0;
 
     public Context(Chromosome chromosome) {
         this.chromosome = chromosome;
     }
 
+    public int getBinOrigin() {
+        return binOrigin;
+    }
 
-    public void setOrigin(int x) {
-        origin = Math.max(0, x);
-
+    public void setBinOrigin(int binOrigin) {
+        this.binOrigin = binOrigin;
     }
 
     public int getZoom() {
         return zoom;
     }
 
-    public void setZoom(int zoom, double scale) {
-        this.scale = scale;
+    public void setZoom(int zoom) {
         this.zoom = zoom;
     }
 
-    public int getOrigin() {
-        return origin;
+    public void setZoom(int zoom, double scale) {
+        this.scaleFactor = scale;
+        this.zoom = zoom;
     }
 
     public int getChrLength() {
         return chromosome.getLength();
     }
 
-    public double getScale() {
-        return scale;
-    }
-
-    /**
-     * Return the screen position corresponding to the chromosomal position.
-     *
-     * @param chromosomePosition
-     * @return
-     */
-    public int getScreenPosition(double chromosomePosition) {
-        return (int) ((chromosomePosition - origin) / scale);
-    }
-
-    public double getChromosomePosition(int screenPosition) {
-        return origin + screenPosition * scale;
-    }
 
     public Chromosome getChromosome() {
         return chromosome;
     }
 
+    public void setScaleFactor(double scale) {
+        this.scaleFactor = scale;
+    }
+
+    public double getScaleFactor() {
+        return scaleFactor;
+    }
 }

@@ -1,45 +1,56 @@
 package org.broad.igv.hic.data;
 
-import org.broad.igv.hic.tools.DensityCalculation;
+import org.broad.igv.feature.Chromosome;
+import org.broad.igv.hic.tools.ExpectedValueCalculation;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
+ * Utility holder for Density calculation, for O/E maps.
+ *
  * @author Jim Robinson
- * @date 12/5/11
+ * @author Neva Cherniavsky
+ * @since 8/27/12
  */
 public class DensityFunction {
 
-    private double[] density;
-    //private int gridSize;
-    private int nPoints;
-    private Map<Integer, Double> normFactors;
+    int binSize;
 
-    public DensityFunction(int gridSize, double[] densities, Map<Integer, Double> normFactors) {
-        //this.gridSize = gridSize;
-        this.density = densities;
-        this.nPoints = densities.length;
+    String unit;
+
+    public Map<Integer, Double> normFactors;
+
+    double[] density;
+
+    public DensityFunction(String unit, int binSize, double[] density, Map<Integer, Double> normFactors) {
+        this.unit = unit;
+        this.binSize = binSize;
         this.normFactors = normFactors;
+        this.density = density;
     }
 
-    public DensityFunction(DensityCalculation calculation) {
-        this(calculation.getGridSize(), calculation.getDensityAvg(), calculation.getNormalizationFactors());
-    }
-    
+    /**
+     * Gets the expected value, distance and coverage normalized
+     *
+     * @param chrIdx   Chromosome index
+     * @param distance Distance from diagonal in bins
+     * @return Expected value, distance and coverage normalized
+     */
     public double getDensity(int chrIdx, int distance) {
 
-       double normFactor = normFactors.containsKey(chrIdx) ? normFactors.get(chrIdx) : 1.0;
+        double normFactor = 1.0;
+        if (normFactors != null && normFactors.containsKey(chrIdx)) {
+            normFactor = normFactors.get(chrIdx);
+        }
 
-        if (distance >= nPoints) {
+        if (distance >= density.length) {
 
-            return density[nPoints - 1] / normFactor;
+            return density[density.length - 1] / normFactor;
         } else {
             return density[distance] / normFactor;
         }
     }
+
 
 }

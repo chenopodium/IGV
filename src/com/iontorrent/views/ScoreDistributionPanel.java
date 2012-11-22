@@ -4,7 +4,7 @@
  */
 package com.iontorrent.views;
 
-import com.iontorrent.data.ScoreDistribution;
+import com.iontorrent.data.ErrorDistribution;
 import com.iontorrent.data.ReadInfo;
 
 import com.iontorrent.expmodel.ExperimentContext;
@@ -68,7 +68,7 @@ public class ScoreDistributionPanel extends javax.swing.JPanel {
      * The data: key is the flow signal value, such as 654, and the value is how
      * often it was found
      */
-    private ScoreDistribution distributions[];
+    private ErrorDistribution distributions[];
     /**
      * current chromosome location
      */
@@ -118,17 +118,17 @@ public class ScoreDistributionPanel extends javax.swing.JPanel {
     /**
      * max x val in chart
      */
-    private int maxx;
+    private double maxx;
     /**
      * to avoid infinite loops in event handling
      */
     private boolean ignore_events;
 
-    public ScoreDistributionPanel(ScoreDistribution distributions[]) {
+    public ScoreDistributionPanel(ErrorDistribution distributions[]) {
         this(distributions, true);
     }
 
-    public ScoreDistributionPanel(ScoreDistribution distributions[], boolean interactive) {
+    public ScoreDistributionPanel(ErrorDistribution distributions[], boolean interactive) {
         this.distributions = distributions;
         this.interactive = true;
         initComponents();
@@ -211,7 +211,7 @@ public class ScoreDistributionPanel extends javax.swing.JPanel {
     private CategoryDataset createCategoryDataset() {
         DefaultCategoryDataset dataset = new DefaultCategoryDataset();
         for (int i = 0; i < distributions.length; i++) {
-            int[] data = distributions[i].getBinnedData(binsize);
+            int[] data = distributions[i].getBinnedData(binsize, -1, true);
             String seriename = distributions[i].getName();
             for (int j = 0; j < data.length; j++) {
                 String cat = "" + (binsize * j);
@@ -224,8 +224,8 @@ public class ScoreDistributionPanel extends javax.swing.JPanel {
 
     private XYSeriesCollection createXYDataset() {
         XYSeriesCollection dataset = new XYSeriesCollection();
-        for (int i = 0; i < distributions.length; i++) {
-            TreeMap<Short, Integer> map = distributions[i].getMap();
+        p(" createXYDataset for "+ distributions.length+" distributions");
+        for (int i = 0; i < distributions.length; i++) {            
             dataset.addSeries(createDataset(distributions[i]));
         }
         return dataset;
@@ -355,7 +355,7 @@ public class ScoreDistributionPanel extends javax.swing.JPanel {
         xax.setMinorTickCount(1);
         //xax.setTickUnit(new NumberTickUnit(50));
         //xax.setTickUnit(new BcTickUnit("X", 50));
-        xax.setTickUnit(new BcTickUnit("X", 25));
+       // xax.setTickUnit(new BcTickUnit(0, "X", 25));
         xax.setTickMarksVisible(true);
         xax.setMinorTickMarksVisible(true);
         freechart.setTitle(plotTitle);
@@ -363,7 +363,7 @@ public class ScoreDistributionPanel extends javax.swing.JPanel {
         // also add nr of flows
 
         int totflows = 0;
-        for (ScoreDistribution dist : distributions) {
+        for (ErrorDistribution dist : distributions) {
             totflows += dist.getNrFlows();
         }
         bininfo += ", nr reads=" + totflows;
@@ -404,10 +404,12 @@ public class ScoreDistributionPanel extends javax.swing.JPanel {
 
     }
 
-    private XYSeries createDataset(ScoreDistribution dist) {
-        int[] bins = dist.getBinnedData(binsize);
-        if (maxx < dist.getMaxX()) {
-            maxx = dist.getMaxX();
+    private XYSeries createDataset(ErrorDistribution dist) {
+        p("====== Creating XY dataset for old data and binsize "+binsize+" ====");
+        int[] bins = dist.getBinnedData(binsize, -1, true);
+        int max = (int) dist.computeMinValue();
+        if (maxx < max) {
+            maxx = max;
         }
         XYSeries xy = new XYSeries(dist.getName());
         for (int b = 0; b < bins.length; b++) {
@@ -766,7 +768,7 @@ public class ScoreDistributionPanel extends javax.swing.JPanel {
 
         int max = 10;
 
-        for (ScoreDistribution dist : this.distributions) {
+        for (ErrorDistribution dist : this.distributions) {
             ArrayList<ReadInfo> infos = dist.getReadInfos();
             if (readflows.size() > max) {
                 break;
@@ -784,11 +786,11 @@ public class ScoreDistributionPanel extends javax.swing.JPanel {
         }
         PreferenceManager prefs = PreferenceManager.getInstance();
        String server = prefs.get(PreferenceManager.IONTORRENT_SERVER);        
-        String expinfo = prefs.get(PreferenceManager.IONTORRENT_RESULTS);
+        String expinfo = prefs.get(PreferenceManager.BAM_FILE);
         
         ExperimentContext exp = new ExperimentContext();
-        exp.setBamFilename(expinfo);
-        exp.setResultsName(expinfo);
+        exp.setExperimentInfo(expinfo);
+        
         SignalFetchPanel sig = new SignalFetchPanel(exp, readflows, distributions[0].getInformation());
        sig.setServer(server);
        sig.showPanel();
@@ -822,7 +824,7 @@ public class ScoreDistributionPanel extends javax.swing.JPanel {
     private javax.swing.JSpinner spinBin;
     // End of variables declaration//GEN-END:variables
 
-    public void setDistributions(ScoreDistribution[] newdist) {
+    public void setDistributions(ErrorDistribution[] newdist) {
         this.distributions = newdist;
         recreateChart();
     }

@@ -22,7 +22,6 @@ import org.broad.igv.util.Utilities;
 import org.broad.tribble.AsciiFeatureCodec;
 import org.broad.tribble.CloseableTribbleIterator;
 import org.broad.tribble.Feature;
-import org.broad.tribble.FeatureCodec;
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
@@ -31,7 +30,10 @@ import org.w3c.dom.NodeList;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.sql.*;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Types;
 import java.util.*;
 
 
@@ -169,39 +171,10 @@ public class SQLCodecSource extends DBReader<Feature> implements FeatureSource {
 
     @Override
     protected Feature processResult(ResultSet rs) throws SQLException {
-        String[] tokens = lineToArray(rs);
+        String[] tokens = DBManager.lineToArray(rs, startColIndex, endColIndex);
         //TODO GET RID OF THIS, IT'S BAD AND I FEEL BAD FOR WRITING IT -JS
         String line = StringUtils.join(tokens, "\t");
         return codec.decode(line);
-    }
-
-    /**
-     * Convert a the current line to an array of strings
-     *
-     * @param rs
-     * @return
-     * @throws SQLException
-     */
-    protected String[] lineToArray(ResultSet rs) throws SQLException {
-        int colCount = Math.min(rs.getMetaData().getColumnCount(), endColIndex) - startColIndex + 1;
-        String[] tokens = new String[colCount];
-        String s;
-        int sqlCol;
-        for (int cc = 0; cc < colCount; cc++) {
-
-            //SQL indexes from 1
-            //Have to parse blobs specially, otherwise we get the pointer as a string
-            sqlCol = cc + startColIndex;
-            String clazz = rs.getMetaData().getColumnClassName(sqlCol).toLowerCase();
-            if (clazz.contains("blob") || clazz.equalsIgnoreCase("[b")) {
-                Blob b = rs.getBlob(sqlCol);
-                s = new String(b.getBytes(1l, (int) b.length()));
-            } else {
-                s = rs.getString(sqlCol);
-            }
-            tokens[cc] = s;
-        }
-        return tokens;
     }
 
     /**
@@ -221,7 +194,7 @@ public class SQLCodecSource extends DBReader<Feature> implements FeatureSource {
         try {
             queryStatement = DBManager.getConnection(locator).prepareStatement(queryString);
 
-            if(binColName != null){
+            if (binColName != null) {
                 String[] qs = new String[MAX_BINS];
                 Arrays.fill(qs, "?");
                 String binnedQueryString = queryString + String.format(" AND %s IN (%s)", binColName, StringUtils.join(qs, ','));
@@ -239,7 +212,7 @@ public class SQLCodecSource extends DBReader<Feature> implements FeatureSource {
         PreparedStatement statement = queryStatement;
         Set<Integer> bins = calculateBins(start, end);
         //System.out.println("number of bins: " + bins.size());
-        if(bins.size() < MAX_BINS && binnedQueryStatement != null){
+        if (bins.size() < MAX_BINS && binnedQueryStatement != null) {
             statement = binnedQueryStatement;
         }
 
@@ -248,7 +221,7 @@ public class SQLCodecSource extends DBReader<Feature> implements FeatureSource {
             statement.setString(1, chr);
             statement.setInt(3, end);
             int[] cols = new int[]{2, 4, 5};
-            for(Integer cc: cols){
+            for (Integer cc : cols) {
                 statement.setInt(cc, start);
             }
 
@@ -273,16 +246,16 @@ public class SQLCodecSource extends DBReader<Feature> implements FeatureSource {
     }
 
 
-    private static final int SMALLEST_BIN_SIZE = 128*1024;
+    private static final int SMALLEST_BIN_SIZE = 128 * 1024;
 
     private Set<Integer> calculateBins(int start, int end) {
         int length = end - start;
         int sweepLength = SMALLEST_BIN_SIZE;
-        Set<Integer> bins = new HashSet<Integer>(2*(length) / SMALLEST_BIN_SIZE);
+        Set<Integer> bins = new HashSet<Integer>(2 * (length) / SMALLEST_BIN_SIZE);
 
-        while(sweepLength < BINRANGE_MAXEND_512M){
-            int tstStart = Math.max(start - sweepLength/2, 0);
-            while(tstStart < end){
+        while (sweepLength < BINRANGE_MAXEND_512M) {
+            int tstStart = Math.max(start - sweepLength / 2, 0);
+            while (tstStart < end) {
                 bins.add(binFromRange(tstStart, tstStart += sweepLength));
             }
             sweepLength *= 2;
@@ -292,7 +265,7 @@ public class SQLCodecSource extends DBReader<Feature> implements FeatureSource {
         return bins;
     }
 
-    private static final int BINRANGE_MAXEND_512M = 512*1024*1024;
+    private static final int BINRANGE_MAXEND_512M = 512 * 1024 * 1024;
     private static final int _binOffsetOldToExtended = 4681;
 
     /**
@@ -300,22 +273,22 @@ public class SQLCodecSource extends DBReader<Feature> implements FeatureSource {
      */
     public static int binFromRange(int start, int end) {
 
-        if(start < 0 || end < 0){
-            throw new IllegalArgumentException("start "+start+", end "+ end + " must be > 0");
+        if (start < 0 || end < 0) {
+            throw new IllegalArgumentException("start " + start + ", end " + end + " must be > 0");
         }
 
         boolean extended = false;
-        if(end > BINRANGE_MAXEND_512M){
+        if (end > BINRANGE_MAXEND_512M) {
             extended = true;
         }
 
-        final int binOffsetsExtended[] ={
-               4096 + 512 + 64 + 8 + 1,
-                      512 + 64 + 8 + 1,
-                            64 + 8 + 1,
-                                 8 + 1,
-                                     1,
-                                     0};
+        final int binOffsetsExtended[] = {
+                4096 + 512 + 64 + 8 + 1,
+                512 + 64 + 8 + 1,
+                64 + 8 + 1,
+                8 + 1,
+                1,
+                0};
 
         int[] binOffsets = Arrays.copyOfRange(binOffsetsExtended,
                 extended ? 0 : 1, binOffsetsExtended.length);
@@ -336,8 +309,8 @@ public class SQLCodecSource extends DBReader<Feature> implements FeatureSource {
         for (int binOffset : binOffsets) {
 
             if (startBin == endBin) {
-                bin= binOffset + startBin;
-                if(extended){
+                bin = binOffset + startBin;
+                if (extended) {
                     bin += _binOffsetOldToExtended;
                 }
                 break;

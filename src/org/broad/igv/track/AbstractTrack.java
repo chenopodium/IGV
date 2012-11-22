@@ -1,19 +1,12 @@
 /*
- * Copyright (c) 2007-2011 by The Broad Institute of MIT and Harvard.  All Rights Reserved.
+ * Copyright (c) 2007-2012 The Broad Institute, Inc.
+ * SOFTWARE COPYRIGHT NOTICE
+ * This software and its documentation are the copyright of the Broad Institute, Inc. All rights are reserved.
+ *
+ * This software is supplied without any warranty or guaranteed support whatsoever. The Broad Institute is not responsible for its use, misuse, or functionality.
  *
  * This software is licensed under the terms of the GNU Lesser General Public License (LGPL),
  * Version 2.1 which is available at http://www.opensource.org/licenses/lgpl-2.1.php.
- *
- * THE SOFTWARE IS PROVIDED "AS IS." THE BROAD AND MIT MAKE NO REPRESENTATIONS OR
- * WARRANTES OF ANY KIND CONCERNING THE SOFTWARE, EXPRESS OR IMPLIED, INCLUDING,
- * WITHOUT LIMITATION, WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
- * PURPOSE, NONINFRINGEMENT, OR THE ABSENCE OF LATENT OR OTHER DEFECTS, WHETHER
- * OR NOT DISCOVERABLE.  IN NO EVENT SHALL THE BROAD OR MIT, OR THEIR RESPECTIVE
- * TRUSTEES, DIRECTORS, OFFICERS, EMPLOYEES, AND AFFILIATES BE LIABLE FOR ANY DAMAGES
- * OF ANY KIND, INCLUDING, WITHOUT LIMITATION, INCIDENTAL OR CONSEQUENTIAL DAMAGES,
- * ECONOMIC DAMAGES OR INJURY TO PROPERTY AND LOST PROFITS, REGARDLESS OF WHETHER
- * THE BROAD OR MIT SHALL BE ADVISED, SHALL HAVE OTHER REASON TO KNOW, OR IN FACT
- * SHALL KNOW OF THE POSSIBILITY OF THE FOREGOING.
  */
 package org.broad.igv.track;
 
@@ -72,9 +65,12 @@ public abstract class AbstractTrack implements Track {
     private String name;
     private String url;
     private boolean itemRGB = true;
+
     private boolean useScore;
-    private float viewLimitMin;
-    private float viewLimitMax;
+    private float viewLimitMin = Float.NaN;     // From UCSC track line
+    private float viewLimitMax = Float.NaN;  // From UCSC track line
+
+
     protected int fontSize = PreferenceManager.getInstance().getAsInt(PreferenceManager.DEFAULT_FONT_SIZE);
     private boolean showDataRange = true;
     private String sampleId;
@@ -99,6 +95,9 @@ public abstract class AbstractTrack implements Track {
 
     // Scale for heatmaps
     private ContinuousColorScale colorScale;
+
+    //Not applicable to all tracks.
+    protected boolean autoScale;
 
     private Color posColor = Color.blue.darker(); //java.awt.Color[r=0,g=0,b=178];
     private Color altColor = Color.blue.darker();
@@ -144,7 +143,7 @@ public abstract class AbstractTrack implements Track {
     }
 
     public void setRendererClass(Class rc) {
-        // Ingore by default
+        // Ignore by default
     }
 
     public String getUrl() {
@@ -155,6 +154,9 @@ public abstract class AbstractTrack implements Track {
         this.url = url;
     }
 
+    public void setUseScore(boolean useScore) {
+        this.useScore = useScore;
+    }
 
     public String getId() {
         return id;
@@ -434,7 +436,7 @@ public abstract class AbstractTrack implements Track {
     public void setHeight(int height) {
 
         if (height < getHeight()) {
-            if (this.getDisplayMode() == DisplayMode.EXPANDED) {
+            if ((this.getDisplayMode() == DisplayMode.EXPANDED) && (getTrackType() != TrackType.GENE)) {
                 this.setDisplayMode(DisplayMode.SQUISHED);
             }
         }
@@ -480,7 +482,7 @@ public abstract class AbstractTrack implements Track {
 
     public boolean handleDataClick(TrackClickEvent te) {
 
-        if (IGV.getInstance().isSuppressTooltip()) {
+        if (IGV.getInstance().isShowDetailsOnClick()) {
             return openTooltipWindow(te);
         }
         return false;
@@ -511,6 +513,14 @@ public abstract class AbstractTrack implements Track {
         // Do nothing
     }
 
+    public boolean isAutoScale() {
+        return autoScale;
+    }
+
+    public void setAutoScale(boolean autoScale) {
+        this.autoScale = autoScale;
+    }
+
 
     /**
      * Set some properties of this track,  usually from a "track line" specification.
@@ -530,9 +540,10 @@ public abstract class AbstractTrack implements Track {
 
 
         // If view limits are explicitly set turn off autoscale
-        // TODO -- get rid of this ugly instance of and casting business
-        if (!Float.isNaN(viewLimitMin) && !Float.isNaN(viewLimitMax) && (this instanceof DataTrack)) {
-            ((DataTrack) this).setAutoscale(false);
+        if (!Float.isNaN(viewLimitMin) && !Float.isNaN(viewLimitMax)) {
+            this.setAutoScale(false);
+        } else {
+            this.setAutoScale(properties.isAutoScale());
         }
 
         // Color scale properties
@@ -645,9 +656,11 @@ public abstract class AbstractTrack implements Track {
     public ContinuousColorScale getColorScale() {
         if (colorScale == null) {
 
-            ContinuousColorScale defaultScale = IGV.getInstance().getSession().getColorScale(trackType);
-            if (defaultScale != null) {
-                return defaultScale;
+            if (IGV.hasInstance()) {
+                ContinuousColorScale defaultScale = IGV.getInstance().getSession().getColorScale(trackType);
+                if (defaultScale != null) {
+                    return defaultScale;
+                }
             }
 
             double min = dataRange == null ? 0 : dataRange.getMinimum();
@@ -1089,6 +1102,11 @@ public abstract class AbstractTrack implements Track {
 
     public float getYLine() {
         return yLine;
+    }
+
+    @Override
+    public Renderer getRenderer() {
+        return null;
     }
 
 }

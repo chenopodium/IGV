@@ -47,7 +47,8 @@ public class BAMFileReader implements AlignmentReader {
 
     public BAMFileReader(File bamFile) {
         try {
-            reader = new SAMFileReader(bamFile);
+            File indexFile = findIndexFile(bamFile);
+            reader = new SAMFileReader(bamFile, indexFile);
             reader.setValidationStringency(ValidationStringency.SILENT);
             loadHeader();
         } catch (Exception e) {
@@ -79,7 +80,7 @@ public class BAMFileReader implements AlignmentReader {
         return seqNames;
     }
 
-    public Set<String>  getPlatforms() {
+    public Set<String> getPlatforms() {
         return AlignmentReaderFactory.getPlatforms(getHeader());
     }
 
@@ -92,7 +93,7 @@ public class BAMFileReader implements AlignmentReader {
     }
 
     public boolean hasIndex() {
-        return reader.hasIndex();
+        return reader.getIndex() != null;
     }
 
     public CloseableIterator<Alignment> query(String sequence, int start, int end, boolean contained) {
@@ -137,4 +138,42 @@ public class BAMFileReader implements AlignmentReader {
 
         }
     }
+
+
+    /**
+     * Look for BAM index file according to standard naming convention.  Slightly modified version of Picard
+     * function of the same name.
+     *
+     * @param dataFile BAM file name.
+     * @return Index file name, or null if not found.
+     */
+    private static File findIndexFile(final File dataFile) {
+
+        final String bamPath = dataFile.getAbsolutePath();
+
+        // foo.bam.bai
+        String bai = bamPath + ".bai";
+        File indexFile1 = new File(bai);
+        if (indexFile1.length() > 0) {
+            return indexFile1;
+        }
+
+        // alternate (Picard) convention,  foo.bai
+        final String bamExtension = ".bam";
+        File indexFile2 = null;
+        if (bamPath.toLowerCase().endsWith(bamExtension)) {
+            bai = bamPath.substring(0, bamPath.length() - bamExtension.length()) + ".bai";
+            indexFile2 = new File(bai);
+            if (indexFile2.length() > 0) {
+                return indexFile2;
+            }
+        }
+
+        log.info("Index file: " + indexFile1.getAbsolutePath() + " not found");
+        if (indexFile2 != null) log.info("Index file: " + indexFile2.getAbsolutePath() + " not Found");
+
+        return null;
+    }
+
+
 }

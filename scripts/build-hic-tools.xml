@@ -35,6 +35,9 @@
             <fileset dir="lib">
                 <include name="**/*.jar"/>
             </fileset>
+            <fileset dir="extras">
+                <include name="**/*.jar"/>
+            </fileset>
         </unzip>
     </target>
 
@@ -72,6 +75,7 @@
                 <root classname="${main-class}"/>
                 <root classname="org.apache.log4j.ConsoleAppender"/>
                 <rootfileset dir="${tmp.dir}" includes="org/apache/commons/logging/*.class"/>
+                <rootfileset dir="${tmp.dir}" includes="oracle/**"/>
             </classfileset>
             <fileset dir="src">
                 <exclude name="**/*.form"/>

@@ -1,0 +1,2 @@
+How to merge with broad:
+- right click on our igv, select fetch

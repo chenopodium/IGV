@@ -1,11 +1,10 @@
 package org.broad.igv.hic.data;
 
-import com.iontorrent.utils.StringTools;
-import org.apache.commons.math.linear.RealMatrix;
 import org.apache.commons.math.stat.StatUtils;
 import org.broad.igv.hic.HiC;
 import org.broad.igv.hic.matrix.BasicMatrix;
-import org.broad.igv.hic.matrix.DiskResidentMatrix;
+import org.broad.igv.hic.matrix.DiskResidentBlockMatrix;
+import org.broad.igv.hic.matrix.DiskResidentRowMatrix;
 import org.broad.igv.hic.matrix.InMemoryMatrix;
 import org.broad.igv.util.ParsingUtils;
 import org.broad.igv.util.collections.DoubleArrayList;
@@ -39,77 +38,51 @@ public class ScratchPad {
         // Peak at file to determine version
         BufferedInputStream bis = null;
 
-            InputStream is = ParsingUtils.openInputStream("/Users/jrobinso/foo.txt");
-            bis = new BufferedInputStream(is);
-            LittleEndianInputStream les = new LittleEndianInputStream(bis);
+        InputStream is = ParsingUtils.openInputStream("/Users/jrobinso/foo.txt");
+        bis = new BufferedInputStream(is);
+        LittleEndianInputStream les = new LittleEndianInputStream(bis);
 
         int b;
-        while((b = les.read()) >= 0) {
+        while ((b = les.read()) >= 0) {
             System.out.println(b + "  " + ((char) b));
         }
 
 //        String s = les.readString();
 //        System.out.println(s);
-       is.close();
+        is.close();
     }
 
     public static BasicMatrix readPearsons(String path) throws IOException {
 
         // Peak at file to determine version
         BufferedInputStream bis = null;
+        int magic;
+        int version;
         try {
             InputStream is = ParsingUtils.openInputStream(path);
             bis = new BufferedInputStream(is);
             LittleEndianInputStream les = new LittleEndianInputStream(bis);
 
-            int bytePosition = 0;
-            int magic = les.readInt();    // <= 6515048
-            bytePosition += 4;
+            magic = les.readInt();
 
             if (magic == 6515048) {
-                // Version number
-                int version = les.readInt();
-                bytePosition += 4;
-
-                String genome = les.readString();
-                bytePosition += genome.length() + 1;
-
-                String chr1 = les.readString();
-                bytePosition += chr1.length() + 1;
-
-                String chr2 = les.readString();
-                bytePosition += chr2.length() + 1;
-
-                int binSize = les.readInt();
-                bytePosition += 4;
-
-                float lowerPercentile = les.readFloat();
-                bytePosition += 4;
-
-                float upperPercentile = les.readFloat();
-                bytePosition += 4;
-
-                int nRows = les.readInt();  // # rows, assuming square matrix
-                bytePosition += 4;
-
-                int nCols = les.readInt();
-                bytePosition += 4;
-
-                if (nRows != nCols) throw new RuntimeException("Non-square matrices not supported");
-
-                return new DiskResidentMatrix(path, bytePosition, nRows, lowerPercentile, upperPercentile);
-
+                version = les.readInt();
             } else {
-                int dim = magic;
-                DiskResidentMatrix bm = new DiskResidentMatrix(path, dim);
-                return bm;
+                throw new RuntimeException("Unsupported format: " + path);
             }
-
-
         } finally {
             if (bis != null)
                 bis.close();
         }
+
+        if (version == 1) {
+            return new DiskResidentRowMatrix(path);
+
+        } else {
+            return new DiskResidentBlockMatrix(path);
+        }
+
+
     }
 
 
@@ -163,9 +136,9 @@ public class ScratchPad {
             LittleEndianInputStream les = new LittleEndianInputStream(bis);
 
             int dim = les.readInt();
-            int nPoints = dim*dim;
-            float [] data = new float[nPoints];
-            for(int i=0; i<nPoints; i++) {
+            int nPoints = dim * dim;
+            float[] data = new float[nPoints];
+            for (int i = 0; i < nPoints; i++) {
                 data[i] = les.readFloat();
             }
 
@@ -271,7 +244,7 @@ public class ScratchPad {
         }
 
         // Stats
-        double [] flattenedData = flattenedDataList.toArray();
+        double[] flattenedData = flattenedDataList.toArray();
         los.writeFloat((float) StatUtils.percentile(flattenedData, 5));
         los.writeFloat((float) StatUtils.percentile(flattenedData, 95));
 
@@ -332,99 +305,4 @@ public class ScratchPad {
     }
 
 
-    public static void createBlockIndexedFile(File inputFile, File outputFile, int blockSize) throws IOException {
-
-        FileInputStream fis = null;
-
-        fis = new FileInputStream(inputFile);
-        BufferedInputStream bis = new BufferedInputStream(fis);
-        LittleEndianInputStream les = new LittleEndianInputStream(bis);
-
-        int nDataRows = les.readInt();
-        int nDataColumns = nDataRows;
-        int nTot = nDataRows * nDataColumns;
-
-        int nBlockColumns = nDataColumns / blockSize + 1;
-        int nBlockRows = nDataRows / blockSize + 1;
-
-        // The end blocks will in general be smaller
-        int lastRowBlockSize = nDataRows - (nBlockRows - 1) * blockSize;
-        int lastColBlockSize = nDataColumns - (nBlockColumns - 1) * blockSize;
-
-        // Now transform matrix from linear -> block layout
-        // Data is read in row-major order,  tranforming rows of blocks simultaneously
-
-        int lastBlockRow = 0;
-
-        int nBlockRow = 0;
-        Block[] blocksForRow = new Block[nBlockColumns];
-        resetBlocks(blocksForRow, blockSize, nBlockColumns, lastColBlockSize, nBlockRow);
-
-        for (int i = 0; i < nTot; i++) {
-            //les.readByte();
-
-            int row = i / nDataColumns;
-            nBlockRow = row / blockSize;
-
-            int col = (i - row * nDataColumns);
-            int nBlockCol = col / blockSize;
-
-            if (nBlockRow != lastBlockRow) {
-                for (Block b : blocksForRow) {
-                    System.out.println(lastBlockRow + "\t" + nBlockCol + "\t" + b.data.length);
-                }
-                resetBlocks(blocksForRow, blockSize, nBlockColumns, lastColBlockSize, nBlockRow);
-                lastBlockRow = nBlockRow;
-            }
-
-            // Index within block
-            int startIdx = nBlockRow * blockSize * nDataColumns + nBlockCol * blockSize;
-            int idx = i - startIdx;
-
-            Float f = les.readFloat();
-            blocksForRow[nBlockCol].add(f);
-        }
-
-        for (Block b : blocksForRow) {
-            System.out.println(nBlockRow + "\t" + "" + "\t" + b.data.length);
-        }
-        resetBlocks(blocksForRow, blockSize, nBlockColumns, lastColBlockSize, nBlockRow);
-        lastBlockRow = nBlockRow;
-
-
-        fis.close();
-    }
-
-    private static void resetBlocks(Block[] blocksForRow,
-                                    int blockSize, int nBlockSize, int lastBlockSize, int nBlockRow) {
-
-        int tmp = nBlockRow > nBlockSize - 1 ? lastBlockSize : blockSize;
-        for (int i = 0; i < nBlockSize - 1; i++) {
-            blocksForRow[i] = new Block(tmp, blockSize);
-        }
-        blocksForRow[nBlockSize - 1] = new Block(tmp, lastBlockSize);
-    }
-
-
-    static class Block {
-        int nRows;
-        int nCols;
-        float[] data;
-        int nextIdx = 0;
-
-        Block(int nRows, int nCols) {
-            this.nRows = nRows;
-            this.nCols = nCols;
-            data = new float[nRows * nCols];
-        }
-
-        void add(float d) {
-            try {
-                data[nextIdx] = d;
-            } catch (Exception e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-            }
-            nextIdx++;
-        }
-    }
 }
