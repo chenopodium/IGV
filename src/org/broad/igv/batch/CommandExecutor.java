@@ -16,6 +16,7 @@
 package org.broad.igv.batch;
 
 import org.apache.log4j.Logger;
+import org.broad.igv.Globals;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.feature.Locus;
 import org.broad.igv.feature.RegionOfInterest;
@@ -143,6 +144,8 @@ public class CommandExecutor {
                     return this.setCredentials(param1, param2);
                 } else if (cmd.equalsIgnoreCase("clearCredentials")) {
                     return this.clearCredentials();
+                } else if (cmd.equalsIgnoreCase("version")) {
+                    return Globals.VERSION;
                 } else if (cmd.equals("exit")) {
                     System.exit(0);
                 } else {
@@ -324,7 +327,6 @@ public class CommandExecutor {
         String result = "OK";
         String genomeID = param1;
 
-        //Genome in combo box
         igv.selectGenomeFromList(genomeID);
         if (GenomeManager.getInstance().getCurrentGenome().getId().equals(genomeID)) {
             return result;

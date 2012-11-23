@@ -91,7 +91,9 @@ public class GenomeManager {
 
 
     public void setCurrentGenome(Genome currentGenome) {
-        PreferenceManager.getInstance().setDefaultGenome(currentGenome.getId());
+        if (currentGenome != null) {
+            PreferenceManager.getInstance().setDefaultGenome(currentGenome.getId());
+        }
         this.currentGenome = currentGenome;
     }
 
@@ -438,8 +440,6 @@ public class GenomeManager {
 
         try {
             if (cachedFile.exists()) {
-
-
                 boolean remoteModfied = !HttpUtils.getInstance().compareResources(cachedFile, genomeArchiveURL);
 
                 // Force an update of cached genome if file length does not equal remote content length
@@ -473,8 +473,7 @@ public class GenomeManager {
 
 
         if (!f.exists()) {
-            log.error("Genome file: " + f.getAbsolutePath() + " does not exist.");
-            return null;
+            throw new FileNotFoundException("Genome file: " + f.getAbsolutePath() + " does not exist.");
         }
 
         GenomeDescriptor genomeDescriptor = null;
@@ -1258,5 +1257,27 @@ public class GenomeManager {
     public void excludedUrl(String location) {
         excludedArchivesUrls.add(location);
     }
+
+
+
+    // TODO A hack (obviously),  we need to record the UCSC species in the genome definitions (for those genomes)
+    static Map<String, String> ucscSpeciesMap = new Hashtable<String, String>();
+    public static String getUCSCSpecies(String id) {
+        if(ucscSpeciesMap.isEmpty()) {
+            ucscSpeciesMap.put("hg", "Muman");
+            ucscSpeciesMap.put("mm", "Mouse");
+            ucscSpeciesMap.put("canFam", "Dog");
+            ucscSpeciesMap.put("sacCer", "Yeast");
+        }
+
+        for(Map.Entry<String, String> entry : ucscSpeciesMap.entrySet()) {
+            if(id.startsWith(entry.getKey())) {
+                return entry.getValue();
+            }
+        }
+        return null;
+    }
+
+
 
 }

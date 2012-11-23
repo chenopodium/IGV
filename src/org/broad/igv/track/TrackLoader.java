@@ -24,10 +24,12 @@ import org.broad.igv.data.rnai.RNAIGCTDatasetParser;
 import org.broad.igv.data.rnai.RNAIGeneScoreParser;
 import org.broad.igv.data.rnai.RNAIHairpinParser;
 import org.broad.igv.data.seg.*;
+import org.broad.igv.dev.SegmentedReader;
 import org.broad.igv.dev.affective.AffectiveAnnotationParser;
 import org.broad.igv.dev.affective.AffectiveAnnotationTrack;
 import org.broad.igv.dev.affective.AffectiveUtils;
 import org.broad.igv.dev.affective.Annotation;
+import org.broad.igv.dev.db.DBTable;
 import org.broad.igv.dev.db.SQLCodecSource;
 import org.broad.igv.dev.db.SampleInfoSQLReader;
 import org.broad.igv.dev.db.SegmentedSQLReader;
@@ -1054,24 +1056,49 @@ public class TrackLoader {
         }
     }
 
-    private void loadFromDBProfile(ResourceLocator locator, List<Track> newTracks) throws IOException {
-        List<SQLCodecSource> sources = SQLCodecSource.getFromProfile(locator.getPath(), null);
-        for (SQLCodecSource source : sources) {
-            CachingFeatureSource cachingReader = new CachingFeatureSource(source);
-            FeatureTrack track = new FeatureTrack(locator, cachingReader);
-            track.setName(source.getTable());
-            newTracks.add(track);
+    private void loadFromDBProfile(ResourceLocator profileLocator, List<Track> newTracks) throws IOException {
+        List<DBTable> tableList = DBTable.parseProfile(profileLocator.getPath());
+        for (DBTable table : tableList) {
+            SQLCodecSource source = SQLCodecSource.getFromTable(table);
+            if (source != null) {
+                CachingFeatureSource cachingReader = new CachingFeatureSource(source);
+                FeatureTrack track = new FeatureTrack(profileLocator, cachingReader);
+                track.setName(source.getTableName());
+                newTracks.add(track);
+            } else if (table.getFormat().equals("seg")) {
+                Genome genome = GenomeManager.getInstance().getCurrentGenome();
+                SegmentedAsciiDataSet ds = (new SegmentedReader(table.getDbLocator(), genome)).loadFromDB(table);
+                loadSegTrack(table.getDbLocator(), newTracks, genome, ds);
+
+            } else if (table.getFormat().equals("sample.info")) {
+                //TODO sampleIdColumnLabel was previously hardcoded as "SAMPLE_ID_ARRAY"
+                //TODO Basically I'm shoehorning this information into a field usually used for something else. Only slightly better
+                String sampleIdColumnLabel = table.getBinColName();
+                if (sampleIdColumnLabel == null) {
+                    throw new IllegalArgumentException("Profile must have binColName specifying the sample id column label");
+                }
+                (new SampleInfoSQLReader(table, sampleIdColumnLabel)).load();
+            }
         }
+
     }
 
 
+    /**
+     * @param locator
+     * @param newTracks
+     * @param genome
+     * @deprecated See loadFromDBProfile, which loads from an xml file specifying table characteristics
+     */
     private void loadFromDatabase(ResourceLocator locator, List<Track> newTracks, Genome genome) {
 
         if (".seg".equals(locator.getType())) {
-            SegmentedAsciiDataSet ds = (new SegmentedSQLReader(locator, genome)).load();
+
+            //TODO Don't hardcode table name, this might note even be right for our target case
+            SegmentedAsciiDataSet ds = (new SegmentedSQLReader(locator, "CNV", genome)).load();
             loadSegTrack(locator, newTracks, genome, ds);
         } else {
-            (new SampleInfoSQLReader(locator)).load();
+            (new SampleInfoSQLReader(locator, "SAMPLE_INFO", "SAMPLE_ID_ARRAY")).load();
         }
     }
 

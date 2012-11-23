@@ -106,7 +106,7 @@ Options:
                reduced.
 
   -f, --windowFunctions  list     A comma delimited list specifying window functions to use
-               when reducing the data to precomputed tiles.   Possible
+               when reducing the data to precomputed tiles.   Allowed
                values are  min, max,  mean, median, p2, p10, p90, and p98.
                The "p" values represent percentile, so p2=2nd percentile,
                etc.
@@ -180,10 +180,17 @@ Options:
   -w, --windowSize num       The window size over which coverage is averaged. Defaults
                to 25 bp.
 
-  -e, --extFactor num       The read or feature is extended by the specified distance
+  -e, --extFactor num   The read or feature is extended by the specified distance
                in bp prior to counting. This option is useful for chip-seq
                and rna-seq applications. The value is generally set to the
-               average fragment length of the library.
+               average fragment length of the library minus the average read length.
+
+
+   --preExtFactor  num   The read is extended upstream from the 5' end by the specified distance.
+
+   --postExtFactor num   Effectively overrides the read length, defines the downstream extent
+               from the 5' end.  Intended for use with preExtFactor.
+
 
   -f, --windowFunctions  list     A comma delimited list specifying window functions to use
                when reducing the data to precomputed tiles.   Possible

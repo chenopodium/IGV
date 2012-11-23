@@ -27,16 +27,16 @@ public class SampleInfoSQLReader extends WholeTableDBReader<Void> {
 
     private static Logger log = Logger.getLogger(SampleInfoSQLReader.class);
 
-    String sampleColumn = "SAMPLE_ID_ARRAY"; // TODO -- pass this in obviously
+    String sampleColumn; // = "SAMPLE_ID_ARRAY";
 
-    public SampleInfoSQLReader(ResourceLocator locator, String sampleColumn) {
-        this(locator);
+    public SampleInfoSQLReader(DBTable table, String sampleColumn) {
+        super(table);
         this.sampleColumn = sampleColumn;
     }
 
-    public SampleInfoSQLReader(ResourceLocator locator) {
-        //TODO Don't hardcode table name, this might note even be right for our target case
-        super(locator, "SAMPLE_INFO");
+    public SampleInfoSQLReader(ResourceLocator locator, String tableName, String sampleColumn) {
+        super(locator, tableName, null);
+        this.sampleColumn = sampleColumn;
     }
 
     @Override
@@ -51,6 +51,9 @@ public class SampleInfoSQLReader extends WholeTableDBReader<Void> {
         while (rs.next()) {
             String sample = rs.getString(sampleColumn);
             for (String col : columnNames) {
+                if (col.equals(sampleColumn)) {
+                    continue;
+                }
                 String value = rs.getString(col);
                 AttributeManager.getInstance().addAttribute(sample, col, value);
             }

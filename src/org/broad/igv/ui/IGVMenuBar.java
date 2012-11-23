@@ -18,13 +18,13 @@ import org.broad.igv.PreferenceManager;
 import org.broad.igv.charts.ScatterPlotUtils;
 import org.broad.igv.dev.plugin.PluginSpecReader;
 import org.broad.igv.dev.plugin.ui.RunPlugin;
+import org.broad.igv.dev.plugin.ui.SetPluginPathDialog;
 import org.broad.igv.feature.genome.GenomeListItem;
 import org.broad.igv.feature.genome.GenomeManager;
 import org.broad.igv.feature.tribble.IGVBEDCodec;
 import org.broad.igv.gs.GSOpenSessionMenuAction;
 import org.broad.igv.gs.GSSaveSessionMenuAction;
 import org.broad.igv.gs.GSUtils;
-import org.broad.igv.hic.MainWindow;
 import org.broad.igv.lists.GeneListManagerUI;
 import org.broad.igv.lists.VariantListManager;
 import org.broad.igv.tools.IgvToolsGui;
@@ -65,6 +65,8 @@ import static org.broad.igv.ui.UIConstants.*;
 public class IGVMenuBar extends JMenuBar {
 
     private static Logger log = Logger.getLogger(IGVMenuBar.class);
+    public static final String GENOME_SPACE_REG_TOOLTIP = "Register for GenomeSpace";
+    public static final String GENOME_SPACE_HOMEPAGE = "http://www.genomespace.org/";
 
     private JMenu extrasMenu;
     //private RemoveUserDefinedGenomeMenuAction removeImportedGenomeAction;
@@ -104,12 +106,17 @@ public class IGVMenuBar extends JMenuBar {
 
         List<AbstractButton> menus = new ArrayList<AbstractButton>();
         menus.add(createFileMenu());
-        menus.add(createGenomesMenu());
+
+        boolean affectiveMode = PreferenceManager.getInstance().getAsBoolean(PreferenceManager.AFFECTIVE_ENABLE);
+        if (!affectiveMode) {
+            menus.add(createGenomesMenu());
+        }
+
         menus.add(createViewMenu());
         menus.add(createTracksMenu());
         menus.add(createRegionsMenu());
 
-        if (Globals.toolsMenuEnabled) {
+        if (true || Globals.toolsMenuEnabled) {
             refreshToolsMenu();
             menus.add(toolsMenu);
         }
@@ -135,6 +142,21 @@ public class IGVMenuBar extends JMenuBar {
     private void refreshToolsMenu() {
         List<JComponent> menuItems = new ArrayList<JComponent>(10);
 
+        // batch script
+        MenuAction menuAction = new RunScriptMenuAction("Run Batch Script...", KeyEvent.VK_X, igv);
+        menuItems.add(MenuAndToolbarUtils.createMenuItem(menuAction));
+
+        // igvtools
+        menuItems.add(new JSeparator());
+        menuAction = new SortTracksMenuAction("Run igvtools...", KeyEvent.VK_T, igv) {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                IgvToolsGui.launch(false, igv.getGenomeManager().getGenomeId());
+            }
+        };
+        menuItems.add(MenuAndToolbarUtils.createMenuItem(menuAction));
+        menuItems.add(new JSeparator());
+
         //-------------------------------------//
         //"Add tool" option, for loading plugin from someplace else
         JMenuItem addTool = new JMenuItem("Add tool");
@@ -152,8 +174,8 @@ public class IGVMenuBar extends JMenuBar {
                 }
             }
         });
-        menuItems.add(addTool);
-        menuItems.add(new JSeparator());
+        //menuItems.add(addTool);
+        //menuItems.add(new JSeparator());
 
         //-------------------------------------//
 
@@ -168,41 +190,65 @@ public class IGVMenuBar extends JMenuBar {
                 IGVMenuBar.exportVisibleData(outFile.getAbsolutePath(), IGV.getInstance().getAllTracks());
             }
         });
-        menuItems.add(exportData);
-
-//        JMenuItem analysisDialog = new JMenuItem("BEDTools Analysis");
-//        analysisDialog.addActionListener(new ActionListener() {
-//            @Override
-//            public void actionPerformed(ActionEvent e) {
-//                (new AnalysisDialog(IGV.getMainFrame())).setVisible(true);
-//            }
-//        });
-
-        //menuItems.add(analysisDialog);
-        //analysisDialog.setEnabled(CombinedFeatureSource.checkBEDToolsPathValid());
-
+        //menuItems.add(exportData);
 
         //-------------------------------------//
 
         for (final PluginSpecReader pluginSpecReader : PluginSpecReader.getPlugins()) {
             for (final Element tool : pluginSpecReader.getTools()) {
-                String toolName = tool.getAttributes().getNamedItem("name").getTextContent();
-                JMenu toolMenu = new JMenu(toolName);
-                for (final Element command : pluginSpecReader.getCommands(tool)) {
-                    final String cmdName = command.getAttribute("name");
-                    JMenuItem cmdItem = new JMenuItem(cmdName);
-                    toolMenu.add(cmdItem);
+                final String toolName = tool.getAttributes().getNamedItem("name").getTextContent();
+                boolean toolVisible = Boolean.parseBoolean(tool.getAttribute("visible"));
+                JMenuItem toolMenu;
 
-                    cmdItem.addActionListener(new ActionListener() {
+                if (toolVisible) {
+
+                    final String toolPath = pluginSpecReader.getToolPath(tool);
+                    final String tool_url = tool.getAttribute("tool_url");
+                    boolean isValid = PluginSpecReader.isToolPathValid(toolPath);
+
+                    ActionListener invalidActionListener = new ActionListener() {
                         @Override
                         public void actionPerformed(ActionEvent e) {
-                            (new RunPlugin(IGV.getMainFrame(), tool, command, pluginSpecReader)).setVisible(true);
+                            String msg = String.format("%s executable not found at %s", toolName, toolPath);
+                            if (tool_url != null) {
+                                msg += "<br/>See " + tool_url + " to install";
+                            }
+                            MessageUtils.showMessage(msg);
                         }
-                    });
+                    };
+
+                    toolMenu = new JMenu(toolName);
+                    //Kind of overlaps with the side-pull menu, doesn't look great
+                    //toolMenu.setToolTipText(tool.getAttribute("description"));
+                    for (final Element command : pluginSpecReader.getCommands(tool)) {
+                        final String cmdName = command.getAttribute("name");
+                        JMenuItem cmdItem = new JMenuItem(cmdName);
+                        toolMenu.add(cmdItem);
+                        if (isValid || toolPath.length() == 0) {
+                            cmdItem.addActionListener(new ActionListener() {
+                                @Override
+                                public void actionPerformed(ActionEvent e) {
+                                    (new RunPlugin(IGV.getMainFrame(), pluginSpecReader, tool, command)).setVisible(true);
+                                }
+                            });
+                            cmdItem.setEnabled(true);
+                        } else {
+                            cmdItem.setEnabled(false);
+                        }
+                    }
+                    if (toolPath.length() > 0) {
+                        JMenuItem setPathItem = new JMenuItem(String.format("Set path to %s...", toolName));
+                        setPathItem.addActionListener(new ActionListener() {
+                            @Override
+                            public void actionPerformed(ActionEvent e) {
+                                (new SetPluginPathDialog(IGV.getMainFrame(), pluginSpecReader, tool)).setVisible(true);
+                                refreshToolsMenu();
+                            }
+                        });
+                        toolMenu.add(setPathItem);
+                    }
+                    menuItems.add(toolMenu);
                 }
-                //Disable tool if we can't find the executable
-                toolMenu.setEnabled(PluginSpecReader.isToolPathValid(tool.getAttribute("path")));
-                menuItems.add(toolMenu);
             }
         }
 
@@ -284,27 +330,6 @@ public class IGVMenuBar extends JMenuBar {
 
         menuAction.setToolTipText(SAVE_IMAGE_TOOLTIP);
         menuItems.add(MenuAndToolbarUtils.createMenuItem(menuAction));
-
-
-        // batch script
-        menuItems.add(new JSeparator());
-
-        menuAction = new RunScriptMenuAction("Run Batch Script...", KeyEvent.VK_X, igv);
-
-        menuItems.add(MenuAndToolbarUtils.createMenuItem(menuAction));
-
-        // igvtools
-
-        menuItems.add(new JSeparator());
-
-        menuAction = new SortTracksMenuAction("Run igvtools...", KeyEvent.VK_T, igv) {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                IgvToolsGui.launch(false, igv.getGenomeManager().getGenomeId());
-            }
-        };
-        menuItems.add(MenuAndToolbarUtils.createMenuItem(menuAction));
-
 
         // TODO -- change "Exit" to "Close" for BioClipse
         menuItems.add(new JSeparator());      // Exit
@@ -769,6 +794,24 @@ public class IGVMenuBar extends JMenuBar {
         };
         menu.add(MenuAndToolbarUtils.createMenuItem(menuAction));
 
+        menu.add(new JSeparator());
+        menuAction =
+                new MenuAction("Register... ") {
+
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        try {
+                            BrowserLauncher.openURL(GENOME_SPACE_HOMEPAGE);
+                        } catch (IOException ex) {
+                            log.error("Error opening browser", ex);
+                        }
+
+                    }
+                };
+        menuAction.setToolTipText(GENOME_SPACE_REG_TOOLTIP);
+        menu.add(MenuAndToolbarUtils.createMenuItem(menuAction));
+
+
         menu.setVisible(PreferenceManager.getInstance().getAsBoolean(PreferenceManager.GENOME_SPACE_ENABLE));
 
 
@@ -890,29 +933,6 @@ public class IGVMenuBar extends JMenuBar {
             lfMenu.add(cb);
         }
         menu.add(lfMenu);
-
-
-        menu.addSeparator();
-        JMenuItem hicMenuItem = new JMenuItem("Launch HiC Viewer");
-        hicMenuItem.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent actionEvent) {
-                Runnable runnable = new Runnable() {
-                    public void run() {
-                        try {
-                            MainWindow mainWindow = MainWindow.createMainWindow();
-                            mainWindow.setVisible(true);
-                            mainWindow.setSize(780, 660);
-                            mainWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-                        } catch (IOException e) {
-                            log.error("Error launching HiC Window", e);
-                        }
-                    }
-                };
-                SwingUtilities.invokeLater(runnable);
-            }
-        });
-        menu.add(hicMenuItem);
-
 
         menu.setVisible(false);
 

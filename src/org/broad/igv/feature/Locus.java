@@ -23,7 +23,7 @@ import java.util.Locale;
 /**
  * @author jrobinso
  */
-public class Locus implements Feature {
+public class Locus implements NamedFeature {
 
     protected String chr = null;
     protected int start = -1;
@@ -37,6 +37,12 @@ public class Locus implements Feature {
         this.end = end;
     }
 
+    public static Locus fromString(String locusString) {
+        Locus l = new Locus(locusString);
+        return l.isValid() ? l : null;
+    }
+
+    // TODO -- really the factory method above should be used and this constructor made private or removed
     public Locus(String locusString) {
         parseLocusString(locusString);
 
@@ -89,6 +95,11 @@ public class Locus implements Feature {
         return chr + ":" + start + "-" + end;
     }
 
+    @Override
+    public String getName() {
+        return toString();
+    }
+
     public static String getFormattedLocusString(String chr, int start, int end) {
         String startStr = NUMBER_FORMAT.format(start);
         String endStr = NUMBER_FORMAT.format(end);
@@ -113,14 +124,5 @@ public class Locus implements Feature {
         return this.chr.equals(chr) && this.start <= end && this.end >= start;
     }
 
-//    @Override
-//    public boolean merge(Interval i) {
-//        if(!this.chr.equals(i.getChr())){
-//            return false;
-//        }
-//        this.start = Math.min(getStart(), i.getStart());
-//        this.end = Math.max(getEnd(), i.getEnd());
-//        return true;
-//    }
 
 }

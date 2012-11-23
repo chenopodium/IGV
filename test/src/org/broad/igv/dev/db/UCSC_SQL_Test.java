@@ -74,11 +74,12 @@ public class UCSC_SQL_Test extends AbstractHeadlessTest {
         ResourceLocator locator = new ResourceLocator(url);
         locator.setUsername("genome");
 
-        String table = "knownGene";
+        String tableName = "knownGene";
         int strt = 100000;
         int end = 400000;
 
-        SQLCodecSource reader = new SQLCodecSource(locator, codec, table);
+        DBTable table = new DBTable(locator, tableName, "n/a", null, SQLCodecSource.UCSC_CHROMO_COL, SQLCodecSource.UCSC_START_COL, SQLCodecSource.UCSC_END_COL, 1, Integer.MAX_VALUE, null, null, null);
+        SQLCodecSource reader = new SQLCodecSource(table, codec);
         Iterator<Feature> SQLFeatures = reader.getFeatures("chr1", strt, end);
 
         int count = 0;
@@ -131,7 +132,10 @@ public class UCSC_SQL_Test extends AbstractHeadlessTest {
     }
 
     public SQLCodecSource tstLoadFromProfile(String profilePath, String tableName) throws Exception {
-        SQLCodecSource source = SQLCodecSource.getFromProfile(profilePath, tableName).get(0);
+        SQLCodecSource source = SQLCodecSource.getFromProfile(profilePath, tableName);
+        if (source == null) {
+            throw new RuntimeException("Table " + tableName + " not found in profile " + profilePath);
+        }
         int start = 1;
         int end = 100000;
         Iterator<Feature> feats = source.getFeatures("chr1", start, end);
@@ -174,10 +178,10 @@ public class UCSC_SQL_Test extends AbstractHeadlessTest {
     }
 
     public void tstQueryWithBins(String profilePath, String tableName, String chr, int start, int end) throws Exception {
-        SQLCodecSource binSource = SQLCodecSource.getFromProfile(profilePath, tableName).get(0);
+        SQLCodecSource binSource = SQLCodecSource.getFromProfile(profilePath, tableName);
         assertNotNull(binSource.binColName);
 
-        SQLCodecSource noBinSource = SQLCodecSource.getFromProfile(profilePath, tableName).get(0);
+        SQLCodecSource noBinSource = SQLCodecSource.getFromProfile(profilePath, tableName);
         binSource.binColName = null;
 
 

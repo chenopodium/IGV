@@ -19,6 +19,7 @@ import org.broad.igv.dev.plugin.Argument;
 import org.broad.igv.dev.plugin.PluginFeatureSource;
 import org.broad.igv.dev.plugin.PluginSpecReader;
 import org.broad.igv.track.FeatureTrack;
+import org.broad.igv.track.Track;
 import org.broad.igv.ui.IGV;
 import org.w3c.dom.Element;
 
@@ -45,7 +46,7 @@ public class RunPlugin extends JDialog {
     private String specPath;
 
 
-    public RunPlugin(Frame owner, Element tool, Element command, PluginSpecReader pluginSpecReader) {
+    public RunPlugin(Frame owner, PluginSpecReader pluginSpecReader, Element tool, Element command) {
         super(owner);
         initComponents();
 
@@ -61,7 +62,9 @@ public class RunPlugin extends JDialog {
 
     private void initArgumentComponents(String toolPath, String cmdName, String cmdVal) {
 
-        this.cmd.add(toolPath);
+        if (toolPath.length() > 0) {
+            this.cmd.add(toolPath);
+        }
         if (cmdVal != null && cmdVal.trim().length() > 0) {
             this.cmd.add(cmdVal);
         }
@@ -88,7 +91,7 @@ public class RunPlugin extends JDialog {
         outputName.setText(cmdName + " result");
     }
 
-    private FeatureTrack genNewTrack() {
+    private Track genNewTrack() {
         //Retrieve the actual argument values
         LinkedHashMap<Argument, Object> argumentValues = new LinkedHashMap<Argument, Object>(argumentComponents.size());
         for (Map.Entry<Argument, ArgumentPanel> argComp : argumentComponents.entrySet()) {
@@ -98,8 +101,8 @@ public class RunPlugin extends JDialog {
 
         String name = outputName.getText();
 
+        //TODO PluginDataSource is already written, just need to know when to use it
         PluginFeatureSource source = new PluginFeatureSource(cmd, argumentValues, parsingAttrs, specPath);
-
         FeatureTrack newTrack = new FeatureTrack(name, name, source);
         return newTrack;
     }
@@ -109,7 +112,7 @@ public class RunPlugin extends JDialog {
     }
 
     private void okButtonActionPerformed(ActionEvent e) {
-        FeatureTrack newTrack = genNewTrack();
+        Track newTrack = genNewTrack();
         IGV.getInstance().getTrackPanel(IGV.FEATURE_PANEL_NAME).addTrack(newTrack);
 
         this.setVisible(false);

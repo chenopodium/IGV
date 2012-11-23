@@ -14,6 +14,7 @@ package org.broad.igv.dev;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.data.seg.SegmentedAsciiDataSet;
+import org.broad.igv.dev.db.DBTable;
 import org.broad.igv.dev.db.WholeTableDBReader;
 import org.broad.igv.exceptions.ParserException;
 import org.broad.igv.feature.genome.Genome;
@@ -27,10 +28,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 /**
- * Experimental class to explore using a SQL database as a data store
+ * Experimental class to explore using the same class as a reader for
+ * both a SQL DB and a file.
  *
- * @author Jim Robinson
- * @date 10/14/11
+ * @author Jacob Silterra
+ * @date 2012 Aug 30
  */
 public class SegmentedReader {
 
@@ -54,8 +56,8 @@ public class SegmentedReader {
 
     private class SegmentedDBReader extends WholeTableDBReader<SegmentedAsciiDataSet> {
 
-        private SegmentedDBReader(String table) {
-            super(SegmentedReader.this.locator, table);
+        private SegmentedDBReader(DBTable table) {
+            super(table);
         }
 
         @Override
@@ -74,19 +76,11 @@ public class SegmentedReader {
 
         private int readHeader(ResultSet rs) throws SQLException {
             dataset = new SegmentedAsciiDataSet(genome);
-            sampleColumn = 1;
-            chrColumn = 2;
-            startColumn = 3;
-            endColumn = 4;
-            dataColumn = rs.getMetaData().getColumnCount();
-            //descColumn = rs.findColumn("description");
-
-//            sampleColumn = rs.findColumn("Sample");
-//            chrColumn = rs.findColumn("chromosome");
-//            startColumn = rs.findColumn("start");
-//            endColumn = rs.findColumn("end");
-//            dataColumn = rs.findColumn("Probe Median");
-//            //descColumn = rs.findColumn("description");
+            /*sampleColumn = 0;
+            chrColumn = 1;
+            startColumn = 2;
+            endColumn = 3;*/
+            dataColumn = rs.getMetaData().getColumnCount() - 1;
 
             headings = new String[rs.getMetaData().getColumnCount()];
             for (int cc = 0; cc < rs.getMetaData().getColumnCount(); cc++) {
@@ -103,8 +97,6 @@ public class SegmentedReader {
     }
 
     public SegmentedReader(ResourceLocator locator, Genome genome) {
-        //TODO Don't hardcode table name, this might not even be right for our target case
-        //super(locator, "CNV");
         this.locator = locator;
         this.genome = genome;
 
@@ -160,7 +152,7 @@ public class SegmentedReader {
     }
 
 
-    public SegmentedAsciiDataSet loadFromDB(String table) {
+    public SegmentedAsciiDataSet loadFromDB(DBTable table) {
         SegmentedDBReader reader = new SegmentedDBReader(table);
         return reader.load();
     }

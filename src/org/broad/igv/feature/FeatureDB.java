@@ -173,8 +173,7 @@ public class FeatureDB {
     }
 
     /**
-     * Return the feature, if any, with the given name.  Genes are given
-     * precedence.
+     * Return a feature with the given name.
      */
     public static NamedFeature getFeature(String name) {
         String nm = name.trim().toUpperCase();
@@ -252,8 +251,8 @@ public class FeatureDB {
             }
             return features;
         }
-
     }
+
 
     /**
      * Search for a feature with the given name, which has the specified aminoAcid

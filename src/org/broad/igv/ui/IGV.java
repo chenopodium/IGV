@@ -19,6 +19,9 @@
  */
 package org.broad.igv.ui;
 
+import apple.dts.samplecode.osxadapter.OSXAdapter;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.jidesoft.swing.JideSplitPane;
 import org.apache.log4j.Logger;
 import org.broad.igv.DirectoryManager;
@@ -26,6 +29,7 @@ import org.broad.igv.Globals;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.batch.BatchRunner;
 import org.broad.igv.batch.CommandListener;
+import org.broad.igv.dev.affective.AffectiveGenome;
 import org.broad.igv.feature.Locus;
 import org.broad.igv.feature.MaximumContigGenomeException;
 import org.broad.igv.feature.RegionOfInterest;
@@ -63,6 +67,7 @@ import java.io.*;
 import java.lang.ref.SoftReference;
 import java.lang.reflect.InvocationTargetException;
 import java.net.NoRouteToHostException;
+import java.net.URL;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.Future;
@@ -1819,20 +1824,15 @@ public class IGV {
      */
     public List<Track> getAllTracks() {
         List<Track> allTracks = new ArrayList<Track>();
-
         for (TrackPanel tp : getTrackPanels()) {
             allTracks.addAll(tp.getTracks());
         }
-
         return allTracks;
     }
 
     public List<FeatureTrack> getFeatureTracks() {
-        List<FeatureTrack> featureTracks = new ArrayList<FeatureTrack>();
-        for (Track t : getAllTracks()) {
-            if (t instanceof FeatureTrack)
-                featureTracks.add((FeatureTrack) t);
-        }
+        Iterable<FeatureTrack> featureTracksIter = Iterables.filter(getAllTracks(), FeatureTrack.class);
+        List<FeatureTrack> featureTracks = Lists.newArrayList(featureTracksIter);
         return featureTracks;
     }
 
@@ -2198,6 +2198,17 @@ public class IGV {
             progressBar.setIndeterminate(true);
             monitor.fireProgressChange(20);
 
+            mainFrame.setIconImage(getIconImage());
+            if (Globals.IS_MAC) {
+                setAppleDockIcon();
+            }
+
+            final PreferenceManager preferenceManager = PreferenceManager.getInstance();
+            boolean affectiveMode = PreferenceManager.getInstance().getAsBoolean(PreferenceManager.AFFECTIVE_ENABLE);
+            if (affectiveMode) {
+                closeWindow(progressBar);
+                GenomeManager.getInstance().setCurrentGenome(new AffectiveGenome());
+            } else {
             try {
                 contentPane.getCommandBar().initializeGenomeList(monitor);
             } catch (FileNotFoundException ex) {
@@ -2211,9 +2222,16 @@ public class IGV {
                 closeWindow(progressBar);
             }
 
-            final PreferenceManager preferenceManager = PreferenceManager.getInstance();
             if (igvArgs.getGenomeId() != null) {
+                    if (ParsingUtils.pathExists(igvArgs.getGenomeId())) {
+                        try {
+                            IGV.getInstance().loadGenome(igvArgs.getGenomeId(), null);
+                        } catch (IOException e) {
+                            log.error("Error loading genome file: " + igvArgs.getGenomeId());
+                        }
+                    } else {
                 contentPane.getCommandBar().selectGenome(igvArgs.getGenomeId());
+                    }
             } else if (igvArgs.getSessionFile() == null) {
                 String genomeId = preferenceManager.getDefaultGenome();
                 // Chantal Roth: XXX: turned off automatic loading of genome if nothing has been specified via session or similar                
@@ -2222,6 +2240,7 @@ public class IGV {
                 //}
                // else log.info("turned off automatic loading of genome "+genomeId+", see preferenes");
                // 
+            }
             }
 
             //If there is an argument assume it is a session file or url
@@ -2317,6 +2336,24 @@ public class IGV {
                 IGV.getInstance().notifyAll();
             }
         }
+
+        private void setAppleDockIcon() {
+            try {
+                Image image = getIconImage();
+                OSXAdapter.setDockIconImage(image);
+            } catch (Exception e) {
+                //ain't no thang
+                log.error("Error setting apple dock icon", e);
+    }
+        }
+
+        private Image getIconImage() {
+            String path = "resources/IGV_64.png";
+            URL url = IGV.class.getResource(path);
+            Image image = new ImageIcon(url).getImage();
+            return image;
+        }
+
     }
 
 

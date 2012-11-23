@@ -1,2 +1,6 @@
 How to merge with broad:
-- right click on our igv, select fetch
+Mit TortoiseGit:
+- commit to chantal
+- fetch hbroad
+- merge, from hbroad master
+- Check log, and look at all "conflict"

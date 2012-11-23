@@ -20,19 +20,19 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 /**
- * Experimental class to explore using a SQL database as a data store
+ * Reader for Segmented data, from a SQL database. Column names are hardcoded
  *
  * @author Jim Robinson
  * @date 10/14/11
+ * @deprecated See {@link org.broad.igv.dev.SegmentedReader}
  */
 public class SegmentedSQLReader extends WholeTableDBReader<SegmentedAsciiDataSet> {
 
     private static Logger log = Logger.getLogger(SegmentedSQLReader.class);
     private Genome genome;
 
-    public SegmentedSQLReader(ResourceLocator locator, Genome genome) {
-        //TODO Don't hardcode table name, this might note even be right for our target case
-        super(locator, "CNV");
+    public SegmentedSQLReader(ResourceLocator locator, String tableName, Genome genome) {
+        super(locator, tableName, null);
         this.genome = genome;
     }
 

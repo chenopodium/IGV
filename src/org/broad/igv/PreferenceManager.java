@@ -1066,7 +1066,7 @@ public class PreferenceManager implements PropertyManager {
         defaultValues.put(NAME_PANEL_WIDTH, "160");
         defaultValues.put(BACKGROUND_COLOR, "250,250,250");
 
-        defaultValues.put(GENOME_SPACE_ENABLE, "false");
+        defaultValues.put(GENOME_SPACE_ENABLE, "true");
         defaultValues.put(GENOME_SPACE_DM_SERVER, "https://dm.genomespace.org/datamanager/v1.0/");
         defaultValues.put(GENOME_SPACE_ATM_SERVER, "https://atm.genomespace.org/atm/v1.0/");
         defaultValues.put(GENOME_SPACE_IDENTITY_SERVER, "https://identitydev.genomespace.org:8444/identityServer/basic");
@@ -1148,6 +1148,18 @@ public class PreferenceManager implements PropertyManager {
             return genomeIds.split(HISTORY_DELIMITER);
         }
 
+    }
+
+    public String getPluginPath(String pluginId, String toolName) {
+        return get(genPluginKey(pluginId, toolName, "path"));
+    }
+
+    public void putPluginPath(String pluginId, String toolName, String path) {
+        put(genPluginKey(pluginId, toolName, "path"), path);
+    }
+
+    private String genPluginKey(String pluginId, String toolName, String key) {
+        return String.format("%s:%s:%s", pluginId, toolName, key);
     }
 }
  

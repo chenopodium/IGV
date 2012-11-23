@@ -43,14 +43,10 @@ public class CodecFactory {
     }
 
     /**
-     * Return a tribble codec to decode the supplied file.
+     * Return a tribble codec to decode the supplied file, or null if not found.
      *
-     * @param path the path (file or URL) to the feature rile.
+     * @param path the path (file or URL) to the feature file
      */
-
-//    public static FeatureCodec getCodec(String path) {
-//        return getCodec(path, null);
-//    }
     public static AsciiFeatureCodec getCodec(String path, Genome genome) {
 
         String fn = path.toLowerCase();
@@ -63,6 +59,9 @@ public class CodecFactory {
             fn = fn.substring(0, l);
         }
 
+        if (fn.endsWith(".vcf3")) {
+            return new VCFWrapperCodec(new VCF3Codec(), genome);
+        }
         if (fn.endsWith(".vcf4")) {
             return new VCFWrapperCodec(new VCFCodec(), genome);
         } else if (fn.endsWith(".vcf")) {

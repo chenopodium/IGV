@@ -17,17 +17,12 @@ import org.broad.igv.feature.LocusScore;
 import org.broad.igv.feature.genome.GenomeManager;
 import org.broad.igv.feature.tribble.CodecFactory;
 import org.broad.igv.track.FeatureSource;
-import org.broad.igv.util.ResourceLocator;
-import org.broad.igv.util.Utilities;
 import org.broad.tribble.AsciiFeatureCodec;
 import org.broad.tribble.CloseableTribbleIterator;
 import org.broad.tribble.Feature;
-import org.w3c.dom.Document;
-import org.w3c.dom.NamedNodeMap;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
+import org.broad.tribble.readers.AsciiLineReader;
 
-import java.io.FileInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.PreparedStatement;
@@ -44,7 +39,7 @@ import java.util.*;
  * @author Jacob Silterra
  * @date 29 May 2012
  */
-public class SQLCodecSource extends DBReader<Feature> implements FeatureSource {
+public class SQLCodecSource extends DBQueryReader<Feature> implements FeatureSource {
 
     private static Logger log = Logger.getLogger(SQLCodecSource.class);
 
@@ -100,80 +95,123 @@ public class SQLCodecSource extends DBReader<Feature> implements FeatureSource {
 
     private static final int MAX_BINS = 20;
 
-    public SQLCodecSource(ResourceLocator locator, AsciiFeatureCodec codec, String table) {
-        super(locator, table);
+    SQLCodecSource(DBTable table, AsciiFeatureCodec codec) {
+        super(table);
         this.codec = codec;
-    }
+        this.binColName = table.getBinColName();
+        this.chromoColName = table.getChromoColName();
+        this.posStartColName = table.getPosStartColName();
+        this.posEndColName = table.getPosEndColName();
+        this.startColIndex = table.getStartColIndex();
+        this.endColIndex = table.getEndColIndex();
 
-    public SQLCodecSource(ResourceLocator locator, AsciiFeatureCodec codec, String table,
-                          String chromoColName, String posStartColName, String posEndColName, int startColIndex, int endColIndex) {
-        this(locator, codec, table);
-        this.chromoColName = chromoColName;
-        this.posStartColName = posStartColName;
-        this.posEndColName = posEndColName;
-        this.startColIndex = startColIndex;
-        this.endColIndex = endColIndex;
+        readHeader();
     }
 
     /**
-     * Retrieve a reader from the XML profile located at {@code profilePath}.
-     * TODO If {@code tableName == null}, the user is prompted to choose a table from the list
-     *
-     * @param profilePath
-     * @param tableName
-     * @return
+     * Read header information from file or database
+     * Motivation is mostly for the VCF codec.
      */
-    public static List<SQLCodecSource> getFromProfile(String profilePath, String tableName) {
-        ResourceLocator dbLocator = DBManager.getStoredConnection(profilePath);
-        InputStream profileStream = null;
-        try {
-            profileStream = new FileInputStream(profilePath);
-            Document document = Utilities.createDOMDocumentFromXmlStream(profileStream);
-            NodeList nodes = document.getElementsByTagName("table");
-            List<SQLCodecSource> sources = new ArrayList<SQLCodecSource>(nodes.getLength());
+    private void readHeader() {
 
-            for (int tnum = 0; tnum < nodes.getLength(); tnum++) {
-                Node n = nodes.item(tnum);
-                NamedNodeMap attr = n.getAttributes();
-                String tabName = attr.getNamedItem("name").getTextContent();
-                if (tableName == null || tableName.equals(tabName)) {
+        List<String> headerLines = table.getHeaderLines();
+        //If column labels provided in xml spec, use those
+        //Otherwise, check the db
+        String[] columnLabels;
+        if (table.getColumnLabelMap() != null) {
+            columnLabels = DBTable.columnMapToArray(table.getColumnLabelMap());
+        } else {
 
-                    String chromoColName = attr.getNamedItem("chromoColName").getTextContent();
-                    String posStartColName = attr.getNamedItem("posStartColName").getTextContent();
-                    String posEndColName = attr.getNamedItem("posEndColName").getTextContent();
-                    String format = attr.getNamedItem("format").getTextContent();
-                    String startColString = Utilities.getNullSafe(attr, "startColIndex");
-                    String endColString = Utilities.getNullSafe(attr, "endColIndex");
-                    String binColName = Utilities.getNullSafe(attr, "binColName");
-                    int startColIndex = startColString != null ? Integer.parseInt(startColString) : 1;
-                    int endColIndex = endColString != null ? Integer.parseInt(endColString) : Integer.MAX_VALUE;
-                    AsciiFeatureCodec codec = CodecFactory.getCodec("." + format, GenomeManager.getInstance().getCurrentGenome());
-                    SQLCodecSource source = new SQLCodecSource(dbLocator, codec, tabName, chromoColName, posStartColName, posEndColName, startColIndex, endColIndex);
-                    source.binColName = binColName;
-                    sources.add(source);
+            //Preferred method
+            /*
+            String queryString = String.format("SELECT COLUMN_NAME, ORDINAL_POSITION FROM information_schema.columns WHERE TABLE_NAME = '%s' ORDER BY ORDINAL_POSITION", table.getTableName());
+
+            ResultSet rs = executeQuery(queryString);
+            List<String> colLabs = new ArrayList<String>();
+            try{
+                while(rs.next()){
+                    String lab = rs.getString(0);
+                    colLabs.add(lab);
                 }
-            }
+            }catch(SQLException e){
+                log.error("Error reading column labels", e);
+                columnLabels = null;
+            } */
 
-            return sources;
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        } finally {
+            //SQLite doesn't seem to have the information_schema table,
+            //and the relevant pragma doesn't have any backwards compatibility guarantees
+            //We just query for nothing and read off the column names
+            String queryString = String.format("SELECT * FROM %s WHERE 0 = 1", table.getTableName());
+            ResultSet rs = executeQuery(queryString);
             try {
-                if (profileStream != null) profileStream.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+                columnLabels = DBManager.lineToArray(rs, table.getStartColIndex(), table.getEndColIndex(), true);
+            } catch (SQLException e) {
+                log.error("Error reading column labels", e);
+                columnLabels = null;
             }
+
+
+        }
+        if (columnLabels != null) {
+            if (headerLines == null) headerLines = new ArrayList<String>(1);
+            String columnLine = StringUtils.join(columnLabels, "\t");
+            columnLine = "#" + columnLine;
+            headerLines.add(columnLine);
+        }
+
+        if (headerLines != null) {
+            String lines = StringUtils.join(headerLines, "\n");
+            byte[] bytes = lines.getBytes();
+            InputStream is = new ByteArrayInputStream(bytes);
+            AsciiLineReader reader = new AsciiLineReader(is);
+            codec.readHeader(reader);
         }
 
     }
 
+
+    /**
+     * @param table
+     * @return a SQLCodecSource, or null if no appropriate codec found
+     */
+    public static SQLCodecSource getFromTable(DBTable table) {
+        AsciiFeatureCodec codec = CodecFactory.getCodec("." + table.getFormat(), GenomeManager.getInstance().getCurrentGenome());
+        if (codec != null) {
+            SQLCodecSource source = new SQLCodecSource(table, codec);
+            return source;
+        }
+        return null;
+    }
+
+    public static SQLCodecSource getFromProfile(String profilePath, String tableName) {
+        List<DBTable> tableList = DBTable.parseProfile(profilePath);
+
+        SQLCodecSource source = null;
+        for (DBTable table : tableList) {
+            if (table.getTableName().equals(tableName)) {
+                source = SQLCodecSource.getFromTable(table);
+                break;
+            }
+        }
+        return source;
+    }
+
+    //TODO We already know how to parse strings, so just turn everything to strings
+    //TODO See IParser for better, type-safe way of handling different data sources
+    private String rowToStringLine(ResultSet rs) throws SQLException {
+
+        String[] tokens;
+        if (table.getColumnLabelMap() != null) {
+            tokens = DBManager.lineToArray(rs, table.getColumnLabelMap());
+        } else {
+            tokens = DBManager.lineToArray(rs, startColIndex, endColIndex, false);
+        }
+        return StringUtils.join(tokens, "\t");
+    }
+
     @Override
     protected Feature processResult(ResultSet rs) throws SQLException {
-        String[] tokens = DBManager.lineToArray(rs, startColIndex, endColIndex);
-        //TODO GET RID OF THIS, IT'S BAD AND I FEEL BAD FOR WRITING IT -JS
-        String line = StringUtils.join(tokens, "\t");
+        String line = rowToStringLine(rs);
         return codec.decode(line);
     }
 
@@ -186,22 +224,30 @@ public class SQLCodecSource extends DBReader<Feature> implements FeatureSource {
         if (queryStatement != null) {
             return;
         }
-        //Include feature iff = (feature.start >= start AND feature.start < end)
-        //OR (feature.start < start AND feature.end >= start);
-        String queryString = String.format("%s WHERE %s = ? AND ( (%s >= ? AND %s < ?) OR (%s < ? AND %s >= ?))",
-                baseQueryString, chromoColName, posStartColName, posStartColName, posStartColName, posEndColName);
+        String prependWord = baseQueryString.contains("WHERE") ? " AND " : " WHERE ";
+        String queryString = baseQueryString + prependWord + String.format("%s = ? AND ( (%s >= ? AND %s < ?)",
+                chromoColName, posStartColName, posStartColName);
+        //Don't always have an end position, just assume locations are single base
+        if (posEndColName != null) {
+            queryString += String.format(" OR (%s < ? AND %s >= ?)", posStartColName, posEndColName);
+        }
+        queryString += " )";
+
+        String orderClause = "ORDER BY " + posStartColName;
 
         try {
-            queryStatement = DBManager.getConnection(locator).prepareStatement(queryString);
+            queryStatement = DBManager.getConnection(locator).prepareStatement(queryString + " " + orderClause);
 
             if (binColName != null) {
                 String[] qs = new String[MAX_BINS];
                 Arrays.fill(qs, "?");
-                String binnedQueryString = queryString + String.format(" AND %s IN (%s)", binColName, StringUtils.join(qs, ','));
+                String binnedQueryString = queryString + String.format(" AND %s IN (%s) %s", binColName, StringUtils.join(qs, ','), orderClause);
                 binnedQueryStatement = DBManager.getConnection(locator).prepareStatement(binnedQueryString);
             }
+
+
         } catch (SQLException e) {
-            log.error(e);
+            log.error("Error initializing query statement", e);
             throw new IOException(e);
         }
 
@@ -220,8 +266,13 @@ public class SQLCodecSource extends DBReader<Feature> implements FeatureSource {
             statement.clearParameters();
             statement.setString(1, chr);
             statement.setInt(3, end);
-            int[] cols = new int[]{2, 4, 5};
-            for (Integer cc : cols) {
+
+            int[] startCols = new int[]{2};
+            if (this.posEndColName != null) {
+                startCols = new int[]{2, 4, 5};
+            }
+
+            for (Integer cc : startCols) {
                 statement.setInt(cc, start);
             }
 
@@ -238,7 +289,7 @@ public class SQLCodecSource extends DBReader<Feature> implements FeatureSource {
             }
 
         } catch (SQLException e) {
-            log.error(e);
+            log.error(e.getMessage(), e);
             throw new IOException(e);
         }
 
@@ -257,6 +308,9 @@ public class SQLCodecSource extends DBReader<Feature> implements FeatureSource {
             int tstStart = Math.max(start - sweepLength / 2, 0);
             while (tstStart < end) {
                 bins.add(binFromRange(tstStart, tstStart += sweepLength));
+                if (tstStart < 0) {
+                    throw new IllegalArgumentException("Overflow while calculating bins");
+                }
             }
             sweepLength *= 2;
         }
@@ -324,7 +378,7 @@ public class SQLCodecSource extends DBReader<Feature> implements FeatureSource {
 
 
     CloseableTribbleIterator iterator() throws IOException {
-        String queryString = String.format("%s LIMIT %s", baseQueryString, featureWindowSize);
+        String queryString = String.format("%s ORDER BY %s LIMIT %s", baseQueryString, posStartColName, featureWindowSize);
         return loadIterator(queryString);
     }
 
@@ -340,9 +394,9 @@ public class SQLCodecSource extends DBReader<Feature> implements FeatureSource {
     }
 
     public List<String> getSequenceNames() {
-        String queryString = String.format("SELECT DISTINCT %s FROM %s", chromoColName, table);
+        String queryString = String.format("SELECT DISTINCT %s FROM %s", chromoColName, this.getTableName());
 
-        ResultSet results = loadResultSet(queryString);
+        ResultSet results = executeQuery(queryString);
         List<String> names = new ArrayList<String>();
         try {
             while (results.next()) {

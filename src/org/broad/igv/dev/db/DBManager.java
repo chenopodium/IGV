@@ -17,22 +17,15 @@ import org.broad.igv.ui.IGV;
 import org.broad.igv.ui.util.MessageUtils;
 import org.broad.igv.util.LoginDialog;
 import org.broad.igv.util.ResourceLocator;
-import org.broad.igv.util.Utilities;
-import org.w3c.dom.Document;
-import org.w3c.dom.NamedNodeMap;
-import org.w3c.dom.Node;
 
 import java.awt.*;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.sql.*;
 import java.util.*;
 
 /**
- * Class for prototyping database connections.  Prototype only -- hardcoded for mysql,  connects to single database,
- * keeps single connection, etc.
+ * Class for database connections.  Manages connections based on
+ * ResourceLocators, connects, loads drivers, and can perform limited data conversion (from ResultSet -> String, String[])
  *
  * @author Jim Robinson
  * @date 10/31/11
@@ -95,7 +88,13 @@ public class DBManager {
         }
     }
 
+    private static String getSubprotocol(String url) {
+        String[] tokens = url.split(":");
+        return tokens[1];
+    }
+
     private static Connection connect(ResourceLocator locator) {
+        createDriver(getSubprotocol(locator.getPath()));
         try {
             return DriverManager.getConnection(locator.getPath(),
                     locator.getUsername(), locator.getPassword());
@@ -128,11 +127,21 @@ public class DBManager {
                 try {
                     conn.close();
                 } catch (SQLException e) {
-
+                    log.error("Error shutting down " + conn.toString(), e);
                 }
             }
         }
         connectionPool.clear();
+    }
+
+    public static java.lang.Class<?> createDriver(String subprotocol) {
+        String driver = driverMap.get(subprotocol);
+        try {
+            return Class.forName(driver);
+        } catch (ClassNotFoundException e) {
+            log.error("Unable to create driver for " + subprotocol, e);
+            throw new IllegalArgumentException(e);
+        }
     }
 
 
@@ -146,13 +155,7 @@ public class DBManager {
      * @return
      */
     public static String createConnectionURL(String subprotocol, String host, String db, String port) {
-        String driver = driverMap.get(subprotocol);
-        try {
-            Class.forName(driver);
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-            throw new IllegalArgumentException("Unable to create driver for protocol " + subprotocol);
-        }
+        createDriver(subprotocol);
 
         //If the host is a local file, don't want the leading "//"
         if (!(new File(host)).exists()) {
@@ -177,47 +180,6 @@ public class DBManager {
     }
 
     /**
-     * Open connection using parameters specified in the given
-     * profile.
-     *
-     * @param profilePath
-     * @return
-     */
-    public static ResourceLocator getStoredConnection(String profilePath) {
-        InputStream profileStream = null;
-        try {
-            profileStream = new FileInputStream(profilePath);
-            Document document = Utilities.createDOMDocumentFromXmlStream(profileStream);
-            Node db = document.getElementsByTagName("database").item(0);
-            NamedNodeMap attr = db.getAttributes();
-            String host = attr.getNamedItem("host").getTextContent();
-            String path = attr.getNamedItem("path").getTextContent();
-            String subprotocol = attr.getNamedItem("subprotocol").getTextContent();
-
-            String port = Utilities.getNullSafe(attr, "port");
-            String username = Utilities.getNullSafe(attr, "username");
-            String password = Utilities.getNullSafe(attr, "password");
-
-            ResourceLocator locator = new ResourceLocator(createConnectionURL(subprotocol, host, path, port));
-            locator.setUsername(username);
-            locator.setPassword(password);
-
-            return locator;
-
-        } catch (Exception e) {
-            log.error("Error loading stored connection", e);
-            return null;
-        } finally {
-            try {
-                if (profileStream != null) profileStream.close();
-            } catch (IOException e) {
-                log.error("Error closing profile streame", e);
-            }
-        }
-    }
-
-
-    /**
      * Close the specified resources
      *
      * @param rs
@@ -229,14 +191,14 @@ public class DBManager {
             try {
                 rs.close();
             } catch (SQLException e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                e.printStackTrace();
             }
         }
         if (st != null) {
             try {
                 st.close();
             } catch (SQLException e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                e.printStackTrace();
             }
         }
         if (conn != null) {
@@ -249,10 +211,27 @@ public class DBManager {
 
     }
 
-    public static String[] lineToArray(ResultSet rs) throws SQLException {
-        return lineToArray(rs, 1, Integer.MAX_VALUE);
-    }
+    /**
+     * Convert the ResultSet into a string array, re-arranging columns according to
+     * {@code columnIndexMap}, which is a map from array indexes -> sql column indexes
+     *
+     * @param rs
+     * @param columnIndexMap
+     * @return
+     * @throws SQLException
+     */
+    public static String[] lineToArray(ResultSet rs, Map<Integer, String> columnIndexMap) throws SQLException {
+        String[] colNames = DBTable.columnMapToArray(columnIndexMap);
+        String[] tokens = new String[colNames.length];
 
+        for (int cc = 0; cc < colNames.length; cc++) {
+            String sqlCol = colNames[cc];
+            if (sqlCol != null) {
+                tokens[cc] = getStringFromResultSet(rs, sqlCol);
+            }
+        }
+        return tokens;
+    }
 
     /**
      * Convert a the current line to an array of strings
@@ -260,30 +239,51 @@ public class DBManager {
      * @param rs
      * @param startColIndex 1-based start column index (lower columns are ignored)
      * @param endColIndex   1-based, inclusive end column index (columns afterwards are ignored)
+     * @param labelsOnly    Whether to only include the column labels, rather than the data contained in the ResultSet
      * @return
      * @throws SQLException
      */
-    public static String[] lineToArray(ResultSet rs, int startColIndex, int endColIndex) throws SQLException {
-        int colCount = Math.min(rs.getMetaData().getColumnCount(), endColIndex) - startColIndex + 1;
+    public static String[] lineToArray(ResultSet rs, int startColIndex, int endColIndex, boolean labelsOnly) throws SQLException {
+        ResultSetMetaData md = rs.getMetaData();
+        int colCount = Math.min(md.getColumnCount(), endColIndex) - startColIndex + 1;
         String[] tokens = new String[colCount];
-        String s;
-        int sqlCol;
         for (int cc = 0; cc < colCount; cc++) {
-
-            //SQL indexes from 1
-            //Have to parse blobs specially, otherwise we get the pointer as a string
-            sqlCol = cc + startColIndex;
-            int type = rs.getMetaData().getColumnType(sqlCol);
-
-            if (blobTypes.contains(type)) {
-                Blob b = rs.getBlob(sqlCol);
-                s = new String(b.getBytes(1l, (int) b.length()));
+            int sqlCol = cc + startColIndex;
+            if (labelsOnly) {
+                tokens[cc] = md.getColumnLabel(sqlCol);
             } else {
-                s = rs.getString(sqlCol);
+                tokens[cc] = getStringFromResultSet(rs, sqlCol);
             }
-            tokens[cc] = s;
         }
         return tokens;
+    }
+
+    private static String getStringFromResultSet(ResultSet rs, String columnLabel) throws SQLException {
+        return getStringFromResultSet(rs, rs.findColumn(columnLabel));
+    }
+
+
+    /**
+     * Get the value at column {@code sqlCol} in the current row as a string.
+     * <p/>
+     * Have to parse blobs specially, otherwise we get the pointer as a string
+     *
+     * @param rs
+     * @param sqlCol 1-indexed column number
+     * @return
+     * @throws SQLException
+     */
+    private static String getStringFromResultSet(ResultSet rs, int sqlCol) throws SQLException {
+        String s;
+        int type = rs.getMetaData().getColumnType(sqlCol);
+
+        if (blobTypes.contains(type)) {
+            Blob b = rs.getBlob(sqlCol);
+            s = new String(b.getBytes(1l, (int) b.length()));
+        } else {
+            s = rs.getString(sqlCol);
+        }
+        return s;
     }
 
     private static final Set<Integer> blobTypes;

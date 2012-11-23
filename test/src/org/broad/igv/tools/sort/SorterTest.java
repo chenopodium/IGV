@@ -11,6 +11,10 @@
 
 package org.broad.igv.tools.sort;
 
+import com.google.common.base.Predicate;
+import com.google.common.base.Supplier;
+import org.broad.igv.AbstractHeadlessTest;
+import org.broad.igv.feature.genome.ChromosomeNameComparator;
 import org.broad.igv.util.TestUtils;
 import org.junit.Test;
 
@@ -18,6 +22,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -31,12 +36,21 @@ import static org.junit.Assert.assertTrue;
  * Date: Sep 18, 2009
  * Time: 6:19:28 PM
  */
-public class SorterTest {
-
+public class SorterTest extends AbstractHeadlessTest {
 
     @Test
     public void testSortBed() throws Exception {
         testSort(TestUtils.DATA_DIR + "bed/Unigene.unsorted.bed", 0, 1);
+    }
+
+    @Test
+    public void testSortBed1() throws Exception {
+        testSort(TestUtils.DATA_DIR + "bed/Unigene.unsorted1.bed", 0, 1);
+    }
+
+    @Test
+    public void testSortBed2() throws Exception {
+        testSort(TestUtils.DATA_DIR + "bed/GSM1004654_10k.bed", 0, 1, 50);
     }
 
     @Test
@@ -50,13 +64,17 @@ public class SorterTest {
     }
 
     public void testSort(String infile, int chrCol, int startCol) throws IOException {
+        testSort(infile, chrCol, startCol, 10);
+    }
+
+    public void testSort(String infile, int chrCol, int startCol, int maxRecords) throws IOException {
 
         File ifile = new File(infile);
         File ofile = new File(infile + ".sorted");
         ofile.deleteOnExit();
 
         Sorter sorter = Sorter.getSorter(ifile, ofile);
-        sorter.setMaxRecords(10);  // <= force text of serialization
+        sorter.setMaxRecords(maxRecords);
         sorter.run();
 
         checkFileSorted(ofile, chrCol, startCol);
@@ -100,4 +118,47 @@ public class SorterTest {
         }
         return numlines;
     }
+
+
+    //@Test
+    public void testCurrentCompSpeed() throws IOException {
+        tstComparatorSpeed(Sorter.getDefaultComparator());
+    }
+
+    //@Test
+//    public void testTestCompSpeed() throws IOException{
+//        tstComparatorSpeed(getTestComparator());
+//    }
+
+    public void tstComparatorSpeed(final Comparator<SortableRecord> testComp) throws IOException {
+        final File inputFile = new File(TestUtils.DATA_DIR + "bed", "GSM1004654_10k.bed");
+        final File outputFile = new File(TestUtils.TMP_OUTPUT_DIR, "GSM1004654_10k.sorted.bed");
+
+        int nTrials = 100;
+
+        Supplier<Sorter> supplier = new Supplier<Sorter>() {
+            @Override
+            public Sorter get() {
+                ChromosomeNameComparator.get().resetCache();
+                Sorter sorter = new BedSorter(inputFile, outputFile);
+                sorter.setComparator(testComp);
+                return sorter;
+            }
+        };
+
+        Predicate<Sorter> predicate = new Predicate<Sorter>() {
+            @Override
+            public boolean apply(Sorter input) {
+                try {
+                    input.run();
+                } catch (IOException e) {
+                    return false;
+                }
+                return true;
+            }
+        };
+
+        long[] times = TestUtils.timeMethod(supplier, predicate, nTrials);
+    }
+
 }

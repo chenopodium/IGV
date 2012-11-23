@@ -48,7 +48,6 @@ public class ResourceTree {
     private List<CheckableResource> leafResources = new ArrayList();
     private HashMap<String, TreeNode> leafNodeMap = new HashMap();
     private JTree tree;
-    private static ResourceTree theInstance;
     private Set<String> selectedLeafNodePaths = new LinkedHashSet();
 
     private static enum TreeExpansionFlag {
@@ -58,16 +57,7 @@ public class ResourceTree {
     }
 
     private ResourceTree() {
-        theInstance = this;
     }
-
-    public static ResourceTree getInstance() {
-        if (theInstance == null) {
-            theInstance = new ResourceTree();
-        }
-        return theInstance;
-    }
-
 
     static class CancelableOptionPane extends JOptionPane {
         private boolean canceled = false;
@@ -93,14 +83,14 @@ public class ResourceTree {
      * @param dialogTitle
      * @return the resources selected by user.
      */
-    public LinkedHashSet<ResourceLocator> showResourceTreeDialog(Component parent, Document document, String dialogTitle) {
+    public static LinkedHashSet<ResourceLocator> showResourceTreeDialog(Component parent, Document document, String dialogTitle) {
 
         JDialog dialog = null;
 
         final LinkedHashSet<ResourceLocator> locators = new LinkedHashSet();
         try {
 
-            final ResourceTree resourceTree = getInstance();
+            final ResourceTree resourceTree = new ResourceTree();
             final JTree dialogTree = resourceTree.createTreeFromDOM(document);
 
             int optionType = JOptionPane.OK_CANCEL_OPTION;

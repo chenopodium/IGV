@@ -221,7 +221,19 @@ public class CommandExecutorTest extends AbstractHeadedTest {
     @Test
     public void testLoadGenomeFile() throws Exception {
         String[] genomePaths = new String[]{TestUtils.DATA_DIR + "genomes/hg18.unittest.genome"};
-        String[] genomeIds = new String[]{"hg18"};
+        String[] genomeIds = new String[]{"hg18.unittest"};
+        int ind = 0;
+        for (String genomePath : genomePaths) {
+            String result = exec.execute("genome " + genomePath);
+            assertEquals("OK", result);
+            assertEquals(genomeIds[ind++], GenomeManager.getInstance().getCurrentGenome().getId());
+        }
+    }
+
+    @Test
+    public void testLoadGenomeFastaFile() throws Exception {
+        String[] genomePaths = new String[]{TestUtils.DATA_DIR + "fasta/ecoli_out.padded.fasta"};
+        String[] genomeIds = genomePaths;
         int ind = 0;
         for (String genomePath : genomePaths) {
             String result = exec.execute("genome " + genomePath);

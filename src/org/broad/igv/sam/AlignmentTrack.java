@@ -87,25 +87,20 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             }
 
     public enum SortOption {
-
         START, STRAND, NUCELOTIDE, QUALITY, SAMPLE, READ_GROUP, INSERT_SIZE, FIRST_OF_PAIR_STRAND, MATE_CHR, TAG;
-
-        static SortOption strToValue(String str) {
-            try {
-                return valueOf(str);
-            } catch (Exception e) {
-                return SortOption.START;
             }
-        }
-    }
 
     public enum GroupOption {
-        STRAND, SAMPLE, READ_GROUP, FIRST_OF_PAIR_STRAND, TAG, PAIR_INVERTED, MATE_CHROMOSOME, NONE
+        STRAND, SAMPLE, READ_GROUP, FIRST_OF_PAIR_STRAND, TAG, PAIR_ORIENTATION, MATE_CHROMOSOME, NONE
             }
 
     public enum BisulfiteContext {
         CG, CHH, CHG, HCG, GCH, WCG
             }
+    enum OrientationType {
+        RR, LL, RL, LR, UNKNOWN
+    }
+
     protected static final Map<BisulfiteContext, String> bisulfiteContextToPubString = new HashMap<BisulfiteContext, String>();
 
     static {
@@ -197,6 +192,11 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
     }
 
+    @Override
+    public void updateGenome(Genome genome) {
+        dataManager.updateGenome(genome);
+    }
+
     /**
      * Set the experiment type (RNA, Bisulfite, or OTHER)
      *
@@ -224,9 +224,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         }
     }
 
-    public void setRenderer(FeatureRenderer renderer) {
-        this.renderer = renderer;
-    }
 
     @Override
     public IGVPopupMenu getPopupMenu(TrackClickEvent te) {
@@ -1217,8 +1214,13 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             mappings.put("first-in-pair strand", GroupOption.FIRST_OF_PAIR_STRAND);
             mappings.put("sample", GroupOption.SAMPLE);
             mappings.put("read group", GroupOption.READ_GROUP);
-            //mappings.put("inversion", GroupOption.PAIR_INVERTED);
-            //mappings.put("chromosome of mate", GroupOption.MATE_CHROMOSOME);
+            mappings.put("chromosome of mate", GroupOption.MATE_CHROMOSOME);
+
+            String addExtraStr = System.getProperty("enable.groupby.extras", "false");
+            boolean addExtras = Boolean.parseBoolean(addExtraStr);
+            if (addExtras) {
+                mappings.put("pair orientation", GroupOption.PAIR_ORIENTATION);
+            }
 
             for (Map.Entry<String, GroupOption> el : mappings.entrySet()) {
                 JCheckBoxMenuItem mi = getGroupMenuItem(el.getKey(), el.getValue());

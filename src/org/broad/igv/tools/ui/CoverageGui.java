@@ -551,7 +551,10 @@ public class CoverageGui extends JDialog {
                         countFlags += CoverageCounter.INCLUDE_DUPS;
                     }
 
-                    igvTools.doCount(ifile, ofile, genomeId, maxZoomValue, wfs, windowSize, extFactor, null,
+                    int preExtFactor = 0;
+                    int postExtFactor = 0;
+                    igvTools.doCount(ifile, ofile, genomeId, maxZoomValue, wfs, windowSize, extFactor,
+                            preExtFactor, postExtFactor, null,
                             null, minMappingQuality, countFlags);
                 } catch (Exception e) {
                     showMessage("Error: " + e.getMessage());

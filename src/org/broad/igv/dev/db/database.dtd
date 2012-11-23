@@ -24,20 +24,35 @@ description
 -->
 <!ELEMENT database (table+)>
 <!ATTLIST database
+      name CDATA #REQUIRED
+      description CDATA #IMPLIED
       version (alpha) #REQUIRED
+      subprotocol (sqlite|mysql) #REQUIRED
       host CDATA #REQUIRED
       path CDATA #REQUIRED
       port CDATA #REQUIRED
-      subprotocol CDATA #REQUIRED
-      username CDATA #REQUIRED
-      name CDATA #REQUIRED
-      description CDATA #IMPLIED>
+      username CDATA #IMPLIED
+      password CDATA #IMPLIED>
 
 
 <!--
 A database can have any number of tables within it.
 For each table, we have to specify the location
-of certain columns.
+of certain columns to perform queries.
+
+baseQuery
+    If not supplied, the constructed SQL is of form (for range-based querying)
+       SELECT * FROM <tableName> WHERE <chromoColName> = <current chromosome> ...
+    If supplied, the query will be
+       <baseQuery> <AND or WHERE> <chromoColName> = <current chromosome> ...
+
+    So the tableName is completely overridden
+    Certain file types, such as sample information, are limited
+    and the entire file is normally loaded. In this case, when loading
+    from a database, the entire table is loaded, using only <baseQuery>
+
+    The baseQuery may have a where clause, in which case further where
+    clauses may be added with an "AND" for querying by position.
 name
     Exact name of the table
 description
@@ -56,28 +71,77 @@ format
     of the file formats IGV can read. "format" is file extension
     that the table is similar to (e.g. bed, psl, ucscgene).
     We say "similar" because the startColIndex/endColIndex
-    fields can be used to take a subset of columns
+    fields can be used to take a subset of columns. In addition,
+    child column elements can specify the column name/indices
+    of the database and how they map to the columns of the
+    specified format (if the columns are not in the same order)
 posStartColName
     The name of the column which contains the start positions
     of each feature. Necessary for constructing queries.
 posEndColName
     Name of the column which contains end positions of each feature.
+    If not present, only look for overlap of start position
 startColIndex
     1-based Column index from which to start reading data. Default 1.
- endColIndex
+endColIndex
     1-based column index, inclusive, at which to stop reading data.
     Default 2147483646 (Integer.MAX_VALUE - 1, ie all)
 
 -->
-<!ELEMENT table (#PCDATA)>
+<!ELEMENT table (column*,headerLine*)>
 <!ATTLIST table
+      baseQuery CDATA #IMPLIED
       name CDATA #REQUIRED
       description CDATA #IMPLIED
       binColName CDATA #IMPLIED
       chromoColName CDATA #REQUIRED
-      format CDATA #REQUIRED
       posStartColName CDATA #REQUIRED
-      posEndColName CDATA #REQUIRED
+      posEndColName CDATA #IMPLIED
+      format CDATA #REQUIRED
       startColIndex CDATA "1"
       endColIndex CDATA "2147483646">
+
+<!--
+If the table consists of a contiguous block of columns
+which correspond to a known file type, a list of columns
+is not necessary. However, we provide for additional
+flexibility here. If a list of columns is provided, they are assumed
+to correspond to the columns in a delimited file.
+
+File-based indices are 0-based, SQL are 1-based.
+
+One of colName OR colIndex must be specified.
+If both are specified, a warning is issued and the
+colName is used.
+
+fileIndex:
+    The (0-based) column number.
+colLabel:
+    Label of the column in the SQL database. If using a custom query this can be different
+    than the column name. For instance, SELECT start AS beginning would have a name of `start`
+    and label of `beginning`.
+name:
+    Human-readable name of column. Not used, just for readability
+description:
+    Human-readable description of data column. Not used, just for readability
+
+
+Possible example for BED file:
+<column fileIndex=0, colLabel="Chromosome"/>
+<column fileIndex=1, colLabel="start"/>
+<column fileIndex=2, colLabel="end"/>
+-->
+<!ELEMENT column EMPTY>
+<!ATTLIST column
+    fileIndex CDATA #REQUIRED
+    colLabel CDATA #REQUIRED
+    name CDATA #IMPLIED
+    description CDATA #IMPLIED>
+
+<!--
+    Header lines which are fed to the reading codec
+-->
+<!ELEMENT headerLine (#PCDATA)>
+
+
 

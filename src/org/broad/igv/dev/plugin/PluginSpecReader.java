@@ -13,16 +13,19 @@ package org.broad.igv.dev.plugin;
 
 import org.apache.log4j.Logger;
 import org.broad.igv.DirectoryManager;
+import org.broad.igv.PreferenceManager;
 import org.broad.igv.util.FileUtils;
-import org.broad.igv.util.ParsingUtils;
 import org.broad.igv.util.Utilities;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.*;
+import java.net.URL;
 import java.util.*;
 
 /**
@@ -38,7 +41,8 @@ public class PluginSpecReader {
     protected String specPath;
     protected Document document;
 
-    public static final String CUSTOM_PLUGIN_FILENAME = "custom_plugins.txt";
+    public static final String CUSTOM_PLUGINS_FILENAME = "custom_plugins.txt";
+    public static final String BUILTIN_PLUGINS_FILENAME = "builtin_plugins.txt";
 
     /**
      * List of plugins tha IGV knows about
@@ -85,10 +89,19 @@ public class PluginSpecReader {
 
     private boolean parseDocument() {
         boolean success = false;
+        //We want to accept either a path within the JAR file (getResource),
+        //or external path. Also we want to use builder.parse(String) so
+        //that we can use relative links for DTD spec
         try {
-            document = Utilities.createDOMDocumentFromXmlStream(
-                    ParsingUtils.openInputStream(specPath)
-            );
+            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+            URL url = getClass().getResource(specPath);
+            String uri = null;
+            if (url == null) {
+                uri = FileUtils.getAbsolutePath(specPath, (new File(".")).getAbsolutePath());
+            } else {
+                uri = url.toString();
+            }
+            document = builder.parse(uri);
             success = document.getDocumentElement().getTagName().equals("igv_plugin");
         } catch (ParserConfigurationException e) {
             e.printStackTrace();
@@ -196,14 +209,17 @@ public class PluginSpecReader {
                 }
 
                 //When a user adds a plugin, we store the path here
-                File customFile = new File(checkDir, CUSTOM_PLUGIN_FILENAME);
+                File customFile = new File(checkDir, CUSTOM_PLUGINS_FILENAME);
                 if (customFile.canRead()) {
                     BufferedReader br = new BufferedReader(new FileReader(customFile));
-                    String customPluginPath = "";
-                    while ((customPluginPath = br.readLine()) != null) {
-                        possPluginsList.add(customPluginPath);
-                    }
+                    possPluginsList.addAll(getPluginPaths(br));
                 }
+
+                //Builtin plugins. Do these last so custom ones take precedence
+                for (String pluginName : getBuiltinPlugins()) {
+                    possPluginsList.add("resources/" + pluginName);
+                }
+
 
                 for (String possPlugin : possPluginsList) {
                     PluginSpecReader reader = PluginSpecReader.create(possPlugin);
@@ -223,11 +239,29 @@ public class PluginSpecReader {
         return readers;
     }
 
+    static List<String> getBuiltinPlugins() throws IOException {
+        InputStream contentsStream = PluginSpecReader.class.getResourceAsStream("resources/" + PluginSpecReader.BUILTIN_PLUGINS_FILENAME);
+        BufferedReader inReader = new BufferedReader(new InputStreamReader(contentsStream));
+        return getPluginPaths(inReader);
+    }
+
+    private static List<String> getPluginPaths(BufferedReader reader) throws IOException {
+        String line;
+        List<String> pluginPaths = new ArrayList<String>(3);
+        while ((line = reader.readLine()) != null) {
+            if (line.startsWith("#")) {
+                continue;
+            }
+            pluginPaths.add(line);
+        }
+        return pluginPaths;
+    }
+
     /**
      * @param absolutePath Full path (can be URL) to plugin
      */
     public static void addCustomPlugin(String absolutePath) throws IOException {
-        File outFile = new File(DirectoryManager.getIgvDirectory(), CUSTOM_PLUGIN_FILENAME);
+        File outFile = new File(DirectoryManager.getIgvDirectory(), CUSTOM_PLUGINS_FILENAME);
 
         outFile.createNewFile();
         BufferedWriter writer = new BufferedWriter(new FileWriter(outFile));
@@ -237,5 +271,25 @@ public class PluginSpecReader {
         writer.close();
 
         pluginList = generatePluginList();
+    }
+
+    public String getName() {
+        return document.getDocumentElement().getAttribute("name");
+    }
+
+    /**
+     * Check the preferences for the tool path, using default from
+     * XML spec if necessary
+     *
+     * @param tool
+     * @return
+     */
+    public String getToolPath(Element tool) {
+        //Check settings for path, use default if not there
+        String toolPath = PreferenceManager.getInstance().getPluginPath(getId(), tool.getAttribute("name"));
+        if (toolPath == null) {
+            toolPath = tool.getAttribute("default_path");
+        }
+        return toolPath;
     }
 }
