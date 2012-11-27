@@ -9,4 +9,6 @@ TortoiseGit:
 How to push to Broad:
 ====================
 - First merge with Broad
+- fix all conflicts
 - commit to chantal
+- merge again to make sure

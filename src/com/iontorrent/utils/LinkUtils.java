@@ -5,18 +5,7 @@
 package com.iontorrent.utils;
 
 import com.iontorrent.expmodel.ExperimentContext;
-import com.iontorrent.rawdataaccess.pgmacquisition.RawType;
-import com.iontorrent.wellmodel.WellFlowDataResult;
-import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.InputStreamReader;
-import java.net.URL;
-import java.net.URLConnection;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import javax.swing.*;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.ui.IGV;

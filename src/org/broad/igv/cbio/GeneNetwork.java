@@ -269,10 +269,8 @@ public class GeneNetwork extends DirectedMultigraph<Node, Node> {
      *
      * @return
      */
-    public Set<Node> geneVertexSet() {
-        Set<Node> filteredSet = new HashSet<Node>(vertexSet());
-        Collections2.filter(filteredSet, isGene);
-        return filteredSet;
+    public Collection<Node> geneVertexes() {
+        return Collections2.filter(vertexSet(), isGene);
     }
 
     /**
@@ -298,7 +296,7 @@ public class GeneNetwork extends DirectedMultigraph<Node, Node> {
                 return edgesOf(object).size() >= 1;
             }
         };
-        return this.filterNodes(min_connections) > 0;
+        return this.filterGenes(min_connections) > 0;
     }
 
     /**
@@ -481,8 +479,8 @@ public class GeneNetwork extends DirectedMultigraph<Node, Node> {
             try {
                 NamedNodeMap map = el.getAttributes();
                 Node label = map.getNamedItem(attrName);
-                String textContent = label.getTextContent();
-                if (textContent.compareToIgnoreCase(attrValue) == 0) {
+                String nodeValue = label.getNodeValue();
+                if (nodeValue.compareToIgnoreCase(attrValue) == 0) {
                     return el.getTextContent();
                 }
             } catch (NullPointerException e) {
