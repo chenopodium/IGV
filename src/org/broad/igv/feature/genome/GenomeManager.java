@@ -18,7 +18,6 @@
  */
 package org.broad.igv.feature.genome;
 
-import com.iontorrent.utils.ErrorHandler;
 import org.apache.log4j.Logger;
 import org.broad.igv.DirectoryManager;
 import org.broad.igv.Globals;

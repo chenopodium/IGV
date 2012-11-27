@@ -15,7 +15,6 @@
  */
 package org.broad.igv.sam;
 
-import com.iontorrent.rawdataaccess.FlowValue;
 import org.broad.igv.feature.Strand;
 import org.broad.igv.track.WindowFunction;
 
@@ -114,46 +113,6 @@ public abstract class AbstractAlignment implements Alignment {
         }
         return 0;
     }
-
-    protected void listValues(FlowSignalSubContext context, StringBuffer buf, String type) {
-        int n = 0;
-        for (int i = 0; i < context.getNrSignalTypes(); i++) {
-            FlowValue[] flowvalues = context.getValuesOfType(i);
-            if (null != flowvalues && 0 < flowvalues.length) {
-                if (i == 1) {
-                    if (n > 0) {
-                        buf.append(",");
-                    }
-                    buf.append("[");
-                }
-                for (int j = 0; j < flowvalues.length; j++) {
-                    if (1 != i && 0 < n) {
-                        buf.append(",");
-                    }
-                    if (type.equalsIgnoreCase("RAWERROR")) {
-                        buf.append((int) flowvalues[j].getRawError());
-                    } else if (type.equalsIgnoreCase("VALUE")) {
-                        buf.append((int) flowvalues[j].getRawFlowvalue());
-                    }
-                    if (type.equalsIgnoreCase("ERROR")) {
-                        buf.append((int) flowvalues[j].getComputedError());
-                    }
-                    char base = flowvalues[j].getBase();
-                    if (flowvalues[j].isEmpty()) {
-                        base = Character.toLowerCase(base);
-                    }
-                    buf.append(base);
-                    n++;
-                }
-                if (1 == i) {
-                    buf.append("]");
-                }
-            }
-        }
-        buf.append("<br>");
-
-    }
-
     private byte[] getQualityArray() {
         int totLen = 0;
         for (AlignmentBlock block : this.alignmentBlocks) {
@@ -172,21 +131,8 @@ public abstract class AbstractAlignment implements Alignment {
         if (block.hasFlowSignals()) {
             // flow signals           
             FlowSignalSubContext f = block.getFlowSignalSubContext(offset);
-            if (f != null && f.getFlowValues() != null && f.getFlowValues().length > 0) {
-                buf.append("ZM = ");
-                listValues(f, buf, "VALUE");
-                FlowValue fv = f.getCurrentValue();
-                if (fv != null) {
-                    buf.append(fv.toHtml());
-                }
-                // maybe also add flow order?                
-                SamAlignment sam = (SamAlignment) this;
-                if (sam.hasComputedErrors()) {
-                    buf.append("Raw errors = ");
-                    listValues(f, buf, "RAWERROR");
-                    buf.append("Error % = ");
-                    listValues(f, buf, "ERROR");
-                }
+            if (f != null ) {
+               f.appendFlowInfo(buf, (SamAlignment)this);
             }
         }
     }

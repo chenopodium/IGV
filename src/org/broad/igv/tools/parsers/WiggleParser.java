@@ -19,7 +19,6 @@ package org.broad.igv.tools.parsers;
 
 //~--- non-JDK imports --------------------------------------------------------
 
-import com.iontorrent.utils.StringTools;
 import org.broad.igv.Globals;
 import org.broad.igv.feature.genome.Genome;
 import org.broad.igv.track.TrackProperties;

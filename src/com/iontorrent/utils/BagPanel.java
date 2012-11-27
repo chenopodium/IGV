@@ -58,7 +58,7 @@ public class BagPanel extends JPanel {
         Component comp = this.getComponentAt(evt.getPoint());
         if (comp == null )return "BagPanel: Got no component at "+evt.getPoint();
         if (comp == this) return "BagPanel: Got myself back"+this.getToolTipText();
-        p("Get BagPanel tool tip");
+       // p("Get BagPanel tool tip");
         if (comp instanceof JComponent) {
             JComponent jcom = (JComponent)comp;
             return "Got jcomponent "+jcom.getClass().getName();

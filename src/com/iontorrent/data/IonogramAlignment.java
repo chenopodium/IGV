@@ -16,10 +16,10 @@ import org.broad.igv.PreferenceManager;
 import org.broad.igv.feature.Locus;
 import org.broad.igv.sam.*;
 import org.broad.igv.ui.panel.ReferenceFrame;
-import org.iontorrent.sam2flowgram.flowalign.FlowOrder;
+import com.iontorrent.sam2flowgram.flowalign.FlowOrder;
 
-import org.iontorrent.sam2flowgram.flowalign.FlowgramAlignment;
-import org.iontorrent.sam2flowgram.util.AlignUtil;
+import com.iontorrent.sam2flowgram.flowalign.FlowgramAlignment;
+import com.iontorrent.sam2flowgram.util.AlignUtil;
 
 /**
  * compute the slots/flows for a list of subread ionograms
@@ -390,9 +390,9 @@ public class IonogramAlignment {
 
                     //int relative = getRelativeLocation(loc);
                     int startslot = slotperlocation[tbasepos];
-                    FlowValue fv = align.getQueryFlowValue(qpos);
+                    FlowValue fv = align.getQueryFlow(qpos);
                    
-                    FlowValue tv = align.getTargetFlowValue(tflowpos);
+                   // FlowValue tv = align.getTargetFlow(tflowpos);
 
                     if (fv.isEmpty()) {
                         // nrempty++;

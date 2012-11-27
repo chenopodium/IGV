@@ -322,13 +322,7 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
                                        float[] flowSignals, String flowOrder, int flowOrderStart) {
 
         
-     //   log.info("Creating flowseq for alignment block for "+seqWithKey);
-        //xxxx add key signal
-//        FlowSeq flowseq = new FlowSeq(AlignUtil.basesToInt(seqWithKey), AlignUtil.basesToInt(flowOrder));
-//        if (flowseq.getLength()< seqWithKey.length()) {
-//            log.error("Flow sequence too short: "+flowseq.getLength()+", "+flowseq.toString()+",\n floworder="+flowOrder+",\n seqwithkey="+seqWithKey);
-//            return;
-//        }
+    
         
         boolean showSoftClipped = PreferenceManager.getInstance().getAsBoolean(PreferenceManager.SAM_SHOW_SOFT_CLIPPED);
 

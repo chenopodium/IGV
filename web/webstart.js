@@ -1,4 +1,4 @@
-// $Id: webstart.js 33879 2012-06-20 09:55:02Z chantal.roth@lifetech.com $
+// $Id: webstart.js 47455 2012-11-23 14:51:54Z chantal.roth@lifetech.com $
 //------------------------------------------------------------------------------
 /** Copyright (c) 2007 Memorial Sloan-Kettering Cancer Center.
  **

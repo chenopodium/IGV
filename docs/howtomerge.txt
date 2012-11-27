@@ -1,6 +1,12 @@
 How to merge with broad:
-Mit TortoiseGit:
+=========================
+TortoiseGit:
 - commit to chantal
 - fetch hbroad
 - merge, from hbroad master
 - Check log, and look at all "conflict"
+
+How to push to Broad:
+====================
+- First merge with Broad
+- commit to chantal

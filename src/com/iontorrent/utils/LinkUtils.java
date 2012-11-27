@@ -4,9 +4,11 @@
  */
 package com.iontorrent.utils;
 
+import com.iontorrent.expmodel.ExperimentContext;
 import com.iontorrent.rawdataaccess.pgmacquisition.RawType;
 import com.iontorrent.wellmodel.WellFlowDataResult;
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
@@ -15,10 +17,7 @@ import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JTextField;
+import javax.swing.*;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.ui.IGV;
 
@@ -32,13 +31,22 @@ public class LinkUtils {
     
     public static boolean linkToTSL(String readnames, String chromosome, long location) {
         String server = PreferenceManager.getInstance().get(PreferenceManager.IONTORRENT_SERVER);
-        String res = PreferenceManager.getInstance().get(PreferenceManager.IONTORRENT_RESULTS);
-        String bam = null;
-        if (res.endsWith(".bam")) {
-            bam = res;
-            File f = new File(bam);
-            res = f.getParent().toString();
+        
+        String expinfo = PreferenceManager.getInstance().get(PreferenceManager.BAM_FILE);        
+        ExperimentContext exp = new ExperimentContext();        
+        exp.setExperimentInfo(expinfo);
+        long id = exp.getId();
+        String searchterm = "";
+        if (id > 0) {
+            searchterm = ""+id;
         }
+        else if (exp.getBamFileName() != null) {
+            searchterm = exp.getBamFileName();
+        }
+        else {
+            searchterm =exp.getResultsName();
+        }
+        
         if (server == null || server.length() < 1) {
             server = JOptionPane.showInputDialog(IGV.getMainFrame(), "I am not sure which Torrent server to use. \nPlease enter the url (example: myserver.com)");
             p("Got no server, using user input " + server);
@@ -47,8 +55,7 @@ public class LinkUtils {
         if (!server.startsWith("http")) {
             server = "http://" + server;
         }
-
-        String searchterm = res;
+       
         if (searchterm.endsWith("/")) {
             searchterm = searchterm.substring(0, searchterm.length() - 1);
         }
@@ -56,13 +63,7 @@ public class LinkUtils {
         if (last > 0 && last + 1 < searchterm.length()) {
             searchterm = searchterm.substring(last);
         }
-        String url = server + "/TSL?restartApplication&searchdb=" + searchterm;
-        if (res != null && res.length() > 0) {
-            url += "&res_dir=" + res;
-        }
-        if (bam != null && bam.length() > 0) {
-            url += "&bam=" + bam;
-        }
+        String url = server + "/TSL?restartApplication&searchdb=" + searchterm;        
 
         if (readnames != null && readnames.length() > 0) {
             url += "&read_names=" + readnames;
@@ -74,22 +75,35 @@ public class LinkUtils {
             url += "&location=" + location;
         }
 
-        JTextField txt = new JTextField();
+        JTextArea txt = new JTextArea();
+        txt.setRows(8);
+        txt.setColumns(120);
         txt.setText(url);
+        
+        Dimension dim = new Dimension(600,200);
+        txt.setMaximumSize(dim);
+        txt.setPreferredSize(dim);
+        txt.setWrapStyleWord(false);
+        
         if (!java.awt.Desktop.isDesktopSupported()) {
-            JOptionPane.showMessageDialog(IGV.getMainFrame(), txt, "Please open a browser and paste the url below:", JOptionPane.OK_OPTION);
+            JOptionPane.showMessageDialog(IGV.getMainFrame(), new JScrollPane(txt), "You can paste the url into a browser:", JOptionPane.OK_OPTION);
             return false;
         }
         java.awt.Desktop desktop = java.awt.Desktop.getDesktop();
         try {
-
+            url = StringTools.replace(url,"&", "\n&");
+            txt.setText(url);
+            int ans =JOptionPane.showConfirmDialog(IGV.getMainFrame(),  new JScrollPane(txt), "Please verify that the experiment is from the specified server and change if necessary",JOptionPane.OK_CANCEL_OPTION );
+            if (ans == JOptionPane.CANCEL_OPTION) return false;
+            
+            url = txt.getText();
+            url = StringTools.replace(url,"\n", "&");
             java.net.URI uri = new java.net.URI(url);
             desktop.browse(uri);
-
-            JOptionPane.showMessageDialog(IGV.getMainFrame(), "When TSL opens, check the folder settings to make sure it got the right experiment", "Check Folders", JOptionPane.OK_OPTION);
+            
             return true;
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(IGV.getMainFrame(), txt, "Please open a browser and paste the url below:", JOptionPane.OK_OPTION);
+            JOptionPane.showMessageDialog(IGV.getMainFrame(),  new JScrollPane(txt), "You can paste the url into a browser:", JOptionPane.OK_OPTION);
         }
         return false;
     }

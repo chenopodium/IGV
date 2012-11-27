@@ -414,7 +414,7 @@ public class IGVSessionReader implements SessionReader {
 
         String nodeName = element.getNodeName();
 
-        log.info("Loading session. SessionElement: "+nodeName);
+      //  log.info("Loading session. SessionElement: "+nodeName);
         if (nodeName.equalsIgnoreCase(SessionElement.RESOURCES.getText()) ||
                 nodeName.equalsIgnoreCase(SessionElement.FILES.getText())) {
             processResources(session, (Element) element, additionalInformation);
