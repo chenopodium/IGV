@@ -12,3 +12,5 @@ How to push to Broad:
 - fix all conflicts
 - commit to chantal
 - merge again to make sure
+- push chantal to IGV-Broad-fork
+- create pull request at GitHub

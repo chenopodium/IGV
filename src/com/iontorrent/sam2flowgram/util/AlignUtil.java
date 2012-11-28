@@ -326,7 +326,7 @@ public class AlignUtil {
     }
 
     /**
-     * @param flowSignal the 100 scaled flow signal, to be used to convert a reference sequence into flow signals
+     * @param flowSignal the 100 scaled flow signal, to be used to convert a reference sequence into a theoretical flow signals
      * @return the base call represented by this flow signal
      * 
      */

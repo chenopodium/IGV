@@ -42,18 +42,18 @@
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnRecomputeActionPerformed"/>
           </Events>
         </Component>
-        <Component class="javax.swing.JButton" name="btnFlowDist">
+        <Component class="javax.swing.JButton" name="btnDist">
           <Properties>
             <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
               <Image iconType="3" name="/com/iontorrent/views/dist.png"/>
             </Property>
-            <Property name="toolTipText" type="java.lang.String" value="show score distribution for currently selected slot"/>
+            <Property name="toolTipText" type="java.lang.String" value="show confidence distribution for currently selected slot"/>
             <Property name="focusable" type="boolean" value="false"/>
             <Property name="horizontalTextPosition" type="int" value="0"/>
             <Property name="verticalTextPosition" type="int" value="3"/>
           </Properties>
           <Events>
-            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnFlowDistActionPerformed"/>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnDistActionPerformed"/>
           </Events>
         </Component>
         <Component class="javax.swing.JButton" name="btnRaw">

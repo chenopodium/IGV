@@ -18,7 +18,6 @@ import org.broad.igv.sam.*;
 import org.broad.igv.ui.panel.ReferenceFrame;
 import com.iontorrent.sam2flowgram.flowalign.FlowOrder;
 
-import com.iontorrent.sam2flowgram.flowalign.FlowgramAlignment;
 import com.iontorrent.sam2flowgram.util.AlignUtil;
 
 /**
@@ -147,7 +146,7 @@ public class IonogramAlignment {
                         FlowValue flowvalue = new FlowValue(fblock.getHpLen(), rawflowSignal, flownr, base, relativelocation, isempty, bestbase);
                         flowvalue.setPredictedValue(fblock.getPredictedValue());
                         flowvalue.setNext(fblock.getNext());
-                        flowvalue.setComputedError(fblock.getComputedError());
+                        flowvalue.setConfidence(fblock.getConfidence());
                         flowvalue.setPrev(fblock.getPrev());
                         //if (!iono.isSameAsPrev(flowvalue)) {
                         iono.addFlowValue(flowvalue); 
@@ -198,13 +197,13 @@ public class IonogramAlignment {
         IonogramAlignment ionoalign = new IonogramAlignment(frame.getChrName(), new String(consensus), ionograms, maxemptyperlocation, nrbases_left_right, center_location);
         return ionoalign;
     }
-    public ErrorDistribution[] getFlowSignalDistribution(String locus, int slot) {
+    public ConfidenceDistribution[] getDistribution(String locus, int slot) {
         // one for each base!
         if (ionograms == null || ionograms.isEmpty()) return null;
         ArrayList<ArrayList<FlowValue> > alleletrees = new ArrayList<ArrayList<FlowValue> >();
 
         int nrflows = 0;
-        ArrayList<ErrorDistribution> alleledist = new ArrayList<ErrorDistribution>();
+        ArrayList<ConfidenceDistribution> alleledist = new ArrayList<ConfidenceDistribution>();
         String bases = "";
         // also store information on read and position
         boolean forward = false;
@@ -266,15 +265,15 @@ public class IonogramAlignment {
             name += ", " + base + ", " + nrflows + " flows, slot "+slot;
             String info = locus + ", " + bases;
             
-            ErrorDistribution dist = new ErrorDistribution(slot, nrflows, allelelist, name, base, forward, reverse, info);
+            ConfidenceDistribution dist = new ConfidenceDistribution(slot, nrflows, allelelist, name, base, forward, reverse, info);
             dist.setChromosome(chromosome);
             dist.setReadInfos(allelereadinfos.get(which));
             alleledist.add(dist);
             which++;
         }
         
-         ErrorDistribution distributions[] = null;
-         distributions = new ErrorDistribution[alleledist.size()];
+         ConfidenceDistribution distributions[] = null;
+         distributions = new ConfidenceDistribution[alleledist.size()];
             for (int i = 0; i < alleledist.size(); i++) {
                 distributions[i] = alleledist.get(i);
             }
@@ -284,7 +283,7 @@ public class IonogramAlignment {
     public void recomputeAlignment() {
         p("RECOMPUTING ALIGNMENT WITH FLOW SPACE");
         flowBased = true;
-        ArrayList<FlowgramAlignment> aligns = recomputeAlignmentUsingFlowSpace();
+        ArrayList<com.iontorrent.sam2flowgram.flowalign.IonogramAlignment> aligns = recomputeAlignmentUsingFlowSpace();
         computeMaxEmpties(aligns);
         nrslots = computeSlots();
         emptyBasesInfo = new String[nrslots];
@@ -297,11 +296,11 @@ public class IonogramAlignment {
 //         }
     }
 
-    private ArrayList<FlowgramAlignment> recomputeAlignmentUsingFlowSpace() {
+    private ArrayList<com.iontorrent.sam2flowgram.flowalign.IonogramAlignment> recomputeAlignmentUsingFlowSpace() {
         //  public FlowgramAlignment(FlowSeq flowQseq, byte tseq[],
         //                     FlowOrder qseqFlowOrder)
 
-        ArrayList<FlowgramAlignment> aligns = new ArrayList<FlowgramAlignment>();
+        ArrayList<com.iontorrent.sam2flowgram.flowalign.IonogramAlignment> aligns = new ArrayList<com.iontorrent.sam2flowgram.flowalign.IonogramAlignment>();
         byte[] tseq = new byte[consensus.length()];
         int r = 0;
 
@@ -349,9 +348,9 @@ public class IonogramAlignment {
             FlowSeq flowQseq = new FlowSeq(iono.getFlowvalues());
             FlowOrder qseqFlowOrder = new FlowOrder(qorder);
             //  p("ref: "+Arrays.toString(tseq)+", signals="+Arrays.toString(signals)+", order="+Arrays.toString(qorder)+" :"+qseqFlowOrder.toString());
-            FlowgramAlignment falign = null;
+            com.iontorrent.sam2flowgram.flowalign.IonogramAlignment falign = null;
             try {
-                falign = new FlowgramAlignment(flowQseq, tseq, qseqFlowOrder, true, true, 1);
+                falign = new com.iontorrent.sam2flowgram.flowalign.IonogramAlignment(flowQseq, tseq, qseqFlowOrder, true, true, 1);
                 //      System.out.println(iono.getReadname()+":"+"\n" + falign.getAlignmentString(true));                
                 //    p("aln="+Arrays.toString(falign.aln));                
 
@@ -367,7 +366,7 @@ public class IonogramAlignment {
         System.out.println(s);
     }
 
-    private void computeSlotsWithFlowAlignment(ArrayList<FlowgramAlignment> aligns) {
+    private void computeSlotsWithFlowAlignment(ArrayList<com.iontorrent.sam2flowgram.flowalign.IonogramAlignment> aligns) {
         // compute nr of slots:
         // for each actual incorporation, get the maximum number of empties.
         // the sum of each incorporation plus empties is the nr of slots
@@ -375,7 +374,7 @@ public class IonogramAlignment {
     //    p("Computing alignment: got " + this.nrslots + " slots and " + this.nrionograms + " ionograms");
         for (int i = 0; i < getNrionograms(); i++) {
             //  Ionogram iono = ionograms.get(i);
-            FlowgramAlignment align = aligns.get(i);
+            com.iontorrent.sam2flowgram.flowalign.IonogramAlignment align = aligns.get(i);
             Ionogram iono = ionograms.get(i);
             int nrempty = 0;
             if (align != null) {
@@ -416,7 +415,7 @@ public class IonogramAlignment {
         }
     }
 
-    private void computeMaxEmpties(ArrayList<FlowgramAlignment> aligns) {
+    private void computeMaxEmpties(ArrayList<com.iontorrent.sam2flowgram.flowalign.IonogramAlignment> aligns) {
         // first we have to compute the size of the msa, the space between incorporations
         maxemptyperlocation = new int[this.getNrrelativelocations()];
 
@@ -424,7 +423,7 @@ public class IonogramAlignment {
             int maxempty = 0;
 
             for (int i = 0; i < this.nrionograms; i++) {
-                FlowgramAlignment al = aligns.get(i);
+                com.iontorrent.sam2flowgram.flowalign.IonogramAlignment al = aligns.get(i);
                 int invalid = al.getLength();
                 if (al != null) {
                     int nextal = al.getAlignPosForTBasepos(pos + 1);
@@ -565,7 +564,7 @@ public class IonogramAlignment {
         }
         Ionogram iono = ionograms.get(0);
         String nl = "\n";
-        String res = "Flow alignent at " + iono.getLocusinfo() + nl + nl;
+        String res = "Ionogram alignment at " + iono.getLocusinfo() + nl + nl;
         // I know using String + is usually not recommended
         // but, this method does not have to be fast or efficient, so for readability
         // + is still much nicer than all those appends :-)

@@ -796,7 +796,7 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
         this.keySequence = keySequence;
     }
 
-    public boolean hasComputedErrors() {
+    public boolean hasComputedConfidence() {
         return getFlowseq() != null;
     }
 
@@ -833,7 +833,7 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
     }
 
     /**
-     * @return start index in the flow signal as specified by the ZF tag, or -1 if not present
+     * @return start index in the flow as specified by the ZF tag, or -1 if not present
      *         or non-numeric
      */
     public int getFlowSignalsStart() {

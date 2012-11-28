@@ -4,7 +4,7 @@
  */
 package com.iontorrent.views;
 
-import com.iontorrent.data.ErrorDistribution;
+import com.iontorrent.data.ConfidenceDistribution;
 import com.iontorrent.data.Ionogram;
 import com.iontorrent.data.IonogramAlignment;
 import com.iontorrent.expmodel.ExperimentContext;
@@ -47,7 +47,8 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
     private JScrollPane sheader;
     private JLabel corner;
     private boolean flowBased;
-    private  SignalFetchPanel sig;
+    private SignalFetchPanel sig;
+
     /**
      * Creates new form IonogramAlignmentPanel
      */
@@ -200,7 +201,7 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
 
         topbar = new javax.swing.JToolBar();
         btnRecompute = new javax.swing.JButton();
-        btnFlowDist = new javax.swing.JButton();
+        btnDist = new javax.swing.JButton();
         btnRaw = new javax.swing.JButton();
         btnLeft = new javax.swing.JButton();
         btnRight = new javax.swing.JButton();
@@ -230,17 +231,17 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
         });
         topbar.add(btnRecompute);
 
-        btnFlowDist.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/dist.png"))); // NOI18N
-        btnFlowDist.setToolTipText("show score distribution for currently selected slot");
-        btnFlowDist.setFocusable(false);
-        btnFlowDist.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-        btnFlowDist.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        btnFlowDist.addActionListener(new java.awt.event.ActionListener() {
+        btnDist.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/dist.png"))); // NOI18N
+        btnDist.setToolTipText("show confidence distribution for currently selected slot");
+        btnDist.setFocusable(false);
+        btnDist.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        btnDist.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        btnDist.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnFlowDistActionPerformed(evt);
+                btnDistActionPerformed(evt);
             }
         });
-        topbar.add(btnFlowDist);
+        topbar.add(btnDist);
 
         btnRaw.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/raw.png"))); // NOI18N
         btnRaw.setToolTipText("Load the raw traces of the selected cells a via IonRetriever (a server side Data API)");
@@ -473,7 +474,7 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
     }
     private void btnRawActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRawActionPerformed
 
-        
+
         final long loc = alignment.getChromosome_center_location();
 
         final String chr = alignment.getChromosome();
@@ -511,29 +512,31 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
                 }
             }
         }
-       
+
         PreferenceManager prefs = PreferenceManager.getInstance();
-        String server = prefs.get(PreferenceManager.IONTORRENT_SERVER);        
+        String server = prefs.get(PreferenceManager.IONTORRENT_SERVER);
         String expinfo = prefs.get(PreferenceManager.BAM_FILE);
-        
+
         ExperimentContext exp = new ExperimentContext();
         exp.setExperimentInfo(expinfo);
-       
+
         boolean show = sig == null;
         if (sig == null) {
-            sig = new SignalFetchPanel(exp, readflows, "location "+chr+":"+location);
-            
-        }
-        else {
+            sig = new SignalFetchPanel(exp, readflows, "location " + chr + ":" + location);
+
+        } else {
             sig.setReadflows(readflows);
             sig.setExp(exp);
-            sig.setTitle("location "+chr+":"+location);
-            
+            sig.setTitle("location " + chr + ":" + location);
+
         }
         sig.setServer(server);
-        if (show || sig.isShow()) sig.showPanel();
-        else sig.loadDataFromServer();
-        
+        if (show || sig.isShow()) {
+            sig.showPanel();
+        } else {
+            sig.loadDataFromServer();
+        }
+
     }//GEN-LAST:event_btnRawActionPerformed
 
     private void spinBinStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_spinBinStateChanged
@@ -580,9 +583,9 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
         refresh();
     }//GEN-LAST:event_btnRefreshActionPerformed
 
-    private void btnFlowDistActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnFlowDistActionPerformed
-        showFlowSignalDistForSlot(this.alignment.getCenterSlot());
-    }//GEN-LAST:event_btnFlowDistActionPerformed
+    private void btnDistActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnDistActionPerformed
+        showDistForSlot(this.alignment.getCenterSlot());
+    }//GEN-LAST:event_btnDistActionPerformed
 
     private void btnLinkActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLinkActionPerformed
         String readnames = this.getReadNames();
@@ -591,30 +594,33 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
         LinkUtils.linkToTSL(readnames, chr, loc);
     }//GEN-LAST:event_btnLinkActionPerformed
 
-    private void showFlowSignalDistForSlot(int slot) {
+    private void showDistForSlot(int slot) {
 
         if (ionograms == null || ionograms.isEmpty()) {
             return;
         }
         final String locus = ionograms.get(0).getLocusinfo();
-        ErrorDistribution[] distributions = alignment.getFlowSignalDistribution(locus, slot);
+        ConfidenceDistribution[] distributions = alignment.getDistribution(locus, slot);
 
-        final ScoreDistributionPanel distributionPanel = new ScoreDistributionPanel(distributions);
-        LocationListener listener = new LocationListener() {
+        final ArrayList<DistPanel> pans = DistPanel.createPanels(distributions, 3);
+        for (final DistPanel pan : pans) {
+            LocationListener listener = new LocationListener() {
 
-            @Override
-            public void locationChanged(int newslot) {
-                log.info("Got new location from panel: " + newslot + ", (old location was: " + location + ")");
-                ErrorDistribution[] newdist = alignment.getFlowSignalDistribution(locus, newslot);
-                distributionPanel.setDistributions(newdist);
-                //frame.jumpTo(frame.getChrName(), location, location);
-            }
-        };
-        distributionPanel.setListener(listener);
+                @Override
+                public void locationChanged(int newslot) {
+                    log.info("Got new location from panel: " + newslot + ", (old location was: " + location + ")");
+                    ConfidenceDistribution[] newdist = alignment.getDistribution(locus, newslot);
+                    pan.setDistributions(newdist);
+                    //frame.jumpTo(frame.getChrName(), location, location);
+                }
+            };
+            pan.setListener(listener);
+            // listen to left/right mouse clicks from panel and navigate accordingly
+            ImageIcon image = new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/chip_16.png"));
+            SimpleDialog dia = new SimpleDialog("Model-Data Confidence", pan, 800, 500, 200, 200, image.getImage());
+        }
 
-        // listen to left/right mouse clicks from panel and navigate accordingly
-        ImageIcon image = new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/chip_16.png"));
-        SimpleDialog dia = new SimpleDialog("Error Distribution", distributionPanel, 800, 500, 200, 200, image.getImage());
+
     }
 
     private void moveLeft() {
@@ -679,7 +685,7 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
     }
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnConfigure;
-    private javax.swing.JButton btnFlowDist;
+    private javax.swing.JButton btnDist;
     private javax.swing.JButton btnLeft;
     private javax.swing.JButton btnLink;
     private javax.swing.JButton btnRaw;

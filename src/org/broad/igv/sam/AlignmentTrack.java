@@ -14,9 +14,8 @@ package org.broad.igv.sam;
 import com.iontorrent.data.*;
 import com.iontorrent.utils.LocationListener;
 import com.iontorrent.utils.SimpleDialog;
-import com.iontorrent.views.ScoreDistributionPanel;
 import com.iontorrent.views.AlignmentControlPanel;
-import com.iontorrent.views.ScoreDistPanel;
+import com.iontorrent.views.DistPanel;
 
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
@@ -75,33 +74,40 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
     static final int DS_MARGIN_2 = 5;
 
     public enum ShadeBasesOption {
-        NONE, QUALITY, ERROR_READ
+
+        NONE, QUALITY, CONF_READ
     }
 
     public enum ExperimentType {
+
         RNA, BISULFITE, OTHER
-            }
-
-    public enum ColorOption {
-        INSERT_SIZE, READ_STRAND, FIRST_OF_PAIR_STRAND, PAIR_ORIENTATION, SAMPLE, READ_GROUP, BISULFITE, NOMESEQ,
-        TAG, NONE, UNEXPECTED_PAIR
-            }
-
-    public enum SortOption {
-        START, STRAND, NUCELOTIDE, QUALITY, SAMPLE, READ_GROUP, INSERT_SIZE, FIRST_OF_PAIR_STRAND, MATE_CHR, TAG;
-            }
-
-    public enum GroupOption {
-        STRAND, SAMPLE, READ_GROUP, FIRST_OF_PAIR_STRAND, TAG, PAIR_ORIENTATION, MATE_CHROMOSOME, NONE
-            }
-
-    public enum BisulfiteContext {
-        CG, CHH, CHG, HCG, GCH, WCG
-            }
-    enum OrientationType {
-        RR, LL, RL, LR, UNKNOWN
     }
 
+    public enum ColorOption {
+
+        INSERT_SIZE, READ_STRAND, FIRST_OF_PAIR_STRAND, PAIR_ORIENTATION, SAMPLE, READ_GROUP, BISULFITE, NOMESEQ,
+        TAG, NONE, UNEXPECTED_PAIR
+    }
+
+    public enum SortOption {
+
+        START, STRAND, NUCELOTIDE, QUALITY, SAMPLE, READ_GROUP, INSERT_SIZE, FIRST_OF_PAIR_STRAND, MATE_CHR, TAG;
+    }
+
+    public enum GroupOption {
+
+        STRAND, SAMPLE, READ_GROUP, FIRST_OF_PAIR_STRAND, TAG, PAIR_ORIENTATION, MATE_CHROMOSOME, NONE
+    }
+
+    public enum BisulfiteContext {
+
+        CG, CHH, CHG, HCG, GCH, WCG
+    }
+
+    enum OrientationType {
+
+        RR, LL, RL, LR, UNKNOWN
+    }
     protected static final Map<BisulfiteContext, String> bisulfiteContextToPubString = new HashMap<BisulfiteContext, String>();
 
     static {
@@ -225,7 +231,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         }
     }
 
-
     @Override
     public IGVPopupMenu getPopupMenu(TrackClickEvent te) {
         return new PopupMenu(te);
@@ -303,10 +308,14 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
     private void renderDownsampledIntervals(RenderContext context, Rectangle downsampleRect) {
 
         // Might be offscreen
-        if (!context.getVisibleRect().intersects(downsampleRect)) return;
+        if (!context.getVisibleRect().intersects(downsampleRect)) {
+            return;
+        }
 
         final Collection<AlignmentInterval> loadedIntervals = dataManager.getLoadedIntervals(context.getReferenceFrame());
-        if (loadedIntervals == null) return;
+        if (loadedIntervals == null) {
+            return;
+        }
 
         Graphics2D g = context.getGraphic2DForColor(Color.black);
 
@@ -317,7 +326,9 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 int x1 = context.bpToScreenPixel(interval.getEnd());
                 int w = Math.max(1, x1 - x0);
                 // If there is room, leave a gap on one side
-                if (w > 5) w--;
+                if (w > 5) {
+                    w--;
+                }
                 // Greyscale from 0 -> 100 downsampled
                 //int gray = 200 - interval.getCount();
                 //Color color = (gray <= 0 ? Color.black : ColorUtilities.getGrayscaleColor(gray));
@@ -453,11 +464,11 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
     /**
      * Copy the contents of the popup text to the system clipboard.
      */
-    public void copyErrorDistribution(final TrackClickEvent e, int location) {
-        ArrayList<ErrorDistribution> dists = getErrorDistribution(e.getFrame(), location);
+    public void copyDistribution(final TrackClickEvent e, int location) {
+        ArrayList<ConfidenceDistribution> dists = getDistribution(e.getFrame(), location);
         Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
         String json = "";
-        for (ErrorDistribution dist : dists) {
+        for (ConfidenceDistribution dist : dists) {
             json += dist.toJson() + "\n";
         }
         clipboard.setContents(new StringSelection(json), null);
@@ -466,13 +477,13 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
     /**
      * by default, returns both for forward and backward strand
      */
-    private ArrayList<ErrorDistribution> getErrorDistribution(ReferenceFrame frame, int location) {
-        return getErrorDistribution(frame, location, true, true);
+    private ArrayList<ConfidenceDistribution> getDistribution(ReferenceFrame frame, int location) {
+        return getDistribution(frame, location, true, true);
     }
 
-    private ArrayList<ErrorDistribution> getErrorDistribution(ReferenceFrame frame, int location, boolean forward, boolean reverse) {
+    private ArrayList<ConfidenceDistribution> getDistribution(ReferenceFrame frame, int location, boolean forward, boolean reverse) {
 
-        return ErrorDistribution.extractErrorDistributions(dataManager, frame, location, forward, reverse);
+        return ConfidenceDistribution.extractDistributions(dataManager, frame, location, forward, reverse);
     }
 
     private IonogramAlignment getIonogramAlignment(ReferenceFrame frame, int center_location, int nrbases_left_right, boolean forward) {
@@ -578,7 +589,9 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 for (AlignmentInterval loadedInterval : loadedIntervals) {
                     List<DownsampledInterval> intervals = loadedInterval.getDownsampledIntervals();
                     DownsampledInterval interval = (DownsampledInterval) FeatureUtils.getFeatureAt(position, 0, intervals);
-                    if (interval != null) return interval.getValueString();
+                    if (interval != null) {
+                        return interval.getValueString();
+                    }
                 }
                 return null;
             }
@@ -602,6 +615,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
         }
     }
+
     private Alignment getAlignmentAt(double position, int y, ReferenceFrame frame) {
 
         if (alignmentsRect == null) {
@@ -949,7 +963,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             groupByTag = getFromMap(attributes, "groupByTag", groupByTag);
             sortByTag = getFromMap(attributes, "sortByTag", sortByTag);
             colorByTag = getFromMap(attributes, "colorByTag", colorByTag);
-                }
+        }
 
         private <T extends Enum<T>> T getFromMap(Map<String, String> attributes, String key, Class<T> clazz, T defaultValue) {
             String value = attributes.get(key);
@@ -957,7 +971,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 return defaultValue;
             }
             return CollUtils.<T>valueOf(clazz, value, defaultValue);
-            }
+        }
 
         private String getFromMap(Map<String, String> attributes, String key, String defaultValue) {
             String value = attributes.get(key);
@@ -965,7 +979,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 return defaultValue;
             }
             return value;
-            }
+        }
 
         public boolean isPairedArcView() {
             return pairedArcView;
@@ -1078,7 +1092,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             addCopyToClipboardItem(e);
 
             if (ionTorrent) {
-                addCopyErrorDistributionToClipboardItem(e);
+                addCopyDistributionToClipboardItem(e);
                 addIonTorrentAuxiliaryViews(e);
             }
 
@@ -1441,9 +1455,9 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             add(item);
         }
 
-        public void addCopyErrorDistributionToClipboardItem(final TrackClickEvent te) {
+        public void addCopyDistributionToClipboardItem(final TrackClickEvent te) {
             final MouseEvent me = te.getMouseEvent();
-            JMenuItem item = new JMenuItem("Copy the error distribution of the raw flow signal for this base to the clipboard");
+            JMenuItem item = new JMenuItem("Copy the confidence distribution for this base to the clipboard");
             final ReferenceFrame frame = te.getFrame();
             if (frame == null) {
                 item.setEnabled(false);
@@ -1454,7 +1468,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 item.addActionListener(new ActionListener() {
 
                     public void actionPerformed(ActionEvent aEvt) {
-                        copyErrorDistribution(te, location);
+                        copyDistribution(te, location);
                     }
                 });
             }
@@ -1650,8 +1664,8 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 Map<String, ShadeBasesOption> mappings = new LinkedHashMap<String, ShadeBasesOption>();
                 mappings.put("none", ShadeBasesOption.NONE);
                 mappings.put("quality", ShadeBasesOption.QUALITY);
-                mappings.put("read flow error", ShadeBasesOption.ERROR_READ);
-               
+                mappings.put("read flow confidence", ShadeBasesOption.CONF_READ);
+
                 for (Map.Entry<String, ShadeBasesOption> el : mappings.entrySet()) {
                     JCheckBoxMenuItem mi = getShadeBasesMenuItem(el.getKey(), el.getValue());
                     groupMenu.add(mi);
@@ -1794,10 +1808,9 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             add(item);
         }
 
-
         private void addIonTorrentAuxiliaryViews(final TrackClickEvent e) {
 
-            JMenu groupMenu = new JMenu("View flow error distrubtion for");
+            JMenu groupMenu = new JMenu("View flow confidence distrubtion for");
             ButtonGroup group = new ButtonGroup();
 
 
@@ -1819,7 +1832,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             groupMenu.add(itemr);
             group.add(itemr);
 
-            final JMenuItem itemIonoAlignment = new JCheckBoxMenuItem("View flow based alignment");
+            final JMenuItem itemIonoAlignment = new JCheckBoxMenuItem("View ionogram alignment");
 
 
             final ReferenceFrame frame = e.getFrame();
@@ -1835,25 +1848,25 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 item.addActionListener(new ActionListener() {
 
                     public void actionPerformed(ActionEvent aEvt) {
-                        showErrorDistribution(location, e.getFrame(), true, true);
+                        showDistribution(location, e.getFrame(), true, true);
                     }
                 });
                 itemf.addActionListener(new ActionListener() {
 
                     public void actionPerformed(ActionEvent aEvt) {
-                        showErrorDistribution(location, e.getFrame(), true, false);
+                        showDistribution(location, e.getFrame(), true, false);
                     }
                 });
                 itemr.addActionListener(new ActionListener() {
 
                     public void actionPerformed(ActionEvent aEvt) {
-                        showErrorDistribution(location, e.getFrame(), false, true);
+                        showDistribution(location, e.getFrame(), false, true);
                     }
                 });
                 itemb.addActionListener(new ActionListener() {
 
                     public void actionPerformed(ActionEvent aEvt) {
-                        showErrorDistribution(location, e.getFrame(), false, false);
+                        showDistribution(location, e.getFrame(), false, false);
                     }
                 });
                 itemIonoAlignment.addActionListener(new ActionListener() {
@@ -1896,11 +1909,11 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 if (forward_align != null) {
                     IonogramAlignment forward = getIonogramAlignment(frame, newLocation, bases, true);
                     forpanel.setAlignment(forward, newLocation);
-                    forward.setTitle("Flow Alignment (forward) at " + locus);
+                    forward.setTitle("Ionogram Alignment (forward) at " + locus);
                 }
                 if (reverse_align != null) {
                     IonogramAlignment reverse = getIonogramAlignment(frame, newLocation, bases, false);
-                    reverse.setTitle("Flow Alignment (reverse) at " + locus);
+                    reverse.setTitle("Ionogram Alignment (reverse) at " + locus);
                     revpanel.setAlignment(reverse, newLocation);
                 }
                 frame.centerOnLocation(newLocation + 1);
@@ -1917,65 +1930,40 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             revpanel.setListener(listener);
         }
         ImageIcon image = new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/msa.gif"));
-        SimpleDialog fdia = new SimpleDialog("Flow Alignment (forward) at " + locus, forpanel, 800, 500, 200, 200, image.getImage());
+        SimpleDialog fdia = new SimpleDialog("Ionogram Alignment (forward) at " + locus, forpanel, 800, 500, 200, 200, image.getImage());
         fdia.setLocation(200, 100);
-        SimpleDialog rdia = new SimpleDialog("Flow Alignment (reverse) at " + locus, revpanel, 800, 500, 200, 800, image.getImage());
+        SimpleDialog rdia = new SimpleDialog("Ionogram Alignment (reverse) at " + locus, revpanel, 800, 500, 200, 800, image.getImage());
         rdia.setLocation(200, 600);
     }
 
     /**
      * if neither forward nor reverse, create 2 charts in one
      */
-    private void showErrorDistribution(final int location, final ReferenceFrame frame, final boolean forward, final boolean reverse) {
-        ErrorDistribution[] distributions = getErrorDistributions(forward, reverse, frame, location);
+    private void showDistribution(final int location, final ReferenceFrame frame, final boolean forward, final boolean reverse) {
+        ConfidenceDistribution[] distributions = getDistributions(forward, reverse, frame, location);
 
-        if (distributions == null || distributions.length<1) return;
-        // one for each base in the list, filtered?
-        ImageIcon image = new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/chip_16.png"));
-        boolean newway = true;
-        boolean oldway = false;//distributions[0].isHasOldData();
-        
-        Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
-        
-        int x = (int) Math.max(100, screen.getWidth() / 2 - 400);
-        int y =  (int) 200;
-        if (newway) {
-            final ArrayList<ScoreDistPanel> panels = ScoreDistPanel.createPanels(distributions, 2);
-            for (final ScoreDistPanel panel : panels) {
-                LocationListener listener = new LocationListener() {
-
-                    @Override
-                    public void locationChanged(int newLocation) {
-                        log.info("Got new location from panel: " + newLocation + ", (old location was: " + location + ")");
-                        ErrorDistribution[] newdist = getErrorDistributions(forward, reverse, frame, newLocation);
-                        panel.setDistributions(newdist);
-                        // xxx compute new maxy
-                        panel.recreateChart();
-                        //frame.jumpTo(frame.getChrName(), location, location);
-
-                        frame.centerOnLocation(newLocation + 1);
-                        IGV.getInstance().repaintDataAndHeaderPanels();
-                        IGV.getInstance().repaintStatusAndZoomSlider();
-                    }
-                };
-                panel.setListener(listener);
-                SimpleDialog dia = new SimpleDialog("Error Distribution "+panel.getBase(), panel, 800, 500, x, y, image.getImage());
-                y += 500;
-                if (y > 1000) {
-                    y = 200;
-                    x += 500;
-                }
-            }
+        if (distributions == null || distributions.length < 1) {
+            return;
         }
-        if (!newway || oldway) {
-            final ScoreDistributionPanel distributionPanel = new ScoreDistributionPanel(distributions);
+        
+        ImageIcon image = new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/chip_16.png"));
+
+        Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
+
+        int x = (int) Math.max(100, screen.getWidth() / 2 - 400);
+        int y = (int) 200;
+
+        final ArrayList<DistPanel> panels = DistPanel.createPanels(distributions, 2);
+        for (final DistPanel panel : panels) {
             LocationListener listener = new LocationListener() {
 
                 @Override
                 public void locationChanged(int newLocation) {
                     log.info("Got new location from panel: " + newLocation + ", (old location was: " + location + ")");
-                    ErrorDistribution[] newdist = getErrorDistributions(forward, reverse, frame, newLocation);
-                    distributionPanel.setDistributions(newdist);
+                    ConfidenceDistribution[] newdist = getDistributions(forward, reverse, frame, newLocation);
+                    panel.setDistributions(newdist);
+                    // xxx compute new maxy
+                    panel.recreateChart();
                     //frame.jumpTo(frame.getChrName(), location, location);
 
                     frame.centerOnLocation(newLocation + 1);
@@ -1983,34 +1971,37 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                     IGV.getInstance().repaintStatusAndZoomSlider();
                 }
             };
-            distributionPanel.setListener(listener);
-
-            // listen to left/right mouse clicks from panel and navigate accordingly
-
-            SimpleDialog dia = new SimpleDialog("Old Error Distribution", distributionPanel, 800, 500, x, y, image.getImage());
+            panel.setListener(listener);
+            SimpleDialog dia = new SimpleDialog("Model Data Confidence Distribution " + panel.getBase(), panel, 800, 500, x, y, image.getImage());
+            y += 500;
+            if (y > 1000) {
+                y = 200;
+                x += 500;
+            }
         }
+
     }
 
-    public void createErrorDistScreenShot(boolean forward, boolean reverse, String filename, boolean closeAfter) {
+    public void createDistScreenShot(boolean forward, boolean reverse, String filename, boolean closeAfter) {
         ReferenceFrame frame = FrameManager.getDefaultFrame();
         int location = (int) (frame.getOrigin() + frame.getEnd()) / 2;
         log.info("Frame center=" + frame.getCenter());
         log.info("Got location " + location);
-        ErrorDistribution[] distributions = getErrorDistributions(forward, reverse, frame, location);
+        ConfidenceDistribution[] distributions = getDistributions(forward, reverse, frame, location);
 
-        
-        final ArrayList<ScoreDistPanel> panels = ScoreDistPanel.createPanels(distributions, 2);
+
+        final ArrayList<DistPanel> panels = DistPanel.createPanels(distributions, 2);
         int count = 0;
-        for (ScoreDistPanel pan: panels) {
+        for (DistPanel pan : panels) {
 
             JFrame f = new JFrame();
             f.getContentPane().add(pan);
             f.setSize(800, 600);
             f.setVisible(true);
             try {
-                String file = filename+count+".png";
+                String file = filename + count + ".png";
                 count++;
-                log.info("createErrorDistScreenShot: Trying to write image to " + file);
+                log.info("createDistScreenShot: Trying to write image to " + file);
                 IGV.getInstance().createSnapshotNonInteractive(pan.getCenter(), new File(file));
             } catch (Exception ex) {
                 log.error(ex);
@@ -2022,18 +2013,18 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
     }
 
-    private ErrorDistribution[] getErrorDistributions(boolean forward, boolean reverse, ReferenceFrame frame, int location) {
-        ErrorDistribution distributions[] = null;
+    private ConfidenceDistribution[] getDistributions(boolean forward, boolean reverse, ReferenceFrame frame, int location) {
+        ConfidenceDistribution distributions[] = null;
         if (forward || reverse) {
-            ArrayList<ErrorDistribution> dists = getErrorDistribution(frame, location, forward, reverse);
-            distributions = new ErrorDistribution[dists.size()];
+            ArrayList<ConfidenceDistribution> dists = getDistribution(frame, location, forward, reverse);
+            distributions = new ConfidenceDistribution[dists.size()];
             for (int i = 0; i < dists.size(); i++) {
                 distributions[i] = dists.get(i);
             }
         } else {
-            ArrayList<ErrorDistribution> distsf = getErrorDistribution(frame, location, true, false);
-            ArrayList<ErrorDistribution> distsr = getErrorDistribution(frame, location, false, true);
-            distributions = new ErrorDistribution[distsf.size() + distsr.size()];
+            ArrayList<ConfidenceDistribution> distsf = getDistribution(frame, location, true, false);
+            ArrayList<ConfidenceDistribution> distsr = getDistribution(frame, location, false, true);
+            distributions = new ConfidenceDistribution[distsf.size() + distsr.size()];
             for (int i = 0; i < distsf.size(); i++) {
                 distributions[i] = distsf.get(i);
             }

@@ -3,7 +3,7 @@ package org.broad.igv.sam;
 import com.iontorrent.rawdataaccess.FlowValue;
 
 /**
- * Represents a flow signals context in an alignment block focused on a given
+ * Represents a flow context in an alignment block focused on a given
  * base. Added to support IonTorrent alignments.
  *
  * @author Nils Homer @date 4/11/12 Modified by Chantal Roth, 6/21/2012
@@ -31,11 +31,11 @@ public class FlowSignalSubContext {
             }
             // maybe also add flow order?                
             //SamAlignment sam = (SamAlignment) this;
-            if (sam.hasComputedErrors()) {
-                buf.append("Raw errors = ");
-                listValues(buf, "RAWERROR");
-                buf.append("Error % = ");
-                listValues(buf, "ERROR");
+            if (sam.hasComputedConfidence()) {
+                buf.append("Model deviation = ");
+                listValues(buf, "DEVIATION");
+                buf.append("Confidence = ");
+                listValues(buf, "CONFIDENCE");
             }
         }
     }
@@ -55,13 +55,13 @@ public class FlowSignalSubContext {
                     if (1 != i && 0 < n) {
                         buf.append(",");
                     }
-                    if (type.equalsIgnoreCase("RAWERROR")) {
-                        buf.append((int) flowvalues[j].getRawError());
+                    if (type.equalsIgnoreCase("DEVIATION")) {
+                        buf.append((int) flowvalues[j].getModelDeviation());
                     } else if (type.equalsIgnoreCase("VALUE")) {
                         buf.append((int) flowvalues[j].getRawFlowvalue());
                     }
-                    if (type.equalsIgnoreCase("ERROR")) {
-                        buf.append((int) flowvalues[j].getComputedError());
+                    if (type.equalsIgnoreCase("CONFIDENCE")) {
+                        buf.append((int) flowvalues[j].getConfidence());
                     }
                     char base = flowvalues[j].getBase();
                     if (flowvalues[j].isEmpty()) {

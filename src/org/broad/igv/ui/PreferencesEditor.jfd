@@ -4045,7 +4045,7 @@
             <void method="setProperty"> 
              <string>border</string> 
              <object class="javax.swing.border.TitledBorder"> 
-              <string>Flow Signal Distribution Chart Options</string> 
+              <string>Confidence Distribution Chart Options</string> 
              </object> 
             </void> 
             <void property="name"> 
@@ -4056,7 +4056,7 @@
               <string>javax.swing.JCheckBox</string> 
               <void method="setProperty"> 
                <string>text</string> 
-               <string>skip flow signals for homo polymers at start or end of read (including HP of size 1)</string> 
+               <string>skip data for homo polymers at start or end of read (including HP of size 1)</string> 
               </void> 
               <void method="setProperty"> 
                <string>toolTipText</string> 

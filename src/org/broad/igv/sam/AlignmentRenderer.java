@@ -10,7 +10,7 @@
  */
 package org.broad.igv.sam;
 
-import com.iontorrent.data.ErrorDistribution;
+import com.iontorrent.data.ConfidenceDistribution;
 import com.iontorrent.expmodel.FlowSeq;
 import com.iontorrent.rawdataaccess.FlowValue;
 import org.apache.log4j.Logger;
@@ -661,7 +661,7 @@ public class AlignmentRenderer implements FeatureRenderer {
     /**
      * Draw bases for an alignment block. The bases are "overlaid" on the block
      * with a transparency value (alpha) that is proportional to the base
-     * quality score, or flow signal deviation, whichever is selected.
+     * quality score, or confidence, whichever is selected.
      *
      * @param context
      * @param rect
@@ -763,27 +763,27 @@ public class AlignmentRenderer implements FeatureRenderer {
                     if (ShadeBasesOption.QUALITY == shadeBasesOption) {
                         byte qual = block.qualities[loc - start];
                         color = getShadedColor(qual, color, alignmentColor, prefs);
-                    } else if (ShadeBasesOption.ERROR_READ == shadeBasesOption) {
+                    } else if (ShadeBasesOption.CONF_READ == shadeBasesOption) {
                         if (block.hasFlowSignals()) {
                             SamAlignment sam = (SamAlignment) block.getBaseAlignment();
                             FlowValue fvBlock = block.getFlowSignalSubContext(loc - start).getCurrentValue();
-                            //int rawflowSignal = (int)flowValue.getRawFlowvalue();
+                            
                             if (fvBlock.getPredictedValue() < 1) {
-                                log.info("need to compute error");
-                                ErrorDistribution.computeErrors(sam);                                
+                                log.info("need to compute conf");
+                                ConfidenceDistribution.computeConfidence(sam);                                
                             }
-                            int error = (int)Math.abs(sam.getFlowseq().getFlow(fvBlock.getFlowPosition()).getComputedError());
-                            //int error = (int) Math.abs(fvBlock.getComputedError());
+                            int conf = (int)Math.abs(sam.getFlowseq().getFlow(fvBlock.getFlowPosition()).getConfidence()-100);
+                            
                             int minQ = prefs.getAsInt(PreferenceManager.SAM_BASE_QUALITY_MIN);
                             int maxQ = prefs.getAsInt(PreferenceManager.SAM_BASE_QUALITY_MAX);
-                            error = error * (maxQ - minQ) / 50;
+                            conf = conf * (maxQ - minQ) / 100;
                             byte qual;
-                            if (Byte.MAX_VALUE < error) {
+                            if (Byte.MAX_VALUE < conf) {
                                 qual = Byte.MAX_VALUE;
-                            } else if (error < Byte.MIN_VALUE) {
+                            } else if (conf < Byte.MIN_VALUE) {
                                 qual = Byte.MIN_VALUE;
                             } else {
-                                qual = (byte) error;
+                                qual = (byte) conf;
                             }
                             // Finally, get the color
                             color = getShadedColor(qual, color, alignmentColor, prefs);

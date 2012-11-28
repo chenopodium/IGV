@@ -90,8 +90,6 @@ public class CommandExecutor {
                 } else if (cmd.equalsIgnoreCase("goto")) {
                     result = goto1(args);
                 } else if (cmd.equalsIgnoreCase("snapshot_fs")) {
-                    // create image of flow signal distributon
-                    // first goto that position
                     log.info("Goto " + args);
                     result = goto1(args);
                     boolean close = false;
@@ -231,8 +229,8 @@ public class CommandExecutor {
                 if (track instanceof AlignmentTrack) {
                     AlignmentTrack atrack = (AlignmentTrack) track;
                     log.info("Found alingment track, exporting image to " + filename);
-                    atrack.createErrorDistScreenShot(true, false, filename + "f", closeAfter);
-                    atrack.createErrorDistScreenShot(false, true, filename + "r", closeAfter);
+                    atrack.createDistScreenShot(true, false, filename + "f", closeAfter);
+                    atrack.createDistScreenShot(false, true, filename + "r", closeAfter);
                     ok = true;
                 }
             }

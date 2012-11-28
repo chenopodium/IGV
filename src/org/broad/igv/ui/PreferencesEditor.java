@@ -1820,11 +1820,11 @@ public class PreferencesEditor extends javax.swing.JDialog {
 
                 //======== panel6 ========
                 {
-                    panel6.setBorder(new TitledBorder("Flow Signal Distribution Chart Options"));
+                    panel6.setBorder(new TitledBorder("Confidence Distribution Chart Options"));
                     panel6.setLayout(null);
 
                     //---- hideFirstHP ----
-                    hideFirstHP.setText("skip flow signals for homo polymers at start or end of read (including HP of size 1)");
+                    hideFirstHP.setText("skip data for homo polymers at start or end of read (including HP of size 1)");
                     hideFirstHP.setToolTipText("discards flow signals from HP at beginning or end of reads (including HP of size 1), in order to not skew the results due to short reads");
                     hideFirstHP.setSelected(true);
                     hideFirstHP.addActionListener(new ActionListener() {

@@ -4,7 +4,7 @@ import com.iontorrent.expmodel.FlowSeq;
 import com.iontorrent.rawdataaccess.FlowValue;
 
 /**
- * Builds a flow signals context in an alignment block. Added to support
+ * Builds a flow context in an alignment block. Added to support
  * IonTorrent alignments.
  *
  * @author Nils Homer @date 4/11/12 Modified by Chantal Roth, 6/21/2012
@@ -119,9 +119,7 @@ public class FlowSignalContextBuilder {
                 if (this.readNegativeStrandFlag) {
                     nextFlowSignalsEnd = flowStartAfterKeyOrBarcode - 1;
                     // NB: loop condition is not symmetric to the forward, as we must respect the directionality of sequencing.
-                    // For example, if our flow order is TACAG, and our read bases are TAG, then the flow signal vector is 
-                    // approximately 100,100,0,0,100.  Since we move in the reverse direction with respect to the flow signal 
-                    // vector we must pre-compute where the flows incorporations are expected to occur, instead of just looking 
+                    // Since we move in the reverse direction we must pre-compute where the flows incorporations are expected to occur, instead of just looking 
                     // for the next flow that matches our next read base (we would place the A incorporation flow in the fourth flow,
                     // which is wrong).
                     while (!this.incorporations[this.flowStartAfterKeyOrBarcode]

@@ -128,8 +128,7 @@ public abstract class AbstractAlignment implements Alignment {
     }
 
     private void bufAppendFlowInfo(AlignmentBlock block, StringBuffer buf, int offset) {
-        if (block.hasFlowSignals()) {
-            // flow signals           
+        if (block.hasFlowSignals()) {            
             FlowSignalSubContext f = block.getFlowSignalSubContext(offset);
             if (f != null ) {
                f.appendFlowInfo(buf, (SamAlignment)this);
