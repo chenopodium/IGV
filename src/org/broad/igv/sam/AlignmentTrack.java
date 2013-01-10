@@ -14,8 +14,8 @@ package org.broad.igv.sam;
 import com.iontorrent.data.*;
 import com.iontorrent.utils.LocationListener;
 import com.iontorrent.utils.SimpleDialog;
-import com.iontorrent.views.AlignmentControlPanel;
-import com.iontorrent.views.DistPanel;
+import com.iontorrent.views.alignment.AlignmentControlPanel;
+import com.iontorrent.views.dist.DistPanel;
 
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;

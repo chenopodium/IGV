@@ -77,10 +77,12 @@ public class CommandListener implements Runnable {
 
         try {
             serverSocket = new ServerSocket(port);
+            
             log.info("Listening on port " + port);
 
             while (!halt) {
                 clientSocket = serverSocket.accept();
+                log.info("Trying to accept connection");
                 processClientSession(cmdExe);
                 if (clientSocket != null) {
                     try {
@@ -116,6 +118,7 @@ public class CommandListener implements Runnable {
         BufferedReader in = null;
 
         try {
+            log.info("processClientSession");
             out = new PrintWriter(clientSocket.getOutputStream(), true);
             in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             String inputLine;
@@ -123,19 +126,27 @@ public class CommandListener implements Runnable {
             while (!halt && (inputLine = in.readLine()) != null) {
 
                 String cmd = inputLine;
+                cmd = cmd.replace("%20", " ");
+                cmd = cmd.replace("GET /?", "GET /");
+                //cmd = cmd.replace("GET /", "GET ");
+                log.info("Got command line:"+cmd);
                 if (cmd.startsWith("GET")) {
                     String command = null;
                     Map<String, String> params = null;
-                    String[] tokens = inputLine.split(" ");
+                    
+                    String[] tokens = cmd.split(" ");
+                    
                     if (tokens.length < 2) {
-                        sendHTTPResponse(out, "ERROR unexpected command line: " + inputLine);
+                        sendHTTPResponse(out, "ERROR unexpected command line (< than 2 elements in command): " + inputLine);
                         return;
                     } else {
+                        log.info("First part:"+tokens[1]);
                         String[] parts = tokens[1].split("\\?");
                         if (parts.length < 2) {
                             sendHTTPResponse(out, "ERROR unexpected command line: " + inputLine);
                             return;
                         } else {
+                            
                             command = parts[0];
                             params = parseParameters(parts[1]);
                         }
@@ -154,8 +165,8 @@ public class CommandListener implements Runnable {
                         sendHTTPResponse(out, callback);
                     }
 
-                    processGet(command, params, cmdExe);
-
+                    String res = processGet(command, params, cmdExe);
+                    if (res != null) sendHTTPResponse(out, res);
                     // If no callback was specified write back a "no response" header
                     if (callback == null) {
                         sendHTTPResponse(out, null);
@@ -210,6 +221,7 @@ public class CommandListener implements Runnable {
     private static final String CONTENT_TYPE_TEXT_HTML = "text/html";
     private static final String CONNECTION_CLOSE = "Connection: close";
     private static final String NO_CACHE = "Cache-Control: no-cache, no-store";
+    private static final String ACCESSCONTROL ="Access-Control-Allow-Origin: *"; 
 
     private void sendHTTPResponse(PrintWriter out, String result) {
 
@@ -222,6 +234,8 @@ public class CommandListener implements Runnable {
             out.print(NO_CACHE);
             out.print(CRNL);
             out.print(CONNECTION_CLOSE);
+            out.print(CRNL);
+            out.print(ACCESSCONTROL);
             out.print(CRNL);
             out.print(CRNL);
             out.print(result);
@@ -236,6 +250,7 @@ public class CommandListener implements Runnable {
 
     private String processGet(String command, Map<String, String> params, CommandExecutor cmdExe) throws IOException {
 
+        log.info("Processing get: "+command);
         String result = "OK";
         final Frame mainFrame = IGV.getMainFrame();
 
@@ -310,11 +325,15 @@ public class CommandListener implements Runnable {
             } else {
                 return ("ERROR Parameter \"file\" is required");
             }
-        } else if (command.equals("/reload") || command.equals("/goto")) {
+        } else if (command.equals("/reload") || command.equals("/goto") || command.equals("goto")) {
             String locus = params.get("locus");
+            log.info("Got locus: "+locus);
             IGV.getInstance().goToLocus(locus);
+            result = "OK";
         } else {
-            return ("ERROR Unknown command: " + command);
+            if (command.startsWith("/")) command = command.substring(1);
+            final String response = cmdExe.execute(command);
+            return ( response);
         }
 
         return result;

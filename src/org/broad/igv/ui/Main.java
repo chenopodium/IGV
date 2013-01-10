@@ -292,6 +292,14 @@ public class Main {
                     PreferenceManager.getInstance().put(PreferenceManager.IONTORRENT_SERVER, val);
                     log.info("Got server: " + key + "=" + val);
                     return null;
+                } else if (key.equalsIgnoreCase("header_value")) {
+                    PreferenceManager.getInstance().put("header_value", val);
+                    log.info("Got: " + key + "=" + val);
+                    return null;
+                } else if (key.equalsIgnoreCase("header_key")) {
+                    PreferenceManager.getInstance().put("header_value", val);
+                    log.info("Got: " + key + "=" + val);
+                    return null;
                 } else if (key.equalsIgnoreCase("sessionURL") || key.equalsIgnoreCase("file")) {
 
                     if (val.endsWith(".xml") || val.endsWith(".php") || val.endsWith(".php3")
@@ -311,9 +319,10 @@ public class Main {
                 } else if (key.equalsIgnoreCase("locus") || key.equalsIgnoreCase("position")) {
                     log.info("Got locus: " + key + "=" + val);
                     locusString = val;
-                    return null;
+                    arg = val;
                 } else {
-                    log.info("Currently not handled: " + key + "=" + val);
+                    log.info("Currently not handled specifically, adding it to preferences " + key + "=" + val);
+                    PreferenceManager.getInstance().put(key, val);
                     return null;
                 }
 

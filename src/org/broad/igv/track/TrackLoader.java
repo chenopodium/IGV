@@ -79,6 +79,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.logging.Log;
 
 /**
  * User: jrobinso
@@ -105,6 +106,7 @@ public class TrackLoader {
                 GenomeManager.getInstance().loadGenome(genomeId, null);
             } catch (IOException ex) {
                ex.printStackTrace();
+               
             }
         }
                
@@ -122,6 +124,7 @@ public class TrackLoader {
     public List<Track> load(ResourceLocator locator, Genome genome) {
 
         final String path = locator.getPath();
+         log.info("About to load " + locator.getPath());
         try {
             String typeString = locator.getType();
             if (typeString == null) {
@@ -154,6 +157,7 @@ public class TrackLoader {
                         " load the associated gzipped file, which should have an extension of '.gz'");
             }
 
+             log.info("type String is " + typeString);
             //This list will hold all new tracks created for this locator
             List<Track> newTracks = new ArrayList<Track>();
 
@@ -172,7 +176,7 @@ public class TrackLoader {
                 loadVCFListFile(locator, newTracks, genome);
             } else if (typeString.endsWith(".vcf") || typeString.endsWith(".vcf4")) {
                 // VCF files must be indexed.
-                throw new IndexNotFoundException(path);
+                throw new IndexNotFoundException(path+", the file needs to end wtih .vcf.gz and must have a file .vcf.gz.tbi");
             } else if (typeString.endsWith(".trio")) {
                 loadTrioData(locator);
             } else if (typeString.endsWith("varlist")) {
@@ -306,12 +310,13 @@ public class TrackLoader {
 
     private void loadIndexed(ResourceLocator locator, List<Track> newTracks, Genome genome) throws IOException {
 
+         log.info("Loading indexed file");
         TribbleFeatureSource src = GFFFeatureSource.isGFF(locator.getPath()) ?
                 new GFFFeatureSource(locator.getPath(), genome) :
                 new TribbleFeatureSource(locator.getPath(), genome);
         String typeString = locator.getPath();
         //Track t;
-
+       
         if (typeString.endsWith("vcf") || typeString.endsWith("vcf.gz")) {
 
             VCFHeader header = (VCFHeader) src.getHeader();
@@ -329,7 +334,7 @@ public class TrackLoader {
             List<String> allSamples = new ArrayList(header.getGenotypeSamples());
 
             VariantTrack t = new VariantTrack(locator, src, allSamples, enableMethylationRateSupport);
-
+            log.info("Created variant track "+t.getName());
             // VCF tracks handle their own margin
             t.setMargin(0);
             newTracks.add(t);
@@ -340,6 +345,7 @@ public class TrackLoader {
             t.setName(locator.getTrackName());
             //t.setRendererClass(BasicTribbleRenderer.class);
 
+            log.info("Created feature track "+t.getName());
             // Set track properties from header
             Object header = src.getHeader();
             if (header != null && header instanceof FeatureFileHeader) {
@@ -357,7 +363,7 @@ public class TrackLoader {
             }
             newTracks.add(t);
         }
-
+        log.info("Loading indexed file done");
     }
 
 
@@ -942,6 +948,7 @@ public class TrackLoader {
             AlignmentTrack alignmentTrack = new AlignmentTrack(locator, dataManager, genome);    // parser.loadTrack(locator, dsName);
             alignmentTrack.setName(dsName);
 
+            
 
             // Create coverage track
             CoverageTrack covTrack = new CoverageTrack(locator, alignmentTrack.getName() + " Coverage", genome);

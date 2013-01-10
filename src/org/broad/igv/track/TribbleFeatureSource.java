@@ -37,6 +37,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  * @author jrobinso
@@ -70,13 +71,18 @@ public class TribbleFeatureSource implements org.broad.igv.track.FeatureSource {
         }
     }
 
+    private void log(String s) {
+        Logger.getLogger("TribbleFeatureSource").info(s);
+    }
     protected void init(String path) {
-
+        log("TribbleFeatureSource init");
         FeatureCodec codec = CodecFactory.getCodec(path, genome);
         isVCF = codec.getClass() == VCFWrapperCodec.class;
         featureClass = codec.getFeatureType();
+        log("Feature calss="+featureClass);
         AbstractFeatureReader basicReader = AbstractFeatureReader.getFeatureReader(path, codec, true);
         header = basicReader.getHeader();
+        log("header  = "+header);
         initFeatureWindowSize(basicReader);
         reader = new CachingFeatureReader(basicReader, 5, getFeatureWindowSize());
 

@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.iontorrent.views;
+package com.iontorrent.views.dist;
 
 import java.text.DecimalFormat;
 import org.jfree.chart.axis.NumberTickUnit;

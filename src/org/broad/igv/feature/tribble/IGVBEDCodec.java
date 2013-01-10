@@ -26,6 +26,7 @@ import java.net.URLEncoder;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 
@@ -37,6 +38,7 @@ import java.util.regex.Pattern;
  */
 public class IGVBEDCodec extends UCSCCodec<BasicFeature> implements LineFeatureEncoder<Feature>, LineFeatureDecoder<BasicFeature> {
 
+    private static final Logger log = Logger.getLogger("IGVBEDCodec");
     static final Pattern BR_PATTERN = Pattern.compile("<br>");
     static final Pattern EQ_PATTERN = Pattern.compile("=");
 
@@ -161,16 +163,26 @@ public class IGVBEDCodec extends UCSCCodec<BasicFeature> implements LineFeatureE
 
         // Thick ends
         if(tokenCount > 7) {
-            feature.setThickStart(Integer.parseInt(tokens[6]) - startOffsetValue);
-            feature.setThickEnd(Integer.parseInt(tokens[7]));
+            try {
+                feature.setThickStart(Integer.parseInt(tokens[6]) - startOffsetValue);
+                feature.setThickEnd(Integer.parseInt(tokens[7]));
+            }
+            catch (Exception e) {
+                log.info("Cannot parse tokens 6 and 7 as Integers: "+tokens[6]+", "+tokens[7]);
+            }
         }
 
 
         // Color
         if (tokenCount > 8) {
             String colorString = tokens[8];
-            if (colorString.trim().length() > 0 && !colorString.equals(".")) {
-                feature.setColor(ParsingUtils.parseColor(colorString));
+            try  {
+                if (colorString.trim().length() > 0 && !colorString.equals(".")) {
+                    feature.setColor(ParsingUtils.parseColor(colorString));
+                }            
+            }
+            catch (Exception e) {
+                log.info("Cannot parse token 8 as Color: "+tokens[8]);
             }
         }
 

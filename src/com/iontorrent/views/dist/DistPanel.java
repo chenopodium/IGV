@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.iontorrent.views;
+package com.iontorrent.views.dist;
 
 import com.iontorrent.data.ConfidenceDistribution;
 import com.iontorrent.data.ReadInfo;

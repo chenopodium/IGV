@@ -14,6 +14,7 @@ import sun.net.www.protocol.http.AuthCacheValue;
 import sun.net.www.protocol.http.AuthCacheImpl;
 
 import biz.source_code.base64Coder.Base64Coder;
+import com.iontorrent.utils.Encryptor;
 import org.apache.log4j.Logger;
 import org.apache.tomcat.util.HttpDate;
 import org.broad.igv.Globals;
@@ -40,6 +41,7 @@ import java.util.*;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
+import javax.net.ssl.*;
 import javax.swing.JOptionPane;
 import org.broad.igv.ui.util.MessageUtils;
 
@@ -77,9 +79,25 @@ public class HttpUtils {
         org.broad.tribble.util.ParsingUtils.registerHelperClass(IGVUrlHelper.class);
 
         disableCertificateValidation();
+        disableHostnameVerifier();
+
         CookieHandler.setDefault(new IGVCookieManager());
         this.resetAuthenticator();
         byteRangeTestMap = Collections.synchronizedMap(new HashMap());
+    }
+
+    private void disableHostnameVerifier() {
+        HttpsURLConnection.setDefaultHostnameVerifier(getHostnameVerifier());
+    }
+
+    private static HostnameVerifier getHostnameVerifier() {
+        return new HostnameVerifier() {
+
+            @Override
+            public boolean verify(String hostname, javax.net.ssl.SSLSession sslSession) {
+                return true;
+            }
+        };
     }
 
     public static boolean isRemoteURL(String string) {
@@ -129,7 +147,7 @@ public class HttpUtils {
 
         InputStream is = null;
         HttpURLConnection conn = openConnection(url, null);
-       
+
         try {
             is = conn.getInputStream();
             return readContents(is);
@@ -511,12 +529,12 @@ public class HttpUtils {
 
         HttpURLConnection conn;
 
-        //p(" ==== OPEN CONNECTION " + method);
+        p(" ==== OPEN CONNECTION " + method);
         if (requestProperties != null) {
             Iterator iter = requestProperties.keySet().iterator();
             for (; iter.hasNext();) {
                 String key = (String) iter.next();
-              //  p("Got request property: " + key + "=" + requestProperties.get(key));
+                //  p("Got request property: " + key + "=" + requestProperties.get(key));
             }
         }
 
@@ -541,11 +559,13 @@ public class HttpUtils {
                 conn.setRequestProperty("Cookie", "gs-token=" + token);
             }
             conn.setRequestProperty("Accept", "application/json,text/plain");
-        }
-        else {
+        } else {
             conn.setRequestProperty("Accept", "text/plain");
         }
 
+        // check if URL is ionreporter. We know this if there is a token that has to be passed
+        this.checkForHeaderParameters(url, conn);
+        
         conn.setUseCaches(false);  // <= very important! due to Java 7 pack.gz issue 
         conn.setConnectTimeout(Globals.CONNECT_TIMEOUT);
         conn.setReadTimeout(Globals.READ_TIMEOUT);
@@ -562,8 +582,8 @@ public class HttpUtils {
             return conn;
         } else {
 
-             int code = conn.getResponseCode();
-
+            int code = conn.getResponseCode();
+            p("Got response code: "+code);
             // Redirects.  These can occur even if followRedirects == true if there is a change in protocol,
             // for example http -> https.
             if (code >= 300 && code < 400) {
@@ -594,7 +614,7 @@ public class HttpUtils {
                         if (this.defaultPassword != null || this.defaultUserName != null) {
                             MessageUtils.showMessage(exc.getMessage() + "<br>I will clear the credentials and try again");
                             p("Clearing credentials");
-                            
+
                             this.clearDefaultCredentials();
                             resetAuthenticator();
 
@@ -617,6 +637,24 @@ public class HttpUtils {
         return conn;
     }
 
+    private void checkForHeaderParameters(URL url, HttpURLConnection conn) {
+         PreferenceManager pref = PreferenceManager.getInstance();
+         // get any header params
+         String header_key = pref.get("header_key");
+         String header_value = pref.get("header_value");
+         
+         if (header_key != null && header_value != null) {
+             boolean header_encrypt = pref.getAsBoolean("header_encrypt");
+             // by default no ecnryption is assumed.
+             log.info("We got parameters for header key and value: "+header_key+"="+header_value+", ecnryption is: "+header_encrypt+", will add it to connection header");
+             log.info("URL host is: "+url.getHost());
+             if (header_encrypt) {
+                 header_value = Encryptor.decrypt(header_value, url.getHost());                 
+             }
+             conn.setRequestProperty(header_key, header_value);             
+         }
+         
+    }
     public void setDefaultPassword(String defaultPassword) {
         this.defaultPassword = defaultPassword.toCharArray();
     }
@@ -716,7 +754,7 @@ public class HttpUtils {
         String testURL;
         if (host.endsWith("www.broadinstitute.org")) {
             testURL = "http://www.broadinstitute.org/igvdata/annotations/seq/hg19/chr12.txt";
-        } else if(host.startsWith("igvdata.broadinstitute.org")) {
+        } else if (host.startsWith("igvdata.broadinstitute.org")) {
             testURL = "http://igvdata.broadinstitute.org/genomes/seq/hg19/chr12.txt";
         } else {
             testURL = "http://igv.broadinstitute.org/genomes/seq/hg19/chr12.txt";
@@ -827,8 +865,8 @@ public class HttpUtils {
             }
 
             log.info("IGVAuthenticator: PasswordAuthentication: Default username: " + defaultUserName);
-         //   Exception test = new Exception("Testing stack trace");
-        //    test.printStackTrace();
+            //   Exception test = new Exception("Testing stack trace");
+            //    test.printStackTrace();
             if (defaultUserName == null || defaultUserName.length() < 1) {
                 PreferenceManager prefMgr = PreferenceManager.getInstance();
                 defaultUserName = prefMgr.get(PreferenceManager.AUTHENTICATION_DEFAULT_USER, "ionadmin");
@@ -880,9 +918,9 @@ public class HttpUtils {
     public void setAuthenticator(Authenticator authenticator) {
         // there is a java bug: the credentions - such wrong ones - are stored and never reset!
         // we need to disable this kind if caching and use our own!
-       Authenticator.setDefault(null);        
+        Authenticator.setDefault(null);
         AuthCacheValue.setAuthCache(new AuthCacheImpl());
-        
+
         Authenticator.setDefault(authenticator);
     }
 

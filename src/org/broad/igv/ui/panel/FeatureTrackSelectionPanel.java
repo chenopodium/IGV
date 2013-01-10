@@ -32,11 +32,9 @@ public class FeatureTrackSelectionPanel extends JPanel {
             Collection<Track> tracks = IGV.getInstance().getAllTracks();
             for(Track t : tracks) {
                 if(t instanceof FeatureTrack) {
-
                     JCheckBox cb = new JCheckBox(t.getName());
+                    cb.setSelected(true);
                     this.add(cb);
-
-
                 }
             }
         }

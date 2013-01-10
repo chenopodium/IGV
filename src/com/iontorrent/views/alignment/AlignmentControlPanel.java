@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.iontorrent.views;
+package com.iontorrent.views.alignment;
 
 import com.iontorrent.data.ConfidenceDistribution;
 import com.iontorrent.data.Ionogram;
@@ -12,6 +12,7 @@ import com.iontorrent.rawdataaccess.FlowValue;
 import com.iontorrent.rawdataaccess.ReadFlow;
 import com.iontorrent.torrentscout.explorer.process.*;
 import com.iontorrent.utils.*;
+import com.iontorrent.views.dist.DistPanel;
 import com.iontorrent.wellmodel.WellCoordinate;
 import java.awt.*;
 import java.awt.event.KeyEvent;

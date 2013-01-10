@@ -11,6 +11,7 @@
 
 package org.broad.igv.sam.reader;
 
+import com.iontorrent.utils.ErrorHandler;
 import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMRecord;
@@ -228,10 +229,11 @@ public class BAMHttpReader implements AlignmentReader {
                 // Try other index convention
                 String baseName = path.substring(0, path.length() - 4);
                 indexURL = new URL(baseName + ".bai");
-
+                log.info("Trying to find bai: "+indexURL);
                 try {
                     is = org.broad.igv.util.HttpUtils.getInstance().openConnectionStream(indexURL);
                 } catch (FileNotFoundException e1) {
+                    log.info("Could not open "+indexURL+":"+ErrorHandler.getString(e1));
                     MessageUtils.showMessage("Index file not found for file: " + path);
                     throw new DataLoadException("Index file not found for file: " + path, path);
                 }

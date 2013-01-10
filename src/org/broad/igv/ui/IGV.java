@@ -1479,6 +1479,7 @@ public class IGV {
             Runnable runnable = new Runnable() {
                 public void run() {
                     try {
+                        log.info("Starting runnable for " + locator.getPath());
                         List<Track> tracks = load(locator);
                         if (tracks.size() > 0) {
                             String path = locator.getPath();
@@ -1496,6 +1497,7 @@ public class IGV {
                             }
                             panel.addTracks(tracks);
                         }
+                         log.info("Loading done for " + locator.getPath());
                     } catch (Exception e) {
                         log.error("Error loading tracks", e);
                         messages.append("Error loading " + locator + ": " + e.getMessage());

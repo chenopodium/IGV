@@ -13,11 +13,10 @@
 *
 *   You should have received a copy of the GNU General Public License
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+* 
+*  @Author Chantal Roth
 */
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
+
 package com.iontorrent.utils;
 
 import java.awt.Component;

@@ -16,6 +16,7 @@
 package org.broad.igv.ui;
 
 
+import com.iontorrent.views.karyo.KaryoControlPanel;
 import com.jidesoft.hints.ListDataIntelliHints;
 import com.jidesoft.swing.JideBoxLayout;
 import com.jidesoft.swing.JideButton;
@@ -86,6 +87,7 @@ public class IGVCommandBar extends javax.swing.JPanel {
     private JideButton backButton;
     private JideButton forwardButton;
     private JideButton fitToWindowButton;
+    private JideButton karyoButton;
 
     private JideButton exomeButton;
 
@@ -750,6 +752,25 @@ public class IGVCommandBar extends javax.swing.JPanel {
         });
         toolPanel.add(fitToWindowButton, JideBoxLayout.FIX);
 
+        
+        karyoButton = new JideButton();
+        //fitToWindowButton.setButtonStyle(JideButton.TOOLBOX_STYLE);
+        //fitToWindowButton.setBorder(toolButtonBorder);
+        karyoButton.setAlignmentX(RIGHT_ALIGNMENT);
+        karyoButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/chromo_ss.gif")));
+        karyoButton.setMaximumSize(new java.awt.Dimension(32, 32));
+        karyoButton.setMinimumSize(new java.awt.Dimension(32, 32));
+        karyoButton.setPreferredSize(new java.awt.Dimension(32, 32));
+        karyoButton.setToolTipText("Show whole genome karyogram overview");
+        karyoButton.addActionListener(new java.awt.event.ActionListener() {
+
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                KaryoControlPanel karyo = new KaryoControlPanel(IGV.getMainFrame());
+                karyo.showPanel(1000, 1000);
+            }
+        });
+        toolPanel.add(karyoButton, JideBoxLayout.FIX);
+        
         final Icon noTooltipIcon = IconFactory.getInstance().getIcon(IconFactory.IconID.NO_TOOLTIP);
         final Icon tooltipIcon = IconFactory.getInstance().getIcon(IconFactory.IconID.TOOLTIP);
         detailsBehaviorButton = new JideButton(noTooltipIcon);
