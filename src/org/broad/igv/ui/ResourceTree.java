@@ -20,7 +20,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
- 
+
 import javax.swing.*;
 import javax.swing.tree.*;
 import java.awt.*;
@@ -210,11 +210,11 @@ public class ResourceTree {
         );
         locator.setName(name);
 
-            String infoLink = getAttribute(xmlNode, HYPERLINK.getText());
-            if (infoLink == null) {
-           //     infoLink = getAttribute(xmlNode, INFOLINK.getText());
-            }
-            locator.setInfolink(infoLink);
+        String infoLink = getAttribute(xmlNode, HYPERLINK.getText());
+        if (infoLink == null) {
+            infoLink = getAttribute(xmlNode, INFOLINK.getText());
+        }
+        locator.setInfolink(infoLink);
 
         if (xmlNode.getTagName().equalsIgnoreCase("Resource")) {
 

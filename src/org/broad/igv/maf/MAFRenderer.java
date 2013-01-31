@@ -17,6 +17,7 @@
  */
 package org.broad.igv.maf;
 
+import org.broad.igv.PreferenceManager;
 import org.broad.igv.maf.MAFTile.Gap;
 import org.broad.igv.maf.MAFTile.MASequence;
 import org.broad.igv.renderer.GraphicUtils;
@@ -32,7 +33,7 @@ import java.util.Map;
 /**
  * @author jrobinso
  */
-public class MAFRenderer  {
+public class MAFRenderer {
 
     static Map<Character, Color> nucleotideColors = new HashMap();
 
@@ -85,7 +86,7 @@ public class MAFRenderer  {
 
     /**
      * Method description
-
+     *
      * @param context
      * @param trackRectangle
      * @param track
@@ -148,6 +149,8 @@ public class MAFRenderer  {
 
             // Create a graphics to use
             Graphics2D g = (Graphics2D) context.getGraphics().create();
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, PreferenceManager.getInstance().getAntiAliasingHint());
+
             if (dX >= 8) {
                 Font f = FontManager.getFont(Font.BOLD, Math.min(dX, 12));
                 g.setFont(f);

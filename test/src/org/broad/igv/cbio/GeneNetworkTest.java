@@ -200,6 +200,29 @@ public class GeneNetworkTest extends AbstractHeadlessTest {
     }
 
     @Test
+    public void testFilterOnEvidence() throws Exception {
+        GeneNetwork geneNetwork = new GeneNetwork();
+        assertTrue(geneNetwork.loadNetwork(TestUtils.DATA_DIR + "xml/egfr_brca1.xml.gz") > 0);
+
+        final String badname = "NA";
+
+        Predicate<Node> has_evidence = new Predicate<Node>() {
+            public boolean apply(Node object) {
+                String label = GeneNetwork.getNodeKeyData(object, "EXPERIMENTAL_TYPE");
+                return label != null && !label.equals(badname);
+            }
+        };
+
+        //Perform the filtering.
+        //This is true if any modifications are made.
+        assertTrue(geneNetwork.filterEdges(has_evidence) > 0);
+
+        for (Node e : geneNetwork.edgeSet()) {
+            assertTrue(has_evidence.apply(e));
+        }
+    }
+
+    @Test
     public void testOutputNoGzip() throws Exception {
         String networkPath = TestUtils.DATA_DIR + "xml/egfr_brca1.xml.gz";
         //String networkPath = testpath;

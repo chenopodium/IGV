@@ -136,7 +136,6 @@ public class CommandExecutorTest extends AbstractHeadedTest {
     public void testSnapshotTracksOnly() throws Exception {
         String outFileName = outFileBase + "_track.png";
         tstSnapshot(outFileName, true, "trackpanels");
-
     }
 
     @Test

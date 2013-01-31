@@ -846,7 +846,7 @@
              <string>Retrieve Network</string> 
             </void> 
             <void property="name"> 
-             <string>viewNetworkButton</string> 
+             <string>retrieveNetworkButton</string> 
             </void> 
             <void method="addEvent"> 
              <object class="com.jformdesigner.model.FormEvent"> 

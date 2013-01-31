@@ -655,6 +655,7 @@ public class CommandExecutor {
         igv.repaintDataPanels();
     }
 
+
     private String createSnapshot(String filename, String region) {
         if (filename == null) {
             String locus = FrameManager.getDefaultFrame().getFormattedLocusString();

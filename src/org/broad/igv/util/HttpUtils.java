@@ -786,13 +786,15 @@ public class HttpUtils {
         log.info("Testing range-byte request on host: " + host);
 
         String testURL;
-        if (host.endsWith("www.broadinstitute.org")) {
-            testURL = "http://www.broadinstitute.org/igvdata/annotations/seq/hg19/chr12.txt";
-        } else if (host.startsWith("igvdata.broadinstitute.org")) {
+        if (host.startsWith("igvdata.broadinstitute.org")) {
+            // Amazon cloud front
             testURL = "http://igvdata.broadinstitute.org/genomes/seq/hg19/chr12.txt";
-        } else {
+        } else if (host.startsWith("igv.broadinstitute.org")) {
+            // Amazon S3
             testURL = "http://igv.broadinstitute.org/genomes/seq/hg19/chr12.txt";
-
+        } else {
+            // All others
+            testURL = "http://www.broadinstitute.org/igvdata/annotations/seq/hg19/chr12.txt";
         }
 
         byte[] expectedBytes = {'T', 'C', 'G', 'C', 'T', 'T', 'G', 'A', 'A', 'C', 'C', 'C', 'G', 'G',
@@ -801,6 +803,7 @@ public class HttpUtils {
         str.seek(25350000);
         byte[] buffer = new byte[80000];
         str.read(buffer);
+        String result = new String(buffer);
         for (int i = 0; i < expectedBytes.length; i++) {
             if (buffer[i] != expectedBytes[i]) {
                 return false;
@@ -808,6 +811,8 @@ public class HttpUtils {
         }
         return true;
     }
+
+
 
     /**
      * Return the first bytes of content from the URL. The number of bytes

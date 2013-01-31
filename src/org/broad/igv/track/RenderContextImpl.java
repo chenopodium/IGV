@@ -22,6 +22,7 @@
  */
 package org.broad.igv.track;
 
+import org.broad.igv.PreferenceManager;
 import org.broad.igv.ui.panel.ReferenceFrame;
 
 import javax.swing.*;
@@ -43,6 +44,10 @@ public class RenderContextImpl implements RenderContext {
 
     public RenderContextImpl(JComponent panel, Graphics2D graphics, ReferenceFrame referenceFrame, Rectangle visibleRect) {
         this.graphics = graphics;
+        if(graphics != null) {
+            graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, PreferenceManager.getInstance().getAntiAliasingHint());
+        }
+
         this.panel = panel;
         this.graphicCacheByColor = new HashMap();
         this.referenceFrame = referenceFrame;
@@ -56,6 +61,8 @@ public class RenderContextImpl implements RenderContext {
             g = (Graphics2D) graphics.create();
             graphicCacheByColor.put(color, g);
             g.setColor(color);
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, PreferenceManager.getInstance().getAntiAliasingHint());
+
         }
         return g;
     }

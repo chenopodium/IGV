@@ -121,7 +121,7 @@ public class GFFParser implements FeatureParser {
         trackProperties = TrackLoader.getTrackProperties(codec.getHeader());
 
         //Combine the features
-        List<Feature> iFeatures = new GFFFeatureSource.GFFCombiner().combineFeatures(features.iterator());
+        List<Feature> iFeatures = (new GFFFeatureSource.GFFCombiner()).combineFeatures(features.iterator());
 
         return iFeatures;
     }

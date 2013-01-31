@@ -85,6 +85,7 @@ public class SpliceJunctionRenderer extends IGVFeatureRenderer {
             // affecting other tracks.
             Font font = FontManager.getFont(track.getFontSize());
             Graphics2D fontGraphics = (Graphics2D) context.getGraphic2DForColor(Color.BLACK).create();
+            fontGraphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, PreferenceManager.getInstance().getAntiAliasingHint());
             fontGraphics.setFont(font);
 
             // Track coordinates

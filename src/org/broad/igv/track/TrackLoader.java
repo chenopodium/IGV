@@ -193,6 +193,7 @@ public class TrackLoader {
                     typeString.endsWith(".igv") || typeString.endsWith(".loh")) {
                 loadIGVFile(locator, newTracks, genome);
             } else if (typeString.endsWith(".cbs") || typeString.endsWith(".seg") ||
+                    typeString.endsWith(".seg.data.txt") ||
                     typeString.endsWith("glad") || typeString.endsWith("birdseye_canary_calls")
                     || typeString.endsWith(".seg.zip")) {
                 loadSegFile(locator, newTracks, genome);
@@ -1032,7 +1033,7 @@ public class TrackLoader {
             }
             message.append("<br>Genome: ");
             n = 0;
-            for (String cn : genome.getChromosomeNames()) {
+            for (String cn : genome.getAllChromosomeNames()) {
                 message.append(cn + ", ");
                 n++;
                 if (n > 3) {

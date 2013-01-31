@@ -103,7 +103,7 @@ public class RulerPanel extends JPanel {
 
         super.paintComponent(g);
 
-        ((Graphics2D) g).setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        ((Graphics2D) g).setRenderingHint(RenderingHints.KEY_ANTIALIASING, PreferenceManager.getInstance().getAntiAliasingHint());
 
         render(g);
 
@@ -267,7 +267,7 @@ public class RulerPanel extends JPanel {
         boolean even = true;
         long offset = 0;
         chromosomeRects.clear();
-        List<String> chrNames = genome.getChromosomeNames();
+        List<String> chrNames = genome.getLongChromosomeNames();
         if (chrNames == null) {
             log.info("No chromosomes found for genome: " + genome.getId());
             PreferenceManager.getInstance().remove(PreferenceManager.DEFAULT_GENOME_KEY);
@@ -286,37 +286,36 @@ public class RulerPanel extends JPanel {
             int chrLength = c.getLength();
 
             double scale = frame.getScale();
-            int x = (int) (offset / (locationUnit * scale));
+            int gStart = genome.getGenomeCoordinate(chrName, 0);
+            int x = (int) (gStart / scale);
             int dw = (int) (chrLength / (locationUnit * scale));
 
-            // Dont draw very small chromosome & contigs in whole genome view
-            if (dw > 1) {
 
-                g.drawLine(x, getHeight() - 10, x, getHeight() - 2);
+            g.drawLine(x, getHeight() - 10, x, getHeight() - 2);
 
-                // Don't label chromosome if its width is < 5 pixels
-                if (dw > 5) {
-                    int center = x + dw / 2;
+            // Don't label chromosome if its width is < 5 pixels
+            if (dw > 5) {
+                int center = x + dw / 2;
 
-                    String displayName = null;
-                    if (chrName.startsWith("gi|")) {
-                        displayName = GenomeImpl.getNCBIName(chrName);
-                    } else {
-                        displayName = chrName.replace("chr", "");
-                    }
-                    int strWidth = fontMetrics.stringWidth(displayName);
-                    int strPosition = center - strWidth / 2;
-
-
-                    int y = (even ? getHeight() - 35 : getHeight() - 25);
-                    g.drawString(displayName, strPosition, y);
-                    int sw = (int) fontMetrics.getStringBounds(displayName, g).getWidth();
-                    Rectangle clickRect = new Rectangle(strPosition, y - 15, sw, 15);
-                    String tooltipText = "Jump to chromosome: " + chrName;
-                    chromosomeRects.add(new ClickLink(clickRect, chrName, tooltipText));
-
-                    even = !even;
+                String displayName = null;
+                if (chrName.startsWith("gi|")) {
+                    displayName = GenomeImpl.getNCBIName(chrName);
+                } else {
+                    displayName = chrName.replace("chr", "");
                 }
+                int strWidth = fontMetrics.stringWidth(displayName);
+                int strPosition = center - strWidth / 2;
+
+
+                int y = (even ? getHeight() - 35 : getHeight() - 25);
+                g.drawString(displayName, strPosition, y);
+                int sw = (int) fontMetrics.getStringBounds(displayName, g).getWidth();
+                Rectangle clickRect = new Rectangle(strPosition, y - 15, sw, 15);
+                String tooltipText = "Jump to chromosome: " + chrName;
+                chromosomeRects.add(new ClickLink(clickRect, chrName, tooltipText));
+
+                even = !even;
+
             }
 
             offset += chrLength;
@@ -359,7 +358,9 @@ public class RulerPanel extends JPanel {
 
 
                 Graphics2D exomeGraphics = (Graphics2D) g.create();
-                //Shape clip = exomeGraphics.getClip();
+                exomeGraphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, PreferenceManager.getInstance().getAntiAliasingHint());
+
+//Shape clip = exomeGraphics.getClip();
 
                 Color c = idx % 2 == 0 ? grey1 : grey2;
 
@@ -416,7 +417,8 @@ public class RulerPanel extends JPanel {
 
 
                 Graphics2D exomeGraphics = (Graphics2D) g.create();
-                //Shape clip = exomeGraphics.getClip();
+                exomeGraphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, PreferenceManager.getInstance().getAntiAliasingHint());
+//Shape clip = exomeGraphics.getClip();
 
                 Color c = idx % 2 == 0 ? gene1 : gene2;
 

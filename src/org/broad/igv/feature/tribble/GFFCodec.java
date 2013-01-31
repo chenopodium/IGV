@@ -144,7 +144,9 @@ public class GFFCodec extends AsciiFeatureCodec<Feature> {
     }
 
     public void readHeaderLine(String line) {
-        header = new FeatureFileHeader();
+        if(header == null) {
+            header = new FeatureFileHeader();
+        }
         if (line.startsWith("#track") || line.startsWith("##track")) {
             trackProperties = new TrackProperties();
             ParsingUtils.parseTrackLine(line, trackProperties);
@@ -171,6 +173,9 @@ public class GFFCodec extends AsciiFeatureCodec<Feature> {
 
     public Object readHeader(LineReader reader) {
 
+        if(header == null) {
+            header = new FeatureFileHeader();
+        }
         header = new FeatureFileHeader();
         String line;
         int nLines = 0;
@@ -247,6 +252,7 @@ public class GFFCodec extends AsciiFeatureCodec<Feature> {
         int col = 3;
         try {
             start = Integer.parseInt(tokens[col]) - 1;
+            if(start < 0) throw new ParserException("Start index must be 1 or larger; GFF is 1-based", -1, line);
             col++;
             end = Integer.parseInt(tokens[col]);
         } catch (NumberFormatException ne) {
@@ -289,10 +295,13 @@ public class GFFCodec extends AsciiFeatureCodec<Feature> {
         f.setParentIds(parentIds);
         f.setAttributes(attributes);
 
-        if (attributes.containsKey("color")) {
-            f.setColor(ColorUtilities.stringToColor(attributes.get("color")));
+        String[] colorNames = new String[]{"color", "Color", "colour", "Colour"};
+        for(String colorName: colorNames){
+            if (attributes.containsKey(colorName)) {
+                f.setColor(ColorUtilities.stringToColor(attributes.get(colorName)));
+                break;
+            }
         }
-
 
         if (featuresToHide.contains(featureType)) {
             if (IGV.hasInstance()) FeatureDB.addFeature(f);

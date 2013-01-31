@@ -19,6 +19,7 @@ package org.broad.igv.ui.panel;
 //~--- non-JDK imports --------------------------------------------------------
 
 import org.apache.log4j.Logger;
+import org.broad.igv.PreferenceManager;
 import org.broad.igv.feature.FeatureUtils;
 import org.broad.igv.feature.exome.ExomeBlock;
 import org.broad.igv.feature.exome.ExomeReferenceFrame;
@@ -67,6 +68,7 @@ public class DataPanelPainter {
 
         try {
             graphics2D = (Graphics2D) context.getGraphics().create();
+            graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, PreferenceManager.getInstance().getAntiAliasingHint());
             graphics2D.setBackground(background);
             graphics2D.clearRect(visibleRect.x, visibleRect.y, visibleRect.width, visibleRect.height);
             graphics2D.setColor(Color.BLACK);
@@ -114,6 +116,8 @@ public class DataPanelPainter {
                         Rectangle rect = new Rectangle(pStart, visibleRect.y, pEnd - pStart, visibleRect.height);
 
                         Graphics2D exomeGraphics = (Graphics2D) context.getGraphics().create();
+                        exomeGraphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, PreferenceManager.getInstance().getAntiAliasingHint());
+
                         //Shape clip = exomeGraphics.getClip();
 
 //                         Color c = ColorUtilities.randomColor(idx);
@@ -126,7 +130,7 @@ public class DataPanelPainter {
                         exomeGraphics.translate(pStart, 0);
 
                         ReferenceFrame tmpFrame = new ReferenceFrame(frame);
-                        tmpFrame.setOrigin(b.getGenomeStart(), false);
+                        tmpFrame.setOrigin(b.getGenomeStart());
 
 
                         RenderContext tmpContext = new RenderContextImpl(null, exomeGraphics, tmpFrame, rect);

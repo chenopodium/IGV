@@ -40,6 +40,7 @@ import org.broad.igv.ui.util.MessageUtils;
 import org.broad.igv.ui.util.UIUtilities;
 import org.broad.igv.util.HttpUtils;
 import org.broad.igv.util.Utilities;
+import org.broad.igv.util.collections.CollUtils;
 
 import javax.swing.*;
 import java.io.File;
@@ -484,12 +485,14 @@ public class PreferencesEditor extends javax.swing.JDialog {
         igvDirectoryButton = new JButton();
         igvDirectoryField = new JLabel();
         label21 = new JLabel();
+        tooltipOptionsPanel = new JPanel();
         label24 = new JLabel();
         label25 = new JLabel();
         label26 = new JLabel();
         toolTipInitialDelayField = new JTextField();
         tooltipReshowDelayField = new JTextField();
         tooltipDismissDelayField = new JTextField();
+        antialisingCB = new JCheckBox();
         okCancelButtonPanel = new ButtonPanel();
         okButton = new JButton();
         cancelButton = new JButton();
@@ -2740,68 +2743,100 @@ public class PreferencesEditor extends javax.swing.JDialog {
                 advancedPanel.add(label21);
                 label21.setBounds(45, 460, 105, label21.getPreferredSize().height);
 
-                //---- label24 ----
-                label24.setText("Tooltip initial delay (ms)");
-                advancedPanel.add(label24);
-                label24.setBounds(45, 295, 185, label24.getPreferredSize().height);
+                //======== tooltipOptionsPanel ========
+                {
+                    tooltipOptionsPanel.setLayout(null);
 
-                //---- label25 ----
-                label25.setText("Tooltip reshow delay (ms)");
-                advancedPanel.add(label25);
-                label25.setBounds(45, 327, 185, 23);
+                    //---- label24 ----
+                    label24.setText("Tooltip initial delay (ms)");
+                    tooltipOptionsPanel.add(label24);
+                    label24.setBounds(0, 0, 185, label24.getPreferredSize().height);
 
-                //---- label26 ----
-                label26.setText("Tooltip dismiss delay (ms)");
-                advancedPanel.add(label26);
-                label26.setBounds(45, 365, 185, 16);
+                    //---- label25 ----
+                    label25.setText("Tooltip reshow delay (ms)");
+                    tooltipOptionsPanel.add(label25);
+                    label25.setBounds(0, 32, 185, 23);
 
-                //---- toolTipInitialDelayField ----
-                toolTipInitialDelayField.addActionListener(new ActionListener() {
+                    //---- label26 ----
+                    label26.setText("Tooltip dismiss delay (ms)");
+                    tooltipOptionsPanel.add(label26);
+                    label26.setBounds(0, 70, 185, 16);
+
+                    //---- toolTipInitialDelayField ----
+                    toolTipInitialDelayField.addActionListener(new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            toolTipInitialDelayFieldActionPerformed(e);
+                        }
+                    });
+                    toolTipInitialDelayField.addFocusListener(new FocusAdapter() {
+                        @Override
+                        public void focusLost(FocusEvent e) {
+                            toolTipInitialDelayFieldFocusLost(e);
+                        }
+                    });
+                    tooltipOptionsPanel.add(toolTipInitialDelayField);
+                    toolTipInitialDelayField.setBounds(220, -6, 455, toolTipInitialDelayField.getPreferredSize().height);
+
+                    //---- tooltipReshowDelayField ----
+                    tooltipReshowDelayField.addActionListener(new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            tooltipReshowDelayFieldActionPerformed(e);
+                        }
+                    });
+                    tooltipReshowDelayField.addFocusListener(new FocusAdapter() {
+                        @Override
+                        public void focusLost(FocusEvent e) {
+                            tooltipReshowDelayFieldFocusLost(e);
+                        }
+                    });
+                    tooltipOptionsPanel.add(tooltipReshowDelayField);
+                    tooltipReshowDelayField.setBounds(220, 29, 455, 28);
+
+                    //---- tooltipDismissDelayField ----
+                    tooltipDismissDelayField.addActionListener(new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            tooltipDismissDelayFieldActionPerformed(e);
+                        }
+                    });
+                    tooltipDismissDelayField.addFocusListener(new FocusAdapter() {
+                        @Override
+                        public void focusLost(FocusEvent e) {
+                            tooltipDismissDelayFieldFocusLost(e);
+                        }
+                    });
+                    tooltipOptionsPanel.add(tooltipDismissDelayField);
+                    tooltipDismissDelayField.setBounds(220, 64, 455, 28);
+
+                    { // compute preferred size
+                        Dimension preferredSize = new Dimension();
+                        for(int i = 0; i < tooltipOptionsPanel.getComponentCount(); i++) {
+                            Rectangle bounds = tooltipOptionsPanel.getComponent(i).getBounds();
+                            preferredSize.width = Math.max(bounds.x + bounds.width, preferredSize.width);
+                            preferredSize.height = Math.max(bounds.y + bounds.height, preferredSize.height);
+                        }
+                        Insets insets = tooltipOptionsPanel.getInsets();
+                        preferredSize.width += insets.right;
+                        preferredSize.height += insets.bottom;
+                        tooltipOptionsPanel.setMinimumSize(preferredSize);
+                        tooltipOptionsPanel.setPreferredSize(preferredSize);
+                    }
+                }
+                advancedPanel.add(tooltipOptionsPanel);
+                tooltipOptionsPanel.setBounds(new Rectangle(new Point(45, 335), tooltipOptionsPanel.getPreferredSize()));
+
+                //---- antialisingCB ----
+                antialisingCB.setText("Enable antialising.  ");
+                antialisingCB.addActionListener(new ActionListener() {
                     @Override
                     public void actionPerformed(ActionEvent e) {
-                        toolTipInitialDelayFieldActionPerformed(e);
+                        antialisingCBActionPerformed(e);
                     }
                 });
-                toolTipInitialDelayField.addFocusListener(new FocusAdapter() {
-                    @Override
-                    public void focusLost(FocusEvent e) {
-                        toolTipInitialDelayFieldFocusLost(e);
-                    }
-                });
-                advancedPanel.add(toolTipInitialDelayField);
-                toolTipInitialDelayField.setBounds(265, 289, 455, toolTipInitialDelayField.getPreferredSize().height);
-
-                //---- tooltipReshowDelayField ----
-                tooltipReshowDelayField.addActionListener(new ActionListener() {
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-                        tooltipReshowDelayFieldActionPerformed(e);
-                    }
-                });
-                tooltipReshowDelayField.addFocusListener(new FocusAdapter() {
-                    @Override
-                    public void focusLost(FocusEvent e) {
-                        tooltipReshowDelayFieldFocusLost(e);
-                    }
-                });
-                advancedPanel.add(tooltipReshowDelayField);
-                tooltipReshowDelayField.setBounds(265, 324, 455, 28);
-
-                //---- tooltipDismissDelayField ----
-                tooltipDismissDelayField.addActionListener(new ActionListener() {
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-                        tooltipDismissDelayFieldActionPerformed(e);
-                    }
-                });
-                tooltipDismissDelayField.addFocusListener(new FocusAdapter() {
-                    @Override
-                    public void focusLost(FocusEvent e) {
-                        tooltipDismissDelayFieldFocusLost(e);
-                    }
-                });
-                advancedPanel.add(tooltipDismissDelayField);
-                tooltipDismissDelayField.setBounds(265, 359, 455, 28);
+                advancedPanel.add(antialisingCB);
+                antialisingCB.setBounds(new Rectangle(new Point(35, 260), antialisingCB.getPreferredSize()));
 
                 { // compute preferred size
                     Dimension preferredSize = new Dimension();
@@ -3203,7 +3238,8 @@ public class PreferencesEditor extends javax.swing.JDialog {
             samMaxBaseQualityField.setEnabled(samShadeMismatchedBaseCB.isSelected());
         } else {
             PreferenceManager prefMgr = PreferenceManager.getInstance();
-            if (ShadeBasesOption.QUALITY == ShadeBasesOption.valueOf(prefMgr.get(PreferenceManager.SAM_SHADE_BASES))) {
+            if (ShadeBasesOption.QUALITY ==
+                    CollUtils.valueOf(ShadeBasesOption.class, prefMgr.get(PreferenceManager.SAM_SHADE_BASES), ShadeBasesOption.QUALITY)) {
                 updatedPreferenceMap.put(
                         PreferenceManager.SAM_SHADE_BASES,
                         ShadeBasesOption.NONE.toString());
@@ -3234,6 +3270,15 @@ public class PreferencesEditor extends javax.swing.JDialog {
                 PreferenceManager.AUTO_UPDATE_GENOMES,
                 String.valueOf(this.genomeUpdateCB.isSelected()));
     }
+
+
+    private void antialisingCBActionPerformed(ActionEvent e) {
+        updatedPreferenceMap.put(
+                PreferenceManager.ENABLE_ANTIALISING,
+                String.valueOf(this.antialisingCB.isSelected()));
+
+    }
+
 
     private void samFlagUnmappedPairCBActionPerformed(java.awt.event.ActionEvent evt) {
         updatedPreferenceMap.put(
@@ -4002,7 +4047,8 @@ public class PreferencesEditor extends javax.swing.JDialog {
         showSoftClippedCB.setSelected(prefMgr.getAsBoolean(PreferenceManager.SAM_SHOW_SOFT_CLIPPED));
         samFlagUnmappedPairCB.setSelected(prefMgr.getAsBoolean(PreferenceManager.SAM_FLAG_UNMAPPED_PAIR));
         showCenterLineCB.setSelected(prefMgr.getAsBoolean(PreferenceManager.SAM_SHOW_CENTER_LINE));
-        samShadeMismatchedBaseCB.setSelected(ShadeBasesOption.QUALITY == ShadeBasesOption.valueOf(prefMgr.get(PreferenceManager.SAM_SHADE_BASES)));
+        samShadeMismatchedBaseCB.setSelected(ShadeBasesOption.QUALITY ==
+                CollUtils.valueOf(ShadeBasesOption.class, prefMgr.get(PreferenceManager.SAM_SHADE_BASES), ShadeBasesOption.QUALITY));
         samMinBaseQualityField.setText((String.valueOf(prefMgr.getAsInt(PreferenceManager.SAM_BASE_QUALITY_MIN))));
         samMaxBaseQualityField.setText((String.valueOf(prefMgr.getAsInt(PreferenceManager.SAM_BASE_QUALITY_MAX))));
         samMinBaseQualityField.setEnabled(samShadeMismatchedBaseCB.isSelected());
@@ -4025,6 +4071,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
         junctionCoverageTextField.setEnabled(junctionTrackEnabled);
 
         genomeUpdateCB.setSelected(prefMgr.getAsBoolean(PreferenceManager.AUTO_UPDATE_GENOMES));
+        antialisingCB.setSelected(prefMgr.getAsBoolean(PreferenceManager.ENABLE_ANTIALISING));
 
         final boolean mapProbesToGenes = PreferenceManager.getInstance().getAsBoolean(PreferenceManager.PROBE_MAPPING_KEY);
         expMapToGeneCB.setSelected(mapProbesToGenes);
@@ -4369,12 +4416,14 @@ public class PreferencesEditor extends javax.swing.JDialog {
     private JButton igvDirectoryButton;
     private JLabel igvDirectoryField;
     private JLabel label21;
+    private JPanel tooltipOptionsPanel;
     private JLabel label24;
     private JLabel label25;
     private JLabel label26;
     private JTextField toolTipInitialDelayField;
     private JTextField tooltipReshowDelayField;
     private JTextField tooltipDismissDelayField;
+    private JCheckBox antialisingCB;
     private ButtonPanel okCancelButtonPanel;
     private JButton okButton;
     private JButton cancelButton;

@@ -105,6 +105,8 @@ public class IGVFeatureRenderer extends FeatureRenderer {
             // affecting other tracks.
             Font font = FontManager.getFont(track.getFontSize());
             Graphics2D fontGraphics = (Graphics2D) context.getGraphic2DForColor(Color.BLACK).create();
+            fontGraphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, PreferenceManager.getInstance().getAntiAliasingHint());
+
             fontGraphics.setFont(font);
 
             // Track coordinates
@@ -264,6 +266,7 @@ public class IGVFeatureRenderer extends FeatureRenderer {
                                         int yOffset, Graphics2D g) {
 
         Graphics2D g2D = (Graphics2D) g.create();
+        g2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, PreferenceManager.getInstance().getAntiAliasingHint());
 
         if (pixelThickStart > pixelStart) {
             g2D.fillRect(pixelStart, yOffset - (thinBlockHeight) / 2,
@@ -283,6 +286,7 @@ public class IGVFeatureRenderer extends FeatureRenderer {
     final private void drawConnectingLine(int startX, int startY, int endX, int endY, Strand strand, Graphics2D g) {
 
         Graphics2D g2D = (Graphics2D) g.create();
+        g2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, PreferenceManager.getInstance().getAntiAliasingHint());
 
         float lineThickness = ((BasicStroke) g.getStroke()).getLineWidth();
         if (strand == null) {
@@ -318,6 +322,8 @@ public class IGVFeatureRenderer extends FeatureRenderer {
                              boolean alternateExonColor, Color color1, Color color2) {
 
         Graphics exonNumberGraphics = g2D.create();
+        ((Graphics2D) exonNumberGraphics).setRenderingHint(RenderingHints.KEY_ANTIALIASING, PreferenceManager.getInstance().getAntiAliasingHint());
+
         exonNumberGraphics.setColor(Color.BLACK);
         exonNumberGraphics.setFont(FontManager.getFont(Font.BOLD, 8));
 
@@ -472,14 +478,20 @@ public class IGVFeatureRenderer extends FeatureRenderer {
     protected void drawStrandArrows(Strand strand, int startX, int endX, int startY, double angle, Track.DisplayMode mode,
                                     Graphics2D g2D) {
 
-        // Don't draw strand arrows for very small regions
+        //Don't draw arrows if we don't have a strand
+        if(!strand.equals(Strand.POSITIVE) && !strand.equals(Strand.NEGATIVE)){
+            return;
+        }
 
+        // Don't draw strand arrows for very small regions
         int distance = endX - startX;
         if ((distance < 6)) {
             return;
         }
 
         Graphics2D g = (Graphics2D) g2D.create();
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, PreferenceManager.getInstance().getAntiAliasingHint());
+
         // Limit drawing to visible region, we don't really know the viewport pEnd,
         int vStart = 0;
         int vEnd = 10000;
