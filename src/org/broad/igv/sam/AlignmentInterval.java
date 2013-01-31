@@ -265,7 +265,7 @@ public class AlignmentInterval extends Locus implements Interval {
         if (!canMerge) return false;
 
         AlignmentInterval other = (AlignmentInterval) i;
-
+        if (other == null) return false ;
         List<Alignment> allAlignments = (List<Alignment>) FeatureUtils.combineSortedFeatureListsNoDups(
                 getAlignmentIterator(), other.getAlignmentIterator(), start, end);
 

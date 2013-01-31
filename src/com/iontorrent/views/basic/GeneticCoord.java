@@ -28,7 +28,7 @@ public class GeneticCoord extends GuiObject{
 		setAbsolutePosition(new Point(startx, starty));
 		setAbsoluteSize(new Dimension(40, height));
 		setForeground(Color.black);
-		p("height:"+height);
+		//p("height:"+height);
 	}
 
 // ***************************************************************************

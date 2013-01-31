@@ -145,6 +145,9 @@ public class IGVMenuBar extends JMenuBar {
         // batch script
         MenuAction menuAction = new RunScriptMenuAction("Run Batch Script...", KeyEvent.VK_X, igv);
         menuItems.add(MenuAndToolbarUtils.createMenuItem(menuAction));
+        
+        MenuAction menuAction1 = new RunCommandMenuAction("Run Commands...", KeyEvent.VK_R, igv);
+        menuItems.add(MenuAndToolbarUtils.createMenuItem(menuAction1));
 
         // igvtools
         menuItems.add(new JSeparator());

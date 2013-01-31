@@ -10,7 +10,17 @@ IGV-dist/
 #OS junk files
 [Tt]humbs.db
 *.DS_Store
-
+/make.bat
+/goby-io-igv.jar
+/run.bat
+/batik-codec.jar
+/default.keystore
+/web/keystoreFileName.ks
+/web/batik-codec.jar
+/web/goby-io-igv.jar
+/web/igv.jar
+/tmp
+/testtmp
 #Project files
 build/
 

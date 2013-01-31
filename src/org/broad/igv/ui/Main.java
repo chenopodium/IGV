@@ -333,7 +333,9 @@ public class Main {
         public String getBatchFile() {
             return batchFile;
         }
-
+        public void setSessionFile(String sessionfile) {
+            sessionFile = sessionFile;
+        }
         public String getSessionFile() {
             return sessionFile;
         }

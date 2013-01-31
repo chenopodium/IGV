@@ -45,7 +45,7 @@ public class ZoomCanvas extends BasicTabView
         implements ActionListener, ChangeListener, DrawingCanvas, DrawListener, SelectionEventProducer, ContextActionHandlerIF {
 
     protected static ToolTipManager tipmanager = ToolTipManager.sharedInstance();
-    private static boolean DEBUG = true;
+    private static boolean DEBUG = false;
     public final int DRAG = 1;
     public final int ZOOM = 2;
     public final int SELECT = 3;
@@ -121,7 +121,7 @@ public class ZoomCanvas extends BasicTabView
             zoomslider = new JSlider(SwingConstants.HORIZONTAL);
         }
         zoomslider.setValue(realToSlider(10));
-        setZoomRange(5, 100, 100);
+       
         canvas = new GuiCanvas(new ArrayList<Drawable>(), null, width, height, zoom_x, zoom_y);
         int h = TOP_HEIGHT;
         if (zoom_y) {
@@ -206,7 +206,7 @@ public class ZoomCanvas extends BasicTabView
         createGUI();
         registerEvents();
         setSize(width, height);
-
+        setZoomRange(5, 100, 100);
 
     }
 
@@ -551,17 +551,19 @@ public class ZoomCanvas extends BasicTabView
         setZoomRange(start, end, 100);
     }
 
-    public int sliderToReal(int s) {
-        int r = (int) Math.exp((double) s / 1000.0);
+    public int sliderToReal(int slidervalue) {
+        //int zoomfactor = (int) Math.exp((double) s / 1000.0);
+        int zoomfactor = (int) (slidervalue/ 1000.0);
         //	p("slider -> real:"+s+" ->"+r);
-        return r;
+        return zoomfactor;
 
     }
 
-    public int realToSlider(double r) {
-        int s = (int) (Math.log(r) * 1000.0);
+    public int realToSlider(double zoomfactor) {
+        //int s = (int) (Math.log(r) * 1000.0);
+        int slidervalue = (int) (zoomfactor * 1000);
         //	p("slider -> real:"+s+" ->"+r);
-        return s;
+        return slidervalue;
     }
 
     public double getMaxFactor() {
@@ -574,6 +576,7 @@ public class ZoomCanvas extends BasicTabView
         int zoomstart = Math.max((int) minfactor, start);
         int zoomend = Math.max((int) minfactor, end);
         ignorechange = true;
+        p("Setting slider min-max="+zoomstart+"-"+zoomend+", minfactor is: "+minfactor);
         zoomslider.setMinimum(realToSlider(zoomstart));
         zoomslider.setMaximum(realToSlider(zoomend));
         ignorechange = false;
@@ -926,13 +929,14 @@ public class ZoomCanvas extends BasicTabView
 
     public double getMinFactor() {
         if (viewport == null) {
+            p("Got no viewport yet");
             return 1;
         }
         Dimension extent = viewport.getExtentSize();
         Dimension abssize = canvas.getStartingSize();
 
-        //	p("extent:"+extent.toString());
-        //	p("startsize:"+abssize.toString());
+        p("viewport extent:"+extent.toString());
+        p("canvas startsize:"+abssize.toString());
 
         double ew = extent.getWidth();
         double eh = extent.getHeight();
@@ -943,8 +947,8 @@ public class ZoomCanvas extends BasicTabView
         double minfactorx = ew / vw * multiplier;
         double minfactory = eh / vh * multiplier;
 
-        //	p("extent/absolute: "+eh+"/"+vh);
-        //	p("minfactors:"+minfactorx+"/"+minfactory);
+        p("extent/absolute: "+eh+"/"+vh);
+        p("minfactors:"+minfactorx+"/"+minfactory);
 
         //return 1;
         if (!zoom_x) {
@@ -1077,19 +1081,25 @@ public class ZoomCanvas extends BasicTabView
         if (ignorechange == true) {
             return;
         }
-        //	p("*** state changed ***");
+        p("*** state changed ***");
 
         double minfactor = getMinFactor();
 
-        //	p("old zoomfactor: "+zoomfactor*multiplier);
+        p("minfactor: "+minfactor);
+        p("old zoomfactor: "+zoomfactor*multiplier);
+        if (minfactor*multiplier > zoomfactor) {
+            p("=== minfactor is > than zoomfactor "+zoomfactor);
+            setZoomRange(5, 100, 100);
+        }
         zoomfactor = (double) sliderToReal(zoomslider.getValue());
-        //	p("new zoomfactor: "+zoomfactor+", minfactor: "+minfactor);
+        p("new zoomfactor: "+zoomfactor+", minfactor: "+minfactor);
         //	zoomfactor = zoomfactor/multiplier;
         zoomfactor = Math.max(zoomfactor, minfactor) / multiplier;
-        //	p("zoomfactor:"+zoomfactor+", multiplier is:"+multiplier);
+        p("zoomfactor:"+zoomfactor+", multiplier is:"+multiplier);
 
         adjustCanvas(zoomfactor);
         //	repaint();
+        
 
     }
 

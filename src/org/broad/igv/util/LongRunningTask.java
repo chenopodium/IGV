@@ -10,6 +10,7 @@
  */
 package org.broad.igv.util;
 
+import com.iontorrent.utils.ErrorHandler;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.ui.IGV;
@@ -53,8 +54,8 @@ public class LongRunningTask implements Callable {
         try {
             runnable.run();
         } catch (Exception e) {
-            MessageUtils.showMessage("<html>Unexpected error: " + e.getMessage() + ".<br>See igv.log for more details");
-            log.error("Exception running task", e);
+            MessageUtils.showMessage("<html>Unexpected error: " + e.getMessage() + "<br>"+ErrorHandler.getString(e)+".<br>See igv.log for more details");
+            log.error("Exception running task: "+ErrorHandler.getString(e), e);
         } finally {
             //log.info("Removing wait cursor " + runnable.getName());
             WaitCursorManager.removeWaitCursor(token);

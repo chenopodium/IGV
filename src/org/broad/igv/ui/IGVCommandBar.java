@@ -16,7 +16,7 @@
 package org.broad.igv.ui;
 
 
-import com.iontorrent.views.karyo.KaryoControlPanel;
+import com.iontorrent.karyo.views.KaryoControlPanel;
 import com.jidesoft.hints.ListDataIntelliHints;
 import com.jidesoft.swing.JideBoxLayout;
 import com.jidesoft.swing.JideButton;
@@ -765,7 +765,7 @@ public class IGVCommandBar extends javax.swing.JPanel {
         karyoButton.addActionListener(new java.awt.event.ActionListener() {
 
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                KaryoControlPanel karyo = new KaryoControlPanel(IGV.getMainFrame());
+                KaryoControlPanel karyo = KaryoControlPanel.getPanel(IGV.getMainFrame());
                 karyo.showPanel(1000, 1000);
             }
         });

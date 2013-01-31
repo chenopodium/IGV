@@ -15,6 +15,7 @@ import sun.net.www.protocol.http.AuthCacheImpl;
 
 import biz.source_code.base64Coder.Base64Coder;
 import com.iontorrent.utils.Encryptor;
+import com.iontorrent.utils.ErrorHandler;
 import org.apache.log4j.Logger;
 import org.apache.tomcat.util.HttpDate;
 import org.broad.igv.Globals;
@@ -529,12 +530,12 @@ public class HttpUtils {
 
         HttpURLConnection conn;
 
-        p(" ==== OPEN CONNECTION " + method);
+    //    p(" ==== OPEN CONNECTION " + method);
         if (requestProperties != null) {
             Iterator iter = requestProperties.keySet().iterator();
             for (; iter.hasNext();) {
                 String key = (String) iter.next();
-                //  p("Got request property: " + key + "=" + requestProperties.get(key));
+              //  p("Got request property: " + key + "=" + requestProperties.get(key));
             }
         }
 
@@ -551,8 +552,35 @@ public class HttpUtils {
         } else {
             conn = (HttpURLConnection) url.openConnection();
         }
-
-
+        conn.setUseCaches(false);  // <= very important! due to Java 7 pack.gz issue 
+ // check if URL is ionreporter. We know this if there is a token that has to be passed
+      //  log.info("Checking if I have to set header paramters");
+       
+        
+        try {
+            conn.setConnectTimeout(Globals.CONNECT_TIMEOUT);
+            conn.setReadTimeout(Globals.READ_TIMEOUT);
+            conn.setRequestMethod(method);
+           
+        }        
+        catch (Exception e ) {
+            log.info(ErrorHandler.getString(e));
+        }
+        
+        try {
+             conn.setRequestProperty("Connection", "Keep-Alive");
+        }
+        catch (Exception e ) {
+            log.info(ErrorHandler.getString(e));
+        }
+        
+        if (requestProperties != null) {
+            for (Map.Entry<String, String> prop : requestProperties.entrySet()) {
+                conn.setRequestProperty(prop.getKey(), prop.getValue());
+            }
+        }
+        conn.setRequestProperty("User-Agent", Globals.applicationString());
+       
         if (GSUtils.isGenomeSpace(url)) {
             String token = GSUtils.getGSToken();
             if (token != null) {
@@ -561,29 +589,17 @@ public class HttpUtils {
             conn.setRequestProperty("Accept", "application/json,text/plain");
         } else {
             conn.setRequestProperty("Accept", "text/plain");
+            //conn.setRequestProperty("Accept", "*/*");
         }
-
-        // check if URL is ionreporter. We know this if there is a token that has to be passed
-        this.checkForHeaderParameters(url, conn);
-        
-        conn.setUseCaches(false);  // <= very important! due to Java 7 pack.gz issue 
-        conn.setConnectTimeout(Globals.CONNECT_TIMEOUT);
-        conn.setReadTimeout(Globals.READ_TIMEOUT);
-        conn.setRequestMethod(method);
-        conn.setRequestProperty("Connection", "Keep-Alive");
-        if (requestProperties != null) {
-            for (Map.Entry<String, String> prop : requestProperties.entrySet()) {
-                conn.setRequestProperty(prop.getKey(), prop.getValue());
-            }
-        }
-        conn.setRequestProperty("User-Agent", Globals.applicationString());
+         this.checkForHeaderParameters(url, conn);
 
         if (method.equals("PUT")) {
+            p("Method put");
             return conn;
         } else {
-
+          //  p("Method is GET");
             int code = conn.getResponseCode();
-            p("Got response code: "+code);
+          //  p("Got response code: "+code);
             // Redirects.  These can occur even if followRedirects == true if there is a change in protocol,
             // for example http -> https.
             if (code >= 300 && code < 400) {
@@ -642,18 +658,36 @@ public class HttpUtils {
          // get any header params
          String header_key = pref.get("header_key");
          String header_value = pref.get("header_value");
-         
-         if (header_key != null && header_value != null) {
-             boolean header_encrypt = pref.getAsBoolean("header_encrypt");
-             // by default no ecnryption is assumed.
-             log.info("We got parameters for header key and value: "+header_key+"="+header_value+", ecnryption is: "+header_encrypt+", will add it to connection header");
-             log.info("URL host is: "+url.getHost());
-             if (header_encrypt) {
-                 header_value = Encryptor.decrypt(header_value, url.getHost());                 
-             }
-             conn.setRequestProperty(header_key, header_value);             
+         boolean header_encrypt = pref.getAsBoolean("header_encrypt");
+         if (header_key == null && (url.toString().indexOf("gordo")>-1 || url.toString().indexOf("avocado")>-1)) {
+             log.info("checkForHeaderParameters:FOR TESTING ON GORDO OR AVOCADO, SETTING HEADER KEY AND VALUE");
+             header_key= "Authorization";
+             header_value="__IGV__";
+             header_encrypt = false;
          }
-         
+         if (header_key != null && header_value != null) {
+             
+             // by default no ecnryption is assumed.
+             log.info("checkForHeaderParameters: We got parameters for header key and value: "+header_key+"="+header_value+", ecnryption is: "+header_encrypt+", will add it to connection header");
+             log.info("URL host is: "+url.getHost());
+             if (header_encrypt) { 
+                 p("header encrypt is: "+header_encrypt+", value is: "+header_value+", host is: "+url.getHost());
+                 header_value =  Encryptor.decrypt(header_value, url.getHost());                 
+             }
+             
+             p("checkForHeaderParameters: Setting "+header_key);
+              conn.setRequestProperty("Accept", "*/*");
+             conn.addRequestProperty(header_key, header_value);            
+             
+             for (Iterator<String> headerit = conn.getHeaderFields().keySet().iterator(); headerit != null && headerit.hasNext();) {
+                 String key = headerit.next();
+                 log.info("Got header: "+key+"="+conn.getHeaderFields().get(key));
+             } 
+         }
+         else {
+             //p("Got no header key: "+pref.get("header_key") +"/"+pref.get("header_val"));
+             
+         }
     }
     public void setDefaultPassword(String defaultPassword) {
         this.defaultPassword = defaultPassword.toCharArray();

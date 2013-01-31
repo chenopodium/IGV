@@ -81,6 +81,9 @@ public class CoverageTrack extends AbstractTrack {
     JMenuItem autoscaleItem;
     Genome genome;
 
+    public CoverageDataSource getDataSource() {
+        return dataSource;
+    }
     public void setRenderOptions(AlignmentTrack.RenderOptions renderOptions) {
         this.renderOptions = renderOptions;
     }

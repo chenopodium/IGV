@@ -163,12 +163,18 @@ public class IGVBEDCodec extends UCSCCodec<BasicFeature> implements LineFeatureE
 
         // Thick ends
         if(tokenCount > 7) {
-            try {
-                feature.setThickStart(Integer.parseInt(tokens[6]) - startOffsetValue);
-                feature.setThickEnd(Integer.parseInt(tokens[7]));
+            if (tokens[6].equals(".")) {
+                // . and gene name?
+                feature.setAttribute("gene", tokens[7]);
             }
-            catch (Exception e) {
-                log.info("Cannot parse tokens 6 and 7 as Integers: "+tokens[6]+", "+tokens[7]);
+            else {
+                try {
+                    feature.setThickStart(Integer.parseInt(tokens[6]) - startOffsetValue);
+                    feature.setThickEnd(Integer.parseInt(tokens[7]));
+                }
+                catch (Exception e) {
+                    log.info("Cannot parse tokens 6 and 7 as Integers: "+tokens[6]+", "+tokens[7]);
+                }
             }
         }
 
