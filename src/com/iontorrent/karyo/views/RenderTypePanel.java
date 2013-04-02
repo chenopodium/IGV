@@ -4,10 +4,23 @@
  */
 package com.iontorrent.karyo.views;
 
+import com.iontorrent.guiutils.FlowPanel;
 import com.iontorrent.karyo.data.KaryoTrack;
 import com.iontorrent.karyo.renderer.RenderType;
+import com.iontorrent.utils.BagPanel;
+import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.GridLayout;
+import java.awt.ItemSelectable;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.List;
+import javax.swing.JButton;
 import javax.swing.JColorChooser;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
 
 /**
  *
@@ -17,34 +30,102 @@ public class RenderTypePanel extends javax.swing.JPanel {
 
     RenderType render;
     KaryoTrack track;
+    
+    JLabel lbls[];
+    ColorBtn btns[];
+   int nr;
+    
     /**
      * Creates new form RenderTypePanel
      */
     public RenderTypePanel(RenderType render, KaryoTrack track) {
         initComponents();
+        nr = render.getNrColors();
+        
+        lbls = new JLabel[nr];
+        btns = new ColorBtn[nr];
         this.render = render;
         this.track = track;
-        this.lblName.setText("<html><b>"+render.getName()+"</b> for track "+track.getName()+"</html>");
+       // this.lblName.setText("<html><b>"+render.getName()+"</b> for track "+track.getTrackName()+"</html>");
         this.lblDesc.setText("<html>" +render.getDescription()+"</html>");
-        this.lblColor.setText(render.getColorName());
-        Color c = render.getColor();
-        if (c == null) c = render.getDefaultColor(track);
-        btnColor.setBackground(c);
-       // btnColor.setBackground(c);
-        if (render.getColor1Name() != null) {
-            lblColor1.setText(render.getColor1Name());
-            c = render.getColor1();
-            if (c == null) c = render.getDefaultColor1(track);
-            btnColor1.setBackground(c);
-           // btnColor1.setBackground(c);
+        JPanel pan = new JPanel();
+        BagPanel bag = new BagPanel();
+        pan.setLayout(new BorderLayout());
+        pan.add("Center", bag);
+        panColors.setLayout(new BorderLayout());
+        double cutoff = render.getCutoffScore();
+        txtCutoff.setText(""+cutoff);
+        for (int i = 0; i < nr; i++) {
+            Color c = render.getColor(i);
+            if (c == null) {
+                p("Got no color for render "+render.getName()+" and color "+i+" will use default color ");
+                c = render.getDefaultColor(i);
+            }
+            String name = render.getColorName(i);
+            if (name == null) name = "Color "+i;
+            lbls[i] = new JLabel(name);
+            
+            bag.place(0, i, lbls[i]);
+            ColorBtn btn = new ColorBtn(render.getColorShortName(i), c, true);
+            btn.setToolTipText("<html>"+name+ "<br> "+btn.getColorString()+"<html>");
+           
+            
+            Dimension d = new Dimension(100,24);
+            btn.setMaximumSize(d);
+            btn.setMinimumSize(d);
+            btn.setPreferredSize(d);
+            btn.setSize(d);
+            btn.addActionListener(new BtnListener(btn, i));
+            bag.place(1, i,btn);
+            bag.place(2, i,new JPanel());
+                    
+        }
+        panColors.add("North", pan);
+        List<String> atts  = null;
+        if (track.getMetaInfo() != null) atts = track.getMetaInfo().getAttributes();
+        if (atts == null || atts.size()<1) {
+            this.lblBox.setText("I found no attributes for "+track.getMetaInfo());
+            boxAtts.setVisible(false);
         }
         else {
-            lblColor1.setVisible(false);;
-            btnColor1.setVisible(false);            
+            this.lblBox.setText("Which attribute should be used as 'score'? ");
+            boxAtts.setVisible(true);
+            String scorename = track.getRenderType().getRelevantAttName();
+            for (String att: atts) {
+                this.boxAtts.addItem(att);
+                if (scorename != null && att.equalsIgnoreCase(scorename)) boxAtts.setSelectedItem(att);
+            }
+           
+            if (scorename != null) {
+                p("====== track render type has relevant name: "+scorename);
+                // case INsensitive
+                
+                boxAtts.setSelectedItem(scorename);
+            }
+            else p("Track "+track.getTrackDisplayName()+"/"+track.getRenderType().getName()+" has no relevant att name");
         }
-        
     }
+    private class BtnListener implements ActionListener{
+        int nr;
+        JButton btn;
+          public BtnListener(JButton btn, int nr) {
+              this.nr = nr;
+              this.btn = btn;
+          }
 
+        @Override
+        public void actionPerformed(ActionEvent e) {
+           Color c = JColorChooser.showDialog(null, render.getColorName(nr), render.getColor(nr));
+           if (c != null) {
+               render.setColor(c, nr);
+               btn.setBackground(c);
+               if (nr == 0) track.setColor(c);
+           }
+        }
+    }
+    private void p(String s ){
+        System.out.println("RenderTypePanel: "+s);
+    }
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -54,114 +135,164 @@ public class RenderTypePanel extends javax.swing.JPanel {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        lblName = new javax.swing.JLabel();
+        panColors = new javax.swing.JPanel();
+        panDesc = new javax.swing.JPanel();
+        boxAtts = new javax.swing.JComboBox();
         lblDesc = new javax.swing.JLabel();
-        jPanel1 = new javax.swing.JPanel();
-        lblColor = new javax.swing.JLabel();
-        lblColor1 = new javax.swing.JLabel();
-        btnColor1 = new javax.swing.JButton();
-        btnColor = new javax.swing.JButton();
+        lblBox = new javax.swing.JLabel();
+        jLabel1 = new javax.swing.JLabel();
+        txtCutoff = new javax.swing.JTextField();
 
-        lblName.setText(org.openide.util.NbBundle.getMessage(RenderTypePanel.class, "RenderTypePanel.lblName.text")); // NOI18N
+        panColors.setBorder(javax.swing.BorderFactory.createTitledBorder(org.openide.util.NbBundle.getMessage(RenderTypePanel.class, "RenderTypePanel.panColors.border.title"))); // NOI18N
+        panColors.setLayout(new java.awt.GridLayout(3, 2));
+
+        panDesc.setBorder(javax.swing.BorderFactory.createTitledBorder(org.openide.util.NbBundle.getMessage(RenderTypePanel.class, "RenderTypePanel.panDesc.border.title"))); // NOI18N
+
+        boxAtts.addItemListener(new java.awt.event.ItemListener() {
+            public void itemStateChanged(java.awt.event.ItemEvent evt) {
+                boxAttsItemStateChanged(evt);
+            }
+        });
+        boxAtts.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                boxAttsActionPerformed(evt);
+            }
+        });
+        boxAtts.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusLost(java.awt.event.FocusEvent evt) {
+                boxAttsFocusLost(evt);
+            }
+        });
+        boxAtts.addPropertyChangeListener(new java.beans.PropertyChangeListener() {
+            public void propertyChange(java.beans.PropertyChangeEvent evt) {
+                boxAttsPropertyChange(evt);
+            }
+        });
 
         lblDesc.setText(org.openide.util.NbBundle.getMessage(RenderTypePanel.class, "RenderTypePanel.lblDesc.text")); // NOI18N
 
-        lblColor.setText(org.openide.util.NbBundle.getMessage(RenderTypePanel.class, "RenderTypePanel.lblColor.text")); // NOI18N
+        lblBox.setText(org.openide.util.NbBundle.getMessage(RenderTypePanel.class, "RenderTypePanel.lblBox.text")); // NOI18N
+        lblBox.setToolTipText(org.openide.util.NbBundle.getMessage(RenderTypePanel.class, "RenderTypePanel.lblBox.toolTipText")); // NOI18N
 
-        lblColor1.setText(org.openide.util.NbBundle.getMessage(RenderTypePanel.class, "RenderTypePanel.lblColor1.text")); // NOI18N
+        jLabel1.setText(org.openide.util.NbBundle.getMessage(RenderTypePanel.class, "RenderTypePanel.jLabel1.text")); // NOI18N
 
-        btnColor1.setText(org.openide.util.NbBundle.getMessage(RenderTypePanel.class, "RenderTypePanel.btnColor1.text")); // NOI18N
-        btnColor1.setMaximumSize(new java.awt.Dimension(22, 22));
-        btnColor1.setMinimumSize(new java.awt.Dimension(22, 22));
-        btnColor1.addActionListener(new java.awt.event.ActionListener() {
+        txtCutoff.setText(org.openide.util.NbBundle.getMessage(RenderTypePanel.class, "RenderTypePanel.txtCutoff.text")); // NOI18N
+        txtCutoff.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnColor1ActionPerformed(evt);
+                txtCutoffActionPerformed(evt);
+            }
+        });
+        txtCutoff.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusLost(java.awt.event.FocusEvent evt) {
+                txtCutoffFocusLost(evt);
             }
         });
 
-        btnColor.setText(org.openide.util.NbBundle.getMessage(RenderTypePanel.class, "RenderTypePanel.btnColor.text")); // NOI18N
-        btnColor.setMaximumSize(new java.awt.Dimension(22, 22));
-        btnColor.setMinimumSize(new java.awt.Dimension(22, 22));
-        btnColor.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnColorActionPerformed(evt);
-            }
-        });
-
-        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
-        jPanel1.setLayout(jPanel1Layout);
-        jPanel1Layout.setHorizontalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(lblColor, javax.swing.GroupLayout.PREFERRED_SIZE, 71, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(lblColor1, javax.swing.GroupLayout.PREFERRED_SIZE, 71, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(btnColor1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnColor, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap())
+        javax.swing.GroupLayout panDescLayout = new javax.swing.GroupLayout(panDesc);
+        panDesc.setLayout(panDescLayout);
+        panDescLayout.setHorizontalGroup(
+            panDescLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(panDescLayout.createSequentialGroup()
+                .addGroup(panDescLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(lblDesc, javax.swing.GroupLayout.PREFERRED_SIZE, 464, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(panDescLayout.createSequentialGroup()
+                        .addGroup(panDescLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(panDescLayout.createSequentialGroup()
+                                .addComponent(jLabel1)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                            .addGroup(panDescLayout.createSequentialGroup()
+                                .addComponent(lblBox, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addGap(21, 21, 21)))
+                        .addGroup(panDescLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(boxAtts, 0, 132, Short.MAX_VALUE)
+                            .addComponent(txtCutoff))
+                        .addGap(120, 120, 120)))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
-        jPanel1Layout.setVerticalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(lblColor, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(btnColor, javax.swing.GroupLayout.PREFERRED_SIZE, 22, javax.swing.GroupLayout.PREFERRED_SIZE))
+        panDescLayout.setVerticalGroup(
+            panDescLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(panDescLayout.createSequentialGroup()
+                .addComponent(lblDesc, javax.swing.GroupLayout.PREFERRED_SIZE, 26, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addComponent(lblColor1)
-                        .addGap(8, 8, 8))
-                    .addComponent(btnColor1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                .addGroup(panDescLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(lblBox)
+                    .addComponent(boxAtts, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(panDescLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel1)
+                    .addComponent(txtCutoff, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(lblName, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-            .addComponent(lblDesc, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(0, 252, Short.MAX_VALUE))
+            .addComponent(panDesc, javax.swing.GroupLayout.DEFAULT_SIZE, 466, Short.MAX_VALUE)
+            .addComponent(panColors, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addComponent(lblName)
+                .addComponent(panDesc, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(lblDesc, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addComponent(panColors, javax.swing.GroupLayout.DEFAULT_SIZE, 127, Short.MAX_VALUE))
         );
     }// </editor-fold>//GEN-END:initComponents
 
-    private void btnColorActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnColorActionPerformed
-        Color res= JColorChooser.showDialog(this, "Pick the "+render.getColorName()+" for this track", render.getColor()) ;
-        if (res != null) {
-            render.setColor(res);
-            this.btnColor.setBackground(res);
-        }
-    }//GEN-LAST:event_btnColorActionPerformed
+    private void setRelevantAttribute(String s) {
+        p("==== Setting relevant att name: "+s);
+        this.render.setRelevantAttName(s);
+    }
+    private void boxAttsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_boxAttsActionPerformed
+        p("Got action performed, selectd item is: "+boxAtts.getSelectedItem());
+        setRelevantAttribute(""+boxAtts.getSelectedItem());
+    }//GEN-LAST:event_boxAttsActionPerformed
 
-    private void btnColor1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnColor1ActionPerformed
-        Color res= JColorChooser.showDialog(this, "Pick the "+render.getColor1Name()+" for this track", render.getColor1()) ;
-        if (res != null) {
-            render.setColor1(res);
-            this.btnColor1.setBackground(res);
+    private void boxAttsItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_boxAttsItemStateChanged
+        int state = evt.getStateChange();
+        p((state == evt.SELECTED) ? "Selected" : "Deselected");
+        p("Item: " + evt.getItem());
+        ItemSelectable is = evt.getItemSelectable();
+      //  setRelevantAttribute(""+evt.getItem());
+    }//GEN-LAST:event_boxAttsItemStateChanged
+
+    private void boxAttsPropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_boxAttsPropertyChange
+      //  setRelevantAttribute(""+boxAtts.getSelectedItem());
+    }//GEN-LAST:event_boxAttsPropertyChange
+
+    private void boxAttsFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_boxAttsFocusLost
+         
+        //setRelevantAttribute(""+boxAtts.getSelectedItem());
+    }//GEN-LAST:event_boxAttsFocusLost
+
+    private void getCutoffFromText() {
+        String s = txtCutoff.getText();
+        if (s != null ) {
+            try {
+                double c = Double.parseDouble(s);
+                render.setCutoffScore(c);
+            }
+            catch (Exception e) {
+                p("Could not parse to double: "+s);
+            }
         }
-    }//GEN-LAST:event_btnColor1ActionPerformed
+    }
+        
+    private void txtCutoffActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtCutoffActionPerformed
+        getCutoffFromText();
+    }//GEN-LAST:event_txtCutoffActionPerformed
+
+    private void txtCutoffFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_txtCutoffFocusLost
+       getCutoffFromText();
+    }//GEN-LAST:event_txtCutoffFocusLost
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton btnColor;
-    private javax.swing.JButton btnColor1;
-    private javax.swing.JPanel jPanel1;
-    private javax.swing.JLabel lblColor;
-    private javax.swing.JLabel lblColor1;
+    private javax.swing.JComboBox boxAtts;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel lblBox;
     private javax.swing.JLabel lblDesc;
-    private javax.swing.JLabel lblName;
+    private javax.swing.JPanel panColors;
+    private javax.swing.JPanel panDesc;
+    private javax.swing.JTextField txtCutoff;
     // End of variables declaration//GEN-END:variables
 }

@@ -7,12 +7,17 @@ package com.iontorrent.karyo.views;
 import com.iontorrent.karyo.data.KaryoTrack;
 import com.iontorrent.utils.ErrorHandler;
 import java.awt.BorderLayout;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseListener;
 import java.util.ArrayList;
 import java.util.Collection;
 import javax.swing.BoxLayout;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import org.broad.igv.PreferenceManager;
 import org.broad.igv.sam.CoverageTrack;
 import org.broad.igv.track.AbstractTrack;
 import org.broad.igv.track.DataSourceTrack;
@@ -29,15 +34,35 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
 
     private int nrlisted;
     private ArrayList<KaryoTrack> karyotracks;
-
+    boolean toggleall = true;
+    private ArrayList<SingleTrackPanel> panels;
+    
     /**
      * Creates new form TrackSelectionPanel
      */
     public IgvTrackSelectionPanel(KaryoControlPanel control) {
         initComponents();
-
+        panels = new ArrayList<SingleTrackPanel> ();
         setLayout(new BorderLayout());
-        add("North", new JLabel("Please pick the tracks you wish to see in the Karyo View"));
+        JPanel north = new JPanel();
+        north.setLayout(new BorderLayout());
+        north.add("North",new JLabel("Please pick the tracks you wish to see in the Karyo View") );
+        JButton btnall = new JButton("All/None");
+        north.add("West", btnall);
+        btnall.addActionListener(new ActionListener() {
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                for (SingleTrackPanel cb: panels) {
+                    cb.setSelected(toggleall);
+                }
+                toggleall = !toggleall;
+            }
+            
+        });
+        north.add("North",new JLabel("Please pick the tracks you wish to see in the Karyo View") );
+        add("North", north);
+        
         JPanel center = new JPanel();
         center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
 
@@ -49,60 +74,129 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
         }
 
         MouseListener list = null;
-
+        int count = 0;
         for (Track igvtrack : tracks) {
 
-            p("Got track: " + igvtrack.getName() + ", " + igvtrack.getClass().getName());
+            p("Got track: " + igvtrack.getDisplayName() + ", " + igvtrack.getClass().getName());
             TrackType type = igvtrack.getTrackType();
-            String n = igvtrack.getName();
-            p("Got track " + n + ":" + type);
+            String n = igvtrack.getDisplayName();
+            //  p("Got track " + n + ":" + type);
+            PreferenceManager prefs = PreferenceManager.getInstance();
+            boolean allowbam = prefs.getAsBoolean(prefs.KARYO_ALLOW_BAMFILES);
+            boolean allowgene = prefs.getAsBoolean(prefs.KARYO_ALLOW_GENEFILES);
+            boolean allowexp = prefs.getAsBoolean(prefs.KARYO_ALLOW_EXPFILES);
             try {
                 if (!(igvtrack instanceof AbstractTrack)) {
-                    p("Don't know what to do with this track type");
+                    p("Don't know what to do with this track type " + n + "/" + type);
                 } else {
                     AbstractTrack atrack = (AbstractTrack) igvtrack;
-                    p("Got an abstract track");
-                    KaryoTrack ktrack = new KaryoTrack(atrack);
+                    //   p(n +"/"+type+"/"+atrack.getUrl()+" is an abstract track: "+atrack.getClass().getName());
+                    count++;
+                    KaryoTrack ktrack = new KaryoTrack(atrack, count);
+                    String file = n;
+                    if (ktrack.getTrack().getResourceLocator() != null) {
+                        file = ktrack.getTrack().getResourceLocator().getFileName();
+                    }
+                    p("got track anme "+ktrack.getTrackDisplayName()+" -> "+ktrack.getRenderType().getKaryoDisplayName());
+                    String trackname = ktrack.getRenderType().getKaryoDisplayName();
+                    if (trackname != null) {
+                        // also get sample
+                        String sample = ktrack.getSample();
+                        
+                        if (sample != null) {
+                            sample = Character.toUpperCase(sample.charAt(0)) + sample.substring(1);
+                            trackname = sample+" "+trackname;
+                        }
+                        ktrack.setTrackDisplayName(trackname);
+                    }
                     SingleTrackPanel cb = null;
                     if (atrack instanceof DataSourceTrack) {
-                        cb = new SingleTrackPanel(ktrack, true, control, list);
-                        p("Adding DataSourceTrack");
-                    } else if (atrack instanceof CoverageTrack) {
-                        cb = new SingleTrackPanel(ktrack, true, control, list);
-                        p("Adding CoverageTrack");
-                    } else if (atrack instanceof FeatureTrack) {
-                        if (n.startsWith("RefSeq")) {
-                            // ignore
-                            p("Ignoring RefSeq");
+                        p("It is a datasource track");
+                        if ((n.endsWith(".bam") || n.endsWith(".BAM") || file.endsWith(".bam") || file.endsWith(".BAM"))) {
+                            p(n + "/" + type + ": Got a file with .bam" + n);
+                            // check preferences if we want to use this or not
+                            if (allowbam) {
+                                cb = new SingleTrackPanel(ktrack, true, control, list);
+                                cb.setSelected(false);
+                            }
+                            ktrack.setVisible(false);
                         } else {
+                            cb = new SingleTrackPanel(ktrack, true, control, list);
+                            cb.setSelected(true);
+                            p(n + "/" + type + " : Adding DataSourceTrack");
+                        }
+                    } else if (atrack instanceof CoverageTrack) {
+                        p("It is a CoverageTrack");
+
+                        if (n.endsWith(".bam") || n.endsWith(".BAM") || file.endsWith(".bam") || file.endsWith(".BAM")) {
+                            p("Got a file with .bam:" + n);
+                            if (allowbam) {
+                                cb = new SingleTrackPanel(ktrack, true, control, list);
+                                cb.setSelected(false);
+                            }
+                            // check preferences if we want to use this or not
+                            ktrack.setVisible(false);
+                        } else {
+                            cb = new SingleTrackPanel(ktrack, true, control, list);
+                            p("Adding coverage track");
+                        }
+
+                    } else if (atrack instanceof FeatureTrack) {
+                        p(n + "/" + type + "/" + file + " is a feature track");
+                        if (n.startsWith("RefSeq") || n.indexOf("Ensemble") > -1) {
+                            // ignore
+                            p("Ignoring RefSeq and Ensemble genes");
+                        } else {
+
                             if (type == TrackType.GENE || type == TrackType.CHIP || type == TrackType.EXPR) {
-                                ktrack.setVisible(false);
-                                cb = new SingleTrackPanel(ktrack, true, control, list);
-                                cb.setToolTipText("This type could potentially take long to load");
-                                p("This track could take too long, not adding");
 
-                            } else if (n.endsWith(".bam") || n.endsWith(".BAM")) {
-                                ktrack.setVisible(false);
-                                cb = new SingleTrackPanel(ktrack, true, control, list);
-                                p("This is a bam file");
-                                if (!atrack.getResourceLocator().isLocal()) {
-
-                                    cb.setEnabled(false);
-                                    cb.setText("Bam files can be huge, and this one is remote. It could take too long to load the entire file remotely!"
-                                            + "<br>You can store it locally first and then load it if you really want to.");
+                                if ((allowgene && type == TrackType.GENE) || allowexp) {
+                                    cb = new SingleTrackPanel(ktrack, true, control, list);
+                                    cb.setToolTipText("This type could potentially take long to load");
+                                    p("This track could take too long, not adding");
                                 } else {
-                                    cb.setText("Bam files can be huge, and it could take too long to load the entire file!");
+                                    ktrack.setVisible(false);
+                                }
+
+                            } else if (n.endsWith(".bam") || n.endsWith(".BAM") || file.endsWith(".bam") || file.endsWith(".BAM")) {
+                                p("Got a file with .bam:" + n);
+                                // check preferences if we want to use this or not
+
+
+                                if (allowbam) {
+                                    cb = new SingleTrackPanel(ktrack, true, control, list);
+                                    cb.setSelected(false);
+                                    p("This is a bam file");
+                                    if (!atrack.getResourceLocator().isLocal()) {
+                                        cb.setText("Bam files can be huge, and this one is remote. It could take too long to load the entire file remotely!"
+                                                + "<br>You can store it locally first and then load it if you really want to.");
+                                    } else {
+                                        cb.setText("Bam files can be huge, and it could take too long to load the entire file!");
+                                    }
+                                }
+                            } else if (n.endsWith(".txt.gz") ||  file.endsWith(".txt.gz") ) {
+                                p("Got a file with .txt.gz:" + n);
+
+                                if (allowgene) {
+                                    cb = new SingleTrackPanel(ktrack, true, control, list);
+                                    cb.setSelected(false);
+                                    p("This is a gene file");
+                                    if (!atrack.getResourceLocator().isLocal()) {
+                                        cb.setText("Gene files can be large, and this one is remote. It could take some time to load the entire file remotely!"
+                                                + "<br>You can store it locally first and then load it if you really want to.");                                    
+                                    }
                                 }
                             } else {
-
+                                ktrack.setVisible(false);
                                 cb = new SingleTrackPanel(ktrack, true, control, list);
+                                cb.setSelected(true);
                             }
 
                         }
                     }
                     if (cb != null) {
                         center.add(cb);
-
+                        panels.add(cb);
                         karyotracks.add(ktrack);
                         nrlisted++;
                     }
@@ -113,6 +207,8 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
             }
         }
         this.add("Center", center);
+        
+        
     }
 
     public int getNrListedTracks() {

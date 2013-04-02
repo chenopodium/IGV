@@ -6,16 +6,17 @@ package com.iontorrent.karyo.views;
 
 import com.iontorrent.karyo.data.KaryoTrack;
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.event.ActionListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
+import java.awt.event.MouseListener;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
-import javax.swing.JButton;
-import javax.swing.JDialog;
-import javax.swing.JFrame;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.ListCellRenderer;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
@@ -52,9 +53,14 @@ public class TrackListPanel extends javax.swing.JPanel {
         list = new JList(model);
         list.setPreferredSize(new Dimension(150, 200));
         list.setMinimumSize(new Dimension(150, 200));
-
+        list.setCellRenderer(new PanelCellRenderer());
+        //  DefaultListCellRenderer def;
+        JPanel pl = new JPanel();
+        pl.setBorder(javax.swing.BorderFactory.createTitledBorder(null, org.openide.util.NbBundle.getMessage(SimpleTrackListPanel.class, "SimpleTrackListPanel.border.title"), javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 1, 11))); // NOI18N
+        pl.setLayout(new BorderLayout());
+        pl.add("Center", list);
         for (KaryoTrack t : man.getKaryotracks()) {
-            p("Creating single track panel for " + t.getName() + ": visible=" + t.isVisible());
+            p("Creating single track panel for " + t.getTrackDisplayName() + ": visible=" + t.isVisible());
             if (curTrack == null) {
                 curTrack = t;
             }
@@ -65,6 +71,7 @@ public class TrackListPanel extends javax.swing.JPanel {
         if (man.getKaryoTracks().size() > 0) {
             list.setSelectedIndex(0);
         }
+
         list.addListSelectionListener(new ListSelectionListener() {
             @Override
             public void valueChanged(ListSelectionEvent e) {
@@ -75,42 +82,45 @@ public class TrackListPanel extends javax.swing.JPanel {
                 updateOptions();
             }
         });
-        add("Center", list);
+        add("Center", pl);
         updateOptions();
 
     }
 
-    public static void show(final ActionListener listener, KaryoManager manager, KaryoControlPanel control) {
-//        final JDialog d = new JDialog();
-//        d.setModal(false);
-            TrackListPanel tp = new TrackListPanel(manager, control);
-//        d.setLayout(new BorderLayout());
-//        d.add("Center", tp);
-//        d.setVisible(true);
-//        d.setAlwaysOnTop(true);
-//        d.setAutoRequestFocus(true);
-//       
-//        JButton ok = new JButton("OK");
-//        d.add("South", ok);
-//        d.setTitle("Track Rendering Options");
-//        d.setSize(500, 400);
-//        ok.addActionListener(listener);
-//        d.addWindowListener(new WindowAdapter() {
-//            @Override
-//            public void windowClosing(WindowEvent e) {
-//                listener.actionPerformed(null);
-//                d.dispose();
-//            }
-//        });
-//        d.pack();
-//        d.setSize(800, 600);
-//        d.setVisible(true);
-        int ans = JOptionPane.showConfirmDialog(control, tp, "Track Rendering Options", JOptionPane.OK_OPTION);
-        if (ans == JOptionPane.OK_OPTION) {
-            listener.actionPerformed(null);
+    private class PanelCellRenderer implements ListCellRenderer {
+
+        @Override
+        public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+            KaryoTrack t = (KaryoTrack) value;
+            Color bg = Color.white;
+            Color fg = Color.black;
+            if (isSelected) {
+                bg = list.getSelectionBackground();
+                fg = list.getSelectionForeground();
+            } else {
+                bg = list.getBackground();
+                fg = list.getForeground();
+            }
+
+            SingleTrackPanel pan = new SingleTrackPanel(isSelected, bg, fg, false, t, false, null, null);
+            return pan;
         }
-        
     }
+
+    public static void show(final ActionListener listener, KaryoManager manager, KaryoControlPanel control) {
+        TrackListPanel tp = new TrackListPanel(manager, control);
+
+        
+        int ans = JOptionPane.showConfirmDialog(control, tp, "Track Details",  JOptionPane.OK_OPTION,JOptionPane.INFORMATION_MESSAGE);
+        if (ans == JOptionPane.OK_OPTION) {
+            // NOW SAVE THE SETTINGS
+            
+            listener.actionPerformed(null);
+         
+        }
+
+    }
+   
 
     private void updateOptions() {
         p("Updating options");
@@ -140,7 +150,7 @@ public class TrackListPanel extends javax.swing.JPanel {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        setBorder(javax.swing.BorderFactory.createTitledBorder(null, org.openide.util.NbBundle.getMessage(SimpleTrackListPanel.class, "SimpleTrackListPanel.border.title"), javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 1, 11))); // NOI18N
+
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);

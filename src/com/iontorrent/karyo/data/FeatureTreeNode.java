@@ -14,6 +14,7 @@ import org.broad.igv.sam.CoverageTrack;
 import org.broad.igv.track.AbstractTrack;
 import org.broad.igv.track.DataSourceTrack;
 import org.broad.igv.track.FeatureTrack;
+import org.broad.igv.util.RuntimeUtils;
 import org.broad.tribble.Feature;
 
 /**
@@ -23,7 +24,7 @@ import org.broad.tribble.Feature;
 public class FeatureTreeNode {
 
     private static final int MB = 1000000;
-    private static final int SMALLEST_GENOMIC_REGION = 100 * MB;
+    private static final int SMALLEST_GENOMIC_REGION = 10 * MB;
     protected int totalNrChildren;
     private int start;
     private int end;
@@ -35,6 +36,7 @@ public class FeatureTreeNode {
     private boolean compact;
     private int MAX_FEATURES_BEFORE_COMPACT = 100;
     // filter
+    private int errors = 0;
     private int nrFilterPassed;
 
     public FeatureTreeNode(AbstractTrack source, String chr, int start, int end, int nrbuckets) {
@@ -167,14 +169,38 @@ public class FeatureTreeNode {
             return;
         }
         features = new ArrayList<KaryoFeature>();
-        List res = loadFeatures_r(chr, start, end);
+        List res = loadFeatures_r(chr, start, end-1);
         if (res != null) {
+            if (res.size()>1000) {
+                p("Got "+res.size()+" features at "+chr+":"+start+"-"+end+" , checking memory");
+                boolean ok= checkMemory();
+                if (!ok) return;
+            }
             for (Object o : res) {
                 Feature f = (Feature) o;
-                features.add(new KaryoFeature(f));
+                // sanity check
+                if (f.getEnd()<start || f.getStart()> end) {
+//                    if (errors <10) p("FEATURE "+f.getStart()+"-"+f.getEnd()+" NOT IN RANGE "+start+"-"+end);
+//                    errors++;
+                }
+                else features.add(new KaryoFeature(f));
             }
         }
         
+    }
+
+    private synchronized boolean checkMemory() {
+        if (RuntimeUtils.getAvailableMemoryFraction() < 0.1) {
+            p("Running low on memory");
+            System.gc();
+            if (RuntimeUtils.getAvailableMemoryFraction() < 0.1) {
+                int maxmb = (int) (Runtime.getRuntime().maxMemory() / 1000000);
+                p("Still low on memory after system.gc. Max is "+maxmb);                
+                return false;
+            }
+
+        }
+        return true;
     }
 
     protected List loadFeatures_r(String chr, int start, int end) {
@@ -182,29 +208,31 @@ public class FeatureTreeNode {
         if (!chr.startsWith("chr")) {
             chr = "chr" + chr;
         }
-        p(source.getName() + ": loadFeatures");
+       // p(source.getName() + ": loadFeatures");
 
         List res = null;
         if (source instanceof CoverageTrack) {
             CoverageTrack ctrack = (CoverageTrack) source;
-            res = ctrack.getDataSource().getSummaryScoresForRange(chr, start, end, zoom);
-            p("Loading coverage info from CoverageTrack track NOT DONE");
+            if (ctrack != null && ctrack.getDataSource() != null) {
+                res = ctrack.getDataSource().getSummaryScoresForRange(chr, start, end, zoom);
+   //             p("Loading coverage info from CoverageTrack track NOT DONE");
+            }
             features = new ArrayList<KaryoFeature>();
 
 
         } else if (source instanceof DataSourceTrack) {
-            p("Loading data for DataSourceTrack ");
+ //           p("Loading data for DataSourceTrack ");
             DataSourceTrack ctrack = (DataSourceTrack) source;
             res = ctrack.getSummaryScores(chr, start, end, zoom);
 
         } else if (source instanceof FeatureTrack) {
-            p("Loading features from feature track");
+          //  p("Loading features from feature track");
             FeatureTrack fsource = (FeatureTrack) source;
             res = fsource.getFeatures(chr, getStart(), getEnd());
         } else if (source instanceof FakeTrack) {
-            p("Loading FeatureTrack");
+        //    p("Loading FakeTrack");
             FakeTrack fsource = (FakeTrack)source;
-            res = fsource.getFeatures(chr, 0, chr.length());
+            res = fsource.getFeatures(chr, getStart(), getEnd());
         
         } else {
             err("========= Got abstract track " + source.getClass().getName() + ", not sure how to load anything");
@@ -231,7 +259,9 @@ public class FeatureTreeNode {
             }
         } else {
             int b1 = getBucket(f.getStart());
-            int b2 = getBucket(f.getEnd());
+            int end = f.getEnd();
+            if (end > f.getStart()) end = end-1;
+            int b2 = getBucket(end);
 
             for (int b = b1; b <= b2 && b < nodes.length; b++) {
                 if (b >= 0) {
@@ -244,7 +274,7 @@ public class FeatureTreeNode {
                             // if small genome region, just store all features there and do not recurse any further                    
                             childbuckets = 0; // leaf!
                         }
-                        nodes[b] = new FeatureTreeNode(source, chr, bucketstart, bucketend, childbuckets);
+                        nodes[b] = new FeatureTreeNode(source, chr, bucketstart, bucketend-1, childbuckets);
                     }
                     getNodes()[b].addFeature(f);
                 }
@@ -292,13 +322,13 @@ public class FeatureTreeNode {
         if (isLeaf()) {
             // find feat
             if (features != null && features.size() > 0) {
-                p("Finding which of " + features.size() + " features is at " + location + ", start-end=" + start + "-" + end);
+              //  p("Finding which of " + features.size() + " features is at " + location + ", start-end=" + start + "-" + end);
                 if (location < start || location > end) {
                     p("Should not be in this tree node! Location off");
                 }
                 for (KaryoFeature f : features) {
                     // just appoximately, such as for tool tip text
-                    if (f.getStart() - errortolerance <= location && f.getEnd() + errortolerance >= location) {
+                    if (f.getStart() - errortolerance <= location && f.getEnd() + errortolerance > location) {
                         // p("   checking " + f.getStart() + "-" + f.getEnd());
                         res.add(f);
                     }
@@ -326,8 +356,8 @@ public class FeatureTreeNode {
             if (features == null && this.totalNrChildren > 0) {
                 loadFeatures();
             }
-            if (this.getTotalNrChildren() != features.size()) {
-                err("getAllFeatures: Total nr children " + getTotalNrChildren() + ", but loaded features:" + features.size());
+            if (this.getTotalNrChildren() <features.size()) {
+                p("getAllFeatures for "+this.chr+":"+this.getStart()+"-"+this.getEnd()+": Total nr children " + getTotalNrChildren() + ", but loaded features:" + features.size());
             }
             //   if (debug) p("getAllFeatures: leaf. "+this);
             return features;
@@ -388,6 +418,6 @@ public class FeatureTreeNode {
         Logger.getLogger("FeatureTreeNode").warning(s);
         Exception e = new Exception("FATAL ERROR IN FeatureTreeNode: " + s);
         Logger.getLogger("FeatureTreeNode").warning(ErrorHandler.getString(e));
-        System.exit(0);
+      //  System.exit(0);
     }
 }

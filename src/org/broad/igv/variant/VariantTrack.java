@@ -541,7 +541,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         g2D.setColor(Color.black);
         rect.height = variantBandHeight;
         if (rect.intersects(visibleRectangle)) {
-            GraphicUtils.drawWrappedText(getName(), rect, g2D, false);
+            GraphicUtils.drawWrappedText(getDisplayName(), rect, g2D, false);
         }
 
         rect.y += rect.height;

@@ -4,8 +4,12 @@
  */
 package com.iontorrent.karyo.views;
 
+import com.iontorrent.karyo.data.KaryoFeature;
 import com.iontorrent.karyo.data.KaryoTrack;
+import com.iontorrent.utils.StringTools;
 import java.awt.Color;
+import org.broad.igv.util.ResourceLocator;
+import org.broad.tribble.Feature;
 
 /**
  *
@@ -14,37 +18,64 @@ import java.awt.Color;
 public class TrackOptionsPanel extends javax.swing.JPanel {
     KaryoTrack track;
     RenderOptionsPanel render;
+    
     /**
      * Creates new form TrackOptionsPanel
      */
     public TrackOptionsPanel(KaryoTrack track) {
         initComponents();
+        
         this.track = track;
-        this.lblTrack.setText("<html><b><h2>Details for "+track.getName()+"</h2></b></html>");
-        setColor(track.getColor());
-        this.txtName.setText(track.getName());
+        this.lblTrack.setText("<html><b><h2>"+track.getTrackDisplayName()+"</h2></b></html>");
+        String source = "Unknown";
+        String type = "Unknown";
+        ResourceLocator loc = track.getTrack().getResourceLocator();
+        if (loc != null) {
+            source = loc.getPath();
+            source = StringTools.addNL(source, "<br>", 60);
+            type = track.getFileExt();
+            
+        }
+        this.lblType.setText(type);
+        
+        String example = "No example features found";
+        Feature f = track.getSampleafeture();
+        if (f != null) {
+            KaryoFeature kf = new KaryoFeature(f);
+            example = "<html>"+kf.toHtml()+"</html>";
+        }
+        
+       
+        areaExample.setContentType("text/html");
+        this.areaExample.setText(example);
+        this.lblSource.setText("<html>"+source+"</html>");
+     //   setColor(track.getColor());
+        this.txtName.setText(track.getTrackDisplayName());
         this.txtShort.setText(track.getShortName());
         lblName.setToolTipText(track.toString());
         render = new RenderOptionsPanel(track);
-        tab.addTab("Rendering options", render);
+       
+        tab.addTab("Rendering options", null, render,"Define how this track is rendered");
+        //tab.insertTab("Rendering options", null, render,"Define how this track is rendered", 0);
+        tab.setSelectedIndex(0);
     }
-    private Color getColor() {
-        return colorChooser.getColor();
-    }
-    public void setColor(Color c) {
-        colorChooser.setColor(c);
-    }
+//    private Color getColor() {
+//        return colorChooser.getColor();
+//    }
+//    public void setColor(Color c) {
+//        colorChooser.setColor(c);
+//    }
 
     private String getTrackName() {
         return txtName.getText();
     }
     public void updateTrack() {
         String n =getTrackName();
-        if (n != null && n.length()>0) track.setName(n);
+        if (n != null && n.length()>0) track.setTrackDisplayName(n);
         n =this.txtShort.getText();
         if (n != null && n.length()>0) track.setShortname(n);
-        Color c = getColor();
-        if (c != null) track.setColor(c);
+//        Color c = getColor();
+//        if (c != null) track.setColor(c);
     }
     /**
      * This method is called from within the constructor to initialize the form.
@@ -62,7 +93,13 @@ public class TrackOptionsPanel extends javax.swing.JPanel {
         lblName = new javax.swing.JLabel();
         jLabel1 = new javax.swing.JLabel();
         txtName = new javax.swing.JTextField();
-        colorChooser = new javax.swing.JColorChooser();
+        jLabel2 = new javax.swing.JLabel();
+        jLabel3 = new javax.swing.JLabel();
+        lblSource = new javax.swing.JLabel();
+        jLabel4 = new javax.swing.JLabel();
+        lblType = new javax.swing.JLabel();
+        jScrollPane2 = new javax.swing.JScrollPane();
+        areaExample = new javax.swing.JEditorPane();
 
         setLayout(new java.awt.BorderLayout());
 
@@ -70,12 +107,25 @@ public class TrackOptionsPanel extends javax.swing.JPanel {
         add(lblTrack, java.awt.BorderLayout.PAGE_START);
 
         txtShort.setText(org.openide.util.NbBundle.getMessage(TrackOptionsPanel.class, "TrackOptionsPanel.txtShort.text")); // NOI18N
+        txtShort.setToolTipText(org.openide.util.NbBundle.getMessage(TrackOptionsPanel.class, "TrackOptionsPanel.txtShort.toolTipText")); // NOI18N
 
         lblName.setText(org.openide.util.NbBundle.getMessage(TrackOptionsPanel.class, "TrackOptionsPanel.lblName.text")); // NOI18N
 
         jLabel1.setText(org.openide.util.NbBundle.getMessage(TrackOptionsPanel.class, "TrackOptionsPanel.jLabel1.text")); // NOI18N
 
         txtName.setText(org.openide.util.NbBundle.getMessage(TrackOptionsPanel.class, "TrackOptionsPanel.txtName.text")); // NOI18N
+
+        jLabel2.setText(org.openide.util.NbBundle.getMessage(TrackOptionsPanel.class, "TrackOptionsPanel.jLabel2.text")); // NOI18N
+
+        jLabel3.setText(org.openide.util.NbBundle.getMessage(TrackOptionsPanel.class, "TrackOptionsPanel.jLabel3.text")); // NOI18N
+
+        lblSource.setText(org.openide.util.NbBundle.getMessage(TrackOptionsPanel.class, "TrackOptionsPanel.lblSource.text")); // NOI18N
+
+        jLabel4.setText(org.openide.util.NbBundle.getMessage(TrackOptionsPanel.class, "TrackOptionsPanel.jLabel4.text")); // NOI18N
+
+        lblType.setText(org.openide.util.NbBundle.getMessage(TrackOptionsPanel.class, "TrackOptionsPanel.lblType.text")); // NOI18N
+
+        jScrollPane2.setViewportView(areaExample);
 
         javax.swing.GroupLayout panNameLayout = new javax.swing.GroupLayout(panName);
         panName.setLayout(panNameLayout);
@@ -84,13 +134,26 @@ public class TrackOptionsPanel extends javax.swing.JPanel {
             .addGroup(panNameLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(panNameLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel1)
-                    .addComponent(lblName, javax.swing.GroupLayout.PREFERRED_SIZE, 68, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(panNameLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(txtName, javax.swing.GroupLayout.PREFERRED_SIZE, 216, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(txtShort, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(panNameLayout.createSequentialGroup()
+                        .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 87, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(0, 0, Short.MAX_VALUE))
+                    .addGroup(panNameLayout.createSequentialGroup()
+                        .addGroup(panNameLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                            .addComponent(jLabel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(lblName, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 68, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jLabel3, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(panNameLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(lblSource, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addGroup(panNameLayout.createSequentialGroup()
+                                .addGroup(panNameLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(txtName, javax.swing.GroupLayout.PREFERRED_SIZE, 216, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(txtShort, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(lblType))
+                                .addGap(0, 0, Short.MAX_VALUE)))))
                 .addContainerGap())
+            .addComponent(jScrollPane2, javax.swing.GroupLayout.Alignment.TRAILING)
         );
         panNameLayout.setVerticalGroup(
             panNameLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -103,19 +166,35 @@ public class TrackOptionsPanel extends javax.swing.JPanel {
                 .addGroup(panNameLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel1)
                     .addComponent(txtShort, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap())
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(panNameLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(lblSource)
+                    .addComponent(jLabel3))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(panNameLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel4)
+                    .addComponent(lblType))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 57, Short.MAX_VALUE)
+                .addComponent(jLabel2)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 133, javax.swing.GroupLayout.PREFERRED_SIZE))
         );
 
         tab.addTab(org.openide.util.NbBundle.getMessage(TrackOptionsPanel.class, "TrackOptionsPanel.panName.TabConstraints.tabTitle"), panName); // NOI18N
-        tab.addTab(org.openide.util.NbBundle.getMessage(TrackOptionsPanel.class, "TrackOptionsPanel.colorChooser.TabConstraints.tabTitle"), colorChooser); // NOI18N
 
         add(tab, java.awt.BorderLayout.CENTER);
     }// </editor-fold>//GEN-END:initComponents
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JColorChooser colorChooser;
+    private javax.swing.JEditorPane areaExample;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JLabel lblName;
+    private javax.swing.JLabel lblSource;
     private javax.swing.JLabel lblTrack;
+    private javax.swing.JLabel lblType;
     private javax.swing.JPanel panName;
     private javax.swing.JTabbedPane tab;
     private javax.swing.JTextField txtName;

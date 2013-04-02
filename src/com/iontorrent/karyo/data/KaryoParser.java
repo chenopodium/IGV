@@ -76,7 +76,7 @@ band hs1 p36.23 p36.23 7100000 9200000 gpos25
         Chromosome chr = new  Chromosome( name,  chrid,  length,  type);
         chromosomes.add(chr);
         chrmap.put(chrid, chr);
-      //   p("Got a chr: "+chr);
+         p("Got a chr: "+chr);
         
     }
     private void processBand(ArrayList<String> items ) {
@@ -89,8 +89,23 @@ band hs1 p36.23 p36.23 7100000 9200000 gpos25
         String chrid = items.get(1);
         long start = Integer.parseInt(items.get(4));
         long end = Integer.parseInt(items.get(5));
-        String type = items.get(6);
-        Band band = new  Band( name,  chrid,  start,  end,  type);
+        String stype = items.get(6);
+        short stain = 0;
+        char type = 'n';
+        if (stype.startsWith("gneg")) {
+            type = 'n';            
+        }
+        else if (stype.startsWith("gpos")) {
+            type = 'p';
+            stain = Short.parseShort(stype.substring(3));
+        }
+        else if (stype.startsWith("acen")) {
+            type = 'c';            
+        }
+        else if (stype.startsWith("gvar")) {
+            type = 'v';            
+        }
+        Band band = new  Band( name,  chrid,  start,  end,  type, stain);
         bands.add(band);
         
         Chromosome chr =  chrmap.get(chrid);

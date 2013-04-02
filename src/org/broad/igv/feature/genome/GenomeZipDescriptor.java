@@ -53,7 +53,7 @@ public class GenomeZipDescriptor extends GenomeDescriptor {
                 sequenceLocation, chromosomesAreOrdered, fasta, fastaDirectory, fastaFileNameString);
         this.zipEntries = zipEntries;
         this.genomeZipFile = genomeZipFile;
-
+        log.info("Created GenomeZipDescriptor for seq: "+sequenceLocation);
     }
 
     public InputStream getCytoBandStream()

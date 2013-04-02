@@ -23,7 +23,7 @@ public class ScoreFilterPanel extends FilterPanel {
         initComponents();
         this.jLabel1.setName(name);
         Range r = track.getMetaInfo().getRangeForAttribute("Score");
-        p("Range for "+track.getName()+" is:"+r);
+        p("Range for "+track.getTrackDisplayName()+" is:"+r);
         SpinnerNumberModel model = (SpinnerNumberModel) this.smin.getModel();
         model.setMaximum(r.max);
         model.setMinimum(r.min);
@@ -87,13 +87,13 @@ public class ScoreFilterPanel extends FilterPanel {
 
     @Override
     public void updateFilter() {
-        Range r = new Range();
-        
-        double min = ((Number) (smin.getValue())).doubleValue();
-        double max = ((Number) (smax.getValue())).doubleValue();
-        r.min = min;
-        r.max = max;
-        p("Updating LocusScore filter with range "+r);
-        ((LocusScoreFilter) filter).setRange(r);
+//        Range r = new FeatureMetaInfo.Range();
+//        
+//        double min = ((Number) (smin.getValue())).doubleValue();
+//        double max = ((Number) (smax.getValue())).doubleValue();
+//        r.min = min;
+//        r.max = max;
+//        p("Updating LocusScore filter with range "+r);
+//        ((LocusScoreFilter) filter).setRange(r);
     }
 }

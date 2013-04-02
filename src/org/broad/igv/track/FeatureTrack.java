@@ -196,7 +196,7 @@ public class FeatureTrack extends AbstractTrack {
         try {
             renderer = (FeatureRenderer) rc.newInstance();
         } catch (Exception ex) {
-            log.error("Error instatiating renderer ", ex);
+            log.error("Error instatiating renderer for class "+rc.getName(), ex);
         }
     }
 
@@ -372,7 +372,11 @@ public class FeatureTrack extends AbstractTrack {
         try {
             Iterator<Feature> iter = source.getFeatures(chr, start, end);
             while (iter.hasNext()) {
-                features.add(iter.next());
+                Feature f = iter.next();
+                if (f.getStart()>end || f.getEnd()<start ) {
+                    // not adding it, it does not overlap!
+                }
+                else features.add(f);
             }
         } catch (IOException e) {
             throw new RuntimeException(e);

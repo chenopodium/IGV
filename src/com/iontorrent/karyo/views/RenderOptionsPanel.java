@@ -28,21 +28,36 @@ public class RenderOptionsPanel extends javax.swing.JPanel {
      RenderType render;
      RenderManager manager;
      ArrayList<RenderType> renderers;
+     
     /**
      * Creates new form RenderOptionsPanel
      */
     public RenderOptionsPanel( KaryoTrack track) {
+        
         initComponents();
         this.track = track;
         this.render = track.getRenderType();
-        manager = new RenderManager();
-        ArrayList<RenderType> allrenderers = manager.getRenderTypes();
-        renderers = manager.getRenderTypes(allrenderers, track);
+        manager = RenderManager.getManager();
+        renderers = track.getRendererTypes();
+        if (renderers == null || renderers.size()<1) {
+            renderers = manager.getRenderTypes(manager.getRenderTypes(track), track);            
+            track.setRendererTypes(renderers);
+        }        
         panRenderDetails.setLayout(new BorderLayout());
         this.boxRender.removeAllItems();
         boxRender.setModel(new DefaultComboBoxModel() );
+        RenderType sel = track.getRenderType();
         for (RenderType r: renderers) {
-            boxRender.addItem(r);
+            if (sel != null) {
+                if (r.getClass() == sel.getClass()) boxRender.addItem(sel);
+                else boxRender.addItem(r);
+            }
+            else boxRender.addItem(r);
+        }
+        
+        if (sel != null) {
+            // 
+            boxRender.setSelectedItem(sel);
         }
         p("Adding event listeners to box ");
         this.boxRender.addActionListener(new ActionListener(){
@@ -70,9 +85,9 @@ public class RenderOptionsPanel extends javax.swing.JPanel {
     }
 
     private void renderSelected() {
-        p("==== RENDER SELECTED ===");
+      //  p("==== RENDER SELECTED ===");
         render = (RenderType) boxRender.getSelectedItem();
-        p("RenderType got selected: "+render);
+     //   p("RenderType got selected: "+render);
         if (render != null) {
             track.setRenderType(render);
         }
@@ -83,7 +98,7 @@ public class RenderOptionsPanel extends javax.swing.JPanel {
         System.out.println("RenderOptionPanel: "+s);
     }
     private void updateRenderDetail() {
-        p("updateRenderDetail" );
+     //   p("updateRenderDetail" );
         panRenderDetails.removeAll();
         if (render == null) {
             this.panRenderDetails.add(new JLabel("No renderer selected"));
@@ -109,7 +124,6 @@ public class RenderOptionsPanel extends javax.swing.JPanel {
         boxRender = new javax.swing.JComboBox();
         panRenderDetails = new javax.swing.JPanel();
 
-        jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder(null, org.openide.util.NbBundle.getMessage(RenderOptionsPanel.class, "RenderOptionsPanel.jPanel1.border.title"), javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 1, 11))); // NOI18N
         jPanel1.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
 
         boxRender.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Single histogram", "Heat map", "Two histograms (for gains/losses)", "Point plot (such as for CNV)", "Chromsome shading", " " }));
@@ -132,7 +146,7 @@ public class RenderOptionsPanel extends javax.swing.JPanel {
         );
         panRenderDetailsLayout.setVerticalGroup(
             panRenderDetailsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 251, Short.MAX_VALUE)
+            .addGap(0, 274, Short.MAX_VALUE)
         );
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
@@ -141,7 +155,7 @@ public class RenderOptionsPanel extends javax.swing.JPanel {
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addComponent(boxRender, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(0, 202, Short.MAX_VALUE))
+                .addGap(0, 225, Short.MAX_VALUE))
             .addComponent(panRenderDetails, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
         jPanel1Layout.setVerticalGroup(

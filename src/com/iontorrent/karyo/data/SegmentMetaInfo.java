@@ -15,9 +15,13 @@ import org.broad.tribble.Feature;
  */
 public class SegmentMetaInfo extends FeatureMetaInfo {
 
+    public SegmentMetaInfo(String name){
+        super(name);
+    }
     @Override
     public void populateMetaInfo(Feature f) {
         if (!(f instanceof Segment)) {
+            p("Feature is not a segement: "+f.getClass().getName());
             return;
         }
         Segment s = (Segment) f;

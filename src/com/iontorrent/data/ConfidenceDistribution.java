@@ -60,7 +60,7 @@ public class ConfidenceDistribution {
         if (exp == null) {
             exp = new ExperimentContext();
         }
-        p("---- computeConfidence for alignment "+sam.getReadName()+" -----");
+        p("---- computeConfidence for alignment " + sam.getReadName() + " -----");
         FlowSeq flowseq = null;
         if (!sam.hasComputedConfidence()) {
             exp.setFlowOrder(sam.getFlowOrder());
@@ -75,14 +75,14 @@ public class ConfidenceDistribution {
             }
             flowseq = exp.computePredictedSignal(key + seq);
             sam.setFlowseq(flowseq);
-            
+
             float[] signals = sam.getRawFlowSignals();
             for (int f = sam.getFlowSignalsStart(); f < flowseq.getLength(); f++) {
                 FlowValue fv = flowseq.getFlow(f);
                 int flow = fv.getFlowPosition();
-                fv.setRawFlowvalue((int) signals[flow-sam.getFlowSignalsStart()]);
+                fv.setRawFlowvalue((int) signals[flow - sam.getFlowSignalsStart()]);
             }
-            
+
             exp.computeConfidence(flowseq.getFlowValues());
         } else {
             flowseq = sam.getFlowseq();
@@ -103,7 +103,7 @@ public class ConfidenceDistribution {
                                     if (flow < flowseq.getLength()) {
                                         FlowValue fvPred = flowseq.getFlow(flow);
                                         fvBlock.setConfidence(fvPred.getConfidence());
-                                        fvBlock.setPredictedValue(fvPred.getPredictedValue());                                     
+                                        fvBlock.setPredictedValue(fvPred.getPredictedValue());
                                     }
                                 }
                             }
@@ -113,7 +113,6 @@ public class ConfidenceDistribution {
             }
         }
     }
-    
 
     public static ArrayList<ConfidenceDistribution> extractDistributions(AlignmentDataManager dataManager, ReferenceFrame frame, int location, boolean forward, boolean reverse) {
         ArrayList< ArrayList<FlowValue>> allelelists = new ArrayList< ArrayList<FlowValue>>();
@@ -127,8 +126,8 @@ public class ConfidenceDistribution {
         ArrayList<ConfidenceDistribution> alleledist = new ArrayList<ConfidenceDistribution>();
         String bases = "";
         // also store information on read and position
-        
-        p("---- extractDistributions at "+location+" -----");
+
+        p("---- extractDistributions at " + location + " -----");
         ArrayList<ArrayList<ReadInfo>> allelereadinfos = new ArrayList<ArrayList<ReadInfo>>();
         for (AlignmentInterval interval : dataManager.getLoadedIntervals()) {
             Iterator<Alignment> alignmentIterator = interval.getAlignmentIterator();
@@ -190,16 +189,19 @@ public class ConfidenceDistribution {
 
                     flowseq = exp.computePredictedSignal(key + seq);
                     sam.setFlowseq(flowseq);
-                    
+
                     float[] signals = sam.getRawFlowSignals();
                     hasOld = sam.getOldSignals() != null;
                     for (int f = sam.getFlowSignalsStart(); f < flowseq.getLength(); f++) {
                         FlowValue fv = flowseq.getFlow(f);
                         int flow = fv.getFlowPosition();
                         if (flow != f) {
-                            p("flow nr out of order:"+f+"/"+flow);
+                            p("flow nr out of order:" + f + "/" + flow);
                         }
-                        fv.setRawFlowvalue((int) signals[flow-sam.getFlowSignalsStart()]);
+                        int pos = flow - sam.getFlowSignalsStart();
+                        if (pos <signals.length) {
+                            fv.setRawFlowvalue((int) signals[pos]);
+                        }
                     }
 
                     // p("Computing conf for read "+sam.getReadName()); 
@@ -213,52 +215,60 @@ public class ConfidenceDistribution {
                 AlignmentBlock[] blocks = alignment.getAlignmentBlocks();
                 for (int i = 0; i < blocks.length; i++) {
                     AlignmentBlock block = blocks[i];
-                    int posinblock = (int) location - block.getStart();
-                    if (!block.contains((int) location) || !block.hasFlowSignals()) {
-                        continue;
+                    if (block.hasFlowSignals()) {
+                        int posinblock = (int) location - block.getStart();
+                        if (!block.contains((int) location) || !block.hasFlowSignals()) {
+                            continue;
+                        }
+
+                        int flownr = block.getFlowSignalSubContext(posinblock).getFlowOrderIndex();
+                        nrflows++;
+                       FlowSignalSubContext sub= block.getFlowSignalSubContext(posinblock);
+                       if (sub != null && sub.hasFlowValues()) {
+                            FlowValue fvBlock = sub.getCurrentValue();
+                            short rawflowSignal = (short) fvBlock.getRawFlowvalue();
+
+                            char base = (char) block.getBase(posinblock);
+
+                            int whichbase = bases.indexOf(base);
+                            ArrayList<FlowValue> flowlist = null;
+                            ArrayList<ReadInfo> readinfos = null;
+                            if (whichbase < 0) {
+                                bases += base;
+                                flowlist = new ArrayList<FlowValue>();
+                                allelelists.add(flowlist);
+                                readinfos = new ArrayList<ReadInfo>();
+                                allelereadinfos.add(readinfos);
+                            } else {
+                                flowlist = allelelists.get(whichbase);
+                                readinfos = allelereadinfos.get(whichbase);
+                            }
+                            FlowValue fvPred = flowseq.getFlow(flownr);
+                            int hp = fvPred.getHpLen();
+                            //  public FlowValue(int flowvalue, int flowposition, char base, int location_in_sequence, boolean empty, char alignmentbase) {
+                            FlowValue fv = new FlowValue(hp, rawflowSignal, flownr, base, location, false, base);
+
+                            fvPred.setOldvalue(fvBlock.getOldvalue());
+                            fvBlock.setConfidence(fvPred.getConfidence());
+                            fvBlock.setPredictedValue(fvPred.getPredictedValue());
+                            fvBlock.setNext(fvPred.getNext());
+                            fvBlock.setPrev(fvPred.getPrev());
+                            fvBlock.setOldvalue(fvPred.getOldvalue());
+
+                            fv.setConfidence(fvPred.getConfidence());
+                            fv.setPredictedValue(fvPred.getPredictedValue());
+                            fv.setOldvalue(fvBlock.getOldvalue());
+                            fv.setPrev(fvPred.getPrev());
+                            fv.setNext(fvPred.getNext());
+                            ReadInfo readinfo = new ReadInfo(alignment.getReadName(), fv);
+                            readinfos.add(readinfo);
+                            flowlist.add(fv);
+                       }
+                       else p("Got no subcontext for block "+block+ " at posinblock="+posinblock+":"+sub);
                     }
-
-                    int flownr = block.getFlowSignalSubContext(posinblock).getFlowOrderIndex();
-                    nrflows++;
-                    FlowValue fvBlock = block.getFlowSignalSubContext(posinblock).getCurrentValue();
-                    short rawflowSignal = (short) fvBlock.getRawFlowvalue();
-
-                    char base = (char) block.getBase(posinblock);
-
-                    int whichbase = bases.indexOf(base);
-                    ArrayList<FlowValue> flowlist = null;
-                    ArrayList<ReadInfo> readinfos = null;
-                    if (whichbase < 0) {
-                        bases += base;
-                        flowlist = new ArrayList<FlowValue>();
-                        allelelists.add(flowlist);
-                        readinfos = new ArrayList<ReadInfo>();
-                        allelereadinfos.add(readinfos);
-                    } else {
-                        flowlist = allelelists.get(whichbase);
-                        readinfos = allelereadinfos.get(whichbase);
+                    else {
+                        p("Found no flow signals for block: "+block);
                     }
-                    FlowValue fvPred = flowseq.getFlow(flownr);
-                    int hp = fvPred.getHpLen();
-                    //  public FlowValue(int flowvalue, int flowposition, char base, int location_in_sequence, boolean empty, char alignmentbase) {
-                    FlowValue fv = new FlowValue(hp, rawflowSignal, flownr, base, location, false, base);
-
-                    fvPred.setOldvalue(fvBlock.getOldvalue());
-                    fvBlock.setConfidence(fvPred.getConfidence());
-                    fvBlock.setPredictedValue(fvPred.getPredictedValue());
-                    fvBlock.setNext(fvPred.getNext());
-                    fvBlock.setPrev(fvPred.getPrev());
-                    fvBlock.setOldvalue(fvPred.getOldvalue());
-
-                    fv.setConfidence(fvPred.getConfidence());
-                    fv.setPredictedValue(fvPred.getPredictedValue());
-                    fv.setOldvalue(fvBlock.getOldvalue());
-                    fv.setPrev(fvPred.getPrev());
-                    fv.setNext(fvPred.getNext());
-                    ReadInfo readinfo = new ReadInfo(alignment.getReadName(), fv);
-                    readinfos.add(readinfo);
-                    flowlist.add(fv);
-
                 }
             }
         }
@@ -371,19 +381,21 @@ public class ConfidenceDistribution {
 
         if (old) {
             minx = 0;
-            maxx = this.computeMaxValue();            
-        } 
-        p("getBinnedData: minx="+minx+", maxx="+maxx);
+            maxx = this.computeMaxValue();
+        }
+        p("getBinnedData: minx=" + minx + ", maxx=" + maxx);
         int nrbins = (int) ((maxx - minx) / binsize) + 1;
         int bins[] = new int[nrbins];
         for (FlowValue fv : flowvalues) {
             if (fv.getHpLen() == hplen || hplen <= 0) {
                 double conf = fv.getConfidence();
                 if (old) {
-                    conf = fv.getOldvalue();                   
-                }   
-                int bin = (int) ((conf - minx) / binsize);               
-                if (bin>=0 && bin <bins.length) bins[bin] += 1;                
+                    conf = fv.getOldvalue();
+                }
+                int bin = (int) ((conf - minx) / binsize);
+                if (bin >= 0 && bin < bins.length) {
+                    bins[bin] += 1;
+                }
             }
         }
         int maxy = 0;
@@ -391,9 +403,9 @@ public class ConfidenceDistribution {
             int count = bins[i];
             if (maxy < count) {
                 maxy = count;
-            }            
+            }
         }
-        
+
         return bins;
     }
 

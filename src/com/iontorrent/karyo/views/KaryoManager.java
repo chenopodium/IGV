@@ -4,6 +4,8 @@
  */
 package com.iontorrent.karyo.views;
 
+
+import com.iontorrent.karyo.data.Band;
 import com.iontorrent.karyo.data.KaryoParser;
 import com.iontorrent.karyo.data.Chromosome;
 import com.iontorrent.karyo.data.FakeIndelTrack;
@@ -11,12 +13,19 @@ import com.iontorrent.karyo.data.KaryoTrack;
 import com.iontorrent.karyo.data.FakeCnvTrack;
 import com.iontorrent.karyo.data.IgvAdapter;
 import com.iontorrent.karyo.drawables.GuiFeatureTree;
+import com.iontorrent.karyo.renderer.RenderManager;
 import com.iontorrent.threads.Task;
 import com.iontorrent.threads.TaskListener;
 import com.iontorrent.utils.ErrorHandler;
+import com.iontorrent.utils.GuiUtils;
 import java.awt.Frame;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import org.broad.igv.feature.Cytoband;
+import org.broad.igv.feature.genome.Genome;
 import org.broad.igv.track.FeatureTrack;
+import org.broad.igv.ui.IGV;
 import org.broad.tribble.Feature;
 
 /**
@@ -35,7 +44,10 @@ public class KaryoManager {
     private static KaryoManager manager;
     private KaryoControlPanel control;
     public static KaryoManager getManager(Frame frame, KaryoControlPanel control) {
-        if (manager == null) manager = new KaryoManager(frame);
+        if (manager == null) {
+            manager = new KaryoManager(frame);
+            manager.control = control;
+        }
         return manager;
     }
     private KaryoManager(Frame frame) {
@@ -48,29 +60,62 @@ public class KaryoManager {
     public boolean addFakeTracks() {
         return true;
     }
-    
+    public KaryoControlPanel getControl() {
+        return control;
+    }
     private void loadBandDataIfMissing() {        
         if (chromosomes == null) {
-            KaryoParser parser = new KaryoParser("karyotype.human.txt");
-            chromosomes = parser.getChromosomes();            
+            // get genome from current setting
+            Genome genome = IGV.getInstance().getGenomeManager().getCurrentGenome();
+            Collection<org.broad.igv.feature.Chromosome> igvchromosomes =  genome.getChromosomes();
+            chromosomes = new ArrayList<Chromosome>();
+            for (org.broad.igv.feature.Chromosome igvchr: igvchromosomes) {
+                String name = igvchr.getName();
+                if (name.indexOf("_")<0) {
+                    String cname = igvchr.getName();
+                    if (cname.startsWith("chrchr")) cname = cname.substring(3);
+                    Chromosome chr = new Chromosome(cname, ""+igvchr.getIndex(),igvchr.getLength(), "chromosome");
+                    if (chr.getLength() <1000000) {
+                        p("Chromosome "+chr+" is too small, not using it");
+                    }
+                    else{ 
+                        List<Cytoband> igvbands = igvchr.getCytobands();
+                        for (Cytoband cyto: igvbands) {                    
+                             Band band = new  Band( cyto);
+                             chr.add(band);
+                        }
+                        chromosomes.add(chr);
+                    }
+                }
+                else {
+                   // p("Not using chr "+name);
+                }
+            }
+            //KaryoParser parser = new KaryoParser("karyotype.human.txt");
+            //chromosomes = parser.getChromosomes();            
+            p("Got chromosomes: "+chromosomes);
         }
     }
     private void loadTracks() {   
-        p("KaryoManager.loadTracks");
+        p("============= KaryoManager.loadTracks================ ");
        // boolean show = !tracksLoaded || karyotracks.size() <1;
         boolean show = true;
         ArrayList<KaryoTrack> tracks = igvadapter.getSelectedIgvTracks(show);
         p("loadTracks: Got "+tracks.size()+" tracks to load ");
         this.karyotracks = new ArrayList<KaryoTrack>();
+       
         try {
             if (tracks.size()<1 && this.addFakeTracks()) {
                 p("Adding a few fake tracks");
-                tracks.add(new KaryoTrack(new FakeCnvTrack()));
-                tracks.add(new KaryoTrack(new FakeIndelTrack()));
+                tracks.add(new KaryoTrack(new FakeCnvTrack(), 1));
+                tracks.add(new KaryoTrack(new FakeIndelTrack(), 2));
+            }
+            else if (tracks.size()>2) {
+                  GuiUtils.showNonModelMsg("Loading","Loading karyo track data...", true, tracks.size() );
+                  IGV.getInstance().setStatusBarMessage("Loading  karyo track data...");
             }
             int nr = 1;
             for (KaryoTrack track : tracks) {
-
                 getKaryotracks().add(track);
                 nr++;
             }
@@ -80,11 +125,18 @@ public class KaryoManager {
         }
         p("== loadTracks: Got "+this.getKaryoTracks().size()+" karyotracks now");
         tracksLoaded = true;
+        IGV.getInstance().setStatusBarMessage("");
     }
 
     public void loadTracks(TaskListener list) {
         LoadTracksTaks t = new LoadTracksTaks(list);
         t.run();
+    }
+
+    public void saveGuiProperties() {
+        
+        RenderManager.saveGuiProperties();
+        
     }
     private class LoadTracksTaks extends Task {
 
@@ -108,10 +160,10 @@ public class KaryoManager {
         return chromosomes;
     }
 
-    public void pickTracks() {
-        karyotracks = new ArrayList<KaryoTrack>();
-        igvadapter.getSelectedIgvTracks(true);
-    }
+//    public void pickTracks() {
+//        karyotracks = new ArrayList<KaryoTrack>();
+//        igvadapter.getSelectedIgvTracks(true);
+//    }
 
     public ArrayList<Feature> getSampleFeatures() {
         ArrayList<Feature> res = new ArrayList<Feature>();
@@ -155,6 +207,23 @@ public class KaryoManager {
         return karyotracks;
     }
 
+     public ArrayList<KaryoTrack> getSelectdKaryoTracks() {
+        if (karyotracks == null) return null;
+        ArrayList<KaryoTrack> selected =  new ArrayList<KaryoTrack>();
+        int nr = 0;
+        for (KaryoTrack t: karyotracks) {
+            if (t.isVisible()) selected.add(t);
+        }
+        return selected;
+    }
+    public int getNrSelectdKaryoTracks() {
+        if (karyotracks == null) return 0;
+        int nr = 0;
+        for (KaryoTrack t: karyotracks) {
+            if (t.isVisible()) nr++;
+        }
+        return nr;
+    }
     /**
      * @param karyotracks the karyotracks to set
      */

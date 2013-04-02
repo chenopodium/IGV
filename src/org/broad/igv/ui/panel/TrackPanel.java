@@ -169,6 +169,7 @@ public class TrackPanel extends IGVPanel {
      */
     public void addTrack(Track track) {
 
+        log.info("addTrack: Adding track "+track.getName());
         String groupName = (groupAttribute == null ? null : track.getAttributeValue(groupAttribute));
         boolean foundGroup = false;
         for (TrackGroup tg : trackGroups) {

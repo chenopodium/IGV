@@ -8,7 +8,6 @@
  * This software is licensed under the terms of the GNU Lesser General Public License (LGPL),
  * Version 2.1 which is available at http://www.opensource.org/licenses/lgpl-2.1.php.
  */
-
 package org.broad.igv.track;
 
 import org.apache.log4j.Logger;
@@ -80,17 +79,19 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.logging.Log;
+import org.broad.igv.session.RendererFactory;
 
 /**
- * User: jrobinso
- * Date: Feb 14, 2010
+ * User: jrobinso Date: Feb 14, 2010
  */
 public class TrackLoader {
 
     private static Logger log = Logger.getLogger(TrackLoader.class);
+    private PreferenceManager pref;
 
     /**
-     * Calls {@linkplain TrackLoader#load(org.broad.igv.util.ResourceLocator, org.broad.igv.feature.genome.Genome)}
+     * Calls
+     * {@linkplain TrackLoader#load(org.broad.igv.util.ResourceLocator, org.broad.igv.feature.genome.Genome)}
      * with genome from IGV instance (if not null).
      *
      * @param locator
@@ -99,23 +100,28 @@ public class TrackLoader {
      */
     public List<Track> load(ResourceLocator locator, IGV igv) {
         Genome genome = igv != null ? GenomeManager.getInstance().getCurrentGenome() : null;
-        if (igv != null && genome == null)  {
+        if (igv != null && genome == null) {
             try {
                 // maybe load default genome?
                 String genomeId = PreferenceManager.getInstance().getDefaultGenome();
                 GenomeManager.getInstance().loadGenome(genomeId, null);
             } catch (IOException ex) {
-               ex.printStackTrace();
-               
+                ex.printStackTrace();
+
             }
         }
-               
+
         return load(locator, genome);
     }
 
+    private void p(String s) {
+        log.info(s);
+    }
+
     /**
-     * Switches on various attributes of locator (mainly locator path extension and whether the locator is indexed)
-     * to call the appropriate loading method.
+     * Switches on various attributes of locator (mainly locator path extension
+     * and whether the locator is indexed) to call the appropriate loading
+     * method.
      *
      * @param locator
      * @param genome
@@ -123,8 +129,11 @@ public class TrackLoader {
      */
     public List<Track> load(ResourceLocator locator, Genome genome) {
 
+        if (pref == null) {
+            pref = PreferenceManager.getInstance();
+        }
         final String path = locator.getPath();
-         log.info("About to load " + locator.getPath());
+        log.info("About to load " + locator.getPath());
         try {
             String typeString = locator.getType();
             if (typeString == null) {
@@ -143,9 +152,9 @@ public class TrackLoader {
 
                 } else {
                     typeString = path.toLowerCase();
-                    if (!typeString.endsWith("_sorted.txt") &&
-                            (typeString.endsWith(".txt") || typeString.endsWith(
-                                    ".xls") || typeString.endsWith(".gz"))) {
+                    if (!typeString.endsWith("_sorted.txt")
+                            && (typeString.endsWith(".txt") || typeString.endsWith(
+                            ".xls") || typeString.endsWith(".gz"))) {
                         typeString = typeString.substring(0, typeString.lastIndexOf("."));
                     }
                 }
@@ -153,11 +162,11 @@ public class TrackLoader {
             typeString = typeString.toLowerCase();
 
             if (typeString.endsWith(".tbi")) {
-                MessageUtils.showMessage("<html><b>Error:</b>File type '.tbi' is not recognized.  If this is a 'tabix' index <br>" +
-                        " load the associated gzipped file, which should have an extension of '.gz'");
+                MessageUtils.showMessage("<html><b>Error:</b>File type '.tbi' is not recognized.  If this is a 'tabix' index <br>"
+                        + " load the associated gzipped file, which should have an extension of '.gz'");
             }
 
-             log.info("type String is " + typeString);
+      //      p("load: type String is " + typeString);
             //This list will hold all new tracks created for this locator
             List<Track> newTracks = new ArrayList<Track>();
 
@@ -171,12 +180,13 @@ public class TrackLoader {
             } else if (typeString.equals("das")) {
                 loadDASResource(locator, newTracks);
             } else if (isIndexed(path, genome)) {
+     //           p(path + " is indexed");
                 loadIndexed(locator, newTracks, genome);
             } else if (typeString.endsWith(".vcf.list")) {
                 loadVCFListFile(locator, newTracks, genome);
             } else if (typeString.endsWith(".vcf") || typeString.endsWith(".vcf4")) {
                 // VCF files must be indexed.
-                throw new IndexNotFoundException(path+", the file needs to end wtih .vcf.gz and must have a file .vcf.gz.tbi");
+                throw new IndexNotFoundException(path + ", the file needs to end with .vcf.gz and must have a file .vcf.gz.tbi");
             } else if (typeString.endsWith(".trio")) {
                 loadTrioData(locator);
             } else if (typeString.endsWith("varlist")) {
@@ -189,13 +199,14 @@ public class TrackLoader {
                 loadRnaiGctFile(locator, newTracks, genome);
             } else if (typeString.endsWith(".gct") || typeString.endsWith("res") || typeString.endsWith("tab")) {
                 loadGctFile(locator, newTracks, genome);
-            } else if (typeString.endsWith(".cn") || typeString.endsWith(".xcn") || typeString.endsWith(".snp") ||
-                    typeString.endsWith(".igv") || typeString.endsWith(".loh")) {
+            } else if (typeString.endsWith(".cn") || typeString.endsWith(".xcn") || typeString.endsWith(".snp")
+                    || typeString.endsWith(".igv") || typeString.endsWith(".loh")) {
                 loadIGVFile(locator, newTracks, genome);
-            } else if (typeString.endsWith(".cbs") || typeString.endsWith(".seg") ||
-                    typeString.endsWith(".seg.data.txt") ||
-                    typeString.endsWith("glad") || typeString.endsWith("birdseye_canary_calls")
+            } else if (typeString.endsWith(".cbs") || typeString.endsWith(".seg")
+                    || typeString.endsWith(".seg.data.txt")
+                    || typeString.endsWith("glad") || typeString.endsWith("birdseye_canary_calls")
                     || typeString.endsWith(".seg.zip")) {
+       //         p("load: loadSegFile for " + path);
                 loadSegFile(locator, newTracks, genome);
             } else if (typeString.endsWith(".gistic")) {
                 loadGisticFile(locator, newTracks);
@@ -206,24 +217,26 @@ public class TrackLoader {
             } else if (typeString.endsWith(".hp")) {
                 loadRNAiHPScoreFile(locator);
             } else if (typeString.endsWith("gene")) {
+       //         p("load: loadGeneFile for " + path);
                 loadGeneFile(locator, newTracks, genome);
             } else if (typeString.contains(".tabblastn") || typeString.endsWith(".orthologs")) {
                 loadSyntentyMapping(locator, newTracks);
-            } else if (typeString.endsWith(".sam") || typeString.endsWith(".bam") ||
-                    typeString.endsWith(".sam.list") || typeString.endsWith(".bam.list") ||
-                    typeString.endsWith("_sorted.txt") ||
-                    typeString.endsWith(".aligned") || typeString.endsWith(".sai") ||
-                    typeString.endsWith(".bai") || typeString.equals("alist")) {
+            } else if (typeString.endsWith(".sam") || typeString.endsWith(".bam")
+                    || typeString.endsWith(".sam.list") || typeString.endsWith(".bam.list")
+                    || typeString.endsWith("_sorted.txt")
+                    || typeString.endsWith(".aligned") || typeString.endsWith(".sai")
+                    || typeString.endsWith(".bai") || typeString.equals("alist")) {
+       //         p("load: loadAlignmentsTrack for " + path);
                 loadAlignmentsTrack(locator, newTracks, genome);
-            } else if (typeString.endsWith(".wig") || (typeString.endsWith(".bedgraph")) ||
-                    typeString.endsWith("cpg.txt") || typeString.endsWith(".expr")) {
+            } else if (typeString.endsWith(".wig") || (typeString.endsWith(".bedgraph"))
+                    || typeString.endsWith("cpg.txt") || typeString.endsWith(".expr")) {
                 loadWigFile(locator, newTracks, genome);
             } else if (typeString.contains(".dranger")) {
                 loadDRangerFile(locator, newTracks, genome);
             } else if (typeString.endsWith(".ewig.tdf") || (typeString.endsWith(".ewig.ibf"))) {
                 loadEwigIBFFile(locator, newTracks, genome);
-            } else if (typeString.endsWith(".bw") || typeString.endsWith(".bb") || typeString.endsWith(".bigwig") ||
-                    typeString.endsWith(".bigbed")) {
+            } else if (typeString.endsWith(".bw") || typeString.endsWith(".bb") || typeString.endsWith(".bigwig")
+                    || typeString.endsWith(".bigbed")) {
                 loadBWFile(locator, newTracks, genome);
             } else if (typeString.endsWith(".ibf") || typeString.endsWith(".tdf")) {
                 loadTDFFile(locator, newTracks, genome);
@@ -232,6 +245,7 @@ public class TrackLoader {
             } else if (GFFFeatureSource.isGFF(locator.getPath())) {
                 loadGFFfile(locator, newTracks, genome);
             } else if (AbstractFeatureParser.canParse(locator.getPath())) {
+       //         p("load: loadFeatureFile for " + path);
                 loadFeatureFile(locator, newTracks, genome);
             } else if (typeString.endsWith(".mut")) { //  MutationParser.isMutationAnnotationFile(locator)) {
                 this.loadMutFile(locator, newTracks, genome);
@@ -251,8 +265,10 @@ public class TrackLoader {
                 locator.setDescription("MAGE_TAB");
                 loadGctFile(locator, newTracks, genome);
             } else if (GWASParser.isGWASFile(typeString)) {
+       //         p("load: loadGWASFile for " + path);
                 loadGWASFile(locator, newTracks, genome);
             } else if (GobyAlignmentQueryReader.supportsFileType(path)) {
+           //     p("load: GobyAlignmentQueryReader, loadAlignmentsTrack for " + path);
                 loadAlignmentsTrack(locator, newTracks, genome);
             } else if (typeString.endsWith(".list")) {
                 // This should be deprecated
@@ -261,6 +277,7 @@ public class TrackLoader {
                 loadAffectiveAnnotationTrack(locator, newTracks, genome);
             } else if (AttributeManager.isSampleInfoFile(locator)) {
                 // This might be a sample information file.
+       //         p("load: loadSampleInfo for " + path);
                 AttributeManager.getInstance().loadSampleInfo(locator);
             } else {
                 MessageUtils.showMessage("<html>Unknown file type: " + path + "<br>Check file extenstion");
@@ -284,6 +301,16 @@ public class TrackLoader {
                 }
                 if (locator.getColor() != null) {
                     track.setColor(locator.getColor());
+                }
+                if (locator.getParams() != null) {
+                    String m = locator.getParameter("displayMode");
+                    if (m != null) {
+                        if (m.equalsIgnoreCase("collapsed")) {
+                            track.setDisplayMode(Track.DisplayMode.COLLAPSED);
+                        } else if (m.equalsIgnoreCase("expanded")) {
+                            track.setDisplayMode(Track.DisplayMode.EXPANDED);
+                        }
+                    }
                 }
                 if (locator.getSampleId() != null) {
                     track.setSampleId(locator.getSampleId());
@@ -311,13 +338,13 @@ public class TrackLoader {
 
     private void loadIndexed(ResourceLocator locator, List<Track> newTracks, Genome genome) throws IOException {
 
-         log.info("Loading indexed file");
-        TribbleFeatureSource src = GFFFeatureSource.isGFF(locator.getPath()) ?
-                new GFFFeatureSource(locator.getPath(), genome) :
-                new TribbleFeatureSource(locator.getPath(), genome);
+        log.info("Loading indexed file " + locator.getPath());
+        TribbleFeatureSource src = GFFFeatureSource.isGFF(locator.getPath())
+                ? new GFFFeatureSource(locator.getPath(), genome)
+                : new TribbleFeatureSource(locator.getPath(), genome);
         String typeString = locator.getPath();
         //Track t;
-       
+
         if (typeString.endsWith("vcf") || typeString.endsWith("vcf.gz")) {
 
             VCFHeader header = (VCFHeader) src.getHeader();
@@ -329,13 +356,13 @@ public class TrackLoader {
             // MR is the methylation rate on a scale of 0 to 100% and GB is the number of bases that pass
             // filter for the position. GB is needed to avoid displaying positions for which limited coverage
             // prevents reliable estimation of methylation rate.
-            boolean enableMethylationRateSupport = (header.getFormatHeaderLine("MR") != null &&
-                    header.getFormatHeaderLine("GB") != null);
+            boolean enableMethylationRateSupport = (header.getFormatHeaderLine("MR") != null
+                    && header.getFormatHeaderLine("GB") != null);
 
             List<String> allSamples = new ArrayList(header.getGenotypeSamples());
 
             VariantTrack t = new VariantTrack(locator, src, allSamples, enableMethylationRateSupport);
-            log.info("Created variant track "+t.getName());
+            log.info("Created variant track " + t.getName());
             // VCF tracks handle their own margin
             t.setMargin(0);
             newTracks.add(t);
@@ -346,7 +373,7 @@ public class TrackLoader {
             t.setName(locator.getTrackName());
             //t.setRendererClass(BasicTribbleRenderer.class);
 
-            log.info("Created feature track "+t.getName());
+            log.info("Created feature track " + t.getName());
             // Set track properties from header
             Object header = src.getHeader();
             if (header != null && header instanceof FeatureFileHeader) {
@@ -367,7 +394,6 @@ public class TrackLoader {
         log.info("Loading indexed file done");
     }
 
-
     private void loadVCFListFile(ResourceLocator locator, List<Track> newTracks, Genome genome) throws IOException {
 
         TribbleListFeatureSource src = new TribbleListFeatureSource(locator.getPath(), genome);
@@ -381,8 +407,8 @@ public class TrackLoader {
         // MR is the methylation rate on a scale of 0 to 100% and GB is the number of bases that pass
         // filter for the position. GB is needed to avoid displaying positions for which limited coverage
         // prevents reliable estimation of methylation rate.
-        boolean enableMethylationRateSupport = (header.getFormatHeaderLine("MR") != null &&
-                header.getFormatHeaderLine("GB") != null);
+        boolean enableMethylationRateSupport = (header.getFormatHeaderLine("MR") != null
+                && header.getFormatHeaderLine("GB") != null);
 
         List<String> allSamples = new ArrayList(header.getGenotypeSamples());
 
@@ -423,9 +449,9 @@ public class TrackLoader {
         newTracks.addAll(parser.loadTracks(locator, genome));
     }
 
-
     /**
-     * Load the input file as a feature, mutation, or maf (multiple alignment) file.
+     * Load the input file as a feature, mutation, or maf (multiple alignment)
+     * file.
      *
      * @param locator
      * @param newTracks
@@ -438,15 +464,16 @@ public class TrackLoader {
     }
 
     /**
-     * Load the input file as a feature, mutation, or maf (multiple alignment) file.
+     * Load the input file as a feature, mutation, or maf (multiple alignment)
+     * file.
      *
      * @param locator
      * @param newTracks
      */
     private void loadFeatureFile(ResourceLocator locator, List<Track> newTracks, Genome genome) throws IOException {
 
-        if (locator.isLocal() && (locator.getPath().endsWith(".bed") ||
-                locator.getPath().endsWith(".bed.txt"))) {
+        if (locator.isLocal() && (locator.getPath().endsWith(".bed")
+                || locator.getPath().endsWith(".bed.txt"))) {
             //checkSize takes care of warning the user
             if (!checkSize(locator.getPath())) {
                 return;
@@ -455,6 +482,7 @@ public class TrackLoader {
 
         FeatureCodec codec = CodecFactory.getCodec(locator.getPath(), genome);
         if (codec != null) {
+          //  p("Got codec: " + codec);
             AbstractFeatureReader<Feature> bfs = AbstractFeatureReader.getFeatureReader(locator.getPath(), codec, false);
             Iterable<Feature> iter = bfs.iterator();
             Object header = bfs.getHeader();
@@ -485,8 +513,6 @@ public class TrackLoader {
      * @param newTracks
      * @throws IOException
      */
-
-
     private void loadGWASFile(ResourceLocator locator, List<Track> newTracks, Genome genome) throws IOException {
 
         GWASParser gwasParser = new GWASParser(locator, genome);
@@ -496,7 +522,6 @@ public class TrackLoader {
         newTracks.add(gwasTrack);
 
     }
-
 
     private void loadRnaiGctFile(ResourceLocator locator, List<Track> newTracks, Genome genome) {
 
@@ -530,10 +555,10 @@ public class TrackLoader {
         parser = new ExpressionFileParser(locator, null, genome);
         ds = parser.createDataset();
         if (ds.isEmpty()) {
-            String message = "The probes in the file <br>&nbsp;&nbsp;&nbsp;" + locator.getPath() + "<br>" +
-                    "could not be mapped to genomic positions.  This can be corrected by specify a probe mapping<br>" +
-                    "file from the Preferences window (Probes tab), or by specifing the genomic positions in the<br>" +
-                    "expression data file.  Please see the user guide for more details.";
+            String message = "The probes in the file <br>&nbsp;&nbsp;&nbsp;" + locator.getPath() + "<br>"
+                    + "could not be mapped to genomic positions.  This can be corrected by specify a probe mapping<br>"
+                    + "file from the Preferences window (Probes tab), or by specifing the genomic positions in the<br>"
+                    + "expression data file.  Please see the user guide for more details.";
             MessageUtils.showMessage(message);
 
         } else {
@@ -542,12 +567,12 @@ public class TrackLoader {
             ds.setLogValues(true);
 
             /*
-            * File outputFile = new File(IGV.DEFAULT_USER_DIRECTORY, file.getName() + ".h5");
-            * OverlappingProcessor proc = new OverlappingProcessor(ds);
-            * proc.setZoomMax(0);
-            * proc.process(outputFile.getAbsolutePath());
-            * loadH5File(outputFile, messages, attributeList, group);
-            */
+             * File outputFile = new File(IGV.DEFAULT_USER_DIRECTORY, file.getName() + ".h5");
+             * OverlappingProcessor proc = new OverlappingProcessor(ds);
+             * proc.setZoomMax(0);
+             * proc.process(outputFile.getAbsolutePath());
+             * loadH5File(outputFile, messages, attributeList, group);
+             */
 
             // Counter for generating ID
             TrackProperties trackProperties = ds.getTrackProperties();
@@ -608,7 +633,6 @@ public class TrackLoader {
 
     }
 
-
     private boolean checkSize(String file) {
 
         if (!PreferenceManager.getInstance().getAsBoolean(PreferenceManager.SHOW_SIZE_WARNING)) {
@@ -627,22 +651,22 @@ public class TrackLoader {
             if (size > 50000000) {
                 String message = "";
                 if (tmp.endsWith(".bed") || tmp.endsWith(".bed.txt")) {
-                    message = "The file " + file + " is large (" + (size / 1000000) + " mb).  It is recommended " +
-                            "that large files be indexed using IGVTools or Tabix. Loading un-indexed " +
-                            "ascii fies of this size can lead to poor performance or unresponsiveness (freezing).  " +
-                            "<br><br>IGVTools can be launched from the <b>Tools</b> menu or separately as a command line program.  " +
-                            "See the user guide for more details.<br><br>Click <b>Continue</b> to continue loading, or <b>Cancel</b>" +
-                            " to skip this file.";
+                    message = "The file " + file + " is large (" + (size / 1000000) + " mb).  It is recommended "
+                            + "that large files be indexed using IGVTools or Tabix. Loading un-indexed "
+                            + "ascii fies of this size can lead to poor performance or unresponsiveness (freezing).  "
+                            + "<br><br>IGVTools can be launched from the <b>Tools</b> menu or separately as a command line program.  "
+                            + "See the user guide for more details.<br><br>Click <b>Continue</b> to continue loading, or <b>Cancel</b>"
+                            + " to skip this file.";
 
                 } else {
 
-                    message = "The file " + file + " is large (" + (size / 1000000) + " mb).  It is recommended " +
-                            "that large files be converted to the binary <i>.tdf</i> format using the IGVTools " +
-                            "<b>tile</b> command. Loading  unconverted ascii fies of this size can lead to poor " +
-                            "performance or unresponsiveness (freezing).  " +
-                            "<br><br>IGVTools can be launched from the <b>Tools</b> menu or separately as a " +
-                            "command line program. See the user guide for more details.<br><br>Click <b>Continue</b> " +
-                            "to continue loading, or <b>Cancel</b> to skip this file.";
+                    message = "The file " + file + " is large (" + (size / 1000000) + " mb).  It is recommended "
+                            + "that large files be converted to the binary <i>.tdf</i> format using the IGVTools "
+                            + "<b>tile</b> command. Loading  unconverted ascii fies of this size can lead to poor "
+                            + "performance or unresponsiveness (freezing).  "
+                            + "<br><br>IGVTools can be launched from the <b>Tools</b> menu or separately as a "
+                            + "command line program. See the user guide for more details.<br><br>Click <b>Continue</b> "
+                            + "to continue loading, or <b>Cancel</b> to skip this file.";
                 }
 
                 return ConfirmDialog.optionallyShowConfirmDialog(message, PreferenceManager.SHOW_SIZE_WARNING, true);
@@ -653,11 +677,9 @@ public class TrackLoader {
     }
 
     private void loadDOTFile(ResourceLocator locator, List<Track> newTracks) {
-
         //GraphTrack gt = new GraphTrack(locator);
         //gt.setHeight(80);
         //newTracks.add(gt);
-
     }
 
     private void loadWigFile(ResourceLocator locator, List<Track> newTracks, Genome genome) {
@@ -746,9 +768,9 @@ public class TrackLoader {
 
             String trackId = multiTrack ? path + "_" + heading : path;
             String trackName = multiTrack ? heading : name;
-            final DataSource dataSource = locator.getPath().endsWith(".counts") ?
-                    new GobyCountArchiveDataSource(locator) :
-                    new TDFDataSource(reader, trackNumber, heading, genome);
+            final DataSource dataSource = locator.getPath().endsWith(".counts")
+                    ? new GobyCountArchiveDataSource(locator)
+                    : new TDFDataSource(reader, trackNumber, heading, genome);
             DataSourceTrack track = new DataSourceTrack(locator, trackId, trackName, dataSource);
 
             String displayName = (name == null || multiTrack) ? heading : name;
@@ -778,9 +800,9 @@ public class TrackLoader {
             newTracks.add(track);
         } else if (reader.isBigBedFile()) {
 
-            if (locator.getPath().contains("RRBS_cpgMethylation") ||
-                    locator.getPath().contains("BiSeq_cpgMethylation") ||
-                    (reader.getAutoSql() != null && reader.getAutoSql().startsWith("table BisulfiteSeq"))) {
+            if (locator.getPath().contains("RRBS_cpgMethylation")
+                    || locator.getPath().contains("BiSeq_cpgMethylation")
+                    || (reader.getAutoSql() != null && reader.getAutoSql().startsWith("table BisulfiteSeq"))) {
                 loadMethylTrack(locator, reader, newTracks, genome);
             } else {
                 FeatureTrack track = new FeatureTrack(locator, trackId, trackName, bigwigSource);
@@ -796,7 +818,6 @@ public class TrackLoader {
         MethylTrack track = new MethylTrack(locator, reader, genome);
         newTracks.add(track);
     }
-
 
     private void loadGobyCountsArchive(ResourceLocator locator, List<Track> newTracks, Genome genome) {
 
@@ -863,8 +884,8 @@ public class TrackLoader {
      * @param newTracks
      */
     private void loadRNAiGeneScoreFile(ResourceLocator locator,
-                                       List<Track> newTracks, RNAIGeneScoreParser.Type type,
-                                       Genome genome) {
+            List<Track> newTracks, RNAIGeneScoreParser.Type type,
+            Genome genome) {
 
         RNAIGeneScoreParser parser = new RNAIGeneScoreParser(locator.getPath(), type, genome);
 
@@ -889,9 +910,9 @@ public class TrackLoader {
     }
 
     /**
-     * Load a RNAi haripin score file.  The results of this action are hairpin scores
-     * added to the RNAIDataManager.  Currently no tracks are created for hairpin
-     * scores, although this could change.
+     * Load a RNAi haripin score file. The results of this action are hairpin
+     * scores added to the RNAIDataManager. Currently no tracks are created for
+     * hairpin scores, although this could change.
      *
      * @param locator
      */
@@ -910,7 +931,6 @@ public class TrackLoader {
         newTracks.add(t);
     }
 
-
     private void loadAlignmentsTrack(ResourceLocator locator, List<Track> newTracks, Genome genome) throws IOException {
 
         try {
@@ -918,8 +938,8 @@ public class TrackLoader {
 
             // If the user tried to load the index,  look for the file (this is a common mistake)
             if (locator.getPath().endsWith(".sai") || locator.getPath().endsWith(".bai")) {
-                MessageUtils.showMessage("<html><b>ERROR:</b> Loading SAM/BAM index files are not supported:  " + locator.getPath() +
-                        "<br>Load the SAM or BAM file directly. ");
+                MessageUtils.showMessage("<html><b>ERROR:</b> Loading SAM/BAM index files are not supported:  " + locator.getPath()
+                        + "<br>Load the SAM or BAM file directly. ");
                 return;
             }
 
@@ -936,20 +956,20 @@ public class TrackLoader {
 
             if (locator.getPath().toLowerCase().endsWith(".bam")) {
                 if (!dataManager.hasIndex()) {
-                    MessageUtils.showMessage("<html>Could not load index file for: " +
-                            locator.getPath() + "<br>  An index file is required for SAM & BAM files.");
+                    MessageUtils.showMessage("<html>Could not load index file for: "
+                            + locator.getPath() + "<br>  An index file is required for SAM & BAM files.");
                     return;
                 }
             }
 
             // Store information about what bam file is used
-            log.info("Storing BAM File "+locator.getPath()+" in BAM_FILE preferences");            
+            log.info("Storing BAM File " + locator.getPath() + " in BAM_FILE preferences");
             PreferenceManager.getInstance().put(PreferenceManager.BAM_FILE, locator.getPath());
-            
+
             AlignmentTrack alignmentTrack = new AlignmentTrack(locator, dataManager, genome);    // parser.loadTrack(locator, dsName);
             alignmentTrack.setName(dsName);
 
-            
+
 
             // Create coverage track
             CoverageTrack covTrack = new CoverageTrack(locator, alignmentTrack.getName() + " Coverage", genome);
@@ -969,8 +989,8 @@ public class TrackLoader {
             }
             if (covPath != null) {
                 try {
-                    if ((new File(covPath)).exists() || (HttpUtils.isRemoteURL(covPath) &&
-                            HttpUtils.getInstance().resourceAvailable(new URL(covPath)))) {
+                    if ((new File(covPath)).exists() || (HttpUtils.isRemoteURL(covPath)
+                            && HttpUtils.getInstance().resourceAvailable(new URL(covPath)))) {
                         TDFReader reader = TDFReader.getReader(covPath);
                         TDFDataSource ds = new TDFDataSource(reader, 0, alignmentTrack.getName() + " coverage", genome);
                         covTrack.setDataSource(ds);
@@ -995,14 +1015,14 @@ public class TrackLoader {
             newTracks.add(alignmentTrack);
 
         } catch (IndexNotFoundException e) {
-            MessageUtils.showMessage("<html>Could not find the index file for  <br><br>&nbsp;&nbsp;" + e.getSamFile() +
-                    "<br><br>Note: The index file can be created using igvtools and must be in the same directory as the .sam file.");
+            MessageUtils.showMessage("<html>Could not find the index file for  <br><br>&nbsp;&nbsp;" + e.getSamFile()
+                    + "<br><br>Note: The index file can be created using igvtools and must be in the same directory as the .sam file.");
         }
     }
 
-
     /**
-     * Compare the sequence names against sequence (chromosome) names in the genome.  If no matches warn the user.
+     * Compare the sequence names against sequence (chromosome) names in the
+     * genome. If no matches warn the user.
      *
      * @param filename
      * @param genome
@@ -1019,8 +1039,8 @@ public class TrackLoader {
         }
         if (!atLeastOneMatch) {
             StringBuffer message = new StringBuffer();
-            message.append("<html>File: " + filename +
-                    "<br>does not contain any sequence names which match the current genome.");
+            message.append("<html>File: " + filename
+                    + "<br>does not contain any sequence names which match the current genome.");
             message.append("<br><br>File: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;");
             int n = 0;
             for (String sn : seqNames) {
@@ -1045,7 +1065,6 @@ public class TrackLoader {
         }
         return atLeastOneMatch;
     }
-
 
     /**
      * Load a mutation file (".mut" or ".maf").
@@ -1091,12 +1110,12 @@ public class TrackLoader {
 
     }
 
-
     /**
      * @param locator
      * @param newTracks
      * @param genome
-     * @deprecated See loadFromDBProfile, which loads from an xml file specifying table characteristics
+     * @deprecated See loadFromDBProfile, which loads from an xml file
+     * specifying table characteristics
      */
     private void loadFromDatabase(ResourceLocator locator, List<Track> newTracks, Genome genome) {
 
@@ -1127,8 +1146,8 @@ public class TrackLoader {
     }
 
     /**
-     * Add the provided SegmentedDataSet to the list of tracks,
-     * set other relevant properties
+     * Add the provided SegmentedDataSet to the list of tracks, set other
+     * relevant properties
      *
      * @param locator
      * @param newTracks
@@ -1136,37 +1155,50 @@ public class TrackLoader {
      * @param ds
      */
     private void loadSegTrack(ResourceLocator locator, List<Track> newTracks, Genome genome, SegmentedDataSet ds) {
+
         String path = locator.getPath();
 
+    //    p("LoadSegTrack: " + path);
         TrackProperties props = null;
         if (ds instanceof SegmentedAsciiDataSet) {
             props = ((SegmentedAsciiDataSet) ds).getTrackProperties();
         }
 
         // The "freq" track.  TODO - make this optional
-        if ((ds.getType() == TrackType.COPY_NUMBER || ds.getType() == TrackType.CNV) &&
-                ds.getSampleNames().size() > 4) {
+        if ((ds.getType() == TrackType.COPY_NUMBER || ds.getType() == TrackType.CNV)
+                && ds.getSampleNames().size() > 4) {
             FreqData fd = new FreqData(ds, genome);
             String freqTrackId = path;
             String freqTrackName = "CNV Summary";
             CNFreqTrack freqTrack = new CNFreqTrack(locator, freqTrackId, freqTrackName, fd);
             newTracks.add(freqTrack);
+         //   log.info("Added track: " + freqTrackName);
         }
 
         for (String trackName : ds.getSampleNames()) {
-            String trackId = path + "_" + trackName;
+            String trackId = path;//; + "_" + trackName;
             SegmentedDataSource dataSource = new SegmentedDataSource(trackName, ds);
             DataSourceTrack track = new DataSourceTrack(locator, trackId, trackName, dataSource);
             track.setRendererClass(HeatmapRenderer.class);
-            track.setTrackType(ds.getType());
+            // check properties!
 
+            track.setTrackType(ds.getType());
+          //  customizeTrack(track);
             if (props != null) {
                 track.setProperties(props);
             }
-
+         //   log.info("Added track: " + track + ", id=" + trackId + ", name=" + trackName);
             newTracks.add(track);
         }
     }
+
+//    private void customizeTrack(Track t) {
+//        String rend = pref.getTemp(t.getName() + ".TRACK_RENDERER");
+//        if (rend != null) {
+//            t.setRendererClass(RendererFactory.getRendererClass(rend));
+//        }
+//        
+//    }
 
     private void loadDASResource(ResourceLocator locator, List<Track> currentTracks) {
 
@@ -1210,11 +1242,9 @@ public class TrackLoader {
         currentTracks.add(track);
     }
 
-
     private void loadTrioData(ResourceLocator locator) throws IOException {
         PedigreeUtils.parseTrioFile(locator.getPath());
     }
-
 
     public static boolean isIndexed(String path, Genome genome) {
 
@@ -1233,16 +1263,16 @@ public class TrackLoader {
                 return f.exists();
             }
 
-        } catch (IOException e) {
+        } catch (Exception e) {
             return false;
         }
 
     }
 
-
     /**
-     * Return true if a file represented by "path" is indexable.  This method is an optimization, we could just look
-     * for the index but that is expensive to do for remote resources.  All tribble indexable extensions should be
+     * Return true if a file represented by "path" is indexable. This method is
+     * an optimization, we could just look for the index but that is expensive
+     * to do for remote resources. All tribble indexable extensions should be
      * listed here.
      *
      * @param path
@@ -1271,6 +1301,4 @@ public class TrackLoader {
             return null;
         }
     }
-
-
 }

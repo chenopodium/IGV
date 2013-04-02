@@ -62,6 +62,7 @@ public class MessageUtils {
         if (showDialog) {
             // Always use HTML for message displays, but first remove any embedded <html> tags.
             message = "<html>" + message.replaceAll("<html>", "");
+            
             Frame parent = IGV.hasInstance() ? IGV.getMainFrame() : null;
             Color background = parent != null ? parent.getBackground() : Color.lightGray;
             //So users can select text
@@ -73,6 +74,25 @@ public class MessageUtils {
         }
     }
 
+    public static boolean getOrOrCancel(String message) {
+        log.log(Level.INFO, message);
+        boolean showDialog = !(Globals.isHeadless() || Globals.isSuppressMessages() || Globals.isTesting());
+        boolean ok = false;
+        if (showDialog) {
+            // Always use HTML for message displays, but first remove any embedded <html> tags.
+            message = "<html>" + message.replaceAll("<html>", "");
+            Frame parent = IGV.hasInstance() ? IGV.getMainFrame() : null;
+            Color background = parent != null ? parent.getBackground() : Color.lightGray;
+            //So users can select text
+            JEditorPane content = new JEditorPane();
+            content.setContentType("text/html");
+            content.setText(message);
+            content.setBackground(background);
+            int ans = JOptionPane.showConfirmDialog(parent, content);
+            ok = (ans == JOptionPane.OK_OPTION);
+        }
+        return ok;
+    }
     public static void setStatusBarMessage(final String message) {
         log.debug("Status bar: " + message);
         if (IGV.hasInstance()) {

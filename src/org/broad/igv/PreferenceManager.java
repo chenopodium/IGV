@@ -76,6 +76,12 @@ public class PreferenceManager implements PropertyManager {
     public static final String IONTORRENT_IONOGRAM_ALIGN_DRAWTYPE= "IONTORRENT.ONOGRAM_ALIGN_DRAWTYPE";
     public static final String IONTORRENT_BAM_HAS_FLOWVALUES= "IONTORRENT.BAM_HAS_FLOWVALUES";
     
+    
+    /** Added by Chantal Roth for whole genome Karyo views */ 
+    public static final String KARYO_ALLOW_BAMFILES= "KARYO.ALLOW_BAMFILES";
+    public static final String KARYO_ALLOW_GENEFILES= "KARYO.ALLOW_GENEFILES";
+    public static final String KARYO_ALLOW_EXPFILES= "KARYO.ALLOW_EXPFILES";
+    
     public static final String SAM_ALLELE_THRESHOLD = "SAM.ALLELE_THRESHOLD";
     public static final String SAM_QUALITY_THRESHOLD = "SAM.QUALITY_THRESHOLD";
     public static final String SAM_MAX_INSERT_SIZE_THRESHOLD = "SAM.INSERT_SIZE_THRESHOLD";
@@ -260,6 +266,7 @@ public class PreferenceManager implements PropertyManager {
 
     private PaletteColorTable mutationColorScheme = null;
 
+    private Map<String, String> temporaryValues;
 
     public static PreferenceManager getInstance() {
 
@@ -270,10 +277,20 @@ public class PreferenceManager implements PropertyManager {
 
     private PreferenceManager() {
         preferences = new IGVPreferences();
+        temporaryValues = new HashMap<String, String>();
         initDefaultValues();
     }
+    public Map<String, String> getTempProperties() {
+        return temporaryValues;
+    }
+    
+    public Map<String, String> getProperties () {
+        return IGVPreferences.userPreferences;
+    }
 
-
+    public boolean contains(String key) {
+        return preferences.contains(key);
+    }
     public String get(String key, String defaultString) {
         return preferences.get(key, defaultString);
     }
@@ -281,7 +298,18 @@ public class PreferenceManager implements PropertyManager {
     public String get(String key) {
         return get(key, defaultValues.get(key));
     }
-
+    
+    public String getTemp(String key) {
+        return temporaryValues.get(key);
+    }
+    public boolean getTempAsBoolean(String key) {
+        String s= getTemp(key);
+        if (s == null) return false;
+        else return (s.equalsIgnoreCase("true"));
+    }
+    public void putTemp(String key, String val) {
+        temporaryValues.put(key, val);
+    }
  /**
      * Get the default value for the specified key.
      * May be null.
@@ -406,6 +434,7 @@ public class PreferenceManager implements PropertyManager {
     public void put(String key, String value) {
         preferences.put(key, value);
         updateCaches(key, value);
+        
     }
 
     public void put(String key, boolean b) {
@@ -990,6 +1019,9 @@ public class PreferenceManager implements PropertyManager {
         defaultValues.put(IONTORRENT_NRBASES_IONOGRAM_ALIGN, "5");
         defaultValues.put(IONTORRENT_HEIGHT_IONOGRAM_ALIGN, "50");
         defaultValues.put(IONTORRENT_MAXNREADS_IONOGRAM_ALIGN, "100");
+        defaultValues.put(KARYO_ALLOW_BAMFILES, "false");
+        defaultValues.put(KARYO_ALLOW_GENEFILES, "false");
+        defaultValues.put(KARYO_ALLOW_EXPFILES, "false");
         
         defaultValues.put(CHART_DRAW_TOP_BORDER, "false");
         defaultValues.put(CHART_DRAW_BOTTOM_BORDER, "false");

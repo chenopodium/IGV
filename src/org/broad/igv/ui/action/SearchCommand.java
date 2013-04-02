@@ -14,6 +14,7 @@ package org.broad.igv.ui.action;
 
 //~--- non-JDK imports --------------------------------------------------------
 
+import com.iontorrent.utils.ErrorHandler;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.PreferenceManager;
@@ -32,6 +33,9 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.*;
 import java.util.List;
+import org.broad.igv.batch.CommandExecutor;
+import org.broad.igv.track.Track;
+import org.broad.igv.util.LongRunningTask;
 
 /**
  * A class for performing search actions.  The class takes a view context and
@@ -85,9 +89,10 @@ public class SearchCommand implements Command {
     public void execute() {
 
         if (log.isDebugEnabled()) {
-            log.debug("Run search: " + searchString);
+            log.info("Run search: " + searchString);
         }
 
+        String oldchr = this.referenceFrame.getChrName();
         List<SearchResult> results = runSearch(searchString);
         if (askUser) {
             results = askUserFeature(results);
@@ -102,8 +107,47 @@ public class SearchCommand implements Command {
         showSearchResult(results);
 
         if (log.isDebugEnabled()) {
-            log.debug("End search: " + searchString);
+            log.info("End search: " + searchString);
         }
+        
+        // we might have defined a variable chr1=location to file, to speed up loading of IGV
+        // in this case, we want to load the next chromosome now....
+        String newchr = this.referenceFrame.getChrName();
+        log.info("SearchCommand.execute: old: "+oldchr+", newchr: "+newchr);
+        if (newchr != null && oldchr != null && !(newchr.equalsIgnoreCase(oldchr))) {
+            String locationtofile = PreferenceManager.getInstance().getTemp(newchr);
+            if (locationtofile != null) {
+                 log.info("User moved to new chr "+newchr+", and we found a map to a file "+locationtofile+", will now use load command");
+                 // first remove other tracks
+                 String name = newchr; 
+                Collection<Track> remove = new ArrayList<Track>();
+                log.info("Trying to remove other tracks with name chr");
+                Collection<Track> alltracks = IGV.getInstance().getAllTracks();
+
+                for (Track other: alltracks) {
+                    if (other.getName().startsWith("chr")) {
+                        log.info("Found other track "+other.getName());
+                        remove.add(other);                                                 
+                    }
+                    else log.info("NOT removing track "+other.getName());
+                }
+                if (remove.size()>0) {
+                    log.info("Removing other tracks");
+                    IGV.getInstance().removeTracks(remove);
+                }   
+                 CommandExecutor cmdExe = new CommandExecutor();
+                
+                 Map<String, String> params = new HashMap<String, String>();                 
+//                 params.put("displayMode", "COLLAPSED");
+//                 params.put("mergeTrack", "true");
+//                 
+//                 LongRunningTask.submit(new CommandExecutor.LoadRunnable(locationtofile, searchString, true, name, null, cmdExe));
+//                 params.put("displayMode", "EXPANDED");                
+//                // name = "Alignments"; 
+                 LongRunningTask.submit(new CommandExecutor.LoadRunnable(locationtofile, searchString, true, name, params, cmdExe));
+            }
+        }
+            
     }
 
     /**
@@ -207,6 +251,9 @@ public class SearchCommand implements Command {
         }
         if (showMessage) {
             MessageUtils.showMessage(message);
+            Exception e = new Exception("Debug: "+message);
+            log.info(ErrorHandler.getString(e));
+                    
         }
 
     }

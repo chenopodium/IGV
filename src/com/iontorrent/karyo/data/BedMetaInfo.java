@@ -18,6 +18,10 @@ import org.broad.tribble.Feature;
  */
 public class BedMetaInfo extends FeatureMetaInfo{
 
+    
+    public BedMetaInfo(String tname) {
+        super(tname);
+    }
     @Override
     public void populateMetaInfo(Feature f) {
         if (!(f instanceof BasicFeature)) return;

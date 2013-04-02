@@ -9,6 +9,7 @@ import java.awt.BorderLayout;
 import java.awt.Frame;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+import org.broad.igv.ui.IGV;
 
 /**
  *
@@ -19,6 +20,7 @@ public class KaryoControlPanel extends javax.swing.JPanel {
     private KaryoManager manager;
     private Frame frame;
     private KaryoOverviewPanel view;
+    private JFrame kframe;
 
     private static KaryoControlPanel control;
     
@@ -35,15 +37,21 @@ public class KaryoControlPanel extends javax.swing.JPanel {
     private KaryoControlPanel(Frame frame) {
         initComponents();
         this.frame = frame;
+        if (!IGV.DEBUG) {
+            this.btnFilter.setVisible(false);
+        }
         manager = KaryoManager.getManager(frame, this);
     }
 
     public void showPanel(int width, int height) {
-        JFrame kframe = new JFrame("Karyotype View");
-        kframe.setSize(width, height);
-        if (view == null) {
-            recreateView();
+        if (kframe != null) {
+            kframe.dispose();
         }
+        kframe = new JFrame("Karyotype View");
+        kframe.setSize(width, height);
+        //if (view == null) {
+            recreateView();
+     //   }
 
         kframe.getContentPane().add(this);
         if (frame.getIconImage() != null) {
@@ -66,24 +74,30 @@ public class KaryoControlPanel extends javax.swing.JPanel {
         }
         view = manager.createOverView();
         add("Center", view);
-        if (loadData) view.loadTracks();
+        if (loadData) {
+            view.loadTracks();
+        }
         else {
             // just add already loaded trees
             p("Not loading data. Adding existing tracks to overview");
             view.addTracksToOverview();
+        
+            panWest.setLayout(new BorderLayout());
+            panWest.removeAll();
+
+            SimpleTrackListPanel trackp = new SimpleTrackListPanel(manager, false, this);      
+            p("Adding SimpleTrackListPanel to west");
+            panWest.add("North", trackp);
+
+            repaint();
+            view.repaint();
+           this.paintImmediately(0,0,1000,1000);
+           this.invalidate();
+           this.revalidate();
+           panWest.invalidate();
+           panWest.revalidate();
+            p("=== control repainted");
         }
-        panWest.setLayout(new BorderLayout());
-        panWest.removeAll();
-        
-        SimpleTrackListPanel trackp = new SimpleTrackListPanel(manager, false, this);      
-        panWest.add("North", trackp);
-        
-        repaint();
-        view.repaint();
-       this.paintImmediately(0,0,1000,1000);
-       this.invalidate();
-       this.revalidate();
-       p("control repainted");
 //        FilterListPanel filterp = new FilterListPanel(manager);       
 //        panWest.add("South", filterp);
                 

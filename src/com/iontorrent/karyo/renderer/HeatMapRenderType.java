@@ -6,6 +6,7 @@ package com.iontorrent.karyo.renderer;
 
 import com.iontorrent.karyo.data.FeatureMetaInfo;
 import com.iontorrent.karyo.data.FeatureTree;
+import com.iontorrent.karyo.data.KaryoFeature;
 import com.iontorrent.karyo.data.KaryoTrack;
 import com.iontorrent.karyo.drawables.GuiChromosome;
 import com.iontorrent.karyo.drawables.GuiFeatureTree;
@@ -27,39 +28,39 @@ public class HeatMapRenderType extends RenderType {
     
     static boolean ERR_SHOWN = false;
    
-    public HeatMapRenderType() {
-        super("HeatMap plot", "Plots the value of an attribute in varying colors, such as a locus score");
+    int msgs = 0;
+    public HeatMapRenderType(KaryoTrack ktrack) {
+        super(ktrack, "HeatMap plot", "Plots the value of an attribute in varying colors, such as a locus score", 3);
         this.setRelevantAttName("Score");
     }
-    @Override
-    public String getColorName() {
-        return "High value color";
+     @Override
+    public String getColorName(int nr) {         
+        if (nr <= 0) return "Neutral color";
+        else if (nr == 1)return "High color for values > "+this.getCutoffScore() ;
+        else if (nr == 2)  return "Low color for values < "+this.getCutoffScore();
+        
+        else return null;
     }
-    @Override
-    public String getColor1Name() {
-        return "Low value color";
-    }
-     // Low value color
-    @Override
-    public Color getDefaultColor1(KaryoTrack ktrack) {        
-        return Color.white;
-    }
-    
-    /** Gain color */
-    @Override
-    public Color getDefaultColor(KaryoTrack ktrack) {
-        return Color.blue.darker();
+  @Override
+     public String getColorShortName(int nr) {
+        if (nr == 1)return ">"+(int)this.getCutoffScore() ;
+        else if (nr == 2)  return "<"+(int)this.getCutoffScore();
+        else return "="+(int)this.getCutoffScore();
     }
     @Override
     public boolean isClassSupported(Feature featureClass) {
-        return (featureClass instanceof Variant)
+        boolean ok = (featureClass instanceof Variant)
                 || (featureClass instanceof Segment)
                 || (featureClass instanceof LocusScore);
+        
+        if (!ok) p("HeatMap not supported for class "+featureClass.getClass().getName());
+        return ok;
     }
+    
+   
     @Override
-    public GuiFeatureTree getGuiTree(KaryoTrack ktrack, DrawingCanvas canvas, GuiChromosome chromo, FeatureTree tree, int dx) {
-        if (getStartcolor() == null) setColor(this.getDefaultColor(ktrack).brighter());
-        if (getEndcolor() == null) setColor1(this.getDefaultColor(ktrack).darker());
+    public GuiFeatureTree getGuiTree( DrawingCanvas canvas, GuiChromosome chromo, FeatureTree tree, int dx) {
+       
         FeatureMetaInfo.Range range = ktrack.getMetaInfo().getRangeForAttribute("Score");
         if (range == null) {
                err("Got no range for meta "+ ktrack.getMetaInfo()+"  and ktrack "+ktrack);
@@ -68,89 +69,22 @@ public class HeatMapRenderType extends RenderType {
         return new GuiHeatMapTree(ktrack, canvas, chromo, tree, dx);        
     }
     
-    // TODO: use color gradient with multiple colors
-    public Color getColor(FeatureMetaInfo meta, Feature f) {
-       
-        FeatureMetaInfo.Range range = meta.getRangeForAttribute("Score");
-        if (range == null) {
-           if (!ERR_SHOWN) {
-               err("Got no range for meta "+ meta+"  and f "+f);
-               ERR_SHOWN = true;
-           }
-            return Color.gray;
-        }
-        
-        double score = getScore(f);
-        
-        double MAX = range.max;
-        double MIN = range.min;
-        
-        double rangedelta = MAX-MIN;
-        
-        double dr = (color1.getRed()-color.getRed()) / (rangedelta);
-        double dg = (color1.getGreen()-color.getGreen()) / (rangedelta);
-        double db = (color1.getBlue()-color.getBlue()) / (rangedelta);
-        
-        double ds = score - MIN;
-        
-        int r = Math.min(255, Math.max(0,(int) (color.getRed()+dr * ds)));
-        int g = Math.min(255, Math.max(0,(int) (color.getGreen()+dg * ds)));
-        int b = Math.min(255, Math.max(0,(int) (color.getBlue()+db * ds)));
-        Color c = new Color(r, g, b);
-        return c;
-    
+    @Override
+    public Color getColor(FeatureMetaInfo meta, KaryoFeature f) {        
+        return super.getGradientColor(meta, f);
     }
-    public double getScore(Feature f) {
-        double score = 0;
-        if (f instanceof Variant) {
-            Variant v = (Variant) f;            
-            
-            String sscore = v.getAttributeAsString(this.getRelevantAttName());
-                 
-            if (sscore != null) {
-                try {
-                    score = Double.parseDouble(sscore);
-                }
-                catch (Exception e) {
-                    err("Could not parse score "+getRelevantAttName()+"="+sscore +" to string");
-                }               
-            }                                       
-        }  
-        else if (f instanceof Segment) {
-            Segment v = (Segment) f;
-            score = v.getScore();  
-            
-        } 
-        else if (f instanceof LocusScore) {
-            LocusScore v = (LocusScore) f;
-            score = v.getScore();                           
-        }    
-        return score;
-    }   
+    
     
     private void err(String s) {
             Logger.getLogger("HeatMapRenderType").warn(s);
     }
     private void p(String s) {
+        if (msgs < 100) {
             Logger.getLogger("HeatMapRenderType").info(s);
+            msgs ++;
+        }
     }
 
-
-    /**
-     * @return the startcolor
-     */
-    public Color getStartcolor() {
-        return color;
-    }
-
-   
-
-    /**
-     * @return the endcolor
-     */
-    public Color getEndcolor() {
-        return color1;
-    }
 
    
 }

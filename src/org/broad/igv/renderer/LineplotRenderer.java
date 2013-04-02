@@ -33,11 +33,14 @@ import org.broad.igv.track.Track;
 
 import java.awt.*;
 import java.util.List;
+import java.util.logging.Logger;
 
 /**
  * @author jrobinso
  */
 public class LineplotRenderer extends XYPlotRenderer {
+
+    private int msgs;
 
     /**
      * Render the track in the given rectangle.
@@ -49,7 +52,7 @@ public class LineplotRenderer extends XYPlotRenderer {
      */
     @Override
     public void renderScores(Track track, List<LocusScore> locusScores, RenderContext context,
-                             Rectangle arect) {
+            Rectangle arect) {
 
 
         Rectangle adjustedRect = calculateDrawingRect(arect);
@@ -60,11 +63,15 @@ public class LineplotRenderer extends XYPlotRenderer {
 
         Color posColor = track.getColor();
         Color negColor = track.getAltColor();
+        Color midColor = track.getMidColor();
+        if (midColor == null) {
+            midColor = posColor;
+        }
 
-        Graphics2D gPos = context.getGraphic2DForColor(posColor);
-        gPos.setRenderingHint(RenderingHints.KEY_ANTIALIASING,  PreferenceManager.getInstance().getAntiAliasingHint());
-        Graphics2D gNeg = context.getGraphic2DForColor(negColor);
-        gNeg.setRenderingHint(RenderingHints.KEY_ANTIALIASING,  PreferenceManager.getInstance().getAntiAliasingHint());
+//        Graphics2D gPos = context.getGraphic2DForColor(posColor);
+//        gPos.setRenderingHint(RenderingHints.KEY_ANTIALIASING,  PreferenceManager.getInstance().getAntiAliasingHint());
+//        Graphics2D gNeg = context.getGraphic2DForColor(negColor);
+//        gNeg.setRenderingHint(RenderingHints.KEY_ANTIALIASING,  PreferenceManager.getInstance().getAntiAliasingHint());
 
 
         // Get the Y axis definition, consisting of minimum, maximum, and base value.  Often
@@ -86,6 +93,7 @@ public class LineplotRenderer extends XYPlotRenderer {
             double dx = (score.getEnd() - score.getStart()) / locScale;
 
             float dataY = score.getScore();
+
 
             // Compute the pixel y location.  
             double y = adjustedRect.getY() + (maxValue - dataY) * yScaleFactor;
@@ -120,7 +128,15 @@ public class LineplotRenderer extends XYPlotRenderer {
                     clippedPX = lastPx + (int) ((clippedPY - lastPy) / slope);
                 }
 
-                Graphics2D g = (dataY >= 0) ? gPos : gNeg;
+                double cutoff = track.getCutoffScore();
+//                if (cutoff != 0) {
+//                    if (msgs < 10) Logger.getLogger("LinepolotRenderer").info("Got cutoffscore : "+cutoff+", dataY="+dataY);
+//                }
+
+                Color gradcolor = getGradientColor(minValue, maxValue, dataY, posColor, negColor, midColor, cutoff);
+                Graphics2D g = context.getGraphic2DForColor(gradcolor);
+                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, PreferenceManager.getInstance().getAntiAliasingHint());
+                //Graphics2D g = (dataY >= cutoff) ? gPos : gNeg;
 
                 g.drawLine(clippedLastPX, clippedLastPY, clippedPX, clippedPY);
 

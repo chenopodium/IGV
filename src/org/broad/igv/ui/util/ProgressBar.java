@@ -108,11 +108,13 @@ public class ProgressBar extends JPanel
         } else {
             progressDialog = new ProgressDialog(dialogsParent);
             progressDialog.setSize(500, 25);
+             progressDialog.toFront();
             if (dialogsParent.isVisible()) {
                 progressDialog.setLocationRelativeTo(dialogsParent);
             } else {
                 // Center on screen
                 UIUtilities.centerWindow(progressDialog);
+               
             }
         }
 

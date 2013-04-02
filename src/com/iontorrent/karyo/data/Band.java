@@ -4,6 +4,8 @@
  */
 package com.iontorrent.karyo.data;
 
+import org.broad.igv.feature.Cytoband;
+
 /**
  *
  * @author Chantal Roth
@@ -13,17 +15,25 @@ public class Band {
     private String chrname;
     private long start;
     private long end;
-    private String type;
-    
+    private char type;
+    private short stain;
     private Chromosome chr;
 
-    
-    public Band(String name, String chrname, long start, long end, String type) {
+    public Band(Cytoband cyto) {
+        this.name = cyto.getName();
+        this.type = cyto.getType();
+        this.stain = cyto.getStain();
+        this.start =cyto.getStart();
+        this.end = cyto.getEnd();
+        this.chrname = cyto.getChr();
+    }
+    public Band(String name, String chrname, long start, long end, char type, short stain) {
         this.name = name;
         this.chrname = chrname;
         this.start = start;
         this.end = end;
         this.type = type;
+        this.stain = stain;
     }
     public String toString() {
         return "Band @ "+chrname+", "+start+"-"+end;
@@ -87,15 +97,18 @@ public class Band {
     /**
      * @return the type
      */
-    public String getType() {
+    public char getType() {
         return type;
     }
 
     /**
      * @param type the type to set
      */
-    public void setType(String type) {
+    public void setType(char type) {
         this.type = type;
+    }
+    public short getStain() {
+        return stain;
     }
 
     /**
@@ -116,16 +129,16 @@ public class Band {
         return getEnd() - getStart();
     }
     public boolean isCentromer() {
-        return type.equals("acen");
+        return type == 'c';
     }
     public boolean issNeg() {
-        return type.equals("gneg");
+        return type == 'n';
     }
     public boolean isStalk() {
-        return type.equals("stalk");
+        return type == 's';
     }
     public boolean isVar() {
-        return type.equals("gvar");
+        return type == 'v';
     }
            
 }

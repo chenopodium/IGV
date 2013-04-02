@@ -39,6 +39,21 @@ public class TrackProperties {
 
     private static Logger log = Logger.getLogger(TrackProperties.class);
 
+    /**
+     * @return the cutoffScore
+     */
+    public double getCutoffScore() {
+        return cutoffScore;
+    }
+
+    /**
+     * @param cutoffScore the cutoffScore to set
+     */
+    public void setCutoffScore(double cutoffScore) {
+        log.info("Gut cutoffscore "+cutoffScore);
+        this.cutoffScore = cutoffScore;
+    }
+
     public enum BaseCoord {
         ZERO, ONE, UNSPECIFIED
     }
@@ -130,6 +145,9 @@ public class TrackProperties {
     private boolean alternateExonColor = false;
 
     private String dataURL;
+    
+    /** The score that can be used for instance in switching colors from low to high value */
+    private double cutoffScore;
 
     /**
      * Track attributes (meta data)

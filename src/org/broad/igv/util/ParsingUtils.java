@@ -249,11 +249,13 @@ public class ParsingUtils {
     public static boolean parseTrackLine(String nextLine, TrackProperties trackProperties)
             throws NumberFormatException {
 
+        log.info("===parseTrackLine: Parsing trackline: "+nextLine);
         boolean foundProperties = false;
         try {
             // track type=wiggle_0 name="CSF +" description="CSF +" visibility=full autoScale=off viewLimits=-50:50
             List<String> tokens = StringUtils.breakQuotedString(nextLine, ' ');
             for (String pair : tokens) {
+                log.info("parseTrackLine: Got "+tokens);
                 List<String> kv = StringUtils.breakQuotedString(pair, '=');
                 if (kv.size() == 2) {
                     foundProperties = true;
@@ -277,6 +279,16 @@ public class ParsingUtils {
                         }
                     } else if (key.equals("description")) {
                         trackProperties.setDescription(value);
+                    } else if (key.equalsIgnoreCase("cutoffscore")) {
+                        log.info("parseTrackLine: Got "+key+"="+value);
+                        double d = 0;
+                        try {
+                            d = Double.parseDouble(value);
+                        }
+                        catch (Exception e) { 
+                            log.info("Could not parse "+value+" to double for "+key);
+                        }
+                        trackProperties.setCutoffScore(d);
                     } else {
                         final String valueLowerCase = value.toLowerCase();
                         if (key.equals("itemrgb")) {

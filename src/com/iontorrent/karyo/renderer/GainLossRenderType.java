@@ -5,13 +5,16 @@
 package com.iontorrent.karyo.renderer;
 
 import com.iontorrent.karyo.data.FeatureTree;
+import com.iontorrent.karyo.data.KaryoFeature;
 import com.iontorrent.karyo.data.KaryoTrack;
 import com.iontorrent.karyo.drawables.GuiChromosome;
 import com.iontorrent.karyo.drawables.GuiFeatureTree;
 import com.iontorrent.karyo.drawables.GuiIndelTree;
 import com.iontorrent.views.basic.DrawingCanvas;
 import java.awt.Color;
+import java.util.Iterator;
 import org.apache.log4j.Logger;
+import org.broad.igv.data.seg.Segment;
 import org.broad.igv.variant.Variant;
 import org.broad.tribble.Feature;
 
@@ -24,89 +27,63 @@ public class GainLossRenderType extends RenderType {
     
     public static final String GAIN = "gain";
     public static final String LOSS = "loss";
+    public static final String NEUTRAL = "neutral";
     public static final String UNKNOWN = "UNKNOWN";
     
    
-    public GainLossRenderType() {
-        super("Gain/Loss histogram", "Two histograms, one for gains, one for losses, such as for INDELS or other similar types");
+    public GainLossRenderType(KaryoTrack ktrack) {
+        super(ktrack, "Gain/Loss histogram", "Two histograms, one for gains, one for losses, such as for INDELS or other similar types", 3);
         this.setRelevantAttName("INDELTYPE");
     }
     
     @Override
-    public String getColorName() {
-        return "Gain color";
+    public String getColorName(int nr) {         
+        String rel = "";
+        if (this.getRelevantAttName() != null) rel = "based on "+rel+" or ";
+        
+        if (nr == 0) return "Neutral color at "+this.getCutoffScore();
+        else if (nr == 1)return "Gain color ("+rel+"score > "+this.getCutoffScore()+")" ;
+        
+        else if (nr == 2)  return "Loss color ( "+rel+"score < "+this.getCutoffScore()+")";        
+        else return null;
     }
     @Override
-    public String getColor1Name() {
-        return "Loss color";
+     public String getColorShortName(int nr) {
+        if (nr == 1)return "Gain" ;
+        else if (nr == 2)  return "Loss";
+        else return null;
     }
-    // LOSS color
-    @Override
-    public Color getDefaultColor1(KaryoTrack ktrack) {
-        String type = ktrack.getName().toUpperCase();
-        if (type.indexOf("SNP") > -1) {
-            return Color.yellow.brighter();
-        } else if (type.indexOf("INDEL") > -1) {
-            return Color.red.darker();        
-        } else if (type.indexOf("CNV") > -1) {
-            return Color.yellow.brighter();       
-        } else if (type.indexOf("COVERAGE") > -1) {
-            return Color.gray;
-        } else {
-            return Color.red.darker();
-        }
-    }
-    
-    /** Gain color */
-    @Override
-    public Color getDefaultColor(KaryoTrack ktrack) {
-        String type = ktrack.getName().toUpperCase();
-        if (type.indexOf("SNP") > -1) {
-            return Color.blue.darker();
-        } else if (type.indexOf("INDEL") > -1) {
-            return Color.green.darker();        
-        } else if (type.indexOf("CNV") > -1) {
-            return new Color(200, 50, 240);       
-        } else if (type.indexOf("COVERAGE") > -1) {
-            return Color.gray;
-        } else {
-            return Color.green.darker();
-        }
-    }
+   
     @Override
     public boolean isClassSupported(Feature featureClass) {
-        return (featureClass instanceof Variant);
-               // || (featureClass instanceof Variant);
+        return (featureClass instanceof Variant)
+                || (featureClass instanceof Segment);
     }
     @Override
-    public GuiFeatureTree getGuiTree(KaryoTrack ktrack, DrawingCanvas canvas, GuiChromosome chromo, FeatureTree tree, int dx) {
+    public GuiFeatureTree getGuiTree(DrawingCanvas canvas, GuiChromosome chromo, FeatureTree tree, int dx) {
         return new GuiIndelTree(ktrack, canvas, chromo, tree, dx);        
     }
-    public String getGainType(Feature f) {
-        if (f instanceof Variant) {
-            Variant v = (Variant) f;
-            String att = v.getAttributeAsString(this.getRelevantAttName());
-            if (att == null)  {
-                String scopynr = v.getAttributeAsString("COPYNR");
-                int copynr = -1;
-                if (scopynr != null) {
-                    try {
-                        copynr = Integer.parseInt(scopynr);
-                    }
-                    catch (Exception e) {
-                        err("Could not parse copy nr "+scopynr +" to string");
-                    }
-                    if (copynr > 1) return GAIN;
-                    else if (copynr >-1) return LOSS;
-                }                
-            }
-            else {
-                if (att.equalsIgnoreCase("GAIN"))return GAIN;
-                else if (att.equalsIgnoreCase("LOSS")) return LOSS;            
-            }
-        }       
-        return UNKNOWN;
-    }   
+    
+    public String getGainType(KaryoFeature f) {
+        Feature feature = f.getFeature();
+     //   p("getGainType: att name="+this.getRelevantAttName()+" for "+feature.getClass().getName());
+        if (feature instanceof Variant) {
+            Variant var = (Variant)feature;
+            String rel = this.getRelevantAttName();
+            String indeltype = f.getAttribute(var,rel);
+          //  p("Got "+rel+" "+indeltype);
+            
+            if (indeltype != null) {
+           //     p("Got indeltype from "+rel+":"+indeltype);
+                if (indeltype.contains("INS")) return GAIN;
+                else if (indeltype.contains("DEL")) return LOSS;
+                else return NEUTRAL;
+            }            
+        }
+        if (f.isInsertion(this.getCutoffScore())) return GAIN;
+        else if (f.isDeletion(this.getCutoffScore())) return LOSS;
+        else return NEUTRAL;               
+    }
     
     private void err(String s) {
             Logger.getLogger("GainLossRenderType").warn(s);

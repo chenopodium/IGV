@@ -1080,7 +1080,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             Collection<Track> tracks = new ArrayList();
             tracks.add(AlignmentTrack.this);
 
-            JLabel popupTitle = new JLabel("  " + AlignmentTrack.this.getName(), JLabel.CENTER);
+            JLabel popupTitle = new JLabel("  " + AlignmentTrack.this.getDisplayName(), JLabel.CENTER);
 
             Font newFont = getFont().deriveFont(Font.BOLD, 12);
             popupTitle.setFont(newFont);
@@ -1943,6 +1943,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         ConfidenceDistribution[] distributions = getDistributions(forward, reverse, frame, location);
 
         if (distributions == null || distributions.length < 1) {
+            MessageUtils.showMessage("I found no flow signal distributions at this location "+location);
             return;
         }
         

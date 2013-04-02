@@ -121,7 +121,7 @@ public class IonogramAlignment {
                         }
                         //
                         FlowSignalSubContext subcontext = block.getFlowSignalSubContext(posinblock);
-                        if (subcontext == null) {
+                        if (subcontext == null || subcontext.getFlowValues() == null) {
                             continue;
                         }
                         int flownr = subcontext.getFlowOrderIndex();
@@ -328,7 +328,7 @@ public class IonogramAlignment {
       //  this.nrrelativelocations = targetlen;
         // get flow value of previous center
                 
-    //    p("REFERENCE: " + consensus + "=" + Arrays.toString(tseq));
+        p("REFERENCE: " + consensus + "=" + Arrays.toString(tseq));
         for (int i = 0; i < ionograms.size(); i++) {
             // remove duplicate flows 
             Ionogram iono = ionograms.get(i);
@@ -347,7 +347,7 @@ public class IonogramAlignment {
             
             FlowSeq flowQseq = new FlowSeq(iono.getFlowvalues());
             FlowOrder qseqFlowOrder = new FlowOrder(qorder);
-            //  p("ref: "+Arrays.toString(tseq)+", signals="+Arrays.toString(signals)+", order="+Arrays.toString(qorder)+" :"+qseqFlowOrder.toString());
+            //p("ref: "+Arrays.toString(tseq)+"", order="+Arrays.toString(qorder)+" :"+qseqFlowOrder.toString());
             com.iontorrent.sam2flowgram.flowalign.IonogramAlignment falign = null;
             try {
                 falign = new com.iontorrent.sam2flowgram.flowalign.IonogramAlignment(flowQseq, tseq, qseqFlowOrder, true, true, 1);

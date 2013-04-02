@@ -4,12 +4,9 @@
  */
 package com.iontorrent.karyo.data;
 
-import java.util.Iterator;
-import java.util.Map;
 import java.util.logging.Logger;
 import org.broad.igv.feature.BasicFeature;
 import org.broad.igv.feature.LocusScore;
-import org.broad.igv.util.collections.MultiMap;
 
 import org.broad.tribble.Feature;
 
@@ -19,6 +16,9 @@ import org.broad.tribble.Feature;
  */
 public class LocusScoreMetaInfo extends FeatureMetaInfo {
 
+    public LocusScoreMetaInfo(String name) {
+        super(name);
+    }
     @Override
     public void populateMetaInfo(Feature f) {
         if (!(f instanceof BasicFeature)) {

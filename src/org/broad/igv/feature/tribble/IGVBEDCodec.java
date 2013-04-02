@@ -23,6 +23,7 @@ import org.broad.tribble.Feature;
 import org.broad.tribble.util.ParsingUtils;
 
 import java.net.URLEncoder;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +42,8 @@ public class IGVBEDCodec extends UCSCCodec<BasicFeature> implements LineFeatureE
     private static final Logger log = Logger.getLogger("IGVBEDCodec");
     static final Pattern BR_PATTERN = Pattern.compile("<br>");
     static final Pattern EQ_PATTERN = Pattern.compile("=");
-
+    private int nrerrors;
+    
     Genome genome;
 
     public IGVBEDCodec() {
@@ -173,7 +175,18 @@ public class IGVBEDCodec extends UCSCCodec<BasicFeature> implements LineFeatureE
                     feature.setThickEnd(Integer.parseInt(tokens[7]));
                 }
                 catch (Exception e) {
-                    log.info("Cannot parse tokens 6 and 7 as Integers: "+tokens[6]+", "+tokens[7]);
+                    feature.setDescription(tokens[6]+", "+tokens[7]);
+                    if (nrerrors < 20) {
+                        // [chr1, 11190803, 11190804, COSM180789, 0, +, REF=C;OBS=T;ANCHOR=T, AMPL236805398]
+                        // REF=C;OBS=T;ANCHOR=T, AMPL236805398
+                        log.info("Cannot parse tokens 6 and 7 as Integers: "+tokens[6]+", "+tokens[7]+", using it as description");
+                        if (nrerrors < 10) {
+                            // print all tokens
+                            log.info("Tokens are: "+Arrays.toString(tokens)+", feature so far: "+feature);
+                        }
+                        nrerrors++;
+                        
+                    }
                 }
             }
         }

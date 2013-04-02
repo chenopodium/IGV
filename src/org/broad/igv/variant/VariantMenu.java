@@ -76,7 +76,7 @@ public class VariantMenu extends IGVPopupMenu {
 
 
         //Title
-        JLabel popupTitle = new JLabel("<html><b>" + this.track.getName(), JLabel.LEFT);
+        JLabel popupTitle = new JLabel("<html><b>" + this.track.getDisplayName(), JLabel.LEFT);
         Font newFont = getFont().deriveFont(Font.BOLD, 12);
         popupTitle.setFont(newFont);
         add(popupTitle);

@@ -8,10 +8,9 @@
  * This software is licensed under the terms of the GNU Lesser General Public License (LGPL),
  * Version 2.1 which is available at http://www.opensource.org/licenses/lgpl-2.1.php.
  */
-
 package org.broad.igv.sam;
 
-
+import com.iontorrent.utils.ErrorHandler;
 import net.sf.samtools.util.CloseableIterator;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
@@ -28,6 +27,7 @@ import org.broad.igv.util.collections.LRUCache;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.*;
+import javax.swing.JOptionPane;
 
 /**
  * A wrapper for an AlignmentQueryReader that caches query results
@@ -37,23 +37,18 @@ import java.util.*;
 public class AlignmentTileLoader {
 
     private static Logger log = Logger.getLogger(AlignmentTileLoader.class);
-
     private static Set<WeakReference<AlignmentTileLoader>> activeLoaders = Collections.synchronizedSet(new HashSet());
-
     /**
-     * Flag to mark a corrupt index.  Without this attempted reads will continue in an infinite loop
+     * Flag to mark a corrupt index. Without this attempted reads will continue
+     * in an infinite loop
      */
     private boolean corruptIndex = false;
-
     private AlignmentReader reader;
     private boolean cancel = false;
     private boolean pairedEnd = false;
 
-
     // Map of read group -> paired end stats
-
     //private PairedEndStats peStats;
-
     private static void cancelReaders() {
         for (WeakReference<AlignmentTileLoader> readerRef : activeLoaders) {
             AlignmentTileLoader reader = readerRef.get();
@@ -64,7 +59,6 @@ public class AlignmentTileLoader {
         log.debug("Readers canceled");
         activeLoaders.clear();
     }
-
 
     public AlignmentTileLoader(AlignmentReader reader) {
         this.reader = reader;
@@ -87,12 +81,11 @@ public class AlignmentTileLoader {
         return reader.hasIndex();
     }
 
-
     AlignmentTile loadTile(String chr, int start, int end,
-                           boolean showSpliceJunctions,
-                           AlignmentDataManager.DownsampleOptions downsampleOptions,
-                           Map<String, PEStats> peStats,
-                           AlignmentTrack.BisulfiteContext bisulfiteContext) {
+            boolean showSpliceJunctions,
+            AlignmentDataManager.DownsampleOptions downsampleOptions,
+            Map<String, PEStats> peStats,
+            AlignmentTrack.BisulfiteContext bisulfiteContext) {
 
         AlignmentTile t = new AlignmentTile(start, end, showSpliceJunctions, downsampleOptions, bisulfiteContext);
 
@@ -160,10 +153,10 @@ public class AlignmentTileLoader {
                 }
 
 
-                if (!record.isMapped() || (!showDuplicates && record.isDuplicate()) ||
-                        (filterFailedReads && record.isVendorFailedRead()) ||
-                        record.getMappingQuality() < qualityThreshold ||
-                        (filter != null && filter.filterAlignment(record))) {
+                if (!record.isMapped() || (!showDuplicates && record.isDuplicate())
+                        || (filterFailedReads && record.isVendorFailedRead())
+                        || record.getMappingQuality() < qualityThreshold
+                        || (filter != null && filter.filterAlignment(record))) {
                     continue;
                 }
 
@@ -172,7 +165,10 @@ public class AlignmentTileLoader {
                 alignmentCount++;
                 int interval = Globals.isTesting() ? 100000 : 1000;
                 if (alignmentCount % interval == 0) {
-                    if (cancel) return null;
+                    if (cancel) {
+                        log.info("loadTile: Cancelling, returning null");
+                        return null;
+                    }
                     MessageUtils.setStatusBarMessage("Reads loaded: " + alignmentCount);
                     if (checkMemory() == false) {
                         cancelReaders();
@@ -183,7 +179,9 @@ public class AlignmentTileLoader {
                 // Update pe stats
                 if (peStats != null && record.isPaired() && record.isProperPair()) {
                     String lb = record.getLibrary();
-                    if (lb == null) lb = "null";
+                    if (lb == null) {
+                        lb = "null";
+                    }
                     PEStats stats = peStats.get(lb);
                     if (stats == null) {
                         stats = new PEStats(lb);
@@ -220,8 +218,8 @@ public class AlignmentTileLoader {
         } catch (java.nio.BufferUnderflowException e) {
             // This almost always indicates a corrupt BAM index, or less frequently a corrupt bam file
             corruptIndex = true;
-            MessageUtils.showMessage("<html>Error encountered querying alignments: " + e.toString() +
-                    "<br>This is often caused by a corrupt index file.");
+            MessageUtils.showMessage("<html>Error encountered querying alignments: " + e.toString()
+                    + "<br>This is often caused by a corrupt index file.");
             return null;
 
         } catch (Exception e) {
@@ -242,14 +240,36 @@ public class AlignmentTileLoader {
         }
     }
 
-
     private static synchronized boolean checkMemory() {
         if (RuntimeUtils.getAvailableMemoryFraction() < 0.2) {
             LRUCache.clearCaches();
             System.gc();
             if (RuntimeUtils.getAvailableMemoryFraction() < 0.2) {
-                String msg = "Memory is low, reading terminating.";
-                MessageUtils.showMessage(msg);
+                int maxmb = (int) (Runtime.getRuntime().maxMemory() / 1000000);
+                PreferenceManager pref = PreferenceManager.getInstance();
+                boolean down = pref.getAsBoolean(PreferenceManager.SAM_DOWNSAMPLE_READS);
+                int reads = pref.getAsInt(PreferenceManager.SAM_SAMPLING_COUNT);
+                int range = pref.getAsInt(PreferenceManager.SAM_MAX_VISIBLE_RANGE);
+
+                int moremb = (int) (maxmb * 2 / 500) * 500;
+                String mem = moremb + "MB";
+
+                String msg = "Memory is getting low, I will have to stop loading reads.<br>"
+                        + "The current max read depth is <b>" + reads + "</b>, and the visibility range is "
+                        + "<b>" + range + " kb</b>.<br>";
+                msg += "<b>Would you like me to reduce those parameters?</b><br>";
+                msg += "<br>(Note: you can also try to give IGV more memory!<br>"
+                        + "Via URL: add <b>&maxheap=" + mem + "&</b> to the URL (as an example).<br>"
+                        + "Via command line: java -jar <b>-Xmx" + mem + "</b> igv.jar)";
+
+                boolean ok = MessageUtils.getOrOrCancel(msg);
+                if (ok) {
+                    reads = reads / 2;
+                    range = range / 2;
+                    pref.put(PreferenceManager.SAM_DOWNSAMPLE_READS, "true");
+                    pref.put(PreferenceManager.SAM_SAMPLING_COUNT, "" + reads);
+                    pref.put(PreferenceManager.SAM_MAX_VISIBLE_RANGE, "" + range);
+                } 
                 return false;
             }
 
@@ -257,9 +277,9 @@ public class AlignmentTileLoader {
         return true;
     }
 
-
     /**
-     * Does this file contain paired end data?  Assume not until proven otherwise.
+     * Does this file contain paired end data? Assume not until proven
+     * otherwise.
      */
     public boolean isPairedEnd() {
         return pairedEnd;
@@ -272,7 +292,6 @@ public class AlignmentTileLoader {
     /**
      * Caches alignments, coverage, splice junctions, and downsampled intervals
      */
-
     public static class AlignmentTile {
 
         private boolean loaded = false;
@@ -283,19 +302,16 @@ public class AlignmentTileLoader {
         private List<DownsampledInterval> downsampledIntervals;
         private List<SpliceJunctionFeature> spliceJunctionFeatures;
         private SpliceJunctionHelper spliceJunctionHelper;
-
         private boolean downsample;
         private int samplingWindowSize;
         private int samplingDepth;
         private SamplingBucket currentSamplingBucket;
-
         private static final Random RAND = new Random(System.currentTimeMillis());
 
-
         AlignmentTile(int start, int end,
-                      boolean showSpliceJunctions,
-                      AlignmentDataManager.DownsampleOptions downsampleOptions,
-                      AlignmentTrack.BisulfiteContext bisulfiteContext) {
+                boolean showSpliceJunctions,
+                AlignmentDataManager.DownsampleOptions downsampleOptions,
+                AlignmentTrack.BisulfiteContext bisulfiteContext) {
             this.start = start;
             this.end = end;
             alignments = new ArrayList(16000);
@@ -331,11 +347,11 @@ public class AlignmentTileLoader {
         public void setStart(int start) {
             this.start = start;
         }
-
         int ignoredCount = 0;    // <= just for debugging
 
         /**
-         * Add an alignment record to this tile.  This record is not necessarily retained after down-sampling.
+         * Add an alignment record to this tile. This record is not necessarily
+         * retained after down-sampling.
          *
          * @param alignment
          */
@@ -410,7 +426,6 @@ public class AlignmentTileLoader {
             return counts;
         }
 
-
         private void finalizeSpliceJunctions() {
             if (spliceJunctionHelper != null) {
                 spliceJunctionHelper.finish();
@@ -422,25 +437,22 @@ public class AlignmentTileLoader {
             spliceJunctionHelper = null;
         }
 
-
         public List<SpliceJunctionFeature> getSpliceJunctionFeatures() {
             return spliceJunctionFeatures;
         }
 
-
         private class SamplingBucket {
+
             int start;
             int end;
             int downsampledCount = 0;
             List<Alignment> alignments;
-
 
             private SamplingBucket(int start, int end) {
                 this.start = start;
                 this.end = end;
                 alignments = new ArrayList(samplingDepth);
             }
-
 
             public void add(Alignment alignment) {
                 // If the current bucket is < max depth we keep it.  Otherwise,  keep with probability == samplingProb
@@ -472,8 +484,4 @@ public class AlignmentTileLoader {
             }
         }
     }
-
-
 }
-
-

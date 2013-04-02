@@ -246,4 +246,7 @@ public class FakeVariant implements Variant {
         this.homvar = homvar;
     }
     
+    public String toString() {
+        return "Fake variant @"+ this.getPositionString()+", type="+this.getType();    
+    }
 }

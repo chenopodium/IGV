@@ -33,38 +33,48 @@ public class FeatureTree extends FeatureTreeNode {
     }
 
     public void loadFeatures() {
-        p("========= LOAD FEATURES FOR "+track.getName()+", "+track.getTrack().toString()+", "+track.getTrack().getAttributeValue("DATA_FILE"));
-      
+      //  p("========= loading ALL features for " + track.getTrackDisplayName() + ", " + track.getTrack().toString() + ", " + track.getTrack().getAttributeValue("DATA_FILE"));
+
+        this.totalNrChildren = 0;
         if (!chr.startsWith("chr")) {
             chr = "chr" + chr;
         }
-        //   p("Loading features of " + chr + " from 0 - " + getEnd());
+        //      p("Loading features of " + chr + " from 0 - " + getEnd());
         List res = super.loadFeatures_r(chr, 0, chr.length());
-       
+
 
         if (res == null || res.isEmpty()) {
-            p(" !!!!!!!! loadFeatures: Nothing found for "+track.getName());
-        } else {           
+//            p(" !!!!!!!! loadFeatures: Nothing found for " + track.getTrackDisplayName());
+        } else {
             int total = 0;
-            p("Got "+res.size()+" items");
+            int totalwithatts = 0;
+            //   p("Got "+res.size()+" items");
             for (int i = 0; i < res.size(); i++) {
                 Object obj = res.get(i);
-                Feature f = (Feature)obj;
-                if (sampleFeature == null) {
-                    sampleFeature = f;
-                    track.setSampleafeture(f);
-                    track.setMetainfo(FeatureMetaInfo.createMetaInfo(sampleFeature));
-                }
-                total++;
-                this.addFeature(new KaryoFeature(f));
-                if (total < FeatureMetaInfo.MAX_NR_FEATURES) {
-                    if (total < 10) {
-                        //   p("Populating metainfo with feature "+f);
-                        track.getMetaInfo().populateMetaInfo(f);
+                Feature f = (Feature) obj;
+                if (f != null) {
+                    if (sampleFeature == null) {
+                        sampleFeature = f;
+                        track.setSampleafeture(f);
+                        track.setMetainfo(FeatureMetaInfo.createMetaInfo(track, sampleFeature));
+                    }
+                    total++;
+                    this.addFeature(new KaryoFeature(f));
+                    if (total < FeatureMetaInfo.MAX_NR_FEATURES) {
+                        if (total < 100000) {
+                            //   p("Populating metainfo with feature "+f);
+                            if (f instanceof KaryoFeature) {
+                                track.getMetaInfo().populateMetaInfo(((KaryoFeature) f).getFeature());
+                            } else {
+                                track.getMetaInfo().populateMetaInfo(f);
+                            }
+
+                        }
                     }
                 }
-            }            
+            }
         }
+        // p("LOADING DONE. Found "+this.getTotalNrChildren()+ " on the entire chromosome");
     }
 
     public Feature getSampleFeature() {
@@ -133,6 +143,7 @@ public class FeatureTree extends FeatureTreeNode {
         // Logger.getLogger("FeatureTree").info(msg);
         System.out.println("FeatureTree: " + msg);
     }
+
     private void err(String msg) {
         Logger.getLogger("FeatureTree").error(msg);
         System.err.println("FeatureTree: ERROR: " + msg);

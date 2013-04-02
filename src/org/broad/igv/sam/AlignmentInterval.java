@@ -269,7 +269,7 @@ public class AlignmentInterval extends Locus implements Interval {
         List<Alignment> allAlignments = (List<Alignment>) FeatureUtils.combineSortedFeatureListsNoDups(
                 getAlignmentIterator(), other.getAlignmentIterator(), start, end);
 
-        this.counts = counts.merge(other.getCounts(), renderOptions.bisulfiteContext);
+        if (renderOptions != null) this.counts = counts.merge(other.getCounts(), renderOptions.bisulfiteContext);
         this.spliceJunctions = FeatureUtils.combineSortedFeatureListsNoDups(this.spliceJunctions, other.getSpliceJunctions(), start, end);
         this.downsampledIntervals = FeatureUtils.combineSortedFeatureListsNoDups(this.downsampledIntervals, other.getDownsampledIntervals(), start, end);
 

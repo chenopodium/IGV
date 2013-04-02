@@ -4,15 +4,19 @@
  */
 package com.iontorrent.karyo.renderer;
 
+import com.iontorrent.karyo.data.FeatureMetaInfo;
 import com.iontorrent.karyo.data.FeatureTree;
+import com.iontorrent.karyo.data.KaryoFeature;
 import com.iontorrent.karyo.data.KaryoTrack;
 import com.iontorrent.karyo.drawables.GuiPointTree;
 import com.iontorrent.karyo.drawables.GuiChromosome;
 import com.iontorrent.karyo.drawables.GuiFeatureTree;
 import com.iontorrent.views.basic.DrawingCanvas;
+import java.awt.Color;
 import java.util.Iterator;
 import java.util.Map;
 import org.apache.log4j.Logger;
+import org.broad.igv.data.seg.Segment;
 import org.broad.igv.feature.LocusScore;
 import org.broad.igv.variant.Variant;
 import org.broad.tribble.Feature;
@@ -26,54 +30,49 @@ public class PointRenderType extends RenderType {
     
     boolean errorShown = false;
     
-    public PointRenderType() {
-        super("Point plot", "Plots the value of an attribute, such as the copy number, in a point plot");
-        this.setRelevantAttName("COPYNR");
-    }
     
+    public PointRenderType(KaryoTrack ktrack, String name, String desc) {
+        super(ktrack, name, desc, 3);
+        
+        //this.setRelevantAttName("COPYNR");
+    }
+    public PointRenderType(KaryoTrack ktrack) {
+        super(ktrack, "Point plot", "Plots the value of an attribute, such as the copy number, in a point plot", 3);
+        
+        //this.setRelevantAttName("COPYNR");
+    }
+     @Override
+    public String getColorName(int nr) {         
+        if (nr <= 0) return "Neutral color";
+        else if (nr == 1)return "High color for values > "+this.getCutoffScore() ;
+        else if (nr == 2)  return "Low color for values < "+this.getCutoffScore();
+        
+        else return null;
+    }
+  @Override
+     public String getColorShortName(int nr) {
+        if (nr == 1)return ">"+(int)this.getCutoffScore() ;
+        else if (nr == 2)  return "<"+(int)this.getCutoffScore();
+        else return "="+(int)this.getCutoffScore();
+    }
+      // TODO: use color gradient with multiple colors
+    @Override
+    public Color getColor(FeatureMetaInfo meta, KaryoFeature f) {        
+        return super.getGradientColor(meta, f);
+    }
     @Override
     public boolean isClassSupported(Feature featureClass) {
         return (featureClass instanceof Variant)
-                || (featureClass instanceof LocusScore);
+                || (featureClass instanceof LocusScore)
+                || (featureClass instanceof Segment);
+    }
+    public boolean outlineOval(double min, double max, double cutoff, double score) {
+        //p("PointRenderType: outlineOval is always false" );
+         return false;
     }
     @Override
-    public GuiFeatureTree getGuiTree(KaryoTrack ktrack, DrawingCanvas canvas, GuiChromosome chromo, FeatureTree tree, int dx) {
+    public GuiFeatureTree getGuiTree(DrawingCanvas canvas, GuiChromosome chromo, FeatureTree tree, int dx) {
         return new GuiPointTree(ktrack, canvas, chromo, tree, dx);        
-    }
-    public double getScore(Feature f) {
-        if (f instanceof Variant) {
-            Variant v = (Variant) f;
-            int copynr = -1;
-            String scopynr = v.getAttributeAsString(getAttname());
-            if (scopynr != null && scopynr.length()>0 && !scopynr.equals("null")) {
-                try {
-                    copynr = Integer.parseInt(scopynr);
-                }
-                catch (Exception e) {
-                    err("Could not parse copy nr "+scopynr +" to string");
-                }
-                return copynr;
-            }  
-            else {
-                if (!errorShown) {
-                    errorShown = true;
-                    p("Variant "+v+" has no "+getAttname()+" attribute");
-                    Map<String, Object> map = v.getAttributes();
-                    Iterator it = map.keySet().iterator();
-                    p("Got attributes: ");
-                    for (; it.hasNext(); ) {
-                        String key = (String) it.next();
-                        p(key+"="+map.get(key));
-                    }
-                }
-            }
-                       
-        }    
-        else if (f instanceof LocusScore) {
-            LocusScore v = (LocusScore) f;
-            return v.getScore();                           
-        }    
-        return 0;
     }   
     
     private void err(String s) {
@@ -88,6 +87,13 @@ public class PointRenderType extends RenderType {
      */
     public String getAttname() {
         return super.getRelevantAttName();
+    }
+
+    public double getMinPointHeight() {
+        return 2;
+    }
+    public double getMinPointWidth() {
+        return 2;
     }
 
     

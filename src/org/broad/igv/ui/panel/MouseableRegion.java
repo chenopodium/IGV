@@ -46,7 +46,7 @@ public class MouseableRegion {
         if (track.getName().equals(track.getName())) {
             this.text = track.getName();
         } else {
-            this.text = "<html>" + track.getName() + "<br>" + track.getName();
+            this.text = "<html>" + track.getDisplayName() + "<br>" + track.getName();
         }
         trackCltn = new SingleTrackRegion(track);
     }

@@ -4,13 +4,9 @@
  */
 package com.iontorrent.karyo.data;
 
-import com.iontorrent.karyo.drawables.GuiChromosome;
 import com.iontorrent.karyo.filter.KaryoFilter;
-import com.iontorrent.karyo.renderer.GainLossRenderType;
-import com.iontorrent.karyo.renderer.HeatMapRenderType;
-import com.iontorrent.karyo.renderer.PointRenderType;
+import com.iontorrent.karyo.renderer.RenderManager;
 import com.iontorrent.karyo.renderer.RenderType;
-import com.iontorrent.views.basic.DrawingCanvas;
 import java.awt.Color;
 import java.util.ArrayList;
 import org.broad.igv.track.AbstractTrack;
@@ -28,62 +24,82 @@ public class KaryoTrack {
     private KaryoFilter filter;
     private FeatureMetaInfo metainfo;
     private String shortname;
-    private String name;
+    private String trackdispname;
     private boolean visible;
     private RenderType renderType;
     private RenderType defaultRenderType;
-    public KaryoTrack(AbstractTrack track) {
+    private ArrayList<RenderType> rendererTypes;
+    private String sample;
+    public KaryoTrack(AbstractTrack track, int nr) {
         this.track = track;
         visible = true;
 
         //track.getResourceLocator().getDescription();
-        this.name = track.getName();
-        int dot = name.indexOf(".");
-        if (dot > 0) {
-            name = name.substring(0, dot - 1);
+        this.trackdispname = track.getDisplayName();
+        this.sample = track.getSample();
+        p("Track "+trackdispname+" sample: "+sample);
+        if (track.getResourceLocator() != null) {
+            p("Resource sample: "+track.getResourceLocator().getSampleId());
+            sample = track.getResourceLocator().getSampleId();
         }
+        int dot = trackdispname.indexOf(".");
+        if (dot > 0) {
+            trackdispname = trackdispname.substring(0, dot - 1);
+        }
+      //  if (sample != null) trackname= sample+" "+trackname;
         String sname = null;
-        if (sname == null && track.getName() != null) {
-            sname = "" + Character.toUpperCase(track.getName().charAt(0));
+        if (sname == null && track.getDisplayName() != null) {
+            sname = "" + nr;
+            //sname = "" + Character.toUpperCase(track.getName().charAt(0));
         }
         this.shortname = sname;
     }
-
-    public RenderType getDefaultRenderer() {
-        if (track instanceof FakeCnvTrack) {
-            defaultRenderType = new PointRenderType();
-        } else if (track instanceof FakeIndelTrack) {
-            defaultRenderType = new GainLossRenderType();       
-        } else if (getMetaInfo() instanceof LocusScoreMetaInfo) {
-            defaultRenderType = new PointRenderType();
-        } else if (getMetaInfo() instanceof SegmentMetaInfo) {
-            defaultRenderType = new HeatMapRenderType();
-        } else {
-            defaultRenderType = new RenderType();
-        }
-        return defaultRenderType;
+    public String getSample() {
+        return sample;
     }
-
-    public void setName(String name) {
-        this.name = name;
+   
+    /** return file ending */
+    public String getFileExt() {
+        if (track == null || track.getResourceLocator() == null) return "?";
+        String path = this.track.getResourceLocator().getPath();
+        if (path == null) return "?";
+        int dot = path.lastIndexOf(".");
+        if (dot<0) return "?";
+        return path.substring(dot+1);
+    }
+    public String getTrackName() {
+        if (track == null) return "?";
+        return track.getName();
+    }
+    public String getLastPartOfFile() {
+        if (track == null || track.getResourceLocator() == null) return "?";
+        String name = this.track.getResourceLocator().getFileName();
+        if (name == null) return "?";
+        int dot = name.lastIndexOf(".");
+        if (dot<0) return name;
+        return name.substring(0, dot);
+    }
+    
+    public void setTrackDisplayName(String name) {
+        this.trackdispname = name;
     }
 
     public void setShortname(String shortname) {
         this.shortname = shortname;
     }
 
-    public String getName() {
-        return name;
+    public String getTrackDisplayName() {
+        return trackdispname;
     }
 
     @Override
     public String toString() {
-        return getName();
+        return getTrackDisplayName();
     }
 
     public String getShortName() {
         if (shortname == null) {
-            shortname = name.substring(0, 1);
+            shortname = trackdispname.substring(0, 1);
         }
         return shortname;
     }
@@ -133,25 +149,33 @@ public class KaryoTrack {
      * @return the color
      */
     public Color getColor() {
-        if (color == null) {
-            color = this.getRenderType().getDefaultColor(this);
-        }
         return color;
     }
 
     public void setRenderType(RenderType rtype) {
         this.renderType = rtype;
-        color = renderType.getDefaultColor(this);
+        p("Render type of track " + this.getTrackDisplayName() + " is now " + rtype.getName());
+        color = renderType.getDefaultColor(0);
+    }
+
+    public void p(String s) {
+        System.out.println("KaryoTrack: " + s);
     }
 
     /**
      * @return the renderType
      */
     public RenderType getRenderType() {
-        if (renderType == null) renderType = this.getDefaultRenderer();
+        if (renderType == null) {
+            p("renderType is null for "+this.getTrackName()+"getting default render type");
+            renderType = getDefaultRenderer();
+        }
         return renderType;
     }
-    
+    public RenderType getDefaultRenderer() {
+         renderType = RenderManager.getDefaultRenderer(this, track);
+         return renderType;
+    }
     /**
      * @return the sampleafeture
      */
@@ -190,5 +214,19 @@ public class KaryoTrack {
 
     public void setVisible(boolean selected) {
         visible = selected;
+    }
+
+    /**
+     * @return the rendererTypes
+     */
+    public ArrayList<RenderType> getRendererTypes() {
+        return rendererTypes;
+    }
+
+    /**
+     * @param rendererTypes the rendererTypes to set
+     */
+    public void setRendererTypes(ArrayList<RenderType> rendererTypes) {
+        this.rendererTypes = rendererTypes;
     }
 }

@@ -75,7 +75,7 @@ public class GWASTrack extends AbstractTrack {
     private boolean drawYAxis = true;
     private boolean showAxis = true;
 
-    String getDisplayName() {
+    public String getDisplayName() {
         return displayName;
     }
 

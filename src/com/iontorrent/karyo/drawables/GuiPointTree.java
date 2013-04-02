@@ -18,10 +18,12 @@
  */
 package com.iontorrent.karyo.drawables;
 
+import com.iontorrent.karyo.data.FeatureMetaInfo;
 import com.iontorrent.karyo.data.FeatureTree;
 import com.iontorrent.karyo.data.KaryoFeature;
 import com.iontorrent.karyo.data.KaryoTrack;
 import com.iontorrent.karyo.data.FeatureTreeNode;
+import com.iontorrent.karyo.data.Range;
 import com.iontorrent.karyo.filter.KaryoFilter;
 import com.iontorrent.karyo.renderer.PointRenderType;
 import com.iontorrent.views.basic.DrawingCanvas;
@@ -32,6 +34,7 @@ import java.util.List;
 public class GuiPointTree extends GuiFeatureTree {
 
     PointRenderType pointType;
+    private int times;
 // ***************************************************************************
 // FROM DRAWABLE
 // ***************************************************************************
@@ -69,59 +72,153 @@ public class GuiPointTree extends GuiFeatureTree {
         super.draw(g0);
 
     }
-
     @Override
-    protected void drawBin(double nrpixelperfeature, boolean drawall, Graphics g, KaryoFilter filter, FeatureTreeNode node, int nr, int w, int maxnr, int s, int e, int x, int y, int h) {
+    protected void drawBuckets(int start, int delta, FeatureTreeNode[] nodes, double nrpixelperfeature, boolean drawall, Graphics2D g, KaryoFilter filter, int w, int maxnr, int x, int y, int h) {
+        for (times = 0; times < 3; times++) {
+            for (int b = 0; b < tree.getNrbuckets(); b++) {
+                int s = start + delta * b;
+                int e = s + delta;
+                FeatureTreeNode node = nodes[b];
+                if (node != null) {
+                    int nr = node.getTotalNrChildren();
+                    if (nr > 0) {
+                        drawBin(nrpixelperfeature, drawall, g, filter, node, nr, w, maxnr, s, e, x, y, h);
+                    }
+
+                }
+            }
+        }
+    }
+    @Override
+    protected void drawBin(double nrpixelperfeature, boolean drawall, Graphics g, KaryoFilter filter, FeatureTreeNode node, int nr, 
+        int trackwidth, int maxnr, int starty, int endy, int trackstartx, int y, int h) {
         // depends on filter mode! And wether we draw all or not
-        g.setColor(ktrack.getColor());
         List<KaryoFeature> features = null;
         if (filter != null && filter.isValid()) {
             features = node.getFilteredFeatures(filter, true);
         } else {
             features = node.getAllFeatures(true);
         }
-        Color cpos = ktrack.getColor();
-        drawVars(cpos, false, features, filter, g, nrpixelperfeature, s, e, x - w / 2, y, h, w / 2, node, maxnr);
+        FeatureMetaInfo.Range r = super.ktrack.getMetaInfo().getRangeForAttribute(this.renderType.getRelevantAttName());
+        if (r == null && nrerrors < 100){
+            p("=====Got no range for scatter plot and track "+ktrack.getTrackDisplayName()+", relevant field: "+this.renderType.getRelevantAttName());
+            nrerrors++;
+            ktrack.getMetaInfo().showRanges();
+            
+        }
+
+        boolean toleft = this.getX() < this.chromo.getX();
+        int thistrackstartx = trackstartx- trackwidth;
+        if (toleft) {
+            thistrackstartx = trackstartx;
+        }
+       // to left if on left side of chromsome, to right otherwise
+        drawVars(toleft, features, filter, g, nrpixelperfeature, starty, endy, thistrackstartx, y, h, trackwidth , node, r);
 
     }
 
-    protected void drawVars(Color basecolor, boolean toLeft, List<KaryoFeature> vars, KaryoFilter filter, Graphics g, double nrpixelperfeature, int s, int e, int x, int y, int h, int w, FeatureTreeNode node, int maxnr) {
+    protected void drawVars(boolean toLeft, List<KaryoFeature> vars, KaryoFilter filter, Graphics g, 
+            double nrpixelperfeature, int starty, int endy, int trackstartx, int y, int h, int trackwidth, FeatureTreeNode node, FeatureMetaInfo.Range range) {
         int nr = vars.size();
-        int wb = 2;
-
-        for (int i = 0; i < nr; i++) {
-            KaryoFeature f = vars.get(i);
-            int copynr = (int) pointType.getScore(f.getFeature());
-            g.setColor(basecolor);
-            boolean drawit = true;
-            if (filter != null) {
-                if (filter.isHighlightFiltered()) {
-                    // g.setColor(filter.getFilteredColor(f));
-                } else if (filter.isRemoveFiltered()) {
-                    drawit = !filter.filter(f);
-                } else {
-                    drawit = filter.filter(f);
-                }
-            }
-            if (drawit) {
-                int y1 = (int) getHeight(s);
-                int y2 = (int) getHeight(e);
-                int startx = copynr * wb;
-                int dy = Math.max(wb, y2 - y1);
-
-                if (toLeft) {
-                    g.fillRoundRect(x - wb - (int) startx, y1 + y - h, wb, dy, wb, wb);
-                    g.drawRoundRect(x - wb - (int) startx, y1 + y - h, wb, dy, wb, wb);
-                } else {
-                    g.fillRoundRect(x + (int) startx, y1 + y - h, wb, dy,wb, wb );
-                    g.drawRoundRect(x + (int) startx, y1 + y - h, wb, dy, wb, wb);
-                }
-            }
+     //   int wb = 2;
+        Graphics2D gg = (Graphics2D)g;
+        double min = 0; 
+        double max = 100;
+        
+        if (range != null) {
+            min = range.min;
+            max = range.max;
         }
+        
+        
+        
+        if (max == min) {
+//           if (nrerrors < 10) {
+//               p("=== Max = min.... Setting max to min+1");
+//               nrerrors++;
+//           }         
+            max = min+1;
+            min = min-1;
+        }
+        double dxpixels = Math.max(0.0000001, (double)trackwidth/(double)(max-min+1));
+          
+        double cutoff = renderType.getCutoffScore();
+        
+        int minheight = (int) pointType.getMinPointHeight();
+        int minwidth = (int) pointType.getMinPointWidth();
+       // for (int times = 0; times < 3; times++) {
+            for (int i = 0; i < nr; i++) {
+                KaryoFeature f = vars.get(i);
+                double score = f.getScore(super.ktrack.getMetaInfo(), this.renderType.getRelevantAttName());
+                if (score < min || score > max) {
+                    p(this.ktrack.getTrackName()+": SCORE OUTSIDE OF ATT RANGE: "+score+", min="+min+", max="+max);
+                    range.add(score);
+                    min = range.min;
+                    max = range.max;
+                }
+                if ( ( times == 0 && score == cutoff ) || 
+                        (times ==1 && score != cutoff ) || 
+                        ( times ==2 &&  pointType.outlineOval(min, max, cutoff, score))) {
+                    score = score - min;
+
+                    Color c = renderType.getColor(ktrack.getMetaInfo(), f);
+
+                    gg.setPaint(c);
+
+                    boolean drawit = true;
+                    if (filter != null) {
+                        if (filter.isHighlightFiltered()) {
+                            // g.setColor(filter.getFilteredColor(f));
+                        } else if (filter.isRemoveFiltered()) {
+                            drawit = !filter.filter(f);
+                        } else {
+                            drawit = filter.filter(f);
+                        }
+                    }
+                    if (drawit) {
+                        int y1 = (int) getHeight(f.getStart())+y-h;
+                        int y2 = (int) getHeight(f.getEnd())+y-h;
+
+                        int dx = (int)(dxpixels*score);
+                        if (nrerrors < 50 && times == 2) {
+                            p(this.ktrack.getTrackName()+"/"+this.renderType.getClass().getName()+": f="+f.toString()+", y1-y2="+y1+"-"+y2);
+                            nrerrors++;
+                        }
+                        //int dy = Math.max(wb, y2 - y1);
+                        int r = minwidth;
+                        int rh = Math.max(minheight, (y2-y1));
+                        
+                        if (times == 2) {
+                            r = minwidth+2;
+                            rh = Math.max(minheight+2, (y2-y1));
+                        }
+                        int my = y1;
+                         if (toLeft) {
+                             g.fillRoundRect(trackstartx - (int) dx, my, r,rh, r, r);
+                           // g.fillOval(trackstartx - (int) dx, my, r,rh);
+                           if (times == 2 )  {
+                                gg.setPaint(c.darker().darker());
+                                g.drawRoundRect(trackstartx - (int) dx,my, r,rh, r, r);
+                               // g.drawOval(trackstartx - (int) dx,my, r,rh);
+                            }
+
+                        } else {
+                              g.fillRoundRect(trackstartx + (int) dx, my, r,rh, r, r);
+                            //g.fillOval(trackstartx + (int) dx,my, r,rh);
+                            if (times == 2)  {
+                                gg.setPaint(c.darker().darker());
+                                //g.drawOval(trackstartx +(int) dx,my, r,rh);
+                                g.drawRoundRect(trackstartx + (int) dx,my, r,rh, r, r);
+                            }
+                        }
+                    }
+                }
+            }
+       // }
     }
 
     @Override
     protected void p(String s) {
-        System.out.println("GuiCNVTree:" + s);
+        System.out.println("GuiPointTree:" + s);
     }
 }

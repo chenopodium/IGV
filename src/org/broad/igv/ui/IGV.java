@@ -84,6 +84,7 @@ public class IGV {
 
     private static Logger log = Logger.getLogger(IGV.class);
     private static IGV theInstance;
+    public static boolean DEBUG = false;
 
     // Window components
     private Frame mainFrame;
@@ -562,7 +563,7 @@ public class IGV {
         }
 
         resetSession(null);
-        log.info("IGV.loadGenome");
+        log.info("IGV.loadGenome: "+path);
         Genome genome = getGenomeManager().loadGenome(path, monitor);
         //If genome loading cancelled
         if (genome == null) return;
@@ -1280,8 +1281,8 @@ public class IGV {
             return true;
 
         } catch (Exception e) {
-            log.error("Error loading session", e);
-            String message = "Error loading session session : <br>&nbsp;&nbsp;" + sessionPath + "<br>" +
+            log.error("Error loading ", e);
+            String message = "I was not able to read the session :   <br>" + sessionPath + "<br>" +
                     e.getMessage();
             MessageUtils.showMessage(message);
             return false;
@@ -1450,7 +1451,7 @@ public class IGV {
 
         //Set<TrackPanel> changedPanels = new HashSet();
 
-        log.info("Loading " + locators.size() + " resources.");
+        log.info("============ Loading " + locators.size() + " resources.");
         final MessageCollection messages = new MessageCollection();
 
 
@@ -1458,7 +1459,7 @@ public class IGV {
         List<Thread> threads = new ArrayList<Thread>(locators.size());
 
         for (final ResourceLocator locator : locators) {
-            log.info("Loading " + locator.getPath());
+            log.info("==== Loading " + locator.getPath());
             // If its a local file, check explicitly for existence (rather than rely on exception)
             if (locator.isLocal()) {
                 File trackSetFile = new File(locator.getPath());
@@ -1482,8 +1483,10 @@ public class IGV {
                         if (tracks.size() > 0) {
                             String path = locator.getPath();
 
+                            
                             // Get an appropriate panel.  If its a VCF file create a new panel if the number of genotypes
                             // is greater than 10
+                          
                             TrackPanel panel = getPanelFor(locator);
                             if (path.endsWith(".vcf") || path.endsWith(".vcf.gz") ||
                                     path.endsWith(".vcf4") || path.endsWith(".vcf4.gz")) {
@@ -1491,6 +1494,18 @@ public class IGV {
                                 if (t instanceof VariantTrack && ((VariantTrack) t).getAllSamples().size() > 10) {
                                     String newPanelName = "Panel" + System.currentTimeMillis();
                                     panel = addDataPanel(newPanelName).getTrackPanel();
+                                }
+                            }
+                            
+                            if (locator.getParams() != null) {
+                                p("++++Locator has parameters: "+locator.getPath());
+                                for (Track t: tracks) {
+                                  //  p("Customizing track :"+t.getName());
+                                    String m = locator.getParameter("displayMode");
+                                    if (m != null) {
+                                        if (m.equalsIgnoreCase("collapsed")) t.setDisplayMode(Track.DisplayMode.COLLAPSED);
+                                        else if (m.equalsIgnoreCase("expanded")) t.setDisplayMode(Track.DisplayMode.EXPANDED);
+                                    }                                   
                                 }
                             }
                             panel.addTracks(tracks);
@@ -1525,6 +1540,10 @@ public class IGV {
                 MessageUtils.showMessage(message);
             }
         }
+    }
+    
+    private void p(String s) {
+        log.info(s);
     }
 
 
@@ -1603,8 +1622,16 @@ public class IGV {
                 path.endsWith(".sam.list") || path.endsWith(".bam.list") ||
                 path.endsWith(".aligned") || path.endsWith(".sorted.txt")) {
 
-            String newPanelName = "Panel" + System.currentTimeMillis();
-            return addDataPanel(newPanelName).getTrackPanel();
+            String m = null;//locator.getParameter("mergeTrack");
+            if (m != null && m.equalsIgnoreCase("true")) {           
+                log.info("mergetrack is true, returning trackpanel "+DATA_PANEL_NAME);
+                return getTrackPanel(DATA_PANEL_NAME);
+            }
+            else {
+                String newPanelName = "Panel" + System.currentTimeMillis();
+                log.info("getPanelFor "+locator.getPath()+": Adding new panel: "+newPanelName);
+                return addDataPanel(newPanelName).getTrackPanel();
+            }
             //} else if (path.endsWith(".vcf") || path.endsWith(".vcf.gz") ||
             //        path.endsWith(".vcf4") || path.endsWith(".vcf4.gz")) {
             //    String newPanelName = "Panel" + System.currentTimeMillis();
@@ -1826,6 +1853,7 @@ public class IGV {
         List<Track> allTracks = new ArrayList<Track>();
         for (TrackPanel tp : getTrackPanels()) {
             allTracks.addAll(tp.getTracks());
+            
         }
         return allTracks;
     }

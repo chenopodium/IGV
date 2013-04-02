@@ -18,6 +18,8 @@
  */
 package org.broad.igv.feature.genome;
 
+import com.iontorrent.utils.ErrorHandler;
+import com.iontorrent.utils.StringTools;
 import org.apache.log4j.Logger;
 import org.broad.igv.DirectoryManager;
 import org.broad.igv.Globals;
@@ -250,10 +252,19 @@ public class GenomeManager {
      */
     private GenomeImpl loadDotGenomeFile(String genomePath) throws IOException {
         GenomeImpl newGenome;
+        log.info("loadDotGenomeFile "+genomePath);
         File archiveFile = getArchiveFile(genomePath);
 
-        GenomeDescriptor genomeDescriptor = parseGenomeArchiveFile(archiveFile);
-
+        log.info("Archive file is: "+archiveFile);
+        GenomeDescriptor genomeDescriptor = null;
+        try {
+            genomeDescriptor = parseGenomeArchiveFile(archiveFile);
+        }
+        catch (Exception e) {
+            log.info("Problem parsing "+archiveFile+":"+ ErrorHandler.getString(e));
+            
+        }
+        log.info("Got genomeDescriptor: "+genomeDescriptor+" for  \ngenomePath: "+genomePath+" \narchiveFile: "+archiveFile);
         final String id = genomeDescriptor.getId();
         final String displayName = genomeDescriptor.getName();
 
@@ -267,6 +278,7 @@ public class GenomeManager {
 
 
         String sequencePath = genomeDescriptor.getSequenceLocation();
+                
         Sequence sequence = null;
         //We preserve ordering only for legacy genomes
         boolean chromosOrdered = false;
@@ -336,6 +348,7 @@ public class GenomeManager {
         if (HttpUtils.isRemoteURL(genomePath.toLowerCase())) {
             // We need a local copy, as there is no http zip file reader
             URL genomeArchiveURL = new URL(genomePath);
+            log.info("Getting genomeArchive: "+genomeArchiveURL);
             final String tmp = URLDecoder.decode(new URL(genomePath).getFile(), "UTF-8");
             String cachedFilename = Utilities.getFileNameFromURL(tmp);
             if (!DirectoryManager.getGenomeCacheDirectory().exists()) {
@@ -463,7 +476,7 @@ public class GenomeManager {
 
     }
 
-
+    
     /**
      * Creates a genome descriptor.
      */
@@ -479,6 +492,7 @@ public class GenomeManager {
         Map<String, ZipEntry> zipEntries = new HashMap();
         ZipFile zipFile = new ZipFile(f);
 
+        log.info("parseGenomeArchiveFile. Reading file "+f);
         FileInputStream fileInputStream = null;
         try {
             fileInputStream = new FileInputStream(f);
@@ -489,7 +503,8 @@ public class GenomeManager {
                 String zipEntryName = zipEntry.getName();
                 zipEntries.put(zipEntryName, zipEntry);
 
-                if (zipEntryName.equalsIgnoreCase(Globals.GENOME_ARCHIVE_PROPERTY_FILE_NAME)) {
+             //   log.info("zipEntryName="+zipEntryName);
+                if (zipEntryName.endsWith(Globals.GENOME_ARCHIVE_PROPERTY_FILE_NAME)) {
                     InputStream inputStream = zipFile.getInputStream(zipEntry);
                     Properties properties = new Properties();
                     properties.load(inputStream);
@@ -499,6 +514,8 @@ public class GenomeManager {
                     String chrAliasFileName = properties.getProperty(Globals.GENOME_CHR_ALIAS_FILE_KEY);
                     String sequenceLocation = properties.getProperty(Globals.GENOME_ARCHIVE_SEQUENCE_FILE_LOCATION_KEY);
 
+                    log.info("Got sequence loc: "+sequenceLocation);
+                  
                     if ((sequenceLocation != null) && !HttpUtils.isRemoteURL(sequenceLocation)) {
                         File sequenceFolder = null;
                         // Relative or absolute location? We use a few redundant methods to check,
@@ -547,6 +564,7 @@ public class GenomeManager {
                 }
                 zipEntry = zipInputStream.getNextEntry();
             }
+            
         } finally {
             try {
                 if (fileInputStream != null) {

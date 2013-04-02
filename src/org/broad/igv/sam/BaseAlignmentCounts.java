@@ -119,6 +119,7 @@ abstract public class BaseAlignmentCounts implements AlignmentCounts {
             char[] gapTypes = alignment.getGapTypes();
 
             for (AlignmentBlock b : blocks) {
+                if (b == null) continue;
                 if (b.getEnd() < start) continue;
                 if (b.getStart() > end) break;
 

@@ -13,6 +13,7 @@ package org.broad.igv.util;
 //~--- non-JDK imports --------------------------------------------------------
 
 import biz.source_code.base64Coder.Base64Coder;
+import com.iontorrent.utils.ErrorHandler;
 import org.apache.log4j.Logger;
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
@@ -51,7 +52,13 @@ public class Utilities {
     }
 
     public static String base64Decode(String str) {
-        return Base64Coder.decodeString(str);
+        try {
+            return Base64Coder.decodeString(str);
+        }
+        catch (Exception e) {
+            log.info(ErrorHandler.getString(e));
+        }
+        return str;
     }
 
 

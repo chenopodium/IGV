@@ -24,7 +24,7 @@ public class TrackWrapper {
     }
 
     public String toString() {
-        return track.getName();
+        return track.getDisplayName();
     }
 
     public FeatureTrack getTrack() {

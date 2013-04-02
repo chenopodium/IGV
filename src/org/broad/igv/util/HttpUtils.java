@@ -16,6 +16,7 @@ import sun.net.www.protocol.http.AuthCacheImpl;
 import biz.source_code.base64Coder.Base64Coder;
 import com.iontorrent.utils.Encryptor;
 import com.iontorrent.utils.ErrorHandler;
+import com.iontorrent.utils.StringTools;
 import org.apache.log4j.Logger;
 import org.apache.tomcat.util.HttpDate;
 import org.broad.igv.Globals;
@@ -44,15 +45,19 @@ import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 import javax.net.ssl.*;
 import javax.swing.JOptionPane;
+import org.apache.log4j.Level;
 import org.broad.igv.ui.util.MessageUtils;
+import org.jasypt.exceptions.EncryptionOperationNotPossibleException;
 
 /**
  * Wrapper utility class... for interacting with HttpURLConnection.
  *
- * @author Jim Robinson @date 9/22/11
+ * @author Jim Robinson
+ * @date 9/22/11
  */
 public class HttpUtils {
 
+    private static int HEADER_CHECKS;
     private static Logger log = Logger.getLogger(HttpUtils.class);
     private static HttpUtils instance;
     private Map<String, Boolean> byteRangeTestMap;
@@ -61,6 +66,7 @@ public class HttpUtils {
     private String defaultUserName = null;
     private char[] defaultPassword = null;
     private static Pattern URLmatcher = Pattern.compile(".{1,8}://.*");
+    private static boolean HEADER_SHOWN = false;
 
     /**
      * @return the single instance
@@ -93,7 +99,6 @@ public class HttpUtils {
 
     private static HostnameVerifier getHostnameVerifier() {
         return new HostnameVerifier() {
-
             @Override
             public boolean verify(String hostname, javax.net.ssl.SSLSession sslSession) {
                 return true;
@@ -217,6 +222,7 @@ public class HttpUtils {
 
         try {
             HttpURLConnection conn = openConnection(url, null, "HEAD");
+
             int code = conn.getResponseCode();
             return code == 200;
         } catch (IOException e) {
@@ -446,7 +452,6 @@ public class HttpUtils {
         // Create a trust manager that does not validate certificate chains
         TrustManager[] trustAllCerts = new TrustManager[]{
             new X509TrustManager() {
-
                 public java.security.cert.X509Certificate[] getAcceptedIssuers() {
                     return null;
                 }
@@ -530,16 +535,17 @@ public class HttpUtils {
 
         HttpURLConnection conn;
 
-    //    p(" ==== OPEN CONNECTION " + method);
+     //   p(" ==== OPEN CONNECTION " + url);
         if (requestProperties != null) {
             Iterator iter = requestProperties.keySet().iterator();
             for (; iter.hasNext();) {
                 String key = (String) iter.next();
-              //  p("Got request property: " + key + "=" + requestProperties.get(key));
+                //  p("Got request property: " + key + "=" + requestProperties.get(key));
             }
         }
 
         if (useProxy) {
+            p("Using proxy");
             Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxySettings.proxyHost, proxySettings.proxyPort));
             conn = (HttpURLConnection) url.openConnection(proxy);
 
@@ -553,34 +559,33 @@ public class HttpUtils {
             conn = (HttpURLConnection) url.openConnection();
         }
         conn.setUseCaches(false);  // <= very important! due to Java 7 pack.gz issue 
- // check if URL is ionreporter. We know this if there is a token that has to be passed
-      //  log.info("Checking if I have to set header paramters");
-       
-        
+        // check if URL is ionreporter. We know this if there is a token that has to be passed
+        //  log.info("Checking if I have to set header paramters");
+
+
         try {
             conn.setConnectTimeout(Globals.CONNECT_TIMEOUT);
             conn.setReadTimeout(Globals.READ_TIMEOUT);
             conn.setRequestMethod(method);
-           
-        }        
-        catch (Exception e ) {
+
+        } catch (Exception e) {
             log.info(ErrorHandler.getString(e));
         }
-        
+
         try {
-             conn.setRequestProperty("Connection", "Keep-Alive");
-        }
-        catch (Exception e ) {
+            conn.setRequestProperty("Connection", "Keep-Alive");
+        } catch (Exception e) {
             log.info(ErrorHandler.getString(e));
         }
-        
+
         if (requestProperties != null) {
             for (Map.Entry<String, String> prop : requestProperties.entrySet()) {
+           //     log.info("Setting HEADER "+prop.getKey()+"="+prop.getValue());
                 conn.setRequestProperty(prop.getKey(), prop.getValue());
             }
         }
         conn.setRequestProperty("User-Agent", Globals.applicationString());
-       
+
         if (GSUtils.isGenomeSpace(url)) {
             String token = GSUtils.getGSToken();
             if (token != null) {
@@ -591,15 +596,16 @@ public class HttpUtils {
             conn.setRequestProperty("Accept", "text/plain");
             //conn.setRequestProperty("Accept", "*/*");
         }
-         this.checkForHeaderParameters(url, conn);
+      //  p("CheckHeader for " + url);
+        this.checkForHeaderParameters(url, conn);
 
         if (method.equals("PUT")) {
-            p("Method put");
+          //  p("Method put");
             return conn;
         } else {
-          //  p("Method is GET");
+            //  p("Method is GET");
             int code = conn.getResponseCode();
-          //  p("Got response code: "+code);
+           // p("Got response code: " + code);
             // Redirects.  These can occur even if followRedirects == true if there is a change in protocol,
             // for example http -> https.
             if (code >= 300 && code < 400) {
@@ -620,6 +626,12 @@ public class HttpUtils {
                 } else {
                     // if wrong pw, handle this here!
                     message = conn.getResponseMessage();
+                    for (Iterator it = conn.getHeaderFields().keySet().iterator(); it.hasNext();) {
+                        String key = (String) it.next();
+                     //   p("Got header property: " + key + "=" + conn.getHeaderField(key));
+                    }
+                    
+                   
                     HttpResponseException exc = new HttpResponseException(code);
                     String details = readErrorStream(conn);
                     log.debug("error stream: " + details);
@@ -654,41 +666,105 @@ public class HttpUtils {
     }
 
     private void checkForHeaderParameters(URL url, HttpURLConnection conn) {
-         PreferenceManager pref = PreferenceManager.getInstance();
-         // get any header params
-         String header_key = pref.get("header_key");
-         String header_value = pref.get("header_value");
-         boolean header_encrypt = pref.getAsBoolean("header_encrypt");
-         if (header_key == null && (url.toString().indexOf("gordo")>-1 || url.toString().indexOf("avocado")>-1)) {
-             log.info("checkForHeaderParameters:FOR TESTING ON GORDO OR AVOCADO, SETTING HEADER KEY AND VALUE");
-             header_key= "Authorization";
-             header_value="__IGV__";
-             header_encrypt = false;
-         }
-         if (header_key != null && header_value != null) {
-             
-             // by default no ecnryption is assumed.
-             log.info("checkForHeaderParameters: We got parameters for header key and value: "+header_key+"="+header_value+", ecnryption is: "+header_encrypt+", will add it to connection header");
-             log.info("URL host is: "+url.getHost());
-             if (header_encrypt) { 
-                 p("header encrypt is: "+header_encrypt+", value is: "+header_value+", host is: "+url.getHost());
-                 header_value =  Encryptor.decrypt(header_value, url.getHost());                 
-             }
-             
-             p("checkForHeaderParameters: Setting "+header_key);
-              conn.setRequestProperty("Accept", "*/*");
-             conn.addRequestProperty(header_key, header_value);            
-             
-             for (Iterator<String> headerit = conn.getHeaderFields().keySet().iterator(); headerit != null && headerit.hasNext();) {
-                 String key = headerit.next();
-                 log.info("Got header: "+key+"="+conn.getHeaderFields().get(key));
-             } 
-         }
-         else {
-             //p("Got no header key: "+pref.get("header_key") +"/"+pref.get("header_val"));
-             
-         }
+        PreferenceManager pref = PreferenceManager.getInstance();
+        // get any header params
+        String header_key = pref.getTemp("header_key");
+        String header_value = pref.getTemp("header_value");
+        boolean header_encrypt = pref.getTempAsBoolean("header_encrypt");
+        String server = pref.getTemp("server");
+        if (server != null) {
+            int col = server.indexOf(":");
+            if (col > -1) {
+                server = server.substring(0, col);
+            }
+        }
+        if (header_value != null && header_key == null) {
+            header_key = "Authorization";
+        }
+        boolean show = HEADER_CHECKS < 5;/// || url.toString().endsWith(".seg") || url.toString().endsWith(".bed");
+//        if (show) {
+//            log.info("checkForHeaderParameters: header key and value: " + header_key + "=" + header_value + ", ecnryption is: " + header_encrypt + ", will add it to connection header");
+//            log.info("checkForHeaderParameters: server:" + server + ", URL is: " + url.toString());
+//        }
+        if (header_key != null && header_value != null && server != null) {
+            // by default no ecnryption is assumed.
+            if (url.toString().indexOf(server) > -1) {
+                if (header_encrypt) {
+                    String encrypted = header_value;
+
+                    String algo = pref.getTemp("algorithm");
+                    if (algo == null) {
+                        algo = Encryptor.getDefaultAlgorithm();
+                    }
+
+//                    if (show) {
+//                        p("checkForHeaderParameters: About to decrypt with algo " + algo + " and url " + server + ", value length is " + header_value.length() + " is " + header_value);
+//                    }
+                    try {
+                        header_value = Encryptor.decrypt(algo, header_value, "IGVKEY123");
+                    } catch (Exception e) {
+                        p("checkForHeaderParameters: Could not decrypt: " + ErrorHandler.getString(e));
+                        byte b[] = fromHexadecimal(header_value);
+                    }
+
+                    if (show) {
+                      //  p("header encrypt is: " + header_encrypt + ", value is: " + header_value + ", host is: " + url.getHost());
+                        //  p("Got algorithm:"+algo);
+                        if (header_value == null) {
+                            log.error("Decrypted " + encrypted + " resulted in null. Algo is " + algo);
+                        } else {
+                        //    p("Decrypted token is: " + header_value);
+                        }
+                    }
+
+                } else {
+                    // replace _ with space
+
+                    header_value = StringTools.replace(header_value, "_", " ");
+                    if (show) {
+                        p("checkForHeaderParameters: Token was not not encrypted! encrypt=" + pref.getTemp("header_encrypt") + ", Using token " + header_value);
+                    }
+                }
+                conn.setRequestProperty("Accept", "*/*");
+                if (header_value != null) {
+                    if (show) {
+                        p("SETTING " + header_key + "=" + header_value);
+                    }
+                    conn.addRequestProperty(header_key, header_value);
+                }
+            } else {
+                log.info("checkForHeaderParameters: NOT using token becaue server is not in URL: server:" + server + ", URL is: " + url.toString());
+            }
+        } else {
+            if (show) {
+                p("checkForHeaderParameters: Got no header key or value, or url not server " + server + ":" + url);
+            }
+        }
+        HEADER_CHECKS++;
     }
+
+    public byte[] fromHexadecimal(String message) {
+        if (message == null) {
+            return null;
+        }
+        if ((message.length() % 2) != 0) {
+            p("Message length should be % 2 = 0");
+            return null;
+        }
+        try {
+            byte[] result = new byte[message.length() / 2];
+            for (int i = 0; i < message.length(); i = i + 2) {
+                int first = Integer.parseInt("" + message.charAt(i), 16);
+                int second = Integer.parseInt("" + message.charAt(i + 1), 16);
+                result[i / 2] = (byte) (0x0 + ((first & 0xff) << 4) + (second & 0xff));
+            }
+            return result;
+        } catch (Exception e) {
+            p("Got an error: " + ErrorHandler.getString(e));
+        }
+        return null;
+    }
+
     public void setDefaultPassword(String defaultPassword) {
         this.defaultPassword = defaultPassword.toCharArray();
     }
@@ -764,7 +840,7 @@ public class HttpUtils {
                 }
 
                 if (byteRangeTestSuccess) {
-                    log.info("Range-byte request succeeded");
+                    // log.info("Range-byte request succeeded");
                 } else {
                     log.info("Range-byte test failed -- problem with client network environment.");
                 }
@@ -811,8 +887,6 @@ public class HttpUtils {
         }
         return true;
     }
-
-
 
     /**
      * Return the first bytes of content from the URL. The number of bytes
@@ -908,7 +982,7 @@ public class HttpUtils {
             //    test.printStackTrace();
             if (defaultUserName == null || defaultUserName.length() < 1) {
                 PreferenceManager prefMgr = PreferenceManager.getInstance();
-                defaultUserName = prefMgr.get(PreferenceManager.AUTHENTICATION_DEFAULT_USER, "ionadmin");
+                defaultUserName = prefMgr.get(PreferenceManager.AUTHENTICATION_DEFAULT_USER, "ionuser");
                 String pwCoded = prefMgr.get(PreferenceManager.AUTHENTICATION_DEFAULT_PW, "");
                 defaultPassword = Utilities.base64Decode(pwCoded).toCharArray();
                 if (defaultPassword == null || defaultPassword.length < 1) {

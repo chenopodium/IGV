@@ -30,6 +30,7 @@ import org.broad.igv.ui.FontManager;
 import java.awt.*;
 import java.awt.geom.GeneralPath;
 import java.util.List;
+import org.broad.igv.PreferenceManager;
 
 /**
  * Renderer for splice junctions. Draws a filled-in arc for each junction, with the width of the

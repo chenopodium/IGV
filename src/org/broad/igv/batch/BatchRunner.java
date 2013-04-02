@@ -27,6 +27,7 @@ import org.broad.igv.util.ParsingUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import org.broad.igv.ui.IGV;
 
 public class BatchRunner implements NamedRunnable {
     private static Logger log = Logger.getLogger(BatchRunner.class);
@@ -56,12 +57,13 @@ public class BatchRunner implements NamedRunnable {
             reader = ParsingUtils.openBufferedReader(inputFile);
 
             while ((inLine = reader.readLine()) != null) {
-                if (!(inLine.startsWith("#") || inLine.startsWith("//"))) {
-                    log.info("Executing Command: " + inLine);
+                inLine = inLine.trim();
+                if (inLine.length()>0 && !(inLine.startsWith("#") || inLine.startsWith("//"))) {
+                    
                     cmdExe.execute(inLine);
                 }
             }
-
+            
 
         } catch (IOException ioe) {
             throw new DataLoadException(ioe.getMessage(), inputFile);

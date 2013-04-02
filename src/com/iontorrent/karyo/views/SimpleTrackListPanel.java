@@ -6,6 +6,7 @@ package com.iontorrent.karyo.views;
 
 import com.iontorrent.karyo.data.KaryoTrack;
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -36,12 +37,14 @@ public class SimpleTrackListPanel extends javax.swing.JPanel {
 
         center.setLayout(new GridLayout(nr, 1));
         setLayout(new BorderLayout());
+        Dimension d = new Dimension(200, 400);
+        this.setMinimumSize(d);
         SingleTrackPanel pan = null;
         if (control == null) {
             System.out.println("TrackListPanel:  control is null!");
         }
         for (KaryoTrack t : man.getKaryotracks()) {
-            p("Creating single track panel for " + t.getName() + ": visible=" + t.isVisible());
+            p("Creating single track panel for " + t.getTrackDisplayName() + ": visible=" + t.isVisible());
 
             pan = new SingleTrackPanel(t, false, control, null);
 
@@ -61,6 +64,7 @@ public class SimpleTrackListPanel extends javax.swing.JPanel {
                             public void actionPerformed(ActionEvent e) {
                                 if (SimpleTrackListPanel.this.control != null) {
                                     SimpleTrackListPanel.this.control.recreateView(false);
+                                    saveOptions();
                                 }
                                 
                             }
@@ -76,7 +80,9 @@ public class SimpleTrackListPanel extends javax.swing.JPanel {
 
 
     }
-
+    private void saveOptions() {
+        this.man.saveGuiProperties();
+    }
     private void p(String s) {
         System.out.println("SimpleTrackListPanel: " + s);
     }

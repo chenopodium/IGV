@@ -100,7 +100,7 @@ public class GuiIndelTree extends GuiFeatureTree {
         ArrayList<KaryoFeature> other = new ArrayList<KaryoFeature>();
         
         for (KaryoFeature f : features) {
-            String type = gltype.getGainType(f.getFeature());
+            String type = gltype.getGainType(f);
             if (type.equals(gltype.GAIN)) {
                 gains.add(f);
             } 
@@ -120,13 +120,17 @@ public class GuiIndelTree extends GuiFeatureTree {
 
         
         double startx = 0;
-        drawVars(Color.green.darker(), false, drawall, gains, filter, g, nrpixelperfeature, s, e, x-w/2, startx, y, h, w/2, node, maxnr);        
-        drawVars(Color.red.darker(), true, drawall, losses, filter, g, nrpixelperfeature, s, e, x-w/2, startx, y, h, w/2, node, maxnr);
-        drawVars(Color.gray, true, drawall, other, filter, g, nrpixelperfeature, s, e, x-w/2, startx, y, h, w/2, node, maxnr);
+        
+        int fw = w*2/3;
+        drawVars(gltype.getColor(0), true, drawall, other, filter, g, nrpixelperfeature, s, e, x-fw, startx, y, h, fw, node, maxnr);
+        drawVars(gltype.getColor(1), false, drawall, gains, filter, g, nrpixelperfeature, s, e, x-fw, startx, y, h, fw, node, maxnr);        
+        drawVars(gltype.getColor(2), true, drawall, losses, filter, g, nrpixelperfeature, s, e, x-fw, startx, y, h, fw, node, maxnr);
+        
     }
 
     protected void drawVars(Color color, boolean toLeft, boolean drawall, ArrayList<KaryoFeature> vars, KaryoFilter filter, Graphics g, double nrpixelperfeature, int s, int e, int x, double startx, int y, int h, int w, FeatureTreeNode node, int maxnr) {
         int nr = vars.size();
+        int MINWIDTH = 2;
         g.setColor(color);
         if (drawall) {
             for (int i = 0; i < nr; i++) {
@@ -142,9 +146,15 @@ public class GuiIndelTree extends GuiFeatureTree {
                     }
                 }
                 if (drawit) {
-                    int wb = (int) nrpixelperfeature;
+                    int wb = Math.max(MINWIDTH,(int) nrpixelperfeature);
                     int y1 = (int) getHeight(s);
                     int y2 = (int) getHeight(e);
+                    int dh = y2-y1;
+                    if (dh < 10) {
+                        int dd = dh = 10/2;
+                        y1 = y1-dd;
+                        y2 = y2+dd;
+                    }
                     if (toLeft) {
                         g.fillRect(x - wb - (int) startx, y1 + y - h, wb, y2 - y1);
                         g.drawRect(x - wb - (int) startx, y1 + y - h, wb, y2 - y1);
@@ -166,7 +176,7 @@ public class GuiIndelTree extends GuiFeatureTree {
                     nr = node.getNrFilterPassed();
                 }
             }
-            int wb = (int) ((double) w / (double) maxnr * (double) nr);
+            int wb = Math.max(MINWIDTH, (int) ((double) w / (double) maxnr * (double) nr));
             int y1 = (int) getHeight(s);
             int y2 = (int) getHeight(e);
             if (toLeft) {

@@ -169,7 +169,7 @@ public class EWigTrack extends AbstractTrack {
 
         JPopupMenu popupMenu = new IGVPopupMenu();
 
-        JLabel popupTitle = new JLabel("  " + getName(), JLabel.CENTER);
+        JLabel popupTitle = new JLabel("  " + getDisplayName(), JLabel.CENTER);
 
         Font newFont = popupMenu.getFont().deriveFont(Font.BOLD, 12);
         popupTitle.setFont(newFont);

@@ -39,9 +39,9 @@ import java.net.URL;
 /**
  * @author jrobinso
  */
-public class SequenceTrack extends AbstractTrack {
+public class SequenceTrack  extends AbstractTrack {
 
-    private static Logger log = Logger.getLogger(SequenceTrack.class);
+    private static Logger log  = Logger.getLogger(SequenceTrack.class);
 
     private static final int SEQUENCE_HEIGHT = 14;
 

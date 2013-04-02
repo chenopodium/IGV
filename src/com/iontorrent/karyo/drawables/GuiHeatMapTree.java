@@ -43,6 +43,7 @@ public class GuiHeatMapTree extends GuiFeatureTree {
     public GuiHeatMapTree(KaryoTrack ktrack, DrawingCanvas canvas, GuiChromosome chromo, FeatureTree tree, int dx, double scale) {
         super(ktrack, canvas, chromo, tree, dx, scale);
         heattype = (HeatMapRenderType) ktrack.getRenderType();
+        p("Created heat map tree for "+ktrack.getTrackDisplayName());
     }
 
 // ***************************************************************************
@@ -105,9 +106,10 @@ public class GuiHeatMapTree extends GuiFeatureTree {
             if (drawit) {
                 Color heatcolor = heattype.getColor(ktrack.getMetaInfo(), f);
                 g.setColor(heatcolor);
-                int wb = (int) nrpixelperfeature;
+                int wb = Math.max(3, (int) nrpixelperfeature);
                 int y1 = (int) getHeight(s);
                 int y2 = (int) getHeight(e);
+               
                 g.fillRect(x, y1 + y - h, wb, y2 - y1);
                 g.drawRect(x, y1 + y - h, wb, y2 - y1);
             }

@@ -16,6 +16,7 @@
 package org.broad.igv.sam;
 
 import java.util.Arrays;
+import java.util.logging.Logger;
 
 public class AlignmentBlock {
 
@@ -117,6 +118,7 @@ public class AlignmentBlock {
 
     // Default implementation -- to be overriden
     public FlowSignalSubContext getFlowSignalSubContext(int offset) {
+        Logger.getLogger("AlignmentBlock").info("returning null, to be overwrridden. This class is: "+getClass().getName());
         return null;
     }
 

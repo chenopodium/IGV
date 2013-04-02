@@ -12,15 +12,18 @@ import java.util.logging.Logger;
  */
 public class Encryptor {
 	 
-	public static String decrypt(String encrypted, String key)  {
-		DesEncryptor enc = new DesEncryptor(key);
-		return enc.decrypt(encrypted);
+	public static String decrypt(String algo, String encrypted, String key)  {
+		//DesEncryptor enc = new DesEncryptor(key);
+                PbeEncryptor enc = new PbeEncryptor(algo);
+		return enc.decrypt(encrypted, key);
 	}
 
-
-	public static String encrypt(String data, String pass) {
-		DesEncryptor enc = new DesEncryptor(pass);
-		return enc.encrypt(data);
+        public static String getDefaultAlgorithm() {
+            return PbeEncryptor.DEFAULT_ALGORITHM;
+        }
+	public static String encrypt(String algo, String data, String pass) {		
+                PbeEncryptor enc = new PbeEncryptor(algo);
+		return enc.encrypt(data, pass);
 	}
 
 

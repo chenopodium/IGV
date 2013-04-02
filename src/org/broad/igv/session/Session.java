@@ -210,6 +210,7 @@ public class Session {
     }
 
     public void setLocus(String locus) {
+        log.info("Session: setting locus to: "+locus);
         this.locus = locus;
     }
 

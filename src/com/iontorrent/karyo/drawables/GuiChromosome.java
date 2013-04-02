@@ -30,11 +30,13 @@ import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.HashMap;
+import org.broad.igv.feature.Cytoband;
 
 public class GuiChromosome extends GuiObject {
  
     private ArrayList<GuiFeatureTree> trees;
     private boolean movable;
+    private static HashMap<Integer, Color>  stainColors = new  HashMap<Integer, Color> ();
     private Chromosome chromo = null;
     private GuiChromosome linkedView;
     public static int defaultheight = 500;
@@ -130,6 +132,26 @@ public class GuiChromosome extends GuiObject {
         return htmlstart + toHtml() +"<br>Position: "+(int)(loc/1000000)+" MB"+ 
                 "<br>e.y="+evt.getY()+", this.y="+this.getY()+", zoom="+canvas.getYZoomFactor()+htmlend;
     }
+    private static Color getCytobandColor(Band band) {
+        if (band.getType() == 'p') { // positive: "gpos100"
+            int stain = band.getStain(); // + 4;
+
+            int shade = (int) (255 - stain / 100.0 * 255);
+            Color c = stainColors.get(shade);
+            if (c == null) {
+                c = new Color(shade, shade, shade);
+                stainColors.put(shade, c);
+            }
+
+            return c;
+
+        } else if (band.getType() == 'c') { // centermere: "acen"
+            return Color.PINK;
+
+        } else {
+            return Color.WHITE;
+        }
+    }
 
     @Override
     public boolean isSelectable() {
@@ -180,7 +202,7 @@ public class GuiChromosome extends GuiObject {
                 g.setColor(Color.red.darker());
                 
                 int sely = (int)getHeight(getCurLocation()); 
-                p("Drawing selection at "+sely+", y="+(y-h+sely));
+              //  p("Drawing selection at "+sely+", y="+(y-h+sely));
                 g.fill3DRect(x-2, y-h+sely, w+4, (int)(3.0/this.getZoomFactor()), true);
                 //g.draw3DRect(x, y-sely, w, 3, true);
             }
@@ -213,7 +235,7 @@ public class GuiChromosome extends GuiObject {
         for (Band band : chromo.getBands()) {
             double h1 = getHeight(band.getStart());
             double h2 = getHeight(band.getEnd());
-            Paint paint = getPaint(band.getType());
+            Paint paint = getPaint(band);
             
             g.setPaint(paint);
             
@@ -248,7 +270,7 @@ public class GuiChromosome extends GuiObject {
             if (h2 - h1 > 10.0/this.getZoomFactor() && w1>w/3 && band.getName().length()<7) {
                 g.setFont(tinyfont);                
                 
-                Color c = this.getInvertedColor(getColor(band.getType()));
+                Color c = this.getInvertedColor(getColor(band));
                 g.setColor(c);
               //  p("Drawing band name at "+(xm-(band.getName().length()-1)*3)+"/"+ (y-h+(int)(h1+h2)/2+2));
                 ((GuiCanvas)canvas).drawText((Graphics2D)g, band.getName(), xm-(band.getName().length()-1)*3, y-h+(int)(h1+h2)/2+3);
@@ -304,31 +326,34 @@ public class GuiChromosome extends GuiObject {
         else return new Color(10,10,10);
         
     }
-    private Paint getPaint(String type) {
-        Color c = getColor(type);
+    private Paint getPaint(Band b) {
+        Color c = this.getColor(b);
         Paint p = c;
-        if (type.equalsIgnoreCase("acen" )) p =  getStripedPaint(2, 1);
-        else if (type.equalsIgnoreCase("stalk" ))p =  getStripedPaint(2, -1);
+        if (b.isCentromer()) p =  getStripedPaint(2, 1);
+        else if (b.isStalk())p =  getStripedPaint(2, -1);
         
         return p;
     }
-    private Color getColor(String type) {
-        if (type.equals("gneg")) {
-            return new Color(250,250,250);
-        } else if (type.equals("gpos25")) {
-            return new Color(210,210,210);
-        } else if (type.equals("gpos50")) {
-            return  new Color(170,170,170);
-        } else if (type.equals("gpos75")) {
-            return  new Color(120,120,120);
-        } else if (type.equals("gvar")) {
-            return new Color(140,140,140);
-        } else if (type.equals("stalk")) {
+    private Color getColor(Band b) {
+        int stain = b.getStain();
+        if (b.issNeg()) {
+            return new Color(250,250,250);        
+        } else if (b.isStalk()) {
             return Color.yellow;
-        } else if (type.equals("acen")) {
+        } else if (b.isCentromer()) {
             return Color.GREEN;
+        } else if (b.isVar()) {
+            return new Color(140,140,140);
+        }  else if (stain == 25) {
+            return new Color(210,210,210);
+        } else if (stain == 50) {
+            return  new Color(170,170,170);
+        } else if (stain == 75) {
+            return  new Color(120,120,120);        
+            
         } else {
-            return  new Color(80,80,80);
+           // return  new Color(80,80,80);
+            return getCytobandColor(b);
         }
     }
 

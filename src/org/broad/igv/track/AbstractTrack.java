@@ -12,6 +12,7 @@ package org.broad.igv.track;
 
 //~--- non-JDK imports --------------------------------------------------------
 
+import com.iontorrent.utils.ErrorHandler;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.PreferenceManager;
@@ -35,6 +36,7 @@ import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.util.*;
 import java.util.List;
+import org.jfree.util.Log;
 
 /**
  * @author jrobinso
@@ -68,6 +70,7 @@ public abstract class AbstractTrack implements Track {
     private boolean itemRGB = true;
 
     private boolean useScore;
+    private double cutoffScore;
     private float viewLimitMin = Float.NaN;     // From UCSC track line
     private float viewLimitMax = Float.NaN;  // From UCSC track line
 
@@ -100,8 +103,11 @@ public abstract class AbstractTrack implements Track {
     //Not applicable to all tracks.
     protected boolean autoScale;
 
-    private Color posColor = Color.blue.darker(); //java.awt.Color[r=0,g=0,b=178];
-    private Color altColor = Color.blue.darker();
+    // reall use the same for all???
+    private Color posColor = Color.blue; //java.awt.Color[r=0,g=0,b=178];
+    private Color altColor = Color.blue;
+    private Color midColor = Color.blue;
+    
     private DataRange dataRange;
     protected int visibilityWindow = -1;
     private DisplayMode displayMode = DisplayMode.COLLAPSED;
@@ -165,7 +171,7 @@ public abstract class AbstractTrack implements Track {
 
 
     public void setName(String name) {
-        this.name = name;
+        this.name = name;        
     }
 
     public String getName() {
@@ -173,7 +179,7 @@ public abstract class AbstractTrack implements Track {
         return name;
     }
 
-    private String getDisplayName() {
+    public String getDisplayName() {
 
         String sampleKey = IGV.getInstance().getSession().getTrackAttributeName();
         if (sampleKey != null && sampleKey.trim().length() > 0) {
@@ -182,7 +188,24 @@ public abstract class AbstractTrack implements Track {
                 return name;
             }
         }
-        return getName();
+        String disp = getName();
+        
+        if (this.getResourceLocator() != null) {
+            String sample = this.getResourceLocator().getSampleId();
+            if (sample == null) sample = this.getSample();
+          //  log.info("getDisplayName: name is "+disp+", sample="+sample);
+            if (sample != null) {
+                if (!disp.toUpperCase().startsWith(sample.toUpperCase())) {
+                    sample = Character.toUpperCase(sample.charAt(0)) + sample.substring(1);
+                    disp = sample+" "+disp;
+                }            
+            }
+       
+        }
+        disp = disp.replace("_", " ");
+        disp = disp.replace("-", " ");
+        ///disp = disp.replace(".", " ");
+        return disp;
     }
 
 
@@ -278,6 +301,10 @@ public abstract class AbstractTrack implements Track {
 
     public Color getAltColor() {
         return altColor;
+
+    }
+    public Color getMidColor() {
+        return midColor;
 
     }
 
@@ -411,6 +438,9 @@ public abstract class AbstractTrack implements Track {
 
     public void setAltColor(Color color) {
         altColor = color;
+    }
+    public void setMidColor(Color color) {
+        midColor = color;
     }
 
 
@@ -547,6 +577,10 @@ public abstract class AbstractTrack implements Track {
             this.setAutoScale(properties.isAutoScale());
         }
 
+        if (properties.getCutoffScore()!= 0) {
+            log.info("setProperties: Got cutoffscore "+properties.getCutoffScore()+" for "+this.getName());
+            this.setCutoffScore(properties.getCutoffScore());
+        }
         // Color scale properties
         if (!properties.isAutoScale()) {
 
@@ -573,6 +607,7 @@ public abstract class AbstractTrack implements Track {
             // If the user has explicity set a data range and colors apply to heatmap as well
             Color maxColor = properties.getColor();
             Color minColor = properties.getAltColor();
+            
             if (maxColor != null && minColor != null) {
 
                 float tmp = properties.getNeutralFromValue();
@@ -603,7 +638,7 @@ public abstract class AbstractTrack implements Track {
             setAltColor(properties.getAltColor());
         }
         if (properties.getMidColor() != null) {
-            //setMidColor(trackProperties.getMidColor());
+            setMidColor(properties.getMidColor());
         }
         if (properties.getHeight() > 0) {
             setHeight(properties.getHeight());
@@ -744,6 +779,15 @@ public abstract class AbstractTrack implements Track {
             stringBuffer.append(altColor.getBlue());
             attributes.put(IGVSessionReader.SessionAttribute.ALT_COLOR.getText(), stringBuffer.toString());
         }
+         if (midColor != null) {
+            StringBuffer stringBuffer = new StringBuffer();
+            stringBuffer.append(midColor.getRed());
+            stringBuffer.append(",");
+            stringBuffer.append(midColor.getGreen());
+            stringBuffer.append(",");
+            stringBuffer.append(midColor.getBlue());
+            attributes.put(IGVSessionReader.SessionAttribute.MID_COLOR.getText(), stringBuffer.toString());
+        }
 
         // renderer
         Renderer renderer = getRenderer();
@@ -780,6 +824,7 @@ public abstract class AbstractTrack implements Track {
         String height = attributes.get(IGVSessionReader.SessionAttribute.HEIGHT.getText());
         String colorString = attributes.get(IGVSessionReader.SessionAttribute.COLOR.getText());
         String altColorString = attributes.get(IGVSessionReader.SessionAttribute.ALT_COLOR.getText());
+        String midColorString = attributes.get(IGVSessionReader.SessionAttribute.MID_COLOR.getText());
         String rendererType = attributes.get(IGVSessionReader.SessionAttribute.RENDERER.getText());
         String windowFunction = attributes.get(IGVSessionReader.SessionAttribute.WINDOW_FUNCTION.getText());
         String scale = attributes.get(IGVSessionReader.SessionAttribute.SCALE.getText());
@@ -794,6 +839,7 @@ public abstract class AbstractTrack implements Track {
             }
         }
 
+        
         if (name != null && name.length() > 0) {
             setName(name);
         } else if (displayName != null && displayName.length() > 0) {
@@ -840,39 +886,10 @@ public abstract class AbstractTrack implements Track {
                 log.error("Error restoring font size: " + fontSizeString);
             }
         }
-
-        // Set color
-        if (colorString != null) {
-            try {
-                String[] rgb = colorString.split(",");
-                int red = Integer.parseInt(rgb[0]);
-                int green = Integer.parseInt(rgb[1]);
-                int blue = Integer.parseInt(rgb[2]);
-                posColor = new Color(red, green, blue);
-            } catch (NumberFormatException e) {
-                log.error("Error restoring color: " + colorString);
-            }
-        }
-
-        if (altColorString != null) {
-            try {
-                String[] rgb = altColorString.split(",");
-                int red = Integer.parseInt(rgb[0]);
-                int green = Integer.parseInt(rgb[1]);
-                int blue = Integer.parseInt(rgb[2]);
-                altColor = new Color(red, green, blue);
-            } catch (NumberFormatException e) {
-                log.error("Error restoring color: " + colorString);
-            }
-        }
-
-        // Set rendererClass
-        if (rendererType != null) {
-            Class rendererClass = RendererFactory.getRendererClass(rendererType);
-            if (rendererClass != null) {
-                setRendererClass(rendererClass);
-            }
-        }
+        setColor(colorString);
+        setAltColor(altColorString);
+        setMidColor(midColorString);
+        setRendererClass(rendererType);
 
         // Set window function
         if (windowFunction != null) {
@@ -1113,6 +1130,75 @@ public abstract class AbstractTrack implements Track {
     @Override
     public Renderer getRenderer() {
         return null;
+    }
+
+    public void setColor(String colorString) {
+        // Set color
+        if (colorString != null) {
+            try {
+                String[] rgb = colorString.split(",");
+                int red = Integer.parseInt(rgb[0]);
+                int green = Integer.parseInt(rgb[1]);
+                int blue = Integer.parseInt(rgb[2]);
+                posColor = new Color(red, green, blue);
+            } catch (NumberFormatException e) {
+                log.error("Error restoring color: " + colorString);
+            }
+        }
+    }
+
+    public void setAltColor(String altColorString) {
+        if (altColorString != null) {
+            try {
+                String[] rgb = altColorString.split(",");
+                int red = Integer.parseInt(rgb[0]);
+                int green = Integer.parseInt(rgb[1]);
+                int blue = Integer.parseInt(rgb[2]);
+                altColor = new Color(red, green, blue);
+            } catch (NumberFormatException e) {
+                log.error("Error restoring alt color: " + altColorString);
+            }
+        }
+    }
+    public void setMidColor(String midColorString) {
+        if (midColorString != null) {
+            try {
+                String[] rgb = midColorString.split(",");
+                int red = Integer.parseInt(rgb[0]);
+                int green = Integer.parseInt(rgb[1]);
+                int blue = Integer.parseInt(rgb[2]);
+                midColor = new Color(red, green, blue);
+            } catch (NumberFormatException e) {
+                log.error("Error restoring mid color: " + midColorString);
+            }
+        }
+    }
+
+    private void setRendererClass(String rendererType) {
+        // Set rendererClass
+        if (rendererType != null) {
+            Class rendererClass = RendererFactory.getRendererClass(rendererType);
+            if (rendererClass != null) {
+                setRendererClass(rendererClass);
+            }
+        }
+    }
+
+    /**
+     * @return the cutoffScore
+     */
+    @Override
+    public double getCutoffScore() {
+        return cutoffScore;
+    }
+
+    /**
+     * @param cutoffScore the cutoffScore to set
+     */
+    @Override
+    public void setCutoffScore(double cutoffScore) {
+            this.cutoffScore = cutoffScore;
+        
     }
 
 }

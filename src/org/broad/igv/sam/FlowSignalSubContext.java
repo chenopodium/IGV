@@ -21,6 +21,9 @@ public class FlowSignalSubContext {
         this.flowOrderIndex = flowOrderIndex;
     }
 
+    public boolean hasFlowValues() {
+        return flowvalues != null;
+    }
     protected void appendFlowInfo(StringBuffer buf, SamAlignment sam) {
         if (getFlowValues() != null && getFlowValues().length > 0) {
             buf.append("ZM = ");
@@ -92,6 +95,7 @@ public class FlowSignalSubContext {
     }
 
     public FlowValue getCurrentValue() {
+        if (flowvalues == null) return null;
         return flowvalues[CURR][0];
     }
 

@@ -260,4 +260,14 @@ public class Base64Coder {
     private Base64Coder() {
     }
 
+    public static void main(String[] args) {
+        String test = "ionuser";
+        String enc = Base64Coder.encodeString(test);
+        System.out.println(test+"-> '"+enc+"'");
+        
+        test = "ionadmin";
+        enc = Base64Coder.encodeString(test);
+        System.out.println(test+"-> '"+enc+"'");
+        
+    }
 } // end class Base64Coder

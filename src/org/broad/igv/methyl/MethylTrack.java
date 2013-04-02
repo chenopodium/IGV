@@ -37,7 +37,7 @@ import java.util.List;
  * if(locator.getPath().contains("RRBS_cpgMethylation") || locator.getPath().contains("")) {
  *
  * @author Jim Robinson
- * @date 4/19/12
+ * @date 4/19/12 
  */
 public class MethylTrack extends AbstractTrack {
 

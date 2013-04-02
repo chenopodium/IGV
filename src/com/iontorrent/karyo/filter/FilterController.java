@@ -76,7 +76,7 @@ public class FilterController extends javax.swing.JPanel {
             panels = new ArrayList<FilterPanel>();
             ArrayList<KaryoFilter> possfilters = track.getPossibleFilters();
             for (KaryoFilter fil : possfilters) {
-                p("Got filter "+fil.getClass().getName()+" for track "+track.getName());
+                p("Got filter "+fil.getClass().getName()+" for track "+track.getTrackDisplayName());
                 FilterPanel pan = FilterPanel.createPanel(fil, track);
                 if (pan != null) {
                     panels.add(pan);
@@ -84,7 +84,7 @@ public class FilterController extends javax.swing.JPanel {
             }
             filterpanelmap.put(track, panels);
         }
-        p("Got "+panels.size()+" filter panels for track "+track.getName());
+        p("Got "+panels.size()+" filter panels for track "+track.getTrackDisplayName());
         for (FilterPanel pan : panels) {
             p("Got filter panel: "+pan.getClass().getName());
             panelFilters.add(pan);

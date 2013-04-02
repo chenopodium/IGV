@@ -53,6 +53,9 @@ public class IGVPreferences {
         this.prefFile = null;
     }
 
+    public boolean contains(String key) {
+        return userPreferences.containsKey(key);
+    }
     public IGVPreferences(File prefFile) {
         this.prefFile = prefFile;
     }

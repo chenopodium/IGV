@@ -15,16 +15,13 @@
  * THE BROAD OR MIT SHALL BE ADVISED, SHALL HAVE OTHER REASON TO KNOW, OR IN FACT
  * SHALL KNOW OF THE POSSIBILITY OF THE FOREGOING.
  */
-
-
 /*
-* To change this template, choose Tools | Templates
-* and open the template in the editor.
-*/
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
 package org.broad.igv.renderer;
 
 //~--- non-JDK imports --------------------------------------------------------
-
 import org.broad.igv.Globals;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.feature.LocusScore;
@@ -37,19 +34,57 @@ import org.broad.igv.ui.panel.FrameManager;
 import java.awt.*;
 import java.text.DecimalFormat;
 import java.util.List;
+import java.util.logging.Logger;
 
 /**
  * @author jrobinso
  */
 public abstract class XYPlotRenderer extends DataRenderer {
 
+    private int msgs;
     private double marginFraction = 0.2;
 
-
     protected void drawDataPoint(Color graphColor, int dx, int pX, int baseY, int pY,
-                                 RenderContext context) {
-        context.getGraphic2DForColor(graphColor).fillRect(pX, pY, dx, 2);
+            RenderContext context) {
+        dx = Math.max(5, dx);
+       
+        context.getGraphic2DForColor(graphColor).fillRect(pX, pY, dx, 4);
 
+    }
+    public Color getGradientColor(double MIN, double MAX, double score, Color chigh, Color clow, Color cmid, double middle) {
+              
+       
+        
+        if (chigh == null) chigh = cmid;
+        if (clow == null) clow = cmid;
+        double rangedelta = MAX-MIN;
+       
+        if (middle == Integer.MIN_VALUE) middle = (MAX-MIN)/2;
+        // check if we use the higher or lower scale
+        double ds = score - MIN;
+                
+        Color hi = cmid;
+        Color lo = clow;
+        
+        if ( Math.abs(score - middle)<0.00001) return cmid;
+      //  Logger.getLogger("XYPlot").info("Score: "+score+", low="+MIN+", mid=CUTOFF="+middle+", max="+MAX);
+        if (score > middle) {
+            lo = cmid;
+            hi = chigh;
+            ds = score - middle;
+        }
+        
+        double dr = (hi.getRed()-lo.getRed()) / (rangedelta);
+        double dg = (hi.getGreen()-lo.getGreen()) / (rangedelta);
+        double db = (hi.getBlue()-lo.getBlue()) / (rangedelta);
+        
+       // p("Getting color for "+fieldname +"="+score+", min="+MIN+", max="+MAX);
+        int r = Math.min(255, Math.max(0,(int) (lo.getRed()+dr * ds)));
+        int g = Math.min(255, Math.max(0,(int) (lo.getGreen()+dg * ds)));
+        int b = Math.min(255, Math.max(0,(int) (lo.getBlue()+db * ds)));
+        Color c = new Color(r, g, b);
+        return c;
+    
     }
 
     /**
@@ -60,6 +95,7 @@ public abstract class XYPlotRenderer extends DataRenderer {
      * @param context
      * @param arect
      */
+    @Override
     public synchronized void renderScores(Track track, List<LocusScore> locusScores, RenderContext context, Rectangle arect) {
 
         boolean showMissingData = PreferenceManager.getInstance().getAsBoolean(PreferenceManager.SHOW_MISSING_DATA_KEY);
@@ -73,13 +109,21 @@ public abstract class XYPlotRenderer extends DataRenderer {
 
         Color posColor = track.getColor();
         Color negColor = track.getAltColor();
-
+        Color midColor = track.getMidColor();
         // Get the Y axis definition, consisting of minimum, maximum, and base value.  Often
         // the base value is == min value which is == 0.
 
         DataRange dataRange = track.getDataRange();
         float maxValue = dataRange.getMaximum();
-        float baseValue = dataRange.getBaseline();
+        float cutOff = (float) track.getCutoffScore();
+        float baseValue = 0;
+//        if ( msgs <10) {
+//            Logger.getLogger("XYPlotRenderer").info("Got cutoffscore/basevalue : " + baseValue +" for "+track.getName());
+//        }
+        
+        if (baseValue == 0) {
+            baseValue = dataRange.getBaseline();
+        }
         float minValue = dataRange.getMinimum();
         boolean isLog = dataRange.isLog();
 
@@ -110,6 +154,7 @@ public abstract class XYPlotRenderer extends DataRenderer {
             // could get an overflow.
             double pX = ((score.getStart() - origin) / locScale);
             double dx = Math.ceil((Math.max(1, score.getEnd() - score.getStart())) / locScale) + 1;
+            
             if ((pX + dx < 0)) {
                 continue;
             } else if (pX > adjustedRect.getMaxX()) {
@@ -133,12 +178,20 @@ public abstract class XYPlotRenderer extends DataRenderer {
                     pY = adjustedRect.y + adjustedRect.height;
                 }
 
-                Color color = (dataY >= baseValue) ? posColor : negColor;
+                if (msgs < 10 && baseValue != 0) {
+                    Logger.getLogger("XY: base="+baseValue+", data="+dataY);
+                    msgs++;
+                }
+                //Color color = (dataY >= baseValue) ? posColor : negColor;
+                Color color = getGradientColor(minValue, maxValue, dataY, posColor, negColor, midColor, cutOff);
                 drawDataPoint(color, (int) dx, (int) pX, baseY, pY, context);
 
             }
             if (showMissingData) {
-
+            if (msgs < 100) {
+            Logger.getLogger("XYPLot").info("Drawing missing data");
+            msgs++;
+        }
                 // Draw from lastPx + 1  to pX - 1;
                 int w = (int) pX - lastPx - 4;
                 if (w > 0) {
@@ -159,7 +212,6 @@ public abstract class XYPlotRenderer extends DataRenderer {
         }
 
     }
-
     static DecimalFormat formatter = new DecimalFormat();
 
     /**
@@ -194,7 +246,7 @@ public abstract class XYPlotRenderer extends DataRenderer {
             if (arect.getHeight() > 25) {
                 Rectangle labelRect = new Rectangle(arect.x, arect.y + 10, arect.width, 10);
                 labelGraphics.setFont(FontManager.getFont(10));
-                GraphicUtils.drawCenteredText(track.getName(), labelRect, labelGraphics);
+                GraphicUtils.drawCenteredText(track.getDisplayName(), labelRect, labelGraphics);
             }
         }
 
@@ -258,7 +310,6 @@ public abstract class XYPlotRenderer extends DataRenderer {
         }
     }
 
-
     @Override
     public void renderBorder(Track track, RenderContext context, Rectangle arect) {
 
@@ -312,8 +363,8 @@ public abstract class XYPlotRenderer extends DataRenderer {
             boolean drawBorders = true;
 
             if (minValue * maxValue < 0) {
-                drawBorders = prefs.getAsBoolean(PreferenceManager.CHART_DRAW_BOTTOM_BORDER) &&
-                        prefs.getAsBoolean(PreferenceManager.CHART_DRAW_TOP_BORDER);
+                drawBorders = prefs.getAsBoolean(PreferenceManager.CHART_DRAW_BOTTOM_BORDER)
+                        && prefs.getAsBoolean(PreferenceManager.CHART_DRAW_TOP_BORDER);
             }
 
             if (drawBorders && prefs.getAsBoolean(PreferenceManager.CHART_DRAW_TOP_BORDER)) {
@@ -328,20 +379,20 @@ public abstract class XYPlotRenderer extends DataRenderer {
             }
         }
         /*
-        (CHART_DRAW_TOP_BORDER));
-        prefs.setDrawBottomBorder(getBooleanPreference(CHART_DRAW_BOTTOM_BORDER));
-        prefs.setColorBorders(getBooleanPreference(CHART_COLOR_BORDERS));
-        prefs.setDrawAxis(getBooleanPreference(CHART_DRAW_Y_AXIS));
-        prefs.setDrawTrackName(getBooleanPreference(CHART_DRAW_TRACK_NAME));
-        prefs.setColorTrackName(getBooleanPreference(CHART_COLOR_TRACK_NAME));
-        prefs.setAutoscale(getBooleanPreference(CHART_AUTOSCALE));
-        prefs.setShowDataRange(getBooleanPreference(CHART_SHOW_DATA_RANGE));
+         (CHART_DRAW_TOP_BORDER));
+         prefs.setDrawBottomBorder(getBooleanPreference(CHART_DRAW_BOTTOM_BORDER));
+         prefs.setColorBorders(getBooleanPreference(CHART_COLOR_BORDERS));
+         prefs.setDrawAxis(getBooleanPreference(CHART_DRAW_Y_AXIS));
+         prefs.setDrawTrackName(getBooleanPreference(CHART_DRAW_TRACK_NAME));
+         prefs.setColorTrackName(getBooleanPreference(CHART_COLOR_TRACK_NAME));
+         prefs.setAutoscale(getBooleanPreference(CHART_AUTOSCALE));
+         prefs.setShowDataRange(getBooleanPreference(CHART_SHOW_DATA_RANGE));
          */
     }
 
     /**
-     * Get a grapphics object for the baseline.
-     * TODO -- make the line style settable by the user
+     * Get a grapphics object for the baseline. TODO -- make the line style
+     * settable by the user
      *
      * @param context
      * @return

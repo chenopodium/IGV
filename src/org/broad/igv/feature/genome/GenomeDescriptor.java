@@ -26,16 +26,20 @@
  */
 package org.broad.igv.feature.genome;
 
+import com.iontorrent.utils.StringTools;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import org.apache.log4j.Logger;
+import org.broad.igv.PreferenceManager;
 
 /**
  * @author eflakes
  */
 public abstract class GenomeDescriptor {
 
+    private static Logger log = Logger.getLogger(GenomeDescriptor.class);
     private String name;
     //private int version;
     private boolean chrNamesAltered;
@@ -88,7 +92,39 @@ public abstract class GenomeDescriptor {
                 }
             }
         }
+        this.sequenceLocation = checkSequencePathForVariables(this.sequenceLocation);
     }
+    private String checkSequencePathForVariables(String sequencePath) {
+        // check for [server]...
+        String server = PreferenceManager.getInstance().get("server");
+        if (server == null)server = PreferenceManager.getInstance().getTemp("server");
+        if (server != null) {
+            int col = server.indexOf(":");
+            String host = server;
+            if (col > 0) {
+                host = host.substring(0, col);
+            }
+            else server = server+":8080";
+            log.info("checkSequencePathForServer: ==== loading.genome: server="+server+", host="+host+" checking  "+sequencePath);
+            if (sequencePath.lastIndexOf(":")>5) sequencePath = StringTools.replace(sequencePath, "[server]", host);
+            else sequencePath = StringTools.replace(sequencePath, "[server]", server);
+            // hack for IR... FIX BUILD ON IR
+           
+            int dot = host.indexOf(".");
+            if (dot > 0) {
+                host = host.substring(0, dot);
+            }
+            String FOSTER = "almond tahoe offline01 moe pepper alpine yandan007 yuandan008 w12 w08 gordo avocado larry apple kermit scooter w07 jagger sandwich squaw fanta knox think1 think2 think3 longwa penguin23 dellplex07 head10 ";
+            if (FOSTER.indexOf(host+" ")>-1) {
+                log.info("checkSequencePathForServer: It is a FC server");
+                
+                sequencePath = StringTools.replace(sequencePath, "localhost", host);
+            }
+        }
+        else log.info("checkSequencePathForServer: got no server");
+        return sequencePath;
+    }
+
 
     public String getName() {
         return name;
@@ -124,6 +160,7 @@ public abstract class GenomeDescriptor {
      * @param sequenceLocation
      */
     public void setSequenceLocation(String sequenceLocation) {
+        sequenceLocation = this.checkSequencePathForVariables(sequenceLocation);
         this.sequenceLocation = sequenceLocation;
     }
 

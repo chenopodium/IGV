@@ -142,6 +142,14 @@ public interface Track extends Persistable {
     Color getAltColor();
 
     void setAltColor(Color color);
+     
+    Color getMidColor();
+
+    void setMidColor(Color color);
+    
+    double getCutoffScore();
+    
+    void setCutoffScore(double d);
 
     void setWindowFunction(WindowFunction type);
 
@@ -196,6 +204,8 @@ public interface Track extends Persistable {
     float getViewLimitMin();
 
     float getViewLimitMax();
+    
+    String getDisplayName();
 
     DisplayMode getDisplayMode();
 

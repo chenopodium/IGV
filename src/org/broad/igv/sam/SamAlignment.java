@@ -387,6 +387,7 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
         // Adjust start to include soft clipped bases a
         if (showSoftClipped) {
             start -= softClippedBaseCount;
+           // p("softClippedBaseCount:"+softClippedBaseCount);
         }
         int fromIdx = showSoftClipped ? 0 : softClippedBaseCount;
         int blockStart = start;
@@ -402,6 +403,7 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
                 fBlockBuilder = new FlowSignalContextBuilder(null, this.oldSignals, flowSignals, flowOrder, flowOrderStart, readBases, fromIdx, this.readNegativeStrandFlag);
             }
         }
+        //else p("Got no flow signals");
         prevOp = 0;
         for (CigarOperator op : operators) {
             try {
@@ -446,6 +448,7 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
                                 fBlockBuilder.getFlowSignalContext(readBases, fromIdx, op.nBases), this);
                       //  log.info("Got block: "+block.getBaseAlignment().toString());
                     } else {
+                        log.info("Got NO FlowSignalContextBuilder");
                         block = AlignmentBlock.getInstance(blockStart, blockBases, blockQualities, this);
                     }
 
@@ -838,6 +841,7 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
      */
     public int getFlowSignalsStart() {
         Object attribute = record.getAttribute(FLOW_SIGNAL_TAG); // NB: from a TMAP optional tag
+     //   p("FlowSignalStart "+FLOW_SIGNAL_TAG+":"+attribute);
         int toRet = -1;
         if (attribute != null && attribute instanceof Integer) {
             toRet = (Integer) attribute;
@@ -911,16 +915,32 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
          return  getFlowSignals_r(flowOrder, keySequence, "FZ", 1.0);
     }
     
+    private void p(String s) {
+       // System.out.println("SamAlignmen: "+s);
+    }
     private float[] getFlowSignals_r(String flowOrder, String keySequence, String tag, double scaling) {
+        
+        Object flowattresult = record.getAttribute(tag);
+        if (null == flowattresult) {
+          //  p("Got no data with tag "+tag);
+            return null;
+        }
         float[] result;
         int startFlow, keySignalOverlap;
         char firstBase;
 
         if (null == flowOrder || null == keySequence) {
+            p("Got data with tag "+tag+", but no flow order or no key sequence: "+flowOrder+", "+keySequence);
             return null;
         }
 
+         
         startFlow = this.getFlowSignalsStart();
+        
+        if (this.readNegativeStrandFlag) {
+         //   p("Reading flowsignals with tag "+tag+", startFlow="+startFlow+", keySeq="+keySequence+", \nflowOrder="+flowOrder+",\nread="+record.getReadString());
+            
+        }
         if (startFlow < 0) {
             return null;
         }
@@ -928,6 +948,7 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
         // get the # of bases that the first base in the read overlaps with the last base(s) in the key
         if (this.readNegativeStrandFlag) {
             firstBase = (char) NT2COMP[record.getReadBases()[record.getReadLength() - 1]];
+         //   p("first base (rev)="+firstBase);
         } else {
             firstBase = (char) record.getReadBases()[0];
         }
@@ -936,26 +957,25 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
             keySignalOverlap += 100;
         }
 
-        Object attribute = record.getAttribute(tag);
-        if (null == attribute) {
-            return null;
-        } else if (attribute instanceof short[]) {
-            short[] values = (short[]) attribute;
+   
+       if (flowattresult instanceof short[]) {
+            short[] values = (short[]) flowattresult;
             result = new float[values.length - startFlow];
             for (int i = startFlow; i < values.length; i++) {
                 result[i - startFlow] = values[i];
             }        
-        } else if (attribute instanceof int[]) {
-            int[] values = (int[]) attribute;
+        } else if (flowattresult instanceof int[]) {
+            int[] values = (int[]) flowattresult;
             result = new float[values.length - startFlow];
             System.arraycopy(values, startFlow, result, 0, result.length);
-        } else if (attribute instanceof byte[]) {
-            byte[] values = (byte[]) attribute;
+        } else if (flowattresult instanceof byte[]) {
+            byte[] values = (byte[]) flowattresult;
             result = new float[values.length - startFlow];
             for (int i = startFlow; i < values.length; i++) {
                 result[i - startFlow] = values[i];
             }
         } else {
+            p("Not sure what kind of data this is:"+flowattresult.getClass().getName());
             return null;
         }
         // Subtract the key's contribution to the first base

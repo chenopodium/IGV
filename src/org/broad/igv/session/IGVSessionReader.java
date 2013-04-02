@@ -17,6 +17,7 @@
  */
 package org.broad.igv.session;
 
+import com.iontorrent.utils.ErrorHandler;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.feature.Locus;
@@ -53,6 +54,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import java.util.List;
+import org.broad.igv.track.TrackProperties;
 import org.broad.igv.util.collections.CollUtils;
 
 /**
@@ -162,6 +164,7 @@ public class IGVSessionReader implements SessionReader {
         BOOLEAN_OPERATOR("booleanOperator"),
         COLOR("color"),
         ALT_COLOR("altColor"),
+        MID_COLOR("midColor"),
         COLOR_MODE("colorMode"),
         CHROMOSOME("chromosome"),
         END_INDEX("end"),
@@ -258,7 +261,7 @@ public class IGVSessionReader implements SessionReader {
     public void loadSession(InputStream inputStream, Session session, String sessionPath) {
 
 
-        log.debug("Load session");
+        log.info("Load session");
 
 
         Document document = null;
@@ -327,16 +330,18 @@ public class IGVSessionReader implements SessionReader {
                 String sessionPath = session.getPath();
                 //Loads genome from list, or from server or cache
                 igv.selectGenomeFromList(genomeId);
-                if (!GenomeManager.getInstance().getGenomeId().equals(genomeId)) {
+                String old = GenomeManager.getInstance().getGenomeId();
+                if (old == null || !old.equals(genomeId)) {
                     String genomePath = genomeId;
                     if (!ParsingUtils.pathExists(genomePath)) {
                         genomePath = FileUtils.getAbsolutePath(genomeId, session.getPath());
                     }
                     if (ParsingUtils.pathExists(genomePath)) {
                         try {
-                            log.info("processRootNode");
+                            log.info("processRootNode.loadGenome "+genomePath);
                             IGV.getInstance().loadGenome(genomePath, null);
                         } catch (IOException e) {
+                            log.info("Error loading genome: "+genomePath+":"+ErrorHandler.getString(e));
                             throw new RuntimeException("Error loading genome: " + genomeId);
                         }
                     } else {
@@ -414,7 +419,7 @@ public class IGVSessionReader implements SessionReader {
 
         String nodeName = element.getNodeName();
 
-      //  log.info("Loading session. SessionElement: "+nodeName);
+  //     log.info("Loading session. SessionElement: "+nodeName);
         if (nodeName.equalsIgnoreCase(SessionElement.RESOURCES.getText()) ||
                 nodeName.equalsIgnoreCase(SessionElement.FILES.getText())) {
             processResources(session, (Element) element, additionalInformation, rootPath);
@@ -500,6 +505,7 @@ public class IGVSessionReader implements SessionReader {
                         List<Track> tracks = null;
                         try {
                             tracks = igv.load(locator);
+                        //    log.info("Got tracks "+tracks+" for locator "+locator.getPath());
                             for (Track track : tracks) {
                                 if (track == null) {
                                     log.info("Null track for resource " + locator.getPath());
@@ -519,13 +525,17 @@ public class IGVSessionReader implements SessionReader {
                                 List<Track> trackList = trackDictionary.get(id);
                                 if (trackList == null) {
                                     trackList = new ArrayList();
+                                   // log.info("Adding track id: "+id);
                                     trackDictionary.put(id, trackList);
+                                    if (track.getName() != null) {
+                                        trackDictionary.put(track.getName(), trackList);
+                                    }
                                 }
                                 trackList.add(track);
                             }
                         } catch (Exception e) {
                             log.error("Error loading resource " + locator.getPath(), e);
-                            String ms = "<b>" + locator.getPath() + "</b><br>&nbs;p&nbsp;" + e.toString() + "<br>";
+                            String ms = "<br>Path: " + locator.getPath() + "<br>Message: <b>" + e.toString() + "</b><br>";
                             errors.add(ms);
                         }
                     }
@@ -596,6 +606,7 @@ public class IGVSessionReader implements SessionReader {
         String type = getAttribute(element, SessionAttribute.TYPE.getText());
         String coverage = getAttribute(element, SessionAttribute.COVERAGE.getText());
         String trackLine = getAttribute(element, SessionAttribute.TRACK_LINE.getText());
+        
         String colorString = getAttribute(element, SessionAttribute.COLOR.getText());
 
         String relPathValue = getAttribute(element, SessionAttribute.RELATIVE_PATH.getText());
@@ -657,7 +668,7 @@ public class IGVSessionReader implements SessionReader {
             resourceLocator.setType(type);
         }
         resourceLocator.setCoverage(coverage);
-        resourceLocator.setTrackLine(trackLine);
+        if (trackLine != null) resourceLocator.setTrackLine(trackLine);
 
         if (colorString != null) {
             try {
@@ -850,6 +861,7 @@ public class IGVSessionReader implements SessionReader {
     private int panelCounter = 1;
 
     private void processPanel(Session session, Element element, HashMap additionalInformation, String rootPath) {
+      //  log.info("processPanel:"+element.getNodeName());
         panelElementPresent = true;
         String panelName = element.getAttribute("name");
         if (panelName == null) {
@@ -860,6 +872,7 @@ public class IGVSessionReader implements SessionReader {
         NodeList elements = element.getChildNodes();
         for (int i = 0; i < elements.getLength(); i++) {
             Node childNode = elements.item(i);
+            log.info("processPanel: child="+childNode.getNodeName());
             if (childNode.getNodeName().equalsIgnoreCase(SessionElement.DATA_TRACK.getText()) ||  // Is this a track?
                     childNode.getNodeName().equalsIgnoreCase(SessionElement.TRACK.getText())) {
 
@@ -914,13 +927,17 @@ public class IGVSessionReader implements SessionReader {
 
     private List<Track> processTrack(Session session, Element element, HashMap additionalInformation, String rootPath) {
 
+        log.info("=== processTrack "+element);    
         String id = getAttribute(element, SessionAttribute.ID.getText());
 
         Map<String, String> tAttributes = Utilities.getAttributes(element);
 
         Map<String, String> drAttributes = null;
 
-
+        String trackLine = getAttribute(element, SessionAttribute.TRACK_LINE.getText());
+       
+       // else log.info("Got nothing for "+SessionAttribute.TRACK_LINE.getText()+" in element "+element);
+        
         if (element.hasChildNodes()) {
             Node childNode = element.getFirstChild();
             Node sibNode = childNode.getNextSibling();
@@ -934,7 +951,10 @@ public class IGVSessionReader implements SessionReader {
         List<Track> matchedTracks = trackDictionary.get(id);
 
         if (matchedTracks == null) {
-            log.info("Warning.  No tracks were found with id: " + id + " in session file");
+            log.info("Warning.  No tracks were found with id: " + id + " in session file. Check spelling. Tracks are:");
+            for (Iterator it=trackDictionary.keySet().iterator(); it.hasNext();) {
+                log.info("              - "+it.next());
+            }
         } else {
             for (final Track track : matchedTracks) {
 
@@ -942,8 +962,17 @@ public class IGVSessionReader implements SessionReader {
                 if (version >= 4 && track == geneTrack || track == seqTrack) {
                     igv.removeTracks(Arrays.asList(track));
                 }
-
+                
+                
                 track.restorePersistentState(tAttributes);
+                TrackProperties tp = null;
+                if (trackLine != null) {
+                     tp = new TrackProperties();  
+                     ParsingUtils.parseTrackLine(trackLine, tp);
+                     track.setProperties(tp);
+                     log.info("Processing trackLine "+trackLine+" for "+track.getDisplayName()+":"+tp.toString()+", cutoff of properties="+tp.getCutoffScore());                   
+                     log.info("Got cutoff: "+track.getCutoffScore());
+                }
                 if (drAttributes != null) {
                     DataRange dr = track.getDataRange();
                     dr.restorePersistentState(drAttributes);
@@ -951,7 +980,6 @@ public class IGVSessionReader implements SessionReader {
                 }
             }
             trackDictionary.remove(id);
-
 
         }
 
@@ -1025,6 +1053,9 @@ public class IGVSessionReader implements SessionReader {
 
     private String getAttribute(Element element, String key) {
         String value = element.getAttribute(key);
+        //log.info("finding "+key +" in "+ element.getNodeName());
+        if (value == null) value = element.getAttribute(key.toLowerCase());
+        if (value == null) value = element.getAttribute(key.toUpperCase());
         if (value != null) {
             if (value.trim().equals("")) {
                 value = null;

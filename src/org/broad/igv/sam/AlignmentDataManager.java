@@ -381,7 +381,8 @@ public class AlignmentDataManager {
                 log.debug("Loading alignments: " + chr + ":" + start + "-" + end);
 
                 AlignmentInterval loadedInterval = loadInterval(chr, start, end, renderOptions);
-                addLoadedInterval(context, loadedInterval);
+                
+                if (loadedInterval != null) addLoadedInterval(context, loadedInterval);
 
 
                 if (coverageTrack != null) {
@@ -422,6 +423,11 @@ public class AlignmentDataManager {
         AlignmentTileLoader.AlignmentTile t = reader.loadTile(sequence, start, end, showSpliceJunctions,
                 downsampleOptions, peStats, bisulfiteContext);
 
+        if (t == null) {
+            log.fatal("loadInterval. AlignmentTile is null for "+start+"-"+end);
+            return null;
+        }
+        
         List<Alignment> alignments = t.getAlignments();
 
         List<SpliceJunctionFeature> spliceJunctions = t.getSpliceJunctionFeatures();

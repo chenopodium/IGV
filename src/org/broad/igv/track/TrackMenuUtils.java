@@ -375,8 +375,11 @@ public class TrackMenuUtils {
         menu.add(getTrackRenameItem(tracks));
 
         String colorLabel = hasFeatureTracks
-                ? "Change Track Color..." : "Change Track Color (Positive Values)...";
+                ? "Change Track Color..." : "Change Track Color (High Values)...";
+        
         JMenuItem item = new JMenuItem(colorLabel);
+         item.setToolTipText(
+                    "Change the main track color. This color is used when graphing large values for features with scores");
         item.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent evt) {
                 changeTrackColor(tracks);
@@ -387,12 +390,31 @@ public class TrackMenuUtils {
         if (!hasFeatureTracks) {
 
             // Change track color by attribute
-            item = new JMenuItem("Change Track Color (Negative Values)...");
+            item = new JMenuItem("Change Track Color (Low Values)...");
             item.setToolTipText(
-                    "Change the alternate track color.  This color is used when graphing negative values");
+                    "Change the alternate track color.  This color is used when graphing small or negative values");
             item.addActionListener(new ActionListener() {
                 public void actionPerformed(ActionEvent evt) {
                     changeAltTrackColor(tracks);
+                }
+            });
+            menu.add(item);
+            // Change track color by attribute
+            item = new JMenuItem("Change Track Color (Middle Value)...");
+            item.setToolTipText(
+                    "Change the middle track color.  This color is used when graphing small or negative values");
+            item.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent evt) {
+                    changeMidTrackColor(tracks);
+                }
+            });
+            menu.add(item);
+            item = new JMenuItem("Change score where color changes");
+            item.setToolTipText(
+                    "Change the value when the color should change from high to low value (such as 2 for ploidy)");
+            item.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent evt) {
+                    changeCutOff(tracks);
                 }
             });
             menu.add(item);
@@ -909,6 +931,56 @@ public class TrackMenuUtils {
         for (Track track : selectedTracks) {
 
             track.setAltColor(color);
+        }
+        refresh();
+
+    }
+    public static void changeMidTrackColor(final Collection<Track> selectedTracks) {
+
+        if (selectedTracks.isEmpty()) {
+            return;
+        }
+
+        Color currentSelection = selectedTracks.iterator().next().getColor();
+
+        Color color = UIUtilities.showColorChooserDialog(
+                "Select Track Color (Middle Values)",
+                currentSelection);
+
+        if (color == null) {
+            return;
+        }
+
+        for (Track track : selectedTracks) {
+
+            track.setMidColor(color);
+        }
+        refresh();
+
+    }
+    public static void changeCutOff(final Collection<Track> selectedTracks) {
+
+        if (selectedTracks.isEmpty()) {
+            return;
+        }
+
+        double cut = selectedTracks.iterator().next().getCutoffScore();
+
+        String ans = JOptionPane.showInputDialog(IGV.getMainFrame(),
+                "Enter a value where the color changes from low to high (current value: "+cut+")");
+
+        if (ans == null) {
+            return;
+        }
+        try {
+            cut = Double.parseDouble(ans);
+        }
+        catch (Exception e) {
+            return;
+        }
+        for (Track track : selectedTracks) {
+
+            track.setCutoffScore(cut);
         }
         refresh();
 

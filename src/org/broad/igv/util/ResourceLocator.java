@@ -12,6 +12,7 @@ package org.broad.igv.util;
 
 import java.awt.*;
 import java.io.File;
+import java.util.Map;
 
 /**
  * Represents a data file or other resource, which might be local file or remote resource.
@@ -72,6 +73,9 @@ public class ResourceLocator {
     String username;
     String password;
 
+    
+    /** to pass parameters such as if track is expanded or not (displayMode) etc */
+    Map<String, String> params; 
     /**
      * Constructor for local files
      *
@@ -178,7 +182,10 @@ public class ResourceLocator {
     }
 
     public String getTrackName() {
-        return name != null ? name : new File(getPath()).getName();
+        String trackname = null;
+        trackname = name != null ? name : new File(getPath()).getName();
+        if (this.getSampleId() != null) trackname = this.getSampleId()+ " "+trackname;
+        return trackname;
     }
 
 
@@ -263,6 +270,16 @@ public class ResourceLocator {
         this.password = password;
     }
 
+    public void setParams(Map<String, String> params) {
+        this.params = params;
+    }
+    public Map<String, String> getParams() {
+        return params;
+    }
+    public String getParameter(String param) {
+        if (params == null) return null;
+        else return params.get(param);
+    }
 
     /**
      * FOR LOAD FROM SERVER (LEGACY)
@@ -273,6 +290,7 @@ public class ResourceLocator {
         PATH("path"),
         DESCRIPTION("description"),
         HYPERLINK("hyperlink"),
+         INFOLINK("infolink"),
         ID("id"),
         SAMPLE_ID("sampleId"),
         NAME("name"),

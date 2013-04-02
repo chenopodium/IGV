@@ -24,6 +24,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import org.apache.log4j.Level;
+import org.broad.igv.ui.util.MessageUtils;
 
 /**
  * Utility class for launching IGV. Provides a "main" method and an "open"
@@ -38,7 +40,7 @@ import java.awt.event.WindowEvent;
  * @author jrobinso @date Feb 7, 2011
  */
 public class Main {
-
+    public static final boolean DEBUG = true;
     private static Logger log = Logger.getLogger(Main.class);
 
     /**
@@ -235,32 +237,21 @@ public class Main {
             name = (String) parser.getOptionValue(nameOption);
 
             String[] nonOptionArgs = parser.getRemainingArgs();
-            if (nonOptionArgs != null && nonOptionArgs.length > 0) {
-                //               String firstArg = StringUtils.decodeURL(nonOptionArgs[0]);  // TODO -- why is this url decoded?
-//                if (firstArg != null && !firstArg.equals("ignore")) {
-//                    log.info("Loading: " + firstArg);
-//                    if (firstArg.endsWith(".xml") || firstArg.endsWith(".php") || firstArg.endsWith(".php3")
-//                            || firstArg.endsWith(".session")) {
-//                        sessionFile = firstArg;
-//                    } else {
-//                        dataFileString = firstArg;
-//                    }
-//                }
-//                if (nonOptionArgs.length > 1) {
-//                    locusString = nonOptionArgs[1];
-//                }
-
-// Alternative implementation
+            if (nonOptionArgs != null && nonOptionArgs.length > 0) {               
+                // Alternative implementation
                 String firstArg = StringUtils.decodeURL(nonOptionArgs[0]);
                 firstArg = checkEqualsAndExtractParamter(firstArg);
                 if (firstArg != null && !firstArg.equals("ignore")) {
                     log.info("Loading: " + firstArg);
+                    
                     if (firstArg.endsWith(".xml") || firstArg.endsWith(".php") || firstArg.endsWith(".php3")
                             || firstArg.endsWith(".session")) {
                         sessionFile = firstArg;
+                        if (IGV.DEBUG) MessageUtils.showMessage("Got session file "+sessionFile);
 
                     } else {
                         dataFileString = firstArg;
+                        if (IGV.DEBUG) MessageUtils.showMessage("Got data file "+dataFileString);
                     }
                 }
 
@@ -269,7 +260,10 @@ public class Main {
                     for (String arg : nonOptionArgs) {
                         arg = checkEqualsAndExtractParamter(arg);
                         if (arg != null) {
-                            locusString = arg;
+                            if (!arg.startsWith("http") && arg.length()< 50) {
+                                log.info("parseArgs: Got locus string: "+arg);
+                                locusString = arg;
+                            }
                         }
 
                     }
@@ -282,50 +276,48 @@ public class Main {
             if (arg == null) {
                 return null;
             }
+            PreferenceManager prefs = PreferenceManager.getInstance();
             int eq = arg.indexOf("=");
-            if (eq > 0) {
+            if (eq > 0 && (!arg.startsWith("http:") && !arg.startsWith("https:"))) {
                 // we got a key=value
                 String key = arg.substring(0, eq);
                 String val = arg.substring(eq + 1);
-
-                if (key.equalsIgnoreCase("server")) {
-                    PreferenceManager.getInstance().put(PreferenceManager.IONTORRENT_SERVER, val);
-                    log.info("Got server: " + key + "=" + val);
-                    return null;
-                } else if (key.equalsIgnoreCase("header_value")) {
-                    PreferenceManager.getInstance().put("header_value", val);
-                    log.info("Got: " + key + "=" + val);
-                    return null;
-                } else if (key.equalsIgnoreCase("header_key")) {
-                    PreferenceManager.getInstance().put("header_value", val);
-                    log.info("Got: " + key + "=" + val);
-                    return null;
-                } else if (key.equalsIgnoreCase("sessionURL") || key.equalsIgnoreCase("file")) {
+                
+               if (key.startsWith("session") || key.equalsIgnoreCase("file")) {
 
                     if (val.endsWith(".xml") || val.endsWith(".php") || val.endsWith(".php3")
                             || val.endsWith(".session")) {
                         log.info("Got session: " + key + "=" + val);
                         sessionFile = val;
+                        if (IGV.DEBUG) MessageUtils.showMessage("Got sesson File "+val);
 
                     } else {
                         log.info("Got dataFileString: " + key + "=" + val);
+                        if (IGV.DEBUG) MessageUtils.showMessage("Got data File "+val);
                         dataFileString = val;
                     }
+                    PreferenceManager.getInstance().putTemp(key, val);
                     return null;
                 } else if (key.equalsIgnoreCase("batchFile") || key.equalsIgnoreCase("batch")) {
                     log.info("Got batch file: " + key + "=" + val);
                     batchFile = val;
+                    if (IGV.DEBUG) MessageUtils.showMessage("Got batchFile  "+val);
+                    PreferenceManager.getInstance().putTemp(key, val);
                     return null;
                 } else if (key.equalsIgnoreCase("locus") || key.equalsIgnoreCase("position")) {
                     log.info("Got locus: " + key + "=" + val);
                     locusString = val;
                     arg = val;
                 } else {
-                    log.info("Currently not handled specifically, adding it to preferences " + key + "=" + val);
-                    PreferenceManager.getInstance().put(key, val);
-                    return null;
+                    log.info("Adding to preferences TMP: set " + key + "=" + val);
+                    if (IGV.DEBUG) MessageUtils.showMessage("Currently not handled specifically, adding it to preferences: "+ key + "=" + val);
+                    if (prefs.contains(key)) {
+                        prefs.put(key, val);
+                        log.info("Got general preference setting: " + key + "=" + val);
+                    }
+                    PreferenceManager.getInstance().putTemp(key, val);                   
+                    return null;                             
                 }
-
             }
             return arg;
         }

@@ -12,6 +12,7 @@ package org.broad.igv.data.seg;
 
 //~--- non-JDK imports --------------------------------------------------------
 
+import com.iontorrent.utils.ErrorHandler;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.exceptions.DataLoadException;
@@ -79,6 +80,7 @@ public class SegmentFileParser implements SegFileParser {
         AsciiLineReader reader = null;
         String nextLine = null;
         int lineNumber = 0;
+        log.info("About to aprse: "+locator.getPath());
         try {
             reader = ParsingUtils.openAsciiReader(locator);
 
@@ -176,6 +178,7 @@ public class SegmentFileParser implements SegFileParser {
         } catch (ParserException pe) {
             throw pe;
         } catch (Exception e) {
+            log.info(ErrorHandler.getString(e));
             if (nextLine != null && lineNumber != 0) {
                 throw new ParserException(e.getMessage(), e, lineNumber, nextLine);
             } else {

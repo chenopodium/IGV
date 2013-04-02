@@ -353,6 +353,14 @@ public class SessionWriter {
                     Element trackElement = document.createElement(SessionElement.TRACK.getText());
                     trackElement.setAttribute(IGVSessionReader.SessionAttribute.ID.getText(), track.getId());
                     trackElement.setAttribute(IGVSessionReader.SessionAttribute.NAME.getText(), track.getName());
+                    double cutoff = track.getCutoffScore();
+                    if (cutoff != 0) {
+                       String trackline = "cutoffscore="+cutoff+" ";
+                       trackElement.setAttribute(IGVSessionReader.SessionAttribute.TRACK_LINE.getText(), trackline);
+                    }
+                    if (track.getSample() != null && track.getSample().length()>0) {
+                        trackElement.setAttribute(IGVSessionReader.SessionAttribute.SAMPLE_ID.getText(), track.getSample());
+                    }
                     for (Map.Entry<String, String> attrValue : track.getPersistentState().entrySet()) {
                         trackElement.setAttribute(attrValue.getKey(), attrValue.getValue());
                     }

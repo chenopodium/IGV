@@ -26,9 +26,9 @@ public class IgvAdapter {
     }
     
     private void showIgvTrackSelection() {
-         if (igvselpanel == null) {
+        // if (igvselpanel == null) {
             igvselpanel = new IgvTrackSelectionPanel(null);
-        }
+        //}
          if (igvselpanel.getNrListedTracks() <1) {
              JOptionPane.showConfirmDialog(IGV.getMainFrame(), "There are no suitable tracks to show.\nTry a variant file (such as SNPs, CNVs etc)."
                      + "\nI will just show the chromosome bands then.",
@@ -37,12 +37,12 @@ public class IgvAdapter {
          else JOptionPane.showConfirmDialog(IGV.getMainFrame(), igvselpanel,"Pick the tracks to view", JOptionPane.OK_OPTION); 
     }
     public ArrayList<KaryoTrack> getSelectedIgvTracks(boolean show) {
-        if (igvselpanel == null) {
-            igvselpanel = new IgvTrackSelectionPanel(null);
-        }
-        if (show || igvselpanel.getNrTracks()>1) {
+      //  if (igvselpanel == null) {
+       //     igvselpanel = new IgvTrackSelectionPanel(null);
+      //  }
+       // if (show || igvselpanel.getNrTracks()>1) {
             showIgvTrackSelection(); 
-        }
+      //  }
         return igvselpanel.getSelectedTracks();
     }
     public FeatureTree createTree(KaryoTrack ktrack , Chromosome chr) {        
@@ -50,7 +50,7 @@ public class IgvAdapter {
              p("Got no variant track or no IGV running");
              return null;
         }
-        p("IGVAdapter: CreateTree and load data called");
+    //    p("IGVAdapter: CreateTree and load data called");
         AbstractTrack track = ktrack.getTrack();
       //  p("Got track with name: "+track.getName());
         FeatureTree tree = new FeatureTree(ktrack, ktrack.getTrack(), chr);        
@@ -78,7 +78,12 @@ public class IgvAdapter {
 
     public void showLocation(String name, int loc, int end) {
     //    p("Going to lucis "+name+":"+loc);
-        IGV.getInstance().goToLocus("chr"+name+":"+loc+"-"+end);
+        if (!name.startsWith("chr")) {
+            name = "chr"+name;
+        }
+        IGV.getInstance().goToLocus(name+":"+loc+"-"+end);
         IGV.getMainFrame().toFront();
     }
+
+    
 }

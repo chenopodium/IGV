@@ -113,19 +113,25 @@ public class StringTools {
     }
 
     public static String replace(String source, String tag, String with) {
+        return replace(source, tag, with, -1);
+    }
+    public static String replace(String source, String tag, String with, int maxposition) {
         if (source == null || tag == null || tag.length() == 0 || with == null
                 || tag.equals(with)) {
             return source;
         }
+         
         if (tag.indexOf(with) >= 0) {
             String s = source;
             int tagpos = -1;
             while ((tagpos = s.indexOf(tag)) >= 0) {
-                StringBuffer result = new StringBuffer();
-                result.append(s.subSequence(0, tagpos));
-                result.append(with);
-                result.append(s.subSequence(tagpos + tag.length(), s.length()));
-                s = result.toString();
+                if (maxposition < 0 || tagpos < maxposition) {
+                    StringBuffer result = new StringBuffer();
+                    result.append(s.subSequence(0, tagpos));
+                    result.append(with);
+                    result.append(s.subSequence(tagpos + tag.length(), s.length()));
+                    s = result.toString();
+                }
             }
             return s;
         }
