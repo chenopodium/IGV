@@ -4,7 +4,6 @@
  */
 package com.iontorrent.karyo.data;
 
-import com.iontorrent.karyo.filter.KaryoFilter;
 import com.iontorrent.karyo.views.KaryoControlPanel;
 import com.iontorrent.karyo.views.IgvTrackSelectionPanel;
 import java.util.ArrayList;

@@ -7,11 +7,8 @@
  *
  * This software is licensed under the terms of the GNU Lesser General Public License (LGPL),
  * Version 2.1 which is available at http://www.opensource.org/licenses/lgpl-2.1.php.
- */ 
-
-
+ */
 //chr2:128,565,093-128,565,156 
-
 package org.broad.igv.variant;
 
 import org.apache.log4j.Logger;
@@ -40,6 +37,7 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.List;
+import org.broad.igv.Globals;
 
 /**
  * @author Jesse Whitworth, Jim Robinson, Fabien Campagne
@@ -47,119 +45,100 @@ import java.util.List;
 public class VariantTrack extends FeatureTrack implements TrackGroupEventListener {
 
     private static Logger log = Logger.getLogger(VariantTrack.class);
-
     static final DecimalFormat numFormat = new DecimalFormat("#.###");
-
     private static final Color OFF_WHITE = new Color(170, 170, 170);
     private static final int GROUP_BORDER_WIDTH = 3;
     private static final Color BAND1_COLOR = new Color(245, 245, 245);
     private static final Color BAND2_COLOR = Color.white;
     private static final Color SELECTED_BAND_COLOR = new Color(210, 210, 210);
     private static final Color borderGray = new Color(200, 200, 200);
-
     private final static int DEFAULT_EXPANDED_GENOTYPE_HEIGHT = 15;
     private final int DEFAULT_SQUISHED_GENOTYPE_HEIGHT = 4;
     private final static int DEFAULT_VARIANT_BAND_HEIGHT = 25;
     private final static int MAX_FILTER_LINES = 15;
-
-
     // TODO -- this needs to be settable
     public static int METHYLATION_MIN_BASE_COUNT = 10;
-
     /**
      * The renderer.
      */
     private VariantRenderer renderer = new VariantRenderer(this);
-
     /**
-     * When this flag is true, we have detected that the VCF file contains the FORMAT MR column representing
-     * methylation data. This will enable the "Color By/Methylation Rate" menu item.
+     * When this flag is true, we have detected that the VCF file contains the
+     * FORMAT MR column representing methylation data. This will enable the
+     * "Color By/Methylation Rate" menu item.
      */
     private boolean enableMethylationRateSupport;
-
     /**
-     * Top (y) position of this track.  This is updated whenever the track is drawn.
+     * Top (y) position of this track. This is updated whenever the track is
+     * drawn.
      */
     private int top;
-
     /**
      * The height of a single row in in squished mode
      */
     private int squishedHeight = DEFAULT_SQUISHED_GENOTYPE_HEIGHT;
-
     /**
      * The height of the top band representing the variant call
      */
     private int variantBandHeight = DEFAULT_VARIANT_BAND_HEIGHT;
-
     /**
      * List of all samples, in the order they appear in the file.
      */
     List<String> allSamples;
-
     /**
      * Boolean indicating if samples are grouped.
      */
     private boolean grouped;
-
     /**
      * The id of the group used to group samples.
      */
     private String groupByAttribute;
-
     /**
-     * Map of group -> samples.  Each entry defines a group, the key is the group name and the value the list of
-     * samples in the group.
+     * Map of group -> samples. Each entry defines a group, the key is the group
+     * name and the value the list of samples in the group.
      */
     LinkedHashMap<String, List<String>> samplesByGroups = new LinkedHashMap<String, List<String>>();
-
-
     /**
      * Current coloring option
      */
-    private ColorMode coloring = ColorMode.GENOTYPE;
-
+    //private ColorMode coloring = ColorMode.GENOTYPE;
+    private ColorMode coloring = ColorMode.TRACK;
     /**
      * When true, variants that are marked filtering are not drawn.
      */
     private boolean hideFiltered = false;
-
     /**
      * If true the variant ID, when present, will be rendered.
      */
     private boolean renderID = true;
-
     /**
-     * The currently selected variant.  This is a transient variable, set only while the popup menu is up.
+     * The currently selected variant. This is a transient variable, set only
+     * while the popup menu is up.
      */
     private Variant selectedVariant;
-
     /**
-     * Transient list to keep track of the vertical bounds of each sample.  Set when rendering names, used to
-     * select correct sample for popup text.  We use a list and linear lookup for now, some sort of tree structure
-     * would be faster.
+     * Transient list to keep track of the vertical bounds of each sample. Set
+     * when rendering names, used to select correct sample for popup text. We
+     * use a list and linear lookup for now, some sort of tree structure would
+     * be faster.
      */
     private List<SampleBounds> sampleBounds = new ArrayList<SampleBounds>();
-
     /**
      * List of selected samples.
      */
     private List<String> selectedSamples = new ArrayList<String>();
-
     /**
      * Experimental "mode" to couple VCF & BAM files
      */
-
     //private boolean vcfToBamMode = false;
-
     /**
      * Map of sample name -> associated bam file
      */
     Map<String, String> alignmentFiles;
-
+    private boolean userSetHeight;
 
     public VariantTrack(ResourceLocator locator, FeatureSource source, List<String> samples,
-                        boolean enableMethylationRateSupport) {
+            boolean enableMethylationRateSupport) {
         super(locator, source);
 
         this.enableMethylationRateSupport = enableMethylationRateSupport;
@@ -181,13 +160,18 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         // Estimate visibility window.
         // TODO -- set beta based on available memory
         int cnt = Math.max(1, allSamples.size());
-        int beta = 10000000;
+        // int beta = 10000000;
+        int mem = (int) (Runtime.getRuntime().totalMemory());
         double p = Math.pow(cnt, 1.5);
-        int visWindow = (int) Math.min(500000, (beta / p) * 1000);
+        int MB = 1000000;
+        int visWindow = (int) Math.min(500 * MB, (mem / p) * 10000);
+        p("Computing visibility window: nr fatures=" + allSamples.size() + ", mem in MB=" + mem / 1000000 + ", window=" + visWindow);
         setVisibilityWindow(visWindow);
 
         // Listen for "group by" events.  TODO -- "this" should be removed when track is disposed of
-        if (IGV.hasInstance()) IGV.getInstance().addGroupEventListener(this);
+        if (IGV.hasInstance()) {
+            IGV.getInstance().addGroupEventListener(this);
+        }
 
         // If sample->bam list file is supplied enable vcfToBamMode.
         String bamListPath = locator.getPath() + ".mapping";
@@ -235,7 +219,6 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
                 try {
                     br.close();
                 } catch (IOException e) {
-
                 }
             }
         }
@@ -289,7 +272,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
     }
 
     /**
-     * Sort samples.  Sort both the master list and groups, if any.
+     * Sort samples. Sort both the master list and groups, if any.
      *
      * @param comparator the comparator to sort by
      */
@@ -328,7 +311,12 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
      *
      * @return
      */
+    @Override
     public int getHeight() {
+        if (this.isUserSetHeight()) {
+            // log.info("returning user defined height "+height);
+            return height;
+        }
         int sampleCount = allSamples.size();
         if (getDisplayMode() == DisplayMode.COLLAPSED || sampleCount == 0) {
             return variantBandHeight;
@@ -339,14 +327,16 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         }
     }
 
-
     /**
      * Set the height of the track.
      *
      * @param height
      */
+    @Override
     public void setHeight(int height) {
 
+        this.height = height;
+        log.info("Variant track " + this.getName() + ", height is now: " + height + "/" + this.getHeight());
         final DisplayMode displayMode = getDisplayMode();
 
         // If collapsed there's nothing we can do to affect height
@@ -369,6 +359,9 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         }
     }
 
+    private void p(String s) {
+        log.info("VariantTrack: " + s);
+    }
 
     /**
      * Render the features in the supplied rectangle.
@@ -423,13 +416,16 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
                 int pX = (int) ((start - origin) / locScale);
                 int dX = (int) Math.max(2, (end - start) / locScale);
 
-                if (pX + dX < pXMin) {
+                //    p("Maybe drawing variant :"+variant+", pX="+pX+",  dx="+dX+", locScale="+locScale+", pxmin="+pXMin+", (px+dx)="+(int)(pX+dX));
+                if (pX + (long) dX < (long) pXMin && pX < pXMin) {
+                    //      p("NOT drawing variant :"+variant+" because px+dx < pxmin");
                     continue;
                 }
                 if (pX > pXMax) {
+                    //       p("NOT drawing variant :"+variant+" because px > mxmax");
                     break;
                 }
-                int w = dX;
+                int w = (int) dX;
                 int x = pX;
                 if (w < 3) {
                     w = 3;
@@ -437,7 +433,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
                 }
 
 
-                if (pX + dX > lastPX) {
+                if ((long) pX + (long) dX > (long) lastPX) {
 
                     rect.y = top;
                     rect.height = variantBandHeight;
@@ -512,11 +508,10 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
 
     }
 
-
     /**
      * Render the name panel.
      * <p/>
-     * NOTE:  The sample names are actually drawn in the drawBackground method!
+     * NOTE: The sample names are actually drawn in the drawBackground method!
      *
      * @param g2D
      * @param trackRectangle
@@ -581,7 +576,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
      * @param mouseRegions
      */
     public void renderAttributes(Graphics2D g2D, Rectangle trackRectangle, Rectangle visibleRectangle,
-                                 List<String> attributeNames, List<MouseableRegion> mouseRegions) {
+            List<String> attributeNames, List<MouseableRegion> mouseRegions) {
 
         top = trackRectangle.y;
         final int left = trackRectangle.x;
@@ -638,8 +633,9 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
     }
 
     /**
-     * Render attribues for a sample.   This is mostly a copy of AbstractTrack.renderAttibutes().
-     * TODO -- refactor to eliminate duplicate code from AbstractTrack
+     * Render attribues for a sample. This is mostly a copy of
+     * AbstractTrack.renderAttibutes(). TODO -- refactor to eliminate duplicate
+     * code from AbstractTrack
      *
      * @param g2D
      * @param bandRectangle
@@ -650,7 +646,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
      * @return
      */
     private void renderAttibuteBand(Graphics2D g2D, Rectangle bandRectangle, Rectangle visibleRectangle,
-                                    List<String> attributeNames, List<String> sampleList, List<MouseableRegion> mouseRegions) {
+            List<String> attributeNames, List<String> sampleList, List<MouseableRegion> mouseRegions) {
 
 
         for (String sample : sampleList) {
@@ -680,7 +676,8 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
     }
 
     /**
-     * Draws the "greenbar" type background.  Also, rather bizzarely, draws the sample names.
+     * Draws the "greenbar" type background. Also, rather bizzarely, draws the
+     * sample names.
      *
      * @param g2D
      * @param bandRectangle
@@ -688,7 +685,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
      * @param type
      */
     private void drawBackground(Graphics2D g2D, Rectangle bandRectangle, Rectangle visibleRectangle,
-                                BackgroundType type) {
+            BackgroundType type) {
 
 
         if (getDisplayMode() == DisplayMode.COLLAPSED) {
@@ -735,8 +732,8 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
     }
 
     private boolean colorBand(Graphics2D g2D, Rectangle bandRectangle, Rectangle visibleRectangle,
-                              boolean coloredLast, Rectangle textRectangle, List<String> sampleList,
-                              BackgroundType type) {
+            boolean coloredLast, Rectangle textRectangle, List<String> sampleList,
+            BackgroundType type) {
 
         boolean supressFill = (getDisplayMode() == DisplayMode.SQUISHED && squishedHeight < 4);
 
@@ -769,7 +766,6 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
 
 
                 } else if (type == BackgroundType.ATTRIBUTE) {
-
                 }
             }
             bandRectangle.y += bandRectangle.height;
@@ -800,7 +796,6 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         this.coloring = mode;
     }
 
-
     public String getNameValueString(int y) {
         if (y < top + variantBandHeight) {
             return getName();
@@ -814,8 +809,9 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
      * Return popup text for the given position
      *
      * @param chr
-     * @param position - position in UCSC "0 based"  genomic coordinates
-     * @param y        - pixel position in panel coordinates (i.e. not track coordinates)
+     * @param position - position in UCSC "0 based" genomic coordinates
+     * @param y - pixel position in panel coordinates (i.e. not track
+     * coordinates)
      * @param frame
      * @return
      */
@@ -830,7 +826,9 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
                 if (y < top + variantBandHeight) {
                     return getVariantToolTip(variant);
                 } else {
-                    if (sampleBounds == null && sampleBounds.isEmpty()) return null;
+                    if (sampleBounds == null && sampleBounds.isEmpty()) {
+                        return null;
+                    }
                     String sample = getSampleAtPosition(y);
                     if (sample != null) {
                         return getSampleToolTip(sample, variant);
@@ -889,7 +887,8 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
     }
 
     /**
-     * Return the variant closest to the genomic position in the given reference frame, within the prescribed tolerance
+     * Return the variant closest to the genomic position in the given reference
+     * frame, within the prescribed tolerance
      *
      * @param position
      * @param frame
@@ -911,16 +910,15 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         if (features != null) {
             feature = FeatureUtils.getFeatureClosest(position, features);
         }
-        if (feature == null ||
-                ((position < feature.getStart() - maxDistance) || (position > feature.getEnd() + maxDistance))) {
+        if (feature == null
+                || ((position < feature.getStart() - maxDistance) || (position > feature.getEnd() + maxDistance))) {
             return null;
         } else {
             return (Variant) feature;     // TODO -- don't like this cast
         }
     }
 
-
-    private String getVariantToolTip(Variant variant) {
+    public String getVariantToolTip(Variant variant) {
         String id = variant.getID();
 
         StringBuffer toolTip = new StringBuffer();
@@ -958,11 +956,14 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         toolTip.append("<br>Allele Frequency: " + afMsg + "<br>");
 
         if (variant.getSampleNames().size() > 0) {
+            toolTip = toolTip.append(getSampleToolTip(variant));
             double afrac = variant.getAlleleFraction();
             toolTip = toolTip.append("<br>Minor Allele Fraction: " + numFormat.format(afrac) + "<br>");
         }
 
         toolTip.append("<br><b>Genotypes:</b>");
+
+        // for all samples!
         toolTip.append(getGenotypeToolTip(variant) + "<br>");
         toolTip.append(getVariantInfo(variant) + "<br>");
         return toolTip.toString();
@@ -989,7 +990,9 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
             for (String key : keys) {
                 count++;
 
-                if (key.equals("AF") || key.equals("GMAF")) continue;
+                if (key.equals("AF") || key.equals("GMAF")) {
+                    continue;
+                }
 
                 if (count > MAX_FILTER_LINES) {
                     toolTip = toolTip.concat("<br>....");
@@ -1047,15 +1050,29 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         return selectedSamples;
     }
 
+    /**
+     * @return the userUserHeight
+     */
+    public boolean isUserSetHeight() {
+        return userSetHeight;
+    }
+
+    /**
+     * @param userUserHeight the userUserHeight to set
+     */
+    public void setUserSetHeight(boolean b) {
+        this.userSetHeight = b;
+    }
+
     public static enum ColorMode {
-        GENOTYPE, METHYLATION_RATE, ALLELE
+
+        GENOTYPE, METHYLATION_RATE, ALLELE, TRACK
     }
 
     public static enum BackgroundType {
+
         NAME, ATTRIBUTE, DATA;
     }
-
-
     static Map<String, String> fullNames = new HashMap();
 
     static {
@@ -1090,10 +1107,19 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         toolTip = toolTip.append("<br>Position: " + variant.getPositionString());
         toolTip = toolTip.append("<br>ID: " + id + "<br>");
         toolTip = toolTip.append("<br><b>Sample Information</b>");
-        toolTip = toolTip.append("<br>Sample: " + sample);
 
         Genotype genotype = variant.getGenotype(sample);
         if (genotype != null) {
+            Set<String> keys = genotype.getAttributes().keySet();
+            if (keys.size() > 0) {
+                for (String key : keys) {
+                    try {
+                        toolTip = toolTip.append("<br>" + getFullName(key) + ": " + genotype.getAttributeAsString(key));
+                    } catch (IllegalArgumentException iae) {
+                        toolTip = toolTip.append("<br>" + key + ": " + genotype.getAttributeAsString(key));
+                    }
+                }
+            }
             toolTip = toolTip.append("<br>Bases: " + genotype.getGenotypeString());
             toolTip = toolTip.append("<br>Quality: " + numFormat.format(genotype.getPhredScaledQual()));
             toolTip = toolTip.append("<br>Type: " + genotype.getType());
@@ -1104,16 +1130,8 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         } else {
             toolTip = toolTip.append("<br>Is Filtered Out: No</b><br>");
         }
-
-        if (genotype != null) {
-            String sInfoStr = getSampleInfo(genotype);
-            if (sInfoStr != null) {
-                toolTip = toolTip.append(sInfoStr + "<br>");
-            }
-        }
         return toolTip.toString();
     }
-
 
     private String getFilterTooltip(Variant variant) {
         Collection filters = variant.getFilters();
@@ -1301,11 +1319,27 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         return true;
     }
 
+    @Override
+    protected boolean isShowFeatures(RenderContext context) {
+        boolean show = super.isShowFeatures(context);
+//        if (show) {
+//            return show;
+//        }
+//        // check nr of features
+//        if (source == null) {
+//            log.info("isShowFeature: no source");
+//            return false;
+//        }
+//        log.info("isShowFeatures: we always show variants");
+        return show;
+    }
 
     /**
-     * Return the current state of this object as map of key-value pairs.  Used to store session state.
+     * Return the current state of this object as map of key-value pairs. Used
+     * to store session state.
      * <p/>
-     * // TODO -- this whole scheme could probably be more elegantly handled with annotations.
+     * // TODO -- this whole scheme could probably be more elegantly handled
+     * with annotations.
      *
      * @return
      */
@@ -1326,7 +1360,6 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         return attributes;
     }
 
-
     public void restorePersistentState(Map<String, String> attributes) {
         super.restorePersistentState(attributes);
 
@@ -1339,8 +1372,9 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         if (colorModeText != null) {
             try {
                 setColorMode(ColorMode.valueOf(colorModeText));
+                log.info("Got color mode: "+colorModeText);
             } catch (Exception e) {
-                log.error("Error interpreting display mode: " + colorModeText);
+                log.error("Error interpreting color mode: " + colorModeText);
             }
         }
 
@@ -1353,7 +1387,6 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
             }
         }
     }
-
 
     public void loadSelectedBams() {
         Runnable runnable = new Runnable() {
@@ -1375,14 +1408,18 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
                             name += "...";
                         } else {
                             name += sample;
-                            if (n < nSamples) name += ", ";
+                            if (n < nSamples) {
+                                name += ", ";
+                            }
                         }
                     }
                 }
 
                 if (bams.size() > 20) {
                     boolean proceed = MessageUtils.confirm("Are you sure you want to load " + nSamples + " bams?");
-                    if (!proceed) return;
+                    if (!proceed) {
+                        return;
+                    }
                 }
 
                 String bamList = "";
@@ -1407,7 +1444,8 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
     /**
      * Return the nextLine or previous feature relative to the center location.
      * <p/>
-     * Loop through "next feature from super implementation until first non-filtered variant is found.
+     * Loop through "next feature from super implementation until first
+     * non-filtered variant is found.
      *
      * @param chr
      * @param center
@@ -1432,6 +1470,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
     }
 
     static class SampleBounds {
+
         int top;
         int bottom;
         String sample;

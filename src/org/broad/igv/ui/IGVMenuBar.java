@@ -8,10 +8,10 @@
  * This software is licensed under the terms of the GNU Lesser General Public License (LGPL),
  * Version 2.1 which is available at http://www.opensource.org/licenses/lgpl-2.1.php.
  */
-
 package org.broad.igv.ui;
 
 import apple.dts.samplecode.osxadapter.OSXAdapter;
+import com.iontorrent.karyo.views.KaryoControlPanel;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.PreferenceManager;
@@ -67,13 +67,11 @@ public class IGVMenuBar extends JMenuBar {
     private static Logger log = Logger.getLogger(IGVMenuBar.class);
     public static final String GENOMESPACE_REG_TOOLTIP = "Register for GenomeSpace";
     public static final String GENOMESPACE_REG_PAGE = "http://www.genomespace.org/register";
-
     private JMenu extrasMenu;
     //private RemoveUserDefinedGenomeMenuAction removeImportedGenomeAction;
     private FilterTracksMenuAction filterTracksAction;
     private JMenu viewMenu;
     IGV igv;
-
     private JMenu toolsMenu;
 
     public void showAboutDialog() {
@@ -101,6 +99,40 @@ public class IGVMenuBar extends JMenuBar {
 
         }
     }
+    public boolean hasMenu(String text) {
+        
+        for (int i = 0; i < this.getMenuCount(); i++) {
+            JMenu m = this.getMenu(i);
+            if (m.getText() != null && m.getText().equals(text)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    public void addIfMissing(JMenu menu, JMenuItem item) {
+        JMenuItem found = findItemByName(menu, item);
+        if (found == null) {
+             log.info("Adding "+item.getText()+" to  "+menu.getText());
+            menu.add(item);
+            repaint();
+            invalidate();
+            this.revalidate();
+            this.refreshToolsMenu();
+        }
+        else log.info("Already got "+item.getText()+" in "+menu.getText());
+    }
+
+    public JMenuItem findItemByName(JMenu menu, JMenuItem item) {
+        int nr = menu.getItemCount();
+        for (int i = 0; i < nr; i++) {
+            JMenuItem it = menu.getItem(i);
+            if (it != null && it.getText() != null && it.getText().equals(item.getText())) {
+                return it;
+            }
+        }
+
+        return null;
+    }
 
     private List<AbstractButton> createMenus() {
 
@@ -112,7 +144,8 @@ public class IGVMenuBar extends JMenuBar {
             menus.add(createGenomesMenu());
         }
 
-        menus.add(createViewMenu());
+        this.viewMenu = createViewMenu();
+        menus.add(viewMenu);
         menus.add(createTracksMenu());
         menus.add(createRegionsMenu());
 
@@ -134,10 +167,9 @@ public class IGVMenuBar extends JMenuBar {
     }
 
     /**
-     * Generate the "tools" menu.
-     * This is imperative, it is written to field {@code toolsMenu}.
-     * Reason being, when we add (TODO remove)
-     * a new tool, we need to refresh just this menu
+     * Generate the "tools" menu. This is imperative, it is written to field
+     * {@code toolsMenu}. Reason being, when we add (TODO remove) a new tool, we
+     * need to refresh just this menu
      */
     private void refreshToolsMenu() {
         List<JComponent> menuItems = new ArrayList<JComponent>(10);
@@ -145,7 +177,7 @@ public class IGVMenuBar extends JMenuBar {
         // batch script
         MenuAction menuAction = new RunScriptMenuAction("Run Batch Script...", KeyEvent.VK_X, igv);
         menuItems.add(MenuAndToolbarUtils.createMenuItem(menuAction));
-        
+
         MenuAction menuAction1 = new RunCommandMenuAction("Run Commands...", KeyEvent.VK_R, igv);
         menuItems.add(MenuAndToolbarUtils.createMenuItem(menuAction1));
 
@@ -167,7 +199,9 @@ public class IGVMenuBar extends JMenuBar {
             @Override
             public void actionPerformed(ActionEvent e) {
                 File pluginFi = FileDialogUtils.chooseFile("Select plugin .xml spec");
-                if (pluginFi == null) return;
+                if (pluginFi == null) {
+                    return;
+                }
 
                 try {
                     PluginSpecReader.addCustomPlugin(pluginFi.getAbsolutePath());
@@ -274,7 +308,6 @@ public class IGVMenuBar extends JMenuBar {
         extrasMenu.setVisible(true);
     }
 
-
     private JMenu createFileMenu() {
 
         List<JComponent> menuItems = new ArrayList<JComponent>();
@@ -338,7 +371,6 @@ public class IGVMenuBar extends JMenuBar {
         menuItems.add(new JSeparator());      // Exit
         menuAction =
                 new MenuAction("Exit", null, KeyEvent.VK_X) {
-
                     @Override
                     public void actionPerformed(ActionEvent e) {
                         doExitApplication();
@@ -382,7 +414,9 @@ public class IGVMenuBar extends JMenuBar {
     }
 
     private void notifyGenomesAddedRemoved(List<GenomeListItem> selectedValues, boolean added) {
-        if (selectedValues == null || selectedValues.size() == 0) return;
+        if (selectedValues == null || selectedValues.size() == 0) {
+            return;
+        }
         int size = selectedValues.size();
         String msg = "";
         if (size == 1) {
@@ -399,7 +433,6 @@ public class IGVMenuBar extends JMenuBar {
 
         MessageUtils.setStatusBarMessage(msg);
     }
-
 
     private JMenu createGenomesMenu() {
         List<JComponent> menuItems = new ArrayList<JComponent>();
@@ -483,7 +516,6 @@ public class IGVMenuBar extends JMenuBar {
         return MenuAndToolbarUtils.createMenu(menuItems, genomeMenuAction);
     }
 
-
     private JMenu createTracksMenu() {
 
         List<JComponent> menuItems = new ArrayList<JComponent>();
@@ -523,7 +555,6 @@ public class IGVMenuBar extends JMenuBar {
 
         return MenuAndToolbarUtils.createMenu(menuItems, dataMenuAction);
     }
-
 
     private JMenu createViewMenu() {
 
@@ -586,7 +617,9 @@ public class IGVMenuBar extends JMenuBar {
                 if (newValue != null) {
                     try {
                         Integer w = Integer.parseInt(newValue);
-                        if (w <= 0 || w == 1000) throw new NumberFormatException();
+                        if (w <= 0 || w == 1000) {
+                            throw new NumberFormatException();
+                        }
                         PreferenceManager.getInstance().put(PreferenceManager.NAME_PANEL_WIDTH, newValue);
                         mainPanel.setNamePanelWidth(w);
                     } catch (NumberFormatException ex) {
@@ -618,7 +651,6 @@ public class IGVMenuBar extends JMenuBar {
 
         menuAction =
                 new MenuAction("Select Attributes to Show...", null, KeyEvent.VK_S) {
-
                     @Override
                     public void actionPerformed(ActionEvent e) {
                         IGV.getInstance().doSelectDisplayableAttribute();
@@ -645,7 +677,6 @@ public class IGVMenuBar extends JMenuBar {
         menuItems.add(new JSeparator());
         menuAction =
                 new MenuAction("Reorder Panels...", null, KeyEvent.VK_S) {
-
                     @Override
                     public void actionPerformed(ActionEvent e) {
                         ReorderPanelsDialog dlg = new ReorderPanelsDialog(IGV.getMainFrame());
@@ -656,11 +687,26 @@ public class IGVMenuBar extends JMenuBar {
 
         menuItems.add(new JSeparator());
         menuItems.add(new HistoryMenu("Go to"));
+        menuItems.add(new JSeparator());
 
+
+        menuAction =
+                new MenuAction("Karyogram overview", null, KeyEvent.VK_K) {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        KaryoControlPanel karyo = KaryoControlPanel.getPanel(IGV.getMainFrame());
+                        karyo.showPanel(1500, 1000);
+                    }
+                };
+
+        menuItems.add(MenuAndToolbarUtils.createMenuItem(menuAction));
+        
+        
 
         // Add to IGVPanel menu
         MenuAction dataMenuAction = new MenuAction("View", null, KeyEvent.VK_V);
         viewMenu = MenuAndToolbarUtils.createMenu(menuItems, dataMenuAction);
+       
         return viewMenu;
     }
 
@@ -704,8 +750,8 @@ public class IGVMenuBar extends JMenuBar {
 
 
         MenuAction dataMenuAction = new MenuAction("Regions", null, KeyEvent.VK_V);
-        viewMenu = MenuAndToolbarUtils.createMenu(menuItems, dataMenuAction);
-        return viewMenu;
+        JMenu regionsMenu = MenuAndToolbarUtils.createMenu(menuItems, dataMenuAction);
+        return regionsMenu;
     }
 
     private JMenu createHelpMenu() {
@@ -716,7 +762,6 @@ public class IGVMenuBar extends JMenuBar {
 
         menuAction =
                 new MenuAction("User Guide ... ") {
-
                     @Override
                     public void actionPerformed(ActionEvent e) {
                         try {
@@ -737,7 +782,6 @@ public class IGVMenuBar extends JMenuBar {
 
                 menuAction =
                         new MenuAction("Help Forum...") {
-
                             @Override
                             public void actionPerformed(ActionEvent e) {
                                 try {
@@ -756,7 +800,6 @@ public class IGVMenuBar extends JMenuBar {
 
         menuAction =
                 new MenuAction("About IGV ") {
-
                     @Override
                     public void actionPerformed(ActionEvent e) {
                         (new AboutDialog(IGV.getMainFrame(), true)).setVisible(true);
@@ -800,7 +843,6 @@ public class IGVMenuBar extends JMenuBar {
         menu.add(new JSeparator());
         menuAction =
                 new MenuAction("Register... ") {
-
                     @Override
                     public void actionPerformed(ActionEvent e) {
                         try {
@@ -860,7 +902,6 @@ public class IGVMenuBar extends JMenuBar {
         // Set frame dimensions
         menuAction =
                 new MenuAction("Set window dimensions", null, KeyEvent.VK_C) {
-
                     @Override
                     public void actionPerformed(ActionEvent e) {
                         String value = JOptionPane.showInputDialog("Enter dimensions, e.g. 800x400");
@@ -879,7 +920,6 @@ public class IGVMenuBar extends JMenuBar {
         // Save entire window
         menuAction =
                 new MenuAction("Save Screenshot ...", null, KeyEvent.VK_A) {
-
                     @Override
                     public void actionPerformed(ActionEvent e) {
                         IGV.getInstance().saveImage(IGV.getInstance().getContentPane());
@@ -920,7 +960,6 @@ public class IGVMenuBar extends JMenuBar {
             JMenuItem cb = new JMenuItem(lfName);
             //cb.setSelected(info.getClassName().equals(lf.getClass().getName());
             cb.addActionListener(new AbstractAction() {
-
                 public void actionPerformed(ActionEvent actionEvent) {
                     for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
 
@@ -945,19 +984,16 @@ public class IGVMenuBar extends JMenuBar {
         return menu;
     }
 
-
 //    public void enableRemoveGenomes() {
 //        if (removeImportedGenomeAction != null) {
 //            removeImportedGenomeAction.setEnabled(true);
 //        }
 //    }
-
     public void resetSessionActions() {
         if (filterTracksAction != null) {
             filterTracksAction.resetTrackFilter();
         }
     }
-
 
     public void setFilterMatchAll(boolean value) {
         if (filterTracksAction != null) {
@@ -1010,8 +1046,7 @@ public class IGVMenuBar extends JMenuBar {
     }
 
     /**
-     * Write visible data to a file
-     * TODO Move to own action class, thread
+     * Write visible data to a file TODO Move to own action class, thread
      */
     private static final void exportVisibleData(String outPath, Collection<Track> tracks) {
         PrintWriter writer;

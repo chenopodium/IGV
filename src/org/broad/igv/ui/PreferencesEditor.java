@@ -3500,7 +3500,8 @@ public class PreferencesEditor extends javax.swing.JDialog {
     private void samMaxWindowSizeFieldActionPerformed(java.awt.event.ActionEvent evt) {
         String maxSAMWindowSize = String.valueOf(samMaxWindowSizeField.getText());
         try {
-            Float.parseFloat(maxSAMWindowSize);
+            float max = Float.parseFloat(maxSAMWindowSize);
+            maxSAMWindowSize = ""+Math.max(1f, max);
             updatedPreferenceMap.put(PreferenceManager.SAM_MAX_VISIBLE_RANGE, maxSAMWindowSize);
         } catch (NumberFormatException numberFormatException) {
             inputValidated = false;

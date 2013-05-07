@@ -55,6 +55,9 @@ public class LoginDialog extends JDialog {
         }
     }
 
+    public boolean remember() {
+        return this.boxRemember.isSelected();
+    }
     public String getUsername() {
         return usernameField.getText();
     }
@@ -78,7 +81,6 @@ public class LoginDialog extends JDialog {
 
     private void initComponents() {
         // JFormDesigner - Component initialization - DO NOT MODIFY  //GEN-BEGIN:initComponents
-        // Generated using JFormDesigner non-commercial license
         dialogPane = new JPanel();
         contentPanel = new JPanel();
         iconLabel = new JLabel();
@@ -87,6 +89,7 @@ public class LoginDialog extends JDialog {
         label2 = new JLabel();
         usernameField = new JTextField();
         label1 = new JLabel();
+        boxRemember = new JCheckBox();
         buttonBar = new JPanel();
         okButton = new JButton();
         cancelButton = new JButton();
@@ -116,25 +119,31 @@ public class LoginDialog extends JDialog {
                 contentPanel.add(promptLabel);
                 promptLabel.setBounds(5, 0, 395, 65);
                 contentPanel.add(passwordField);
-                passwordField.setBounds(125, 115, 220, 32);
+                passwordField.setBounds(120, 95, 220, 20);
 
                 //---- label2 ----
                 label2.setText("Password:");
                 label2.setFont(new Font("Arial", Font.PLAIN, 14));
                 contentPanel.add(label2);
-                label2.setBounds(new Rectangle(new Point(25, 123), label2.getPreferredSize()));
+                label2.setBounds(new Rectangle(new Point(30, 95), label2.getPreferredSize()));
                 contentPanel.add(usernameField);
-                usernameField.setBounds(125, 70, 220, 32);
+                usernameField.setBounds(120, 60, 220, 20);
 
                 //---- label1 ----
                 label1.setText("Username:");
                 label1.setFont(new Font("Arial", Font.PLAIN, 14));
                 contentPanel.add(label1);
-                label1.setBounds(25, 72, 90, 28);
+                label1.setBounds(30, 55, 90, 28);
+
+                //---- boxRemember ----
+                boxRemember.setText("remember username and password");
+                boxRemember.setToolTipText("To change the default username/pw, see View/Preferences/Proxy");
+                contentPanel.add(boxRemember);
+                boxRemember.setBounds(115, 130, 225, boxRemember.getPreferredSize().height);
 
                 { // compute preferred size
                     Dimension preferredSize = new Dimension();
-                    for (int i = 0; i < contentPanel.getComponentCount(); i++) {
+                    for(int i = 0; i < contentPanel.getComponentCount(); i++) {
                         Rectangle bounds = contentPanel.getComponent(i).getBounds();
                         preferredSize.width = Math.max(bounds.x + bounds.width, preferredSize.width);
                         preferredSize.height = Math.max(bounds.y + bounds.height, preferredSize.height);
@@ -152,30 +161,32 @@ public class LoginDialog extends JDialog {
             {
                 buttonBar.setBorder(new EmptyBorder(12, 0, 0, 0));
                 buttonBar.setLayout(new GridBagLayout());
-                ((GridBagLayout) buttonBar.getLayout()).columnWidths = new int[]{0, 85, 80};
-                ((GridBagLayout) buttonBar.getLayout()).columnWeights = new double[]{1.0, 0.0, 0.0};
+                ((GridBagLayout)buttonBar.getLayout()).columnWidths = new int[] {0, 85, 80};
+                ((GridBagLayout)buttonBar.getLayout()).columnWeights = new double[] {1.0, 0.0, 0.0};
 
                 //---- okButton ----
                 okButton.setText("OK");
                 okButton.addActionListener(new ActionListener() {
+                    @Override
                     public void actionPerformed(ActionEvent e) {
                         okButtonActionPerformed(e);
                     }
                 });
                 buttonBar.add(okButton, new GridBagConstraints(1, 0, 1, 1, 0.0, 0.0,
-                        GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                        new Insets(0, 0, 0, 5), 0, 0));
+                    GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                    new Insets(0, 0, 0, 5), 0, 0));
 
                 //---- cancelButton ----
                 cancelButton.setText("Cancel");
                 cancelButton.addActionListener(new ActionListener() {
+                    @Override
                     public void actionPerformed(ActionEvent e) {
                         cancelButtonActionPerformed(e);
                     }
                 });
                 buttonBar.add(cancelButton, new GridBagConstraints(2, 0, 1, 1, 0.0, 0.0,
-                        GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                        new Insets(0, 0, 0, 0), 0, 0));
+                    GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                    new Insets(0, 0, 0, 0), 0, 0));
             }
             dialogPane.add(buttonBar, BorderLayout.SOUTH);
         }
@@ -186,7 +197,6 @@ public class LoginDialog extends JDialog {
     }
 
     // JFormDesigner - Variables declaration - DO NOT MODIFY  //GEN-BEGIN:variables
-    // Generated using JFormDesigner non-commercial license
     private JPanel dialogPane;
     private JPanel contentPanel;
     private JLabel iconLabel;
@@ -195,6 +205,7 @@ public class LoginDialog extends JDialog {
     private JLabel label2;
     private JTextField usernameField;
     private JLabel label1;
+    private JCheckBox boxRemember;
     private JPanel buttonBar;
     private JButton okButton;
     private JButton cancelButton;

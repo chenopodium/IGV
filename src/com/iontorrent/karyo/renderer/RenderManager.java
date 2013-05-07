@@ -26,6 +26,7 @@ import org.broad.tribble.Feature;
 public class RenderManager {
 
     static GuiProperties gui;
+    static final boolean STORE_PREFERENCES = false;
 
    static RenderManager manager;
     
@@ -35,15 +36,17 @@ public class RenderManager {
     }
 
     public static void saveGuiProperties() {
-        GuiUtils.showNonModalMsg("Saving gui preferences ", false, 5);
-        getGuiProperties();
-        Map<String,String> userprop = PreferenceManager.getInstance().getProperties();
-        for (Iterator<String> it = gui.keys(); it != null && it.hasNext();){
-             String key = it.next().toString().toUpperCase();
-             String value = gui.get(key);
-             p("Overwriting USER PROP "+key+" with GUI preference "+value);
-             userprop.put(key, value);             
-        }        
+        if (STORE_PREFERENCES) {
+            GuiUtils.showNonModalMsg("Saving gui preferences ", false, 5);
+            getGuiProperties();
+            Map<String,String> userprop = PreferenceManager.getInstance().getProperties();
+            for (Iterator<String> it = gui.keys(); it != null && it.hasNext();){
+                 String key = it.next().toString().toUpperCase();
+                 String value = gui.get(key);
+                 p("Overwriting USER PROP "+key+" with GUI preference "+value);
+                 userprop.put(key, value);             
+            }        
+        }
     }
     
     private RenderManager() {
@@ -52,6 +55,7 @@ public class RenderManager {
     public static GuiProperties getGuiProperties() {
          if (gui == null) {
              gui = new GuiProperties(PreferenceManager.getInstance().getTempProperties());
+             if (STORE_PREFERENCES) {
              // now add any stored properties!
              Map<String,String> userprop = PreferenceManager.getInstance().getProperties();
              for (Iterator it = userprop.keySet().iterator(); it != null && it.hasNext();) {
@@ -62,7 +66,7 @@ public class RenderManager {
                      gui.put(key, value);
                  }
              }
-        
+             }
         }
          return gui;
     }
@@ -86,22 +90,22 @@ public class RenderManager {
         // first check gui properties!
         RenderType r = null;
         getGuiProperties();
-        String R = gui.getKaryoRenderer(fname, ftype);
+        String R = gui.getKaryoRenderer(ktrack.getSample(), fname, ftype);
 
-       p("Getting default renderer for "+fname +" and type "+ftype+", R="+R);
+      
         
         if (R == null) {
             if (ftype.equalsIgnoreCase("bed")) {
                 R = "HISTOGRAM";
             }
         }
-
+        String n = ktrack.getTrackDisplayName().toLowerCase();
         if (R != null) {
             if (R.equalsIgnoreCase("SCATTER_PLOT")) {
                 r = new PointRenderType(ktrack);
-            } else if (R.equalsIgnoreCase("DISTINCT_SCATTER_PLOT")) {
-                
-                r = new DistinctPointRenderType(ktrack);
+            } else if (R.startsWith("DISTINCT")) {
+                if (n.contains("coverage")) r = new PointRenderType(ktrack);
+                else r = new DistinctPointRenderType(ktrack);
             } else if (R.equalsIgnoreCase("HEATMAP")) {
                 r = new HeatMapRenderType(ktrack);
             } else if (R.equalsIgnoreCase("CNV")) { 
@@ -130,7 +134,7 @@ public class RenderManager {
                     r = new CnvRenderType(ktrack);
                 }
             } else {
-                String n = ktrack.getTrackDisplayName().toLowerCase();
+                
                 if (n.contains("cover")) {
                     r = new HeatMapRenderType(ktrack);
                 } else if (n.contains("cnv")) {
@@ -153,6 +157,7 @@ public class RenderManager {
                 r.setColor(r.getDefaultColor(i), i);
             }
         }
+         p("Getting default renderer for "+fname +" and type "+ftype+", R="+R+"  => "+r.getClass().getName()+", nrcolors="+r.getNrColors()+", color(0)="+r.getColor(0));
         return r;
     }
 

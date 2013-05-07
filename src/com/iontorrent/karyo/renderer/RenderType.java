@@ -13,9 +13,7 @@ import com.iontorrent.karyo.drawables.GuiFeatureTree;
 import com.iontorrent.karyo.views.GuiProperties;
 import com.iontorrent.views.basic.DrawingCanvas;
 import java.awt.Color;
-import java.util.HashMap;
 import org.apache.log4j.Logger;
-import org.broad.igv.PreferenceManager;
 import org.broad.tribble.Feature;
 
 /**
@@ -23,7 +21,7 @@ import org.broad.tribble.Feature;
  * @author Chantal
  */
 public class RenderType {
-
+ public boolean debug = false;
     
     /** Count instances so we know if we need to use different colors :-) */
    // private static HashMap<Class, Integer> instances = new HashMap<Class, Integer>();
@@ -89,29 +87,38 @@ public class RenderType {
        // return ktrack.getLastPartOfFile();
          return ktrack.getTrackName();
     }
+    public String getGuiSample() {
+       // return ktrack.getLastPartOfFile();
+         return ktrack.getSample();
+    }
     public String getKaryoDisplayName() {
-         return gui.getDisplayName(getGuiKey(), ktrack.getFileExt());
+         return gui.getDisplayName(getGuiSample(), getGuiKey(), ktrack.getFileExt());
     }
     public double getKaryoCutoffScore(){
-        return gui.getKaryoCutoffScore(getGuiKey(), ktrack.getFileExt());
+        return gui.getKaryoCutoffScore(getGuiSample(), getGuiKey(), ktrack.getFileExt());
     }
      public String getKaryoScoreName(){
-        String rel= gui.getKaryoScoreName(getGuiKey(), ktrack.getFileExt());
+        String rel= gui.getKaryoScoreName(getGuiSample(), getGuiKey(), ktrack.getFileExt());
         if (rel == null) rel = "SCORE";
         return rel;
     }
+      public String getKaryoScoreLabel(){
+        String rel= gui.getScoreLabel(getGuiSample(), getGuiKey(), ktrack.getFileExt());
+        if (rel == null) rel = "Score";
+        return rel;
+    }
     public Color getKaryoColorGain(){
-        Color c= gui.getKaryoColorGain(getGuiKey(), ktrack.getFileExt());
+        Color c= gui.getKaryoColorGain(getGuiSample(), getGuiKey(), ktrack.getFileExt());
         if (c == null) this.getDefaultColor(1);
         return c;
     }
     public Color getKaryoColorLoss(){
-        Color c=  gui.getKaryoColorLoss(getGuiKey(), ktrack.getFileExt());
+        Color c=  gui.getKaryoColorLoss(getGuiSample(), getGuiKey(), ktrack.getFileExt());
         if (c == null) this.getDefaultColor(2);
         return c;
     }
     public Color getKaryoColorNeutral(){
-        Color c=  gui.getKaryoColorNeutral(getGuiKey(), ktrack.getFileExt());
+        Color c=  gui.getKaryoColorNeutral(getGuiSample(), getGuiKey(), ktrack.getFileExt());
         if (c == null) {
             p("Got no neutral color for "+getGuiKey()+"/"+ ktrack.getFileExt()+", using defaultcolor of track");
             this.getDefaultColor(0);
@@ -120,25 +127,25 @@ public class RenderType {
     }
     
      public void setKaryoDisplayName(String value) {
-         gui.setDisplayName(getGuiKey(), ktrack.getFileExt(), value);
+         gui.setDisplayName( getGuiSample(),getGuiKey(), ktrack.getFileExt(), value);
     }
     public void setKaryoCutoffScore(double d){
-        gui.setKaryoCutoffScore(getGuiKey(), ktrack.getFileExt(),d);
+        gui.setKaryoCutoffScore(getGuiSample(),getGuiKey(), ktrack.getFileExt(),d);
     }
      public void setKaryoScoreName(String value){
-        gui.setKaryoScoreName(getGuiKey(), ktrack.getFileExt(), value);
+        gui.setKaryoScoreName(getGuiSample(),getGuiKey(), ktrack.getFileExt(), value);
         
     }
     public void setKaryoColorGain(Color c){
-         gui.setKaryoColorGain(getGuiKey(), ktrack.getFileExt(), c);
+         gui.setKaryoColorGain(getGuiSample(),getGuiKey(), ktrack.getFileExt(), c);
         
     }
     public void setKaryoColorLoss(Color c){
-        gui.setKaryoColorLoss(getGuiKey(), ktrack.getFileExt(),c );
+        gui.setKaryoColorLoss(getGuiSample(),getGuiKey(), ktrack.getFileExt(),c );
        
     }
     public void setKaryoColorNeutral(Color c){
-        gui.setKaryoColorNeutral(getGuiKey(), ktrack.getFileExt(),c);        
+        gui.setKaryoColorNeutral(getGuiSample(),getGuiKey(), ktrack.getFileExt(),c);        
     }
     
      // TODO: use color gradient with multiple colors
@@ -190,7 +197,7 @@ public class RenderType {
    
     public Color getGradientColor(FeatureMetaInfo meta, KaryoFeature f) {
         String fieldname =this.getRelevantAttName();
-      //  p("Getting color for "+fieldname);
+        
         if (fieldname == null) {
              fieldname = meta.getScoreFieldName(f.getFeature());
              this.setRelevantAttName(fieldname);
@@ -199,19 +206,20 @@ public class RenderType {
         FeatureMetaInfo.Range range = meta.getRangeForAttribute(fieldname);
       
         if (range == null) {
-            if (this.nrerrors < 5)  {
+            if (debug || this.nrerrors < 5)  {
                 p("Found no range for field "+fieldname+" in meta info: "+meta.getTrackname()+", "+meta.getClass().getName());
                 nrerrors++;
             }
+            
             return this.getColor(0);
         }
         
         
         double score = f.getScore(meta, this.getRelevantAttName());
         
-        double MAX = range.max;
-        double MIN = range.min;
-        
+        double MAX = Math.max(range.max, score);
+        double MIN = Math.min(range.min, score);
+        if (MAX== MIN) MAX = MIN+1;
        return getGradientColor(MIN, MAX, score);
         
     }
@@ -219,13 +227,21 @@ public class RenderType {
     public Color getGradientColor(double MIN, double MAX, double score) {
               
         
+        
         Color chigh = this.getColor(1);
         Color clow = this.getColor(2);
         Color cmid = this.getColor(0);
+        
         if (clow == null) clow = cmid;
         if (chigh == null) chigh = cmid;
         double rangedelta = MAX-MIN;
         double middle = getCutoffScore();
+        
+//        if (debug) {
+//            //MIN=1.0, MAX=1.0, score=1.0, middle=2.0
+//            p("getGradientColor, MIN="+MIN+", MAX="+MAX+", score="+score+", middle="+middle);
+//            p("getGradientColor, clow="+clow+", cmid="+cmid+", chigh="+chigh);
+//        }
         if (middle == Integer.MIN_VALUE) middle = (MAX-MIN)/2;
         // check if we use the higher or lower scale
         double ds = score - MIN;
@@ -249,7 +265,12 @@ public class RenderType {
         int r = Math.min(255, Math.max(0,(int) (lo.getRed()+dr * ds)));
         int g = Math.min(255, Math.max(0,(int) (lo.getGreen()+dg * ds)));
         int b = Math.min(255, Math.max(0,(int) (lo.getBlue()+db * ds)));
+        
+       
         Color c = new Color(r, g, b);
+//         if (debug) {
+//            p("getGradientColor, res color="+c);
+//        }
         return c;
     
     }
@@ -365,6 +386,7 @@ public class RenderType {
      */
     public Color getColor(int nr) {
         if (nr >= colors.length || nr >= this.nrcolors) {
+            err("Colors out of range: "+nr+", "+nrcolors);
             return null;
         }
         Color c = colors[nr];

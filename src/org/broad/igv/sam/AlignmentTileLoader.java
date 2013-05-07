@@ -257,7 +257,7 @@ public class AlignmentTileLoader {
                 String msg = "Memory is getting low, I will have to stop loading reads.<br>"
                         + "The current max read depth is <b>" + reads + "</b>, and the visibility range is "
                         + "<b>" + range + " kb</b>.<br>";
-                msg += "<b>Would you like me to reduce those parameters?</b><br>";
+                msg += "<b><u>Would you like me to reduce those parameters automatically?</u></b><br>";
                 msg += "<br>(Note: you can also try to give IGV more memory!<br>"
                         + "Via URL: add <b>&maxheap=" + mem + "&</b> to the URL (as an example).<br>"
                         + "Via command line: java -jar <b>-Xmx" + mem + "</b> igv.jar)";
@@ -266,6 +266,8 @@ public class AlignmentTileLoader {
                 if (ok) {
                     reads = reads / 2;
                     range = range / 2;
+                    range = Math.max(3, range);
+                    reads = Math.max(10, reads);
                     pref.put(PreferenceManager.SAM_DOWNSAMPLE_READS, "true");
                     pref.put(PreferenceManager.SAM_SAMPLING_COUNT, "" + reads);
                     pref.put(PreferenceManager.SAM_MAX_VISIBLE_RANGE, "" + range);

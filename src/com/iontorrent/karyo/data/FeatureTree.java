@@ -32,6 +32,9 @@ public class FeatureTree extends FeatureTreeNode {
         this.track = track;
     }
 
+    public AbstractTrack getSource() {
+        return track.getTrack();
+    }
     public void loadFeatures() {
       //  p("========= loading ALL features for " + track.getTrackDisplayName() + ", " + track.getTrack().toString() + ", " + track.getTrack().getAttributeValue("DATA_FILE"));
 

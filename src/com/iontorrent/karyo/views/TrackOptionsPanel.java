@@ -8,6 +8,7 @@ import com.iontorrent.karyo.data.KaryoFeature;
 import com.iontorrent.karyo.data.KaryoTrack;
 import com.iontorrent.utils.StringTools;
 import java.awt.Color;
+import org.apache.log4j.Logger;
 import org.broad.igv.util.ResourceLocator;
 import org.broad.tribble.Feature;
 
@@ -42,13 +43,15 @@ public class TrackOptionsPanel extends javax.swing.JPanel {
         Feature f = track.getSampleafeture();
         if (f != null) {
             KaryoFeature kf = new KaryoFeature(f);
-            example = "<html>"+kf.toHtml()+"</html>";
+            example = "<html>"+kf.toHtml(track.getMetaInfo())+"</html>";
         }
         
        
         areaExample.setContentType("text/html");
         this.areaExample.setText(example);
-        this.lblSource.setText("<html>"+source+"</html>");
+        txtsource.setContentType("text/html");
+        this.txtsource.setText("<html>"+source+"</html>");
+        this.txtOrder.setText(""+track.getTrack().getTrackorder());
      //   setColor(track.getColor());
         this.txtName.setText(track.getTrackDisplayName());
         this.txtShort.setText(track.getShortName());
@@ -76,6 +79,8 @@ public class TrackOptionsPanel extends javax.swing.JPanel {
         if (n != null && n.length()>0) track.setShortname(n);
 //        Color c = getColor();
 //        if (c != null) track.setColor(c);
+        
+        this.parseTrackOrder();
     }
     /**
      * This method is called from within the constructor to initialize the form.
@@ -95,11 +100,14 @@ public class TrackOptionsPanel extends javax.swing.JPanel {
         txtName = new javax.swing.JTextField();
         jLabel2 = new javax.swing.JLabel();
         jLabel3 = new javax.swing.JLabel();
-        lblSource = new javax.swing.JLabel();
         jLabel4 = new javax.swing.JLabel();
         lblType = new javax.swing.JLabel();
         jScrollPane2 = new javax.swing.JScrollPane();
         areaExample = new javax.swing.JEditorPane();
+        jLabel5 = new javax.swing.JLabel();
+        txtOrder = new javax.swing.JTextField();
+        jScrollPane3 = new javax.swing.JScrollPane();
+        txtsource = new javax.swing.JEditorPane();
 
         setLayout(new java.awt.BorderLayout());
 
@@ -114,12 +122,15 @@ public class TrackOptionsPanel extends javax.swing.JPanel {
         jLabel1.setText(org.openide.util.NbBundle.getMessage(TrackOptionsPanel.class, "TrackOptionsPanel.jLabel1.text")); // NOI18N
 
         txtName.setText(org.openide.util.NbBundle.getMessage(TrackOptionsPanel.class, "TrackOptionsPanel.txtName.text")); // NOI18N
+        txtName.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtNameActionPerformed(evt);
+            }
+        });
 
         jLabel2.setText(org.openide.util.NbBundle.getMessage(TrackOptionsPanel.class, "TrackOptionsPanel.jLabel2.text")); // NOI18N
 
         jLabel3.setText(org.openide.util.NbBundle.getMessage(TrackOptionsPanel.class, "TrackOptionsPanel.jLabel3.text")); // NOI18N
-
-        lblSource.setText(org.openide.util.NbBundle.getMessage(TrackOptionsPanel.class, "TrackOptionsPanel.lblSource.text")); // NOI18N
 
         jLabel4.setText(org.openide.util.NbBundle.getMessage(TrackOptionsPanel.class, "TrackOptionsPanel.jLabel4.text")); // NOI18N
 
@@ -127,33 +138,44 @@ public class TrackOptionsPanel extends javax.swing.JPanel {
 
         jScrollPane2.setViewportView(areaExample);
 
+        jLabel5.setText(org.openide.util.NbBundle.getMessage(TrackOptionsPanel.class, "TrackOptionsPanel.jLabel5.text")); // NOI18N
+
+        txtOrder.setText(org.openide.util.NbBundle.getMessage(TrackOptionsPanel.class, "TrackOptionsPanel.txtOrder.text")); // NOI18N
+        txtOrder.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtOrderActionPerformed(evt);
+            }
+        });
+
+        jScrollPane3.setViewportView(txtsource);
+
         javax.swing.GroupLayout panNameLayout = new javax.swing.GroupLayout(panName);
         panName.setLayout(panNameLayout);
         panNameLayout.setHorizontalGroup(
             panNameLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jScrollPane2, javax.swing.GroupLayout.Alignment.TRAILING)
             .addGroup(panNameLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(panNameLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(panNameLayout.createSequentialGroup()
-                        .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 87, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(0, 0, Short.MAX_VALUE))
+                    .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 87, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addGroup(panNameLayout.createSequentialGroup()
                         .addGroup(panNameLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                            .addComponent(jLabel5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(jLabel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(lblName, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 68, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(jLabel3, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(panNameLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(lblSource, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jScrollPane3)
                             .addGroup(panNameLayout.createSequentialGroup()
                                 .addGroup(panNameLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                     .addComponent(txtName, javax.swing.GroupLayout.PREFERRED_SIZE, 216, javax.swing.GroupLayout.PREFERRED_SIZE)
                                     .addComponent(txtShort, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(lblType))
+                                    .addComponent(lblType)
+                                    .addComponent(txtOrder, javax.swing.GroupLayout.PREFERRED_SIZE, 91, javax.swing.GroupLayout.PREFERRED_SIZE))
                                 .addGap(0, 0, Short.MAX_VALUE)))))
                 .addContainerGap())
-            .addComponent(jScrollPane2, javax.swing.GroupLayout.Alignment.TRAILING)
         );
         panNameLayout.setVerticalGroup(
             panNameLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -167,14 +189,19 @@ public class TrackOptionsPanel extends javax.swing.JPanel {
                     .addComponent(jLabel1)
                     .addComponent(txtShort, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(panNameLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel3)
+                    .addGroup(panNameLayout.createSequentialGroup()
+                        .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 91, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addGroup(panNameLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(lblType)
+                            .addComponent(jLabel4))))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(panNameLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(lblSource)
-                    .addComponent(jLabel3))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(panNameLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel4)
-                    .addComponent(lblType))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 57, Short.MAX_VALUE)
+                    .addComponent(jLabel5)
+                    .addComponent(txtOrder, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 17, Short.MAX_VALUE)
                 .addComponent(jLabel2)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 133, javax.swing.GroupLayout.PREFERRED_SIZE))
@@ -184,20 +211,45 @@ public class TrackOptionsPanel extends javax.swing.JPanel {
 
         add(tab, java.awt.BorderLayout.CENTER);
     }// </editor-fold>//GEN-END:initComponents
+
+    private void txtOrderActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtOrderActionPerformed
+        parseTrackOrder();
+    }//GEN-LAST:event_txtOrderActionPerformed
+
+    private void txtNameActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtNameActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_txtNameActionPerformed
+
+    private void parseTrackOrder() {
+        int order = track.getOrder();
+        try {
+            order = Integer.parseInt(txtOrder.getText());
+            track.setOrder(order);
+        }
+        catch (Exception e) {
+            p("Could not parse to order :"+txtOrder.getText());
+        }
+    }
+    private void p(String s ) {
+        Logger.getLogger(this.getClass()).info(s);
+    }
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JEditorPane areaExample;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
     private javax.swing.JScrollPane jScrollPane2;
+    private javax.swing.JScrollPane jScrollPane3;
     private javax.swing.JLabel lblName;
-    private javax.swing.JLabel lblSource;
     private javax.swing.JLabel lblTrack;
     private javax.swing.JLabel lblType;
     private javax.swing.JPanel panName;
     private javax.swing.JTabbedPane tab;
     private javax.swing.JTextField txtName;
+    private javax.swing.JTextField txtOrder;
     private javax.swing.JTextField txtShort;
+    private javax.swing.JEditorPane txtsource;
     // End of variables declaration//GEN-END:variables
 }

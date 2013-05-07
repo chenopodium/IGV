@@ -15,8 +15,8 @@ import org.broad.tribble.Feature;
  */
 public class SegmentMetaInfo extends FeatureMetaInfo {
 
-    public SegmentMetaInfo(String name){
-        super(name);
+    public SegmentMetaInfo(KaryoTrack track , String name){
+        super(track, name);
     }
     @Override
     public void populateMetaInfo(Feature f) {

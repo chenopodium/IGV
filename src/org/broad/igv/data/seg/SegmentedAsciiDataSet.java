@@ -131,7 +131,9 @@ public class SegmentedAsciiDataSet implements SegmentedDataSet {
      */
     public List<LocusScore> getSegments(String heading, String chr) {
         Map<String, List<LocusScore>> chrSegments = segments.get(heading);
-        return (chrSegments == null) ? null : chrSegments.get(chr);
+        
+        List<LocusScore> res= (chrSegments == null) ? null : chrSegments.get(chr);       
+        return res;
     }
 
     public List<String> getSampleNames() {

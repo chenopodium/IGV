@@ -44,10 +44,8 @@ import java.util.List;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 import javax.net.ssl.*;
-import javax.swing.JOptionPane;
-import org.apache.log4j.Level;
 import org.broad.igv.ui.util.MessageUtils;
-import org.jasypt.exceptions.EncryptionOperationNotPossibleException;
+import org.openide.util.Exceptions;
 
 /**
  * Wrapper utility class... for interacting with HttpURLConnection.
@@ -67,7 +65,7 @@ public class HttpUtils {
     private char[] defaultPassword = null;
     private static Pattern URLmatcher = Pattern.compile(".{1,8}://.*");
     private static boolean HEADER_SHOWN = false;
-
+    private static Map<String,String> name_ip_map;
     /**
      * @return the single instance
      */
@@ -214,6 +212,15 @@ public class HttpUtils {
         return input;
     }
 
+    public boolean resourceExists(String path) {
+        if (this.isRemoteURL(path)) try {
+            return resourceAvailable(new URL(path));
+        } catch (Exception e) {           
+            log.error("Error in resourceExists: " + path +", "+e.getMessage()+", "+ErrorHandler.getString(e));        
+        }
+        else return FileUtils.resourceExists(path);
+        return false;
+    }
     public boolean resourceAvailable(URL url) {
 
         if (url.getProtocol().toLowerCase().equals("ftp")) {
@@ -596,7 +603,7 @@ public class HttpUtils {
             conn.setRequestProperty("Accept", "text/plain");
             //conn.setRequestProperty("Accept", "*/*");
         }
-      //  p("CheckHeader for " + url);
+       // p("CheckHeader for " + url);
         this.checkForHeaderParameters(url, conn);
 
         if (method.equals("PUT")) {
@@ -678,6 +685,7 @@ public class HttpUtils {
                 server = server.substring(0, col);
             }
         }
+       // else p("Got no server");
         if (header_value != null && header_key == null) {
             header_key = "Authorization";
         }
@@ -688,7 +696,37 @@ public class HttpUtils {
 //        }
         if (header_key != null && header_value != null && server != null) {
             // by default no ecnryption is assumed.
-            if (url.toString().indexOf(server) > -1) {
+            
+            if (name_ip_map == null) name_ip_map = new HashMap<String, String>();
+            String ipAddress = name_ip_map.get(server);
+            if (ipAddress == null) {
+                try {
+                    InetAddress inetAddress = InetAddress.getByName(server);            
+                    ipAddress = inetAddress.getHostAddress().toString();
+                    p("Got IP address "+ipAddress+"  for "+server);
+                }
+                catch (Exception e ){
+                    p("Could not get IP of "+server+":"+e.getMessage());
+                }
+                if (ipAddress == null )ipAddress = server;
+                name_ip_map.put(server, ipAddress);
+            }
+            String ipURL = name_ip_map.get(url.getHost());;
+             if (ipURL == null) {
+                try {
+                    InetAddress inetAddress = InetAddress.getByName(url.getHost());            
+                    ipURL = inetAddress.getHostAddress().toString();
+                    p("Got ipURL address "+ipURL+"  for "+url.getHost());
+                }
+                catch (Exception e ){
+                    p("Could not get ipURL of  HOST "+url.getHost()+":"+e.getMessage());
+                }
+                if (ipURL == null )ipURL = url.getHost();
+                
+                name_ip_map.put(url.getHost(), ipURL);
+            }
+            if (url.toString().indexOf(server) > -1 || url.toString().indexOf(ipAddress)  > -1 ||
+                    server.indexOf(ipURL) > -1 || server.indexOf(url.getHost())  > -1) {
                 if (header_encrypt) {
                     String encrypted = header_value;
 
@@ -774,8 +812,8 @@ public class HttpUtils {
     }
 
     private void p(String s) {
-        // log.info(s);
-        System.out.println("HttpUtils: " + s);
+        log.info(s);
+        //System.out.println("HttpUtils: " + s);
 
     }
 
@@ -934,6 +972,18 @@ public class HttpUtils {
         return f.startsWith("http:") || f.startsWith("ftp:") || f.startsWith("https:") || URLmatcher.matcher(f).matches();
     }
 
+    public InputStream openInputStream(String path) {
+        try {
+            if (FileUtils.isRemote(path)) return this.openConnectionStream( new URL(path));
+            else return ParsingUtils.openInputStream(path);
+        }
+        catch (Exception e) {
+            log.error("Error openInputStream: " + path +", "+e.getMessage()+", "+ErrorHandler.getString(e));
+        }
+            
+        return null;
+    }
+
     public static class ProxySettings {
 
         boolean auth = false;
@@ -978,8 +1028,6 @@ public class HttpUtils {
             }
 
             log.info("IGVAuthenticator: PasswordAuthentication: Default username: " + defaultUserName);
-            //   Exception test = new Exception("Testing stack trace");
-            //    test.printStackTrace();
             if (defaultUserName == null || defaultUserName.length() < 1) {
                 PreferenceManager prefMgr = PreferenceManager.getInstance();
                 defaultUserName = prefMgr.get(PreferenceManager.AUTHENTICATION_DEFAULT_USER, "ionuser");
@@ -1017,9 +1065,16 @@ public class HttpUtils {
                     proxySettings.user = userString;
                     proxySettings.pw = new String(userPass);
                 }
-                // CR: use as default just for this instance, so next time it won't ask again (we might want to store it as preference?)
+                
                 defaultUserName = userString;
                 defaultPassword = userPass;
+                if (dlg.remember()) {
+                    log.info("Remembering username and pw");
+                    PreferenceManager prefMgr = PreferenceManager.getInstance();
+                    prefMgr.put(PreferenceManager.AUTHENTICATION_DEFAULT_USER, defaultUserName);
+                    String pwcoded = Utilities.base64Encode(new String(defaultPassword));
+                    prefMgr.put(PreferenceManager.AUTHENTICATION_DEFAULT_PW, pwcoded);                
+                }
                 return new PasswordAuthentication(userString, userPass);
             }
         }

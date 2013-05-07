@@ -30,6 +30,8 @@ public class KaryoTrack {
     private RenderType defaultRenderType;
     private ArrayList<RenderType> rendererTypes;
     private String sample;
+    
+    
     public KaryoTrack(AbstractTrack track, int nr) {
         this.track = track;
         visible = true;
@@ -56,6 +58,14 @@ public class KaryoTrack {
     }
     public String getSample() {
         return sample;
+    }
+     public String getGuiKey() {
+       // return ktrack.getLastPartOfFile();
+         return getTrackName();
+    }
+    public String getGuiSample() {
+       // return ktrack.getLastPartOfFile();
+         return getSample();
     }
    
     /** return file ending */
@@ -228,5 +238,19 @@ public class KaryoTrack {
      */
     public void setRendererTypes(ArrayList<RenderType> rendererTypes) {
         this.rendererTypes = rendererTypes;
+    }
+
+    /**
+     * @return the order
+     */
+    public int getOrder() {
+        return track.getTrackorder();
+    }
+
+    /**
+     * @param order the order to set
+     */
+    public void setOrder(int order) {
+        track.setTrackorder(order);
     }
 }

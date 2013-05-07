@@ -38,6 +38,7 @@ public class FeatureTreeNode {
     // filter
     private int errors = 0;
     private int nrFilterPassed;
+   
 
     public FeatureTreeNode(AbstractTrack source, String chr, int start, int end, int nrbuckets) {
         this.nrbuckets = nrbuckets;

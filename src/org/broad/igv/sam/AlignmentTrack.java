@@ -12,6 +12,8 @@ package org.broad.igv.sam;
 
 //~--- non-JDK imports --------------------------------------------------------
 import com.iontorrent.data.*;
+import com.iontorrent.guiutils.GuiUtils;
+import com.iontorrent.rawdataaccess.FlowValue;
 import com.iontorrent.utils.LocationListener;
 import com.iontorrent.utils.SimpleDialog;
 import com.iontorrent.views.alignment.AlignmentControlPanel;
@@ -22,6 +24,7 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.io.File;
 import java.text.NumberFormat;
@@ -45,7 +48,9 @@ import org.broad.igv.tdf.TDFDataSource;
 import org.broad.igv.tdf.TDFReader;
 import org.broad.igv.track.*;
 import org.broad.igv.ui.IGV;
+import org.broad.igv.ui.IGVMenuBar;
 import org.broad.igv.ui.InsertSizeSettingsDialog;
+import org.broad.igv.ui.action.MenuAction;
 import org.broad.igv.ui.color.ColorUtilities;
 import org.broad.igv.ui.event.AlignmentTrackEvent;
 import org.broad.igv.ui.event.AlignmentTrackEventListener;
@@ -54,6 +59,7 @@ import org.broad.igv.ui.panel.FrameManager;
 import org.broad.igv.ui.panel.IGVPopupMenu;
 import org.broad.igv.ui.panel.ReferenceFrame;
 import org.broad.igv.ui.util.FileDialogUtils;
+import org.broad.igv.ui.util.MenuAndToolbarUtils;
 import org.broad.igv.ui.util.MessageUtils;
 import org.broad.igv.ui.util.UIUtilities;
 import org.broad.igv.util.Pair;
@@ -174,7 +180,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
         dataManager.setShowSpliceJunctions(prefs.getAsBoolean(PreferenceManager.SAM_SHOW_JUNCTION_TRACK));
 
-        float maxRange = prefs.getAsFloat(PreferenceManager.SAM_MAX_VISIBLE_RANGE);
+        float maxRange = Math.max(1, prefs.getAsFloat(PreferenceManager.SAM_MAX_VISIBLE_RANGE));
         minVisibleScale = (maxRange * 1000) / 700;
 
         renderer = AlignmentRenderer.getInstance();
@@ -681,7 +687,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
      */
     private void visibilityWindowChanged() {
         PreferenceManager prefs = PreferenceManager.getInstance();
-        float maxRange = prefs.getAsFloat(PreferenceManager.SAM_MAX_VISIBLE_RANGE);
+        float maxRange = Math.max(1, prefs.getAsFloat(PreferenceManager.SAM_MAX_VISIBLE_RANGE));
         minVisibleScale = (maxRange * 1000) / 700;
     }
 
@@ -1152,7 +1158,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 nomeESeqOption = new JRadioButtonMenuItem("NOMe-seq bisulfite mode");
                 nomeESeqOption.setSelected(renderOptions.colorOption == ColorOption.NOMESEQ);
                 nomeESeqOption.addActionListener(new ActionListener() {
-
                     public void actionPerformed(ActionEvent aEvt) {
                         setColorOption(ColorOption.NOMESEQ);
                         refresh();
@@ -1167,7 +1172,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 JRadioButtonMenuItem m1 = new JRadioButtonMenuItem(optionStr);
                 m1.setSelected(renderOptions.bisulfiteContext == item);
                 m1.addActionListener(new ActionListener() {
-
                     public void actionPerformed(ActionEvent aEvt) {
                         setColorOption(ColorOption.BISULFITE);
                         setBisulfiteContext(item);
@@ -1190,7 +1194,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             // Change track height by attribute
             JMenuItem item = new JMenuItem("Select by name...");
             item.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent aEvt) {
                     String val = MessageUtils.showInputDialog("Enter read name: ");
                     if (val != null && val.trim().length() > 0) {
@@ -1210,7 +1213,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 mi.setSelected(renderOptions.groupByOption == null);
             }
             mi.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent aEvt) {
                     IGV.getInstance().groupAlignmentTracks(option);
                     refresh();
@@ -1248,7 +1250,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
             JCheckBoxMenuItem tagOption = new JCheckBoxMenuItem("tag");
             tagOption.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent aEvt) {
                     String tag = MessageUtils.showInputDialog("Enter tag", renderOptions.getGroupByTag());
                     renderOptions.setGroupByTag(tag);
@@ -1267,7 +1268,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         private JMenuItem getSortMenuItem(String label, final SortOption option) {
             JMenuItem mi = new JMenuItem(label);
             mi.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent aEvt) {
                     IGV.getInstance().sortAlignmentTracks(option, null);
                     refresh();
@@ -1307,7 +1307,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
             JMenuItem tagOption = new JMenuItem("tag");
             tagOption.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent aEvt) {
                     String tag = MessageUtils.showInputDialog("Enter tag", renderOptions.getSortByTag());
                     renderOptions.setSortByTag(tag);
@@ -1341,7 +1340,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             JRadioButtonMenuItem mi = new JRadioButtonMenuItem(label);
             mi.setSelected(renderOptions.colorOption == option);
             mi.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent aEvt) {
                     setColorOption(option);
                     refresh();
@@ -1388,7 +1386,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             JRadioButtonMenuItem tagOption = new JRadioButtonMenuItem("tag");
             tagOption.setSelected(renderOptions.colorOption == ColorOption.TAG);
             tagOption.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent aEvt) {
                     setColorOption(ColorOption.TAG);
                     String tag = MessageUtils.showInputDialog("Enter tag", renderOptions.getColorByTag());
@@ -1412,10 +1409,8 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             // Change track height by attribute
             JMenuItem item = new JMenuItem("Re-pack alignments");
             item.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent aEvt) {
                     UIUtilities.invokeOnEventThread(new Runnable() {
-
                         public void run() {
                             IGV.getInstance().packAlignmentTracks();
                             refresh();
@@ -1423,6 +1418,41 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                     });
                 }
             });
+
+            add(item);
+        }
+
+        public void addGetRawTraceItem(final TrackClickEvent te) {
+            final MouseEvent me = te.getMouseEvent();
+            JMenuItem item = new JMenuItem("Get raw data for this base and read");
+
+            final ReferenceFrame frame = te.getFrame();
+            if (frame == null) {
+                item.setEnabled(false);
+            } else {
+                final double location = frame.getChromosomePosition(me.getX());
+                final AbstractAlignment alignment = (AbstractAlignment) getAlignmentAt(location, me.getY(), frame);
+                if (alignment == null) {
+                    item.setEnabled(false);
+                } else {
+                    final FlowValue fv = alignment.getFlowValue(location);
+                    if (fv == null) {
+                        item.setEnabled(false);
+                    } else {
+                        item.setText("<html>Get raw data for <b>" + alignment.getReadName() + "</b>, base " + fv.getBase() + " and flow <b>" + fv.getFlowPosition() + "</b></html>");
+
+                        // Change track height by attribute
+                        item.addActionListener(new ActionListener() {
+                            public void actionPerformed(ActionEvent aEvt) {
+
+                                showIonogramAlignment((int) location, frame, fv);
+
+                            }
+                        });
+
+                    }
+                }
+            }
 
             add(item);
         }
@@ -1441,7 +1471,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
                 // Change track height by attribute
                 item.addActionListener(new ActionListener() {
-
                     public void actionPerformed(ActionEvent aEvt) {
                         copyToClipboard(te, alignment, location);
 
@@ -1466,7 +1495,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
                 // Change track height by attribute
                 item.addActionListener(new ActionListener() {
-
                     public void actionPerformed(ActionEvent aEvt) {
                         copyDistribution(te, location);
                     }
@@ -1479,7 +1507,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             final JMenuItem item = new JCheckBoxMenuItem("View paired arcs");
             item.setSelected(isPairedArcView());
             item.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent aEvt) {
                     boolean isPairedArcView = item.isSelected();
                     setPairedArcView(isPairedArcView);
@@ -1493,7 +1520,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             final JMenuItem item = new JCheckBoxMenuItem("View as pairs");
             item.setSelected(renderOptions.isViewPairs());
             item.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent aEvt) {
                     boolean viewAsPairs = item.isSelected();
                     setViewAsPairs(viewAsPairs);
@@ -1515,7 +1541,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 double location = frame.getChromosomePosition(e.getX());
                 final Alignment alignment = getAlignmentAt(location, e.getY(), frame);
                 item.addActionListener(new ActionListener() {
-
                     public void actionPerformed(ActionEvent aEvt) {
                         gotoMate(te, alignment);
                     }
@@ -1540,7 +1565,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 final Alignment alignment = getAlignmentAt(location, e.getY(), frame);
 
                 item.addActionListener(new ActionListener() {
-
                     public void actionPerformed(ActionEvent aEvt) {
                         splitScreenMate(te, alignment);
                     }
@@ -1556,7 +1580,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             // Change track height by attribute
             JMenuItem item = new JMenuItem("Clear selections");
             item.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent aEvt) {
                     selectedReadNames.clear();
                     refresh();
@@ -1575,7 +1598,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 item.setSelected(renderOptions.showAllBases);
             }
             item.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent aEvt) {
                     renderOptions.showAllBases = item.isSelected();
                     refresh();
@@ -1591,7 +1613,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
             item.setSelected(renderOptions.showMismatches);
             item.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent aEvt) {
                     renderOptions.showMismatches = item.isSelected();
                     refresh();
@@ -1629,7 +1650,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             // Change track height by attribute
             final JMenuItem item = new JCheckBoxMenuItem("Set insert size options ...");
             item.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent aEvt) {
 
                     InsertSizeSettingsDialog dlg = new InsertSizeSettingsDialog(IGV.getMainFrame(), renderOptions);
@@ -1677,10 +1697,8 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 final JMenuItem item = new JCheckBoxMenuItem("Shade base by quality");
                 item.setSelected(renderOptions.shadeBasesOption == ShadeBasesOption.QUALITY);
                 item.addActionListener(new ActionListener() {
-
                     public void actionPerformed(ActionEvent aEvt) {
                         UIUtilities.invokeOnEventThread(new Runnable() {
-
                             public void run() {
                                 if (item.isSelected()) {
                                     renderOptions.shadeBasesOption = ShadeBasesOption.QUALITY;
@@ -1706,10 +1724,8 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 mi.setSelected(renderOptions.shadeBasesOption == null || renderOptions.shadeBasesOption == option);
             }
             mi.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent aEvt) {
                     UIUtilities.invokeOnEventThread(new Runnable() {
-
                         public void run() {
                             if (mi.isSelected()) {
                                 renderOptions.shadeBasesOption = option;
@@ -1731,10 +1747,8 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             final JMenuItem item = new JCheckBoxMenuItem("Show coverage track");
             item.setSelected(getCoverageTrack() != null && getCoverageTrack().isVisible());
             item.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent aEvt) {
                     UIUtilities.invokeOnEventThread(new Runnable() {
-
                         public void run() {
                             if (getCoverageTrack() != null) {
                                 getCoverageTrack().setVisible(item.isSelected());
@@ -1753,10 +1767,8 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             // Change track height by attribute
             final JMenuItem item = new JCheckBoxMenuItem("Load coverage data...");
             item.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent aEvt) {
                     UIUtilities.invokeOnEventThread(new Runnable() {
-
                         public void run() {
 
                             final PreferenceManager prefs = PreferenceManager.getInstance();
@@ -1790,7 +1802,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             // Change track height by attribute
             final JMenuItem item = new JMenuItem("Blat read sequence");
             item.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent aEvt) {
                     MouseEvent e = te.getMouseEvent();
 
@@ -1810,74 +1821,83 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
         private void addIonTorrentAuxiliaryViews(final TrackClickEvent e) {
 
-            JMenu groupMenu = new JMenu("View flow confidence distrubtion for");
+
+            final ReferenceFrame frame = e.getFrame();
+            if (frame == null) {
+                return;
+
+            } else {
+
+
+                final int location = (int) (frame.getChromosomePosition(e.getMouseEvent().getX()));
+                
+                final JMenuItem itemIonoAlignment = new JCheckBoxMenuItem("<html>View <b>ionogram</b> alignment</html>");
+                itemIonoAlignment.addActionListener(new ActionListener() {
+                    public void actionPerformed(ActionEvent aEvt) {
+                        showIonogramAlignment(location, e.getFrame(), null);
+                    }
+                });
+                JMenu groupMenu = createDistributionContextMenuItems(location, e);
+                add(groupMenu);
+                add(itemIonoAlignment);
+                this.addGetRawTraceItem(e);
+                IGVMenuBar bar = IGV.getInstance().getMenuBar();
+                if (!bar.hasMenu("IonTorrent")) {
+                    JMenu ionmenu = new JMenu("IonTorrent");
+                    bar.add(ionmenu);
+                    MenuAction menuAction =
+                            new MenuAction("<html>View <b>ionogram</b> alignment</html>", null, KeyEvent.VK_K) {
+                                @Override
+                                public void actionPerformed(ActionEvent e) {
+                                    showIonogramAlignment(location, frame, null);
+                                }
+                            };
+                    ionmenu.add(MenuAndToolbarUtils.createMenuItem(menuAction));
+                    groupMenu = createDistributionContextMenuItems(location, e);
+                    ionmenu.add(groupMenu);
+                }
+            }
+        }
+
+        private JMenu createDistributionContextMenuItems(final int location, final TrackClickEvent e) {
+            JMenu groupMenu = new JMenu("<html>View flow confidence distribution for");
             ButtonGroup group = new ButtonGroup();
-
-
-            JCheckBoxMenuItem itemb = new JCheckBoxMenuItem("forward and reverse (2 data series)");
+            JCheckBoxMenuItem itemb = new JCheckBoxMenuItem("<html><b>forward and reverse (2 data series)</b></html>");
             groupMenu.add(itemb);
             group.add(itemb);
             itemb.setSelected(true);
             itemb.setFont(itemb.getFont().deriveFont(Font.BOLD));
-
             JCheckBoxMenuItem item = new JCheckBoxMenuItem("both strands combined");
             groupMenu.add(item);
             group.add(item);
-
             JCheckBoxMenuItem itemf = new JCheckBoxMenuItem("forward strand only");
             groupMenu.add(itemf);
             group.add(itemf);
-
             JCheckBoxMenuItem itemr = new JCheckBoxMenuItem("reverse strand only");
             groupMenu.add(itemr);
             group.add(itemr);
-
-            final JMenuItem itemIonoAlignment = new JCheckBoxMenuItem("View ionogram alignment");
-
-
-            final ReferenceFrame frame = e.getFrame();
-            if (frame == null) {
-                item.setEnabled(false);
-                itemf.setEnabled(false);
-                itemr.setEnabled(false);
-                itemb.setEnabled(false);
-                itemIonoAlignment.setEnabled(false);
-            } else {
-                final int location = (int) (frame.getChromosomePosition(e.getMouseEvent().getX()));
-                // Change track height by attribute
-                item.addActionListener(new ActionListener() {
-
-                    public void actionPerformed(ActionEvent aEvt) {
-                        showDistribution(location, e.getFrame(), true, true);
-                    }
-                });
-                itemf.addActionListener(new ActionListener() {
-
-                    public void actionPerformed(ActionEvent aEvt) {
-                        showDistribution(location, e.getFrame(), true, false);
-                    }
-                });
-                itemr.addActionListener(new ActionListener() {
-
-                    public void actionPerformed(ActionEvent aEvt) {
-                        showDistribution(location, e.getFrame(), false, true);
-                    }
-                });
-                itemb.addActionListener(new ActionListener() {
-
-                    public void actionPerformed(ActionEvent aEvt) {
-                        showDistribution(location, e.getFrame(), false, false);
-                    }
-                });
-                itemIonoAlignment.addActionListener(new ActionListener() {
-
-                    public void actionPerformed(ActionEvent aEvt) {
-                        showIonogramAlignment(location, e.getFrame());
-                    }
-                });
-            }
-            add(groupMenu);
-            add(itemIonoAlignment);
+            // Change track height by attribute
+            item.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent aEvt) {
+                    showDistribution(location, e.getFrame(), true, true);
+                }
+            });
+            itemf.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent aEvt) {
+                    showDistribution(location, e.getFrame(), true, false);
+                }
+            });
+            itemr.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent aEvt) {
+                    showDistribution(location, e.getFrame(), false, true);
+                }
+            });
+            itemb.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent aEvt) {
+                    showDistribution(location, e.getFrame(), false, false);
+                }
+            });
+            return groupMenu;
         }
     }
 
@@ -1886,7 +1906,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
      * empty flows (might be difficult to show in a track due to those
      * empties....)
      */
-    private void showIonogramAlignment(final int center_location, final ReferenceFrame frame) {
+    private void showIonogramAlignment(final int center_location, final ReferenceFrame frame, FlowValue fv) {
         // first get parameters from preferences such as how many bases to the left/right we want to consider
         PreferenceManager prefs = PreferenceManager.getInstance();
         int nrbases_left_right = prefs.getAsInt(PreferenceManager.IONTORRENT_NRBASES_IONOGRAM_ALIGN);
@@ -1896,12 +1916,14 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         // now we get the flow values for each read at each location 
         final IonogramAlignment forward_align = getIonogramAlignment(frame, center_location, nrbases_left_right, true);
         final IonogramAlignment reverse_align = getIonogramAlignment(frame, center_location, nrbases_left_right, false);
-        final AlignmentControlPanel forpanel = new AlignmentControlPanel(center_location, forward_align);;
-        final AlignmentControlPanel revpanel = new AlignmentControlPanel(center_location, reverse_align);;
+        if (fv != null) {
+            log.info("Got flow value to load raw data for: " + fv);
+        }
+        final AlignmentControlPanel forpanel = AlignmentControlPanel.getForPanel(center_location, forward_align, fv);
+        final AlignmentControlPanel revpanel = AlignmentControlPanel.getRevPanel(center_location, reverse_align, fv);
 
         String locus = Locus.getFormattedLocusString(frame.getChrName(), (int) center_location, (int) center_location);
         LocationListener listener = new LocationListener() {
-
             @Override
             public void locationChanged(int newLocation) {
                 log.info("Got new location from panel: " + newLocation);
@@ -1930,10 +1952,16 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             revpanel.setListener(listener);
         }
         ImageIcon image = new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/msa.gif"));
-        SimpleDialog fdia = new SimpleDialog("Ionogram Alignment (forward) at " + locus, forpanel, 800, 500, 200, 200, image.getImage());
-        fdia.setLocation(200, 100);
-        SimpleDialog rdia = new SimpleDialog("Ionogram Alignment (reverse) at " + locus, revpanel, 800, 500, 200, 800, image.getImage());
-        rdia.setLocation(200, 600);
+        if (forpanel.hasAlignment()) {
+            AlignmentControlPanel.showForwardPanel(forpanel, locus, image);
+        } else {
+            GuiUtils.showNonModalMsg("Found no data for the forward alignment");
+        }
+        if (revpanel.hasAlignment()) {
+            AlignmentControlPanel.showReversePanel(revpanel, locus, image);        
+        } else {
+            GuiUtils.showNonModalMsg("Found no data for the reverse alignment");
+        }
     }
 
     /**
@@ -1943,10 +1971,10 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         ConfidenceDistribution[] distributions = getDistributions(forward, reverse, frame, location);
 
         if (distributions == null || distributions.length < 1) {
-            MessageUtils.showMessage("I found no flow signal distributions at this location "+location);
+            MessageUtils.showMessage("I found no flow signal distributions at this location " + location);
             return;
         }
-        
+
         ImageIcon image = new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/chip_16.png"));
 
         Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
@@ -1957,7 +1985,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         final ArrayList<DistPanel> panels = DistPanel.createPanels(distributions, 2);
         for (final DistPanel panel : panels) {
             LocationListener listener = new LocationListener() {
-
                 @Override
                 public void locationChanged(int newLocation) {
                     log.info("Got new location from panel: " + newLocation + ", (old location was: " + location + ")");

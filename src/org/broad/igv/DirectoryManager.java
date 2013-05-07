@@ -430,9 +430,16 @@ public class DirectoryManager {
             appender.activateOptions();
             logger.addAppender(appender);
 
-        } catch (IOException e) {
+        } catch ( java.security.AccessControlException e) {
+             // Can't create log file, just log to console
+            System.err.println("Error creating log file due to AccessControlException: "+e.getMessage());
+            e.printStackTrace();
+            ConsoleAppender consoleAppender = new ConsoleAppender();
+            logger.addAppender(consoleAppender);
+        
+        } catch (Exception e) {
             // Can't create log file, just log to console
-            System.err.println("Error creating log file");
+            System.err.println("Error creating log file: "+e.getMessage());
             e.printStackTrace();
             ConsoleAppender consoleAppender = new ConsoleAppender();
             logger.addAppender(consoleAppender);

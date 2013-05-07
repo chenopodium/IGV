@@ -15,7 +15,6 @@
  */
 package org.broad.igv.ui;
 
-
 import com.iontorrent.karyo.views.KaryoControlPanel;
 import com.jidesoft.hints.ListDataIntelliHints;
 import com.jidesoft.swing.JideBoxLayout;
@@ -67,9 +66,7 @@ import java.util.List;
 public class IGVCommandBar extends javax.swing.JPanel {
 
     private static Logger log = Logger.getLogger(IGVCommandBar.class);
-
     final static String MODIFY_DETAILS_TOOLTIP = "Modify popup text behavior in data panels";
-
     private JComboBox chromosomeComboBox;
     private JComboBox genomeComboBox;
     //private JPanel geneListPanel;
@@ -88,12 +85,11 @@ public class IGVCommandBar extends javax.swing.JPanel {
     private JideButton forwardButton;
     private JideButton fitToWindowButton;
     private JideButton karyoButton;
-
     private JideButton exomeButton;
 
     public enum SHOW_DETAILS_BEHAVIOR {
-        HOVER("Show Details on Hover"), CLICK("Show Details on Click"), NEVER("Never Show Details");
 
+        HOVER("Show Details on Hover"), CLICK("Show Details on Click"), NEVER("Never Show Details");
         private final String label;
 
         private SHOW_DETAILS_BEHAVIOR(String label) {
@@ -104,15 +100,12 @@ public class IGVCommandBar extends javax.swing.JPanel {
             return this.label;
         }
     }
-
     private SHOW_DETAILS_BEHAVIOR detailsBehavior = SHOW_DETAILS_BEHAVIOR.valueOf((PreferenceManager.getInstance().get(PreferenceManager.DETAILS_BEHAVIOR_KEY,
             SHOW_DETAILS_BEHAVIOR.HOVER.name()).toUpperCase()));
 
     public SHOW_DETAILS_BEHAVIOR getDetailsBehavior() {
         return detailsBehavior;
     }
-
-
     /**
      * Special value to pull up dialog with rest of genomes
      */
@@ -191,7 +184,6 @@ public class IGVCommandBar extends javax.swing.JPanel {
 
         // Post creation widget setup.
         searchTextField.addActionListener(new ActionListener() {
-
             public void actionPerformed(ActionEvent actionevent) {
                 goButtonActionPerformed(actionevent);
             }
@@ -212,7 +204,6 @@ public class IGVCommandBar extends javax.swing.JPanel {
 
     private void loadGenomeListItem(final GenomeListItem genomeListItem) {
         final Runnable runnable = new Runnable() {
-
             public void run() {
                 if (genomeListItem != null) {
                     final IGV igv = IGV.getInstance();
@@ -260,9 +251,9 @@ public class IGVCommandBar extends javax.swing.JPanel {
 
                         int choice =
                                 JOptionPane.showConfirmDialog(
-                                        IGV.getMainFrame(), "The genome file [" + e.getMessage() +
-                                        "] could not be read. Would you like to remove the selected entry?",
-                                        "", JOptionPane.OK_CANCEL_OPTION);
+                                IGV.getMainFrame(), "The genome file [" + e.getMessage()
+                                + "] could not be read. Would you like to remove the selected entry?",
+                                "", JOptionPane.OK_CANCEL_OPTION);
 
                         if (choice == JOptionPane.OK_OPTION) {
                             GenomeManager.getInstance().excludedUrl(genomeListItem.getLocation());
@@ -299,7 +290,9 @@ public class IGVCommandBar extends javax.swing.JPanel {
     void updateChromosomeDropdown() {
 
         final Genome genome = GenomeManager.getInstance().getCurrentGenome();
-        if (genome == null) return;
+        if (genome == null) {
+            return;
+        }
 
         List<String> tmp = new ArrayList<String>(genome.getAllChromosomeNames().size());
         tmp.addAll(genome.getAllChromosomeNames());
@@ -335,7 +328,6 @@ public class IGVCommandBar extends javax.swing.JPanel {
         chromosomeComboBox.setSelectedItem(genome.getHomeChromosome());
 
         UIUtilities.invokeOnEventThread(new Runnable() {
-
             public void run() {
                 adjustChromosomeDropdownWidth(dropdownWidth);
             }
@@ -355,14 +347,17 @@ public class IGVCommandBar extends javax.swing.JPanel {
                         chromosomeComboBox.setSelectedItem(chrName);
                     }
                 }
-
+                if (chrName.equals(Globals.CHR_ALL)) {
+                    // open karyo view? Make it a preference
+//                    KaryoControlPanel karyo = KaryoControlPanel.getPanel(IGV.getMainFrame());
+//                    karyo.showPanel(1200, 1000);
+                }
                 //Uncomment this line to change translation table automatically
                 //AminoAcidManager.getInstance().loadDefaultCodonTable(GenomeManager.getInstance().getCurrentGenome(), chrName);
             }
         });
 
     }
-
 
     public void updateCurrentCoordinates() {
         final String chrName = getDefaultReferenceFrame().getChrName();
@@ -428,7 +423,7 @@ public class IGVCommandBar extends javax.swing.JPanel {
          * @return
          */
         public Component getListCellRendererComponent(JList list, Object value, int index,
-                                                      boolean isSelected, boolean cellHasFocus) {
+                boolean isSelected, boolean cellHasFocus) {
             String text = (value == null) ? "" : value.toString();
 
             Component renderer = null;
@@ -466,7 +461,6 @@ public class IGVCommandBar extends javax.swing.JPanel {
         }
     }
 
-
     /**
      * Gets the collection of genome display names currently in use.
      *
@@ -498,8 +492,8 @@ public class IGVCommandBar extends javax.swing.JPanel {
     }
 
     /**
-     * Selects the first genome from the list which matches this genomeId.
-     * If not found, checks genomes from the server/user-defined list
+     * Selects the first genome from the list which matches this genomeId. If
+     * not found, checks genomes from the server/user-defined list
      *
      * @param genomeId
      */
@@ -560,10 +554,9 @@ public class IGVCommandBar extends javax.swing.JPanel {
     }
 
     /**
-     * This method is called from within the constructor to
-     * initialize the form.
-     * WARNING: Do NOT modify this code. The content of this method is
-     * always regenerated by the Form Editor.
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
      */
     private void initComponents() {
 
@@ -602,7 +595,6 @@ public class IGVCommandBar extends javax.swing.JPanel {
         chromosomeComboBox.setMinimumSize(new java.awt.Dimension(DEFAULT_CHROMOSOME_DROPDOWN_WIDTH, 30));
         chromosomeComboBox.setPreferredSize(new java.awt.Dimension(DEFAULT_CHROMOSOME_DROPDOWN_WIDTH, 30));
         chromosomeComboBox.addActionListener(new java.awt.event.ActionListener() {
-
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 chromosomeComboBoxActionPerformed(evt);
             }
@@ -628,7 +620,6 @@ public class IGVCommandBar extends javax.swing.JPanel {
         // goButton.setText("Go");
         goButton.setToolTipText("Jump to gene or locus");
         goButton.addActionListener(new java.awt.event.ActionListener() {
-
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 goButtonActionPerformed(evt);
             }
@@ -727,7 +718,6 @@ public class IGVCommandBar extends javax.swing.JPanel {
         roiToggleButton.setMinimumSize(new java.awt.Dimension(32, 32));
         roiToggleButton.setPreferredSize(new java.awt.Dimension(32, 32));
         roiToggleButton.addActionListener(new java.awt.event.ActionListener() {
-
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 roiToggleButtonActionPerformed(evt);
             }
@@ -745,17 +735,14 @@ public class IGVCommandBar extends javax.swing.JPanel {
         fitToWindowButton.setPreferredSize(new java.awt.Dimension(32, 32));
         fitToWindowButton.setToolTipText("Resize tracks to fit in window.");
         fitToWindowButton.addActionListener(new java.awt.event.ActionListener() {
-
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 (new FitDataToWindowMenuAction(null, 0, IGV.getInstance())).actionPerformed(evt);
             }
         });
         toolPanel.add(fitToWindowButton, JideBoxLayout.FIX);
 
-        
-        karyoButton = new JideButton();
-        //fitToWindowButton.setButtonStyle(JideButton.TOOLBOX_STYLE);
-        //fitToWindowButton.setBorder(toolButtonBorder);
+
+        karyoButton = new JideButton();      
         karyoButton.setAlignmentX(RIGHT_ALIGNMENT);
         karyoButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/chromo_ss.gif")));
         karyoButton.setMaximumSize(new java.awt.Dimension(32, 32));
@@ -763,14 +750,15 @@ public class IGVCommandBar extends javax.swing.JPanel {
         karyoButton.setPreferredSize(new java.awt.Dimension(32, 32));
         karyoButton.setToolTipText("Show whole genome karyogram overview");
         karyoButton.addActionListener(new java.awt.event.ActionListener() {
-
+            @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                KaryoControlPanel karyo = KaryoControlPanel.getPanel(IGV.getMainFrame());
-                karyo.showPanel(1000, 1000);
+                showKaryoOverview();
             }
         });
-        toolPanel.add(karyoButton, JideBoxLayout.FIX);
         
+
+        toolPanel.add(karyoButton, JideBoxLayout.FIX);
+
         final Icon noTooltipIcon = IconFactory.getInstance().getIcon(IconFactory.IconID.NO_TOOLTIP);
         final Icon tooltipIcon = IconFactory.getInstance().getIcon(IconFactory.IconID.TOOLTIP);
         detailsBehaviorButton = new JideButton(noTooltipIcon);
@@ -791,7 +779,6 @@ public class IGVCommandBar extends javax.swing.JPanel {
             exomeButton.setText(FrameManager.isExomeMode() ? "Genome" : "Exome");
             exomeButton.setToolTipText("Click to toggle between 'exome' and 'genome' views");
             exomeButton.addActionListener(new ActionListener() {
-
                 @Override
                 public void actionPerformed(ActionEvent actionEvent) {
 
@@ -799,7 +786,9 @@ public class IGVCommandBar extends javax.swing.JPanel {
                     boolean showTrackMenu = (modifiers & ActionEvent.ALT_MASK) > 0;
 
                     boolean newMode = !FrameManager.isExomeMode();
-                    if (!FrameManager.setExomeMode(newMode, showTrackMenu)) return;
+                    if (!FrameManager.setExomeMode(newMode, showTrackMenu)) {
+                        return;
+                    }
                     String label = newMode ? "Genome" : "Exome";
                     exomeButton.setText(label);
                     IGV.getInstance().resetFrames();
@@ -823,6 +812,11 @@ public class IGVCommandBar extends javax.swing.JPanel {
         this.add(zoomControl, JideBoxLayout.FIX);
 
         this.add(Box.createHorizontalStrut(20), JideBoxLayout.FIX);
+    }
+
+    private void showKaryoOverview() {
+        KaryoControlPanel karyo = KaryoControlPanel.getPanel(IGV.getMainFrame());
+        karyo.showPanel(1500, 1000);
     }
 
     /**
@@ -874,6 +868,7 @@ public class IGVCommandBar extends javax.swing.JPanel {
             if (!chrName.equals(getDefaultReferenceFrame().getChrName())) {
                 NamedRunnable runnable = new NamedRunnable() {
                     public void run() {
+                        log.info("Going to chromosome " + chrName);
                         getDefaultReferenceFrame().setChromosomeName(chrName);
                         getDefaultReferenceFrame().recordHistory();
                         updateCurrentCoordinates();
@@ -897,7 +892,6 @@ public class IGVCommandBar extends javax.swing.JPanel {
         searchByLocus(searchText);
     }
 
-
     public void searchByLocus(final String searchText) {
 
         if (log.isDebugEnabled()) {
@@ -914,7 +908,6 @@ public class IGVCommandBar extends javax.swing.JPanel {
             log.debug("Exit search by locus: " + searchText);
         }
     }
-
 
     private void roiToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {    // GEN-FIRST:event_roiToggleButtonActionPerformed
         if (roiToggleButton.isSelected()) {

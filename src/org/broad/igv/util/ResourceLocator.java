@@ -12,7 +12,10 @@ package org.broad.igv.util;
 
 import java.awt.*;
 import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Map;
+import org.openide.util.Exceptions;
 
 /**
  * Represents a data file or other resource, which might be local file or remote resource.
@@ -213,7 +216,14 @@ public class ResourceLocator {
         this.color = color;
     }
 
-
+    public URL getURL() {
+        try {
+            return new URL(url);
+        } catch (MalformedURLException ex) {
+            Exceptions.printStackTrace(ex);
+        }
+        return null;
+    }
     public String getUrl() {
         return url;
     }
@@ -228,6 +238,7 @@ public class ResourceLocator {
         } else {
             this.path = path;
         }
+        
     }
 
     public String getTrackLine() {

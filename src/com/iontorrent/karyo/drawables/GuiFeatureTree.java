@@ -28,6 +28,7 @@ import com.iontorrent.karyo.renderer.RenderType;
 import com.iontorrent.views.basic.DrawingCanvas;
 import com.iontorrent.views.basic.GuiCanvas;
 import com.iontorrent.views.basic.GuiObject;
+import com.iontorrent.views.basic.StaticText;
 import java.awt.*;
 
 import java.awt.event.MouseEvent;
@@ -35,13 +36,15 @@ import java.util.List;
 
 public class GuiFeatureTree extends GuiObject { 
 
+    public static final int WIDTH = 14;
     protected int min_nr_pixels_per_feature_to_draw_all = 1;
     protected GuiChromosome chromo;
     protected FeatureTree tree;
     protected KaryoTrack ktrack;
     protected int dx;
     protected boolean toLeft;
-    protected int width = 10;
+    
+    protected int width;
     protected Font tinyfont = new Font("SansSerif", Font.PLAIN, 8);
     protected RenderType renderType;
     protected int nrerrors;
@@ -57,6 +60,7 @@ public class GuiFeatureTree extends GuiObject {
     public GuiFeatureTree(KaryoTrack ktrack, DrawingCanvas canvas, GuiChromosome chromo, FeatureTree tree, int dx, double scale) {
         super(chromo, canvas, chromo.getAbsolutePosition());
         //this.scale = scale;
+         width = WIDTH;
         this.chromo = chromo;
         this.renderType = ktrack.getRenderType();
         this.ktrack = ktrack;
@@ -86,7 +90,7 @@ public class GuiFeatureTree extends GuiObject {
             setAbsolutePosition(new Point(chromo.getX() + dx - width, chromo.getY()));
         } else {
             toLeft = false;
-            setAbsolutePosition(new Point(chromo.getX() + dx - 2*width, chromo.getY()));
+            setAbsolutePosition(new Point(chromo.getX() + dx - width, chromo.getY()));
         }
         
         double h = chromo.getHeight();
@@ -125,6 +129,12 @@ public class GuiFeatureTree extends GuiObject {
         int h = (int) chromo.getHeight();
         int w = (int) getAbsoluteSize().getWidth();
         y += h;
+        
+        
+        g.setColor(new Color(252, 252, 252));
+        g.fillRect(x-w, y-h, w, h);
+        g.setColor(new Color(250, 250, 250));
+        g.drawRect(x-w, y-h, w, h);
         //  p("Drawing "+chromo+"  at "+x+"/"+y+", w="+w+", h="+h);
 
 //        g.setColor(new Color(240,240,240));
@@ -150,13 +160,15 @@ public class GuiFeatureTree extends GuiObject {
 
         if (this.isSelected()) {
             g.setColor(Color.orange);
-            g.drawRect(x - w, y - h, w, h);
+            g.drawRect(x - w-1, y - h, w+2, h);
         }
 
         g.setColor(Color.black);
         g.setFont(tinyfont);
        // g.drawString(tree.getName(), x - w / 2 - (tree.getName().length()) * 3, y + 15);
-        ((GuiCanvas)canvas).drawText((Graphics2D)g, ktrack.getShortName(), x-5, y -h- h/40);
+        //StaticText t = new StaticText(ktrack.getShortName(),  x-10, y -h- h/40, Color.black);
+        
+        //((GuiCanvas)canvas).drawStatic((Graphics2D)g,t);
 
     }
 
@@ -291,12 +303,13 @@ public class GuiFeatureTree extends GuiObject {
             info = "Found " + features.size() +" at "+mb+" MB (+- "+MB+" MB):<br>";
             if (features.size() < 4) {
                 for (KaryoFeature f : features) {
-                    info += f.toHtml() + "_________________<br>";
+                    
+                    info += f.toHtml(this.ktrack.getMetaInfo()) + "_________________<br>";
                   //  p(f.toString());
                 }
             } else {
                 info = "Found " + features.size() +" at "+mb+" MB (+- "+MB+" MB). Example: <br>";
-                info += features.get(0).toHtml();
+                info += features.get(0).toHtml(this.ktrack.getMetaInfo());
                 //p(features.get(0).toString());
             }
         } else {
@@ -321,12 +334,14 @@ public class GuiFeatureTree extends GuiObject {
         
         chromo.setCurLocation(chromo.getEventLocation(evt.getY()));
         
-        p("mouse clicked at loc "+chromo.getCurLocation());
+        p("Tree: mouse clicked at loc "+chromo.getCurLocation()+" of chr "+chromo.getName());
         // notify selection listeners
         String cmd = "SELECT";
         if (evt.getClickCount() > 1) cmd = "DOUBLE";
         SelectionEvent e = new SelectionEvent(this, this, cmd, evt.getPoint());
         notifySelectionListeners(e);
+        
+    
         
     }
 

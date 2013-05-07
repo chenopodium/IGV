@@ -274,6 +274,9 @@ public class IGV {
         BAMHttpReader.cleanTempDir(BAMHttpReader.oneDay * 5);
     }
 
+    public IGVMenuBar getMenuBar() {
+        return menuBar;
+    }
 
     public void repaint() {
         mainFrame.repaint();
@@ -841,7 +844,7 @@ public class IGV {
 
 
     final public void doRefresh() {
-
+       // p("DoRefresh");
         contentPane.getMainPanel().revalidate();
         mainFrame.repaint();
         //getContentPane().repaint();
@@ -1251,11 +1254,13 @@ public class IGV {
 
             sessionReader.loadSession(inputStream, session, sessionPath);
 
+            p("========== Loading session done==========");
             String searchText = locus == null ? session.getLocus() : locus;
 
             // NOTE: Nothing to do if chr == all
             if (!FrameManager.isGeneListMode() && searchText != null &&
                     !searchText.equals(Globals.CHR_ALL) && searchText.trim().length() > 0) {
+                p("Going to locus: "+searchText);
                 goToLocus(searchText);
             }
 

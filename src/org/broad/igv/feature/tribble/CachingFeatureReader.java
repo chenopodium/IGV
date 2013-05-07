@@ -50,7 +50,9 @@ public class CachingFeatureReader extends AbstractCacher implements FeatureReade
 
     @Override
     protected Iterator<Feature> queryRaw(String chr, int start, int end) throws IOException {
-        return reader.query(chr, start, end);
+       // log.info("queryRaw: "+chr+":"+start+"-"+end);
+        
+        return reader.query(chr, Math.max(1,start), end);
     }
 
     @Override

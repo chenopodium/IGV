@@ -23,8 +23,8 @@ public class VariantMetaInfo extends FeatureMetaInfo{
     private String scorefieldname = null;
     
     
-    public VariantMetaInfo(String name) {
-        super(name);
+    public VariantMetaInfo(KaryoTrack t, String name) {
+        super(t,name);
     }
     @Override
     public void populateMetaInfo(Feature f) {

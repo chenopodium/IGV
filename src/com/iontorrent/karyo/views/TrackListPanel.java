@@ -66,7 +66,6 @@ public class TrackListPanel extends javax.swing.JPanel {
             }
             model.addElement(t);
 
-
         }
         if (man.getKaryoTracks().size() > 0) {
             list.setSelectedIndex(0);

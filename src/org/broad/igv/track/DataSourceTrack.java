@@ -46,12 +46,14 @@ public class DataSourceTrack extends DataTrack {
 
         float min = (float) dataSource.getDataMin();
         float max = (float) dataSource.getDataMax();
+       
         float baseline = 0;
 
         // If the range is all + numbers set the min to zero
         if (min > 0) {
             min = 0;
         }
+      //  log.info("Checking "+scores.size()+" segments for max score in "+locator.getPath());
         for (LocusScore score : scores) {
             max = Math.max(max, score.getScore());
         }

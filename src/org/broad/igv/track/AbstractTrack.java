@@ -13,6 +13,7 @@ package org.broad.igv.track;
 //~--- non-JDK imports --------------------------------------------------------
 
 import com.iontorrent.utils.ErrorHandler;
+import com.iontorrent.utils.StringTools;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.PreferenceManager;
@@ -71,6 +72,7 @@ public abstract class AbstractTrack implements Track {
 
     private boolean useScore;
     private double cutoffScore;
+    private int trackorder;
     private float viewLimitMin = Float.NaN;     // From UCSC track line
     private float viewLimitMax = Float.NaN;  // From UCSC track line
 
@@ -296,14 +298,18 @@ public abstract class AbstractTrack implements Track {
 
 
     public Color getColor() {
+        if (posColor == null) posColor = Color.BLUE;
         return posColor;
+        
     }
 
     public Color getAltColor() {
+        if (altColor == null) altColor = Color.BLUE;
         return altColor;
 
     }
     public Color getMidColor() {
+        if (midColor == null) midColor = Color.GRAY;
         return midColor;
 
     }
@@ -476,7 +482,7 @@ public abstract class AbstractTrack implements Track {
     }
 
 
-    public int getHeight() {
+     public int getHeight() {
         return (height < 0) ? getDefaultHeight() : height;
     }
 
@@ -498,6 +504,7 @@ public abstract class AbstractTrack implements Track {
 
 
     public void setDataRange(DataRange axisDefinition) {
+       // log.info("DataRange is "+axisDefinition+" for "+this.getName());
         this.dataRange = axisDefinition;
     }
 
@@ -568,7 +575,7 @@ public abstract class AbstractTrack implements Track {
         this.yLine = properties.getyLine();
         this.drawYLine = properties.isDrawYLine();
         this.sortable = properties.isSortable();
-
+        this.trackorder = properties.getTrackorder();
 
         // If view limits are explicitly set turn off autoscale
         if (!Float.isNaN(viewLimitMin) && !Float.isNaN(viewLimitMax)) {
@@ -580,6 +587,10 @@ public abstract class AbstractTrack implements Track {
         if (properties.getCutoffScore()!= 0) {
             log.info("setProperties: Got cutoffscore "+properties.getCutoffScore()+" for "+this.getName());
             this.setCutoffScore(properties.getCutoffScore());
+        }
+         if (properties.getTrackorder()!= 0) {
+            log.info("setProperties: Got getTrackorder "+properties.getTrackorder()+" for "+this.getName());
+            this.setTrackorder(properties.getTrackorder());
         }
         // Color scale properties
         if (!properties.isAutoScale()) {
@@ -702,6 +713,7 @@ public abstract class AbstractTrack implements Track {
             double min = dataRange == null ? 0 : dataRange.getMinimum();
             double max = dataRange == null ? 10 : dataRange.getMaximum();
             Color c = getColor();
+            if (c == null) c = Color.blue;
             Color minColor = Color.white;
             if (min < 0) {
                 minColor = altColor == null ? oppositeColor(minColor) : altColor;
@@ -1025,6 +1037,7 @@ public abstract class AbstractTrack implements Track {
                 (type == RegionScoreType.SCORE);
     }
 
+    @Override
     public void setVisibilityWindow(int i) {
         this.visibilityWindow = i;
     }
@@ -1131,9 +1144,65 @@ public abstract class AbstractTrack implements Track {
     public Renderer getRenderer() {
         return null;
     }
-
+        public Color getColor(String s) {
+		Color c = null;
+		if (s == null) {
+			return null;
+		}
+		s = s.toUpperCase().trim();
+		if (s.indexOf(",") > 0) {
+			// n,n,n
+			ArrayList<Integer> nrs = StringTools.parseListtoInt(s, ",");
+			c = new Color(nrs.get(0), nrs.get(1), nrs.get(2));
+		} else if (s.indexOf("x") > 0) {
+			// 0x
+			c = Color.decode(s);
+		} else {
+			if (s.equalsIgnoreCase("RED")) {
+				c = Color.red;
+			} else if (s.equalsIgnoreCase("BLUE")) {
+				c = Color.blue;
+			} else if (s.equalsIgnoreCase("WHITE")) {
+				c = Color.white;
+			} else if (s.equalsIgnoreCase("ORANGE")) {
+				c = Color.orange;
+			} else if (s.equalsIgnoreCase("YELLOW")) {
+				c = Color.YELLOW;
+			} else if (s.equalsIgnoreCase("MAGENTA")) {
+				c = Color.MAGENTA;
+			} else if (s.equalsIgnoreCase("BROWN")) {
+				c = Color.orange.darker();
+			} else if (s.equalsIgnoreCase("CYAN")) {
+				c = Color.CYAN;
+			} else if (s.equalsIgnoreCase("GRAY")) {
+				c = Color.GRAY;
+			} else if (s.equalsIgnoreCase("LIGHTGRAY")) {
+				c = Color.LIGHT_GRAY;
+			} else if (s.equalsIgnoreCase("LIGHT_GRAY")) {
+				c = Color.LIGHT_GRAY;
+			} else if (s.equalsIgnoreCase("DARK_GRAY")) {
+				c = Color.DARK_GRAY;
+			} else if (s.equalsIgnoreCase("DARKGRAY")) {
+				c = Color.DARK_GRAY;
+			} else if (s.equalsIgnoreCase("PINK")) {
+				c = Color.PINK;
+			} else if (s.equalsIgnoreCase("GREEN")) {
+				c = Color.GREEN;
+			} else if (s.equalsIgnoreCase("LIGHT_GREEN")) {
+				c = Color.GREEN.brighter();
+			} else if (s.equalsIgnoreCase("LIGHT_RED")) {
+				c = Color.RED.brighter();
+			} else if (s.equalsIgnoreCase("LIGHT_BLUE")) {
+				c = Color.BLUE.brighter();
+			}                        
+		}
+		
+		return c;
+	}
     public void setColor(String colorString) {
         // Set color
+        posColor= getColor(colorString);
+        if (posColor != null) return;
         if (colorString != null) {
             try {
                 String[] rgb = colorString.split(",");
@@ -1148,6 +1217,8 @@ public abstract class AbstractTrack implements Track {
     }
 
     public void setAltColor(String altColorString) {
+         altColor= getColor(altColorString);
+        if (altColor != null) return;
         if (altColorString != null) {
             try {
                 String[] rgb = altColorString.split(",");
@@ -1161,6 +1232,8 @@ public abstract class AbstractTrack implements Track {
         }
     }
     public void setMidColor(String midColorString) {
+          midColor= getColor(midColorString);
+        if (midColor != null) return;
         if (midColorString != null) {
             try {
                 String[] rgb = midColorString.split(",");
@@ -1182,8 +1255,16 @@ public abstract class AbstractTrack implements Track {
                 setRendererClass(rendererClass);
             }
         }
-    }
+    } 
 
+    @Override
+    public int getTrackorder() {
+        return trackorder;
+    }
+    @Override
+    public void setTrackorder(int order ){
+        this.trackorder = trackorder;
+    }
     /**
      * @return the cutoffScore
      */

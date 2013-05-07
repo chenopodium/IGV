@@ -87,12 +87,27 @@ public class VariantMenu extends IGVPopupMenu {
         List<Track> selectedTracks = Arrays.asList((Track) variantTrack);
         add(TrackMenuUtils.getTrackRenameItem(selectedTracks));
         add(TrackMenuUtils.getChangeFontSizeItem(selectedTracks));
+        add(TrackMenuUtils.getChangeTrackHeightItem(selectedTracks));
 
+        JMenuItem it = new JMenuItem("Change Track Color..." );
+         it.setToolTipText(
+                    "Change the main track color. ");
+        it.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evt) {
+                Collection tracks =Arrays.asList(new Track[]{track});
+                TrackMenuUtils.changeTrackColor(tracks);
+                track.setColorMode(VariantTrack.ColorMode.TRACK);
+                IGV.getInstance().getContentPane().repaint();
+            }
+        });
+        add(it);
 
         //Hides
         addSeparator();
         JLabel colorByItem = new JLabel("<html>&nbsp;&nbsp;<b>Color By", JLabel.LEFT);
         add(colorByItem);
+        add(getColorByTrack());
         add(getColorByGenotype());
         add(getColorByAllele());
         if (track.isEnableMethylationRateSupport()) {
@@ -148,6 +163,28 @@ public class VariantMenu extends IGVPopupMenu {
 
     }
 
+     public static JMenuItem getChangeTrackHeightItem(final Collection<Track> selectedTracks) {
+        // Change track height by attribute
+        JMenuItem item = new JMenuItem("Change Track Height...");
+        item.addActionListener(new ActionListener() {
+
+            public void actionPerformed(ActionEvent evt) {
+                log.info("==== change track height request");
+                for (Track t:selectedTracks) {
+                    if (t instanceof VariantTrack) {
+                        VariantTrack vt = (VariantTrack)t;
+                        log.info("Got a variant track");
+                        vt.setUserSetHeight(true);
+                                
+                    }
+                    else log.info("Track is NOT a variant track: "+t.getName());
+                }
+                TrackMenuUtils.changeTrackHeight(selectedTracks);
+            }
+        });
+        return item;
+    }
+     
     private JMenuItem getFeatureVisibilityItem() {
         JMenuItem item = new JMenuItem("Set Feature Visibility Window...");
         item.addActionListener(new ActionListener() {
@@ -176,6 +213,16 @@ public class VariantMenu extends IGVPopupMenu {
         item.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent evt) {
                 track.setColorMode(VariantTrack.ColorMode.ALLELE);
+                IGV.getInstance().getContentPane().repaint();
+            }
+        });
+        return item;
+    }
+     private JMenuItem getColorByTrack() {
+        final JMenuItem item = new JCheckBoxMenuItem("Track color", track.getColorMode() == VariantTrack.ColorMode.TRACK);
+        item.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent evt) {
+                track.setColorMode(VariantTrack.ColorMode.TRACK);
                 IGV.getInstance().getContentPane().repaint();
             }
         });

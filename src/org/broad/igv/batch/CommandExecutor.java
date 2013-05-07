@@ -131,8 +131,14 @@ public class CommandExecutor {
                             MessageUtils.showMessage("CommandExecutor: Setting " + key + "=" + value);
                         }
                         if (prefs.contains(key)) {
-                            log.info("Set: regular preference: put("+key+ ","+value+")");
+                       //     log.info("Set: regular preference: put("+key+ ","+value+")");
                             prefs.put(key, value);
+                            prefs.putTemp(key, value);
+                            // checking for some of the settings
+                            if (key.equalsIgnoreCase(PreferenceManager.SHOW_ATTRIBUTE_VIEWS_KEY)) {
+                                log.info("Dealing with "+key);
+                                IGV.getInstance().doShowAttributeDisplay(value.equalsIgnoreCase("true"));
+                            }
                         }
                        // log.info("Set: putTemp ("+key+ ","+value+")");
                         prefs.putTemp(key, value);

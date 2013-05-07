@@ -23,7 +23,7 @@ package org.broad.igv.data;
 
 import org.broad.igv.util.collections.IntArrayList;
 
-import org.apache.commons.math.stat.StatUtils;
+import org.apache.commons.math3.stat.StatUtils;
 import org.broad.igv.feature.LocusScore;
 import org.broad.igv.track.WindowFunction;
 

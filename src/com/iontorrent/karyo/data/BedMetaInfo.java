@@ -19,8 +19,8 @@ import org.broad.tribble.Feature;
 public class BedMetaInfo extends FeatureMetaInfo{
 
     
-    public BedMetaInfo(String tname) {
-        super(tname);
+    public BedMetaInfo(KaryoTrack t, String tname) {
+        super(t, tname);
     }
     @Override
     public void populateMetaInfo(Feature f) {

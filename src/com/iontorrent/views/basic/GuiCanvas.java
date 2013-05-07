@@ -332,8 +332,9 @@ public class GuiCanvas extends BasicCanvas implements DrawingCanvas, MouseListen
         return startingheight;
     }
 
+    @Override
     public void setSize(Dimension d) {
-        //	System.out.println("size is:"+getSize()+", setsize called: "+d);
+    //    System.out.println("size is:"+getSize()+", setsize called: "+d);
         //	Exception e = new Exception();
         //	e.printStackTrace();
         super.setSize(d);

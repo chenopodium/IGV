@@ -54,6 +54,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import java.util.List;
+import org.broad.igv.track.TrackOrderComparator;
 import org.broad.igv.track.TrackProperties;
 import org.broad.igv.util.collections.CollUtils;
 
@@ -342,7 +343,7 @@ public class IGVSessionReader implements SessionReader {
                             IGV.getInstance().loadGenome(genomePath, null);
                         } catch (IOException e) {
                             log.info("Error loading genome: "+genomePath+":"+ErrorHandler.getString(e));
-                            throw new RuntimeException("Error loading genome: " + genomeId);
+                             MessageUtils.showMessage("Warning: Could not load genome: " + genomeId+": "+e.getMessage());
                         }
                     } else {
                         MessageUtils.showMessage("Warning: Could not locate genome: " + genomeId);
@@ -861,7 +862,7 @@ public class IGVSessionReader implements SessionReader {
     private int panelCounter = 1;
 
     private void processPanel(Session session, Element element, HashMap additionalInformation, String rootPath) {
-      //  log.info("processPanel:"+element.getNodeName());
+     //   log.info("processPanel:"+element.getNodeName());
         panelElementPresent = true;
         String panelName = element.getAttribute("name");
         if (panelName == null) {
@@ -885,6 +886,12 @@ public class IGVSessionReader implements SessionReader {
             }
         }
 
+        // now sort tracks by order
+        log.info("======== Sorting panel tracks by order");
+        Collections.sort(panelTracks, new TrackOrderComparator());
+        for (Track t: panelTracks) {
+            log.info(t.getTrackorder()+":"+ t.getName());
+        }
         TrackPanel panel = IGV.getInstance().getTrackPanel(panelName);
         panel.addTracks(panelTracks);
     }
@@ -970,8 +977,11 @@ public class IGVSessionReader implements SessionReader {
                      tp = new TrackProperties();  
                      ParsingUtils.parseTrackLine(trackLine, tp);
                      track.setProperties(tp);
-                     log.info("Processing trackLine "+trackLine+" for "+track.getDisplayName()+":"+tp.toString()+", cutoff of properties="+tp.getCutoffScore());                   
+                     log.info("Processing trackLine "+trackLine+" for "+track.getDisplayName()+":"+tp.toString());
+                     log.info("cutoff of properties="+tp.getCutoffScore()+", trackorder of properties: "+tp.getTrackorder());                   
                      log.info("Got cutoff: "+track.getCutoffScore());
+                     log.info("Got order: "+track.getTrackorder());
+                     
                 }
                 if (drAttributes != null) {
                     DataRange dr = track.getDataRange();
@@ -982,7 +992,7 @@ public class IGVSessionReader implements SessionReader {
             trackDictionary.remove(id);
 
         }
-
+       
         NodeList elements = element.getChildNodes();
         process(session, elements, additionalInformation, rootPath);
 

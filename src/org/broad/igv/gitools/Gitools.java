@@ -1,6 +1,6 @@
 package org.broad.igv.gitools;
 
-import org.apache.commons.math.stat.StatUtils;
+import org.apache.commons.math3.stat.StatUtils;
 import org.broad.igv.Globals;
 import org.broad.igv.feature.FeatureDB;
 import org.broad.igv.feature.Locus;

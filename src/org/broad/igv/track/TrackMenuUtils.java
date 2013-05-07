@@ -8,11 +8,9 @@
  * This software is licensed under the terms of the GNU Lesser General Public License (LGPL),
  * Version 2.1 which is available at http://www.opensource.org/licenses/lgpl-2.1.php.
  */
-
 package org.broad.igv.track;
 
-
-import org.apache.commons.math.stat.StatUtils;
+import org.apache.commons.math3.stat.StatUtils;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.PreferenceManager;
@@ -42,6 +40,7 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.*;
+import org.broad.igv.variant.VariantTrack;
 
 /**
  * @author jrobinso
@@ -51,17 +50,16 @@ public class TrackMenuUtils {
     static Logger log = Logger.getLogger(TrackMenuUtils.class);
     final static String LEADING_HEADING_SPACER = "  ";
     private static final WindowFunction[] ORDERED_WINDOW_FUNCTIONS = new WindowFunction[]{
-            WindowFunction.min,
-            WindowFunction.percentile2,
-            WindowFunction.percentile10,
-            WindowFunction.median,
-            WindowFunction.mean,
-            WindowFunction.percentile90,
-            WindowFunction.percentile98,
-            WindowFunction.max,
-            WindowFunction.none
+        WindowFunction.min,
+        WindowFunction.percentile2,
+        WindowFunction.percentile10,
+        WindowFunction.median,
+        WindowFunction.mean,
+        WindowFunction.percentile90,
+        WindowFunction.percentile98,
+        WindowFunction.max,
+        WindowFunction.none
     };
-
 
     /**
      * Return a popup menu with items applicable to the collection of tracks.
@@ -89,7 +87,6 @@ public class TrackMenuUtils {
 
         menu.addPopupMenuListener(new PopupMenuListener() {
             public void popupMenuWillBecomeVisible(PopupMenuEvent popupMenuEvent) {
-
             }
 
             public void popupMenuWillBecomeInvisible(PopupMenuEvent popupMenuEvent) {
@@ -106,7 +103,6 @@ public class TrackMenuUtils {
                     IGV.getInstance().repaint();
                 }
             }
-
         });
 
         return menu;
@@ -165,7 +161,6 @@ public class TrackMenuUtils {
 
         JMenuItem zoomOutItem = new JMenuItem("Zoom out");
         zoomOutItem.addActionListener(new ActionListener() {
-
             public void actionPerformed(ActionEvent evt) {
                 frame.incrementZoom(-1);
             }
@@ -174,7 +169,6 @@ public class TrackMenuUtils {
 
         JMenuItem zoomInItem = new JMenuItem("Zoom in");
         zoomInItem.addActionListener(new ActionListener() {
-
             public void actionPerformed(ActionEvent evt) {
                 frame.incrementZoom(1);
             }
@@ -183,7 +177,6 @@ public class TrackMenuUtils {
 
 
     }
-
 
     /**
      * Return popup menu with items applicable to data tracks
@@ -198,7 +191,7 @@ public class TrackMenuUtils {
 
         final String[] labels = {"Heatmap", "Bar Chart", "Points", "Line Plot"};
         final Class[] renderers = {HeatmapRenderer.class, BarChartRenderer.class,
-                PointsRenderer.class, LineplotRenderer.class
+            PointsRenderer.class, LineplotRenderer.class
         };
 
         //JLabel popupTitle = new JLabel(LEADING_HEADING_SPACER + title, JLabel.CENTER);
@@ -263,7 +256,6 @@ public class TrackMenuUtils {
                         item.setSelected(true);
                     }
                     item.addActionListener(new ActionListener() {
-
                         public void actionPerformed(ActionEvent evt) {
                             changeStatType(wf.toString(), tracks);
                         }
@@ -360,7 +352,6 @@ public class TrackMenuUtils {
         //--------------------//
     }
 
-
     /**
      * Popup menu with items applicable to both feature and data tracks
      *
@@ -376,10 +367,10 @@ public class TrackMenuUtils {
 
         String colorLabel = hasFeatureTracks
                 ? "Change Track Color..." : "Change Track Color (High Values)...";
-        
+
         JMenuItem item = new JMenuItem(colorLabel);
-         item.setToolTipText(
-                    "Change the main track color. This color is used when graphing large values for features with scores");
+        item.setToolTipText(
+                "Change the main track color. This color is used when graphing large values for features with scores");
         item.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent evt) {
                 changeTrackColor(tracks);
@@ -424,7 +415,6 @@ public class TrackMenuUtils {
         menu.add(getChangeFontSizeItem(tracks));
     }
 
-
     private static void changeStatType(String statType, Collection<Track> selectedTracks) {
         for (Track track : selectedTracks) {
             track.setWindowFunction(WindowFunction.valueOf(statType));
@@ -432,15 +422,12 @@ public class TrackMenuUtils {
         refresh();
     }
 
-
     public static JMenuItem getTrackRenameItem(final Collection<Track> selectedTracks) {
         // Change track height by attribute
         JMenuItem item = new JMenuItem("Rename Track...");
         item.addActionListener(new ActionListener() {
-
             public void actionPerformed(ActionEvent evt) {
                 UIUtilities.invokeOnEventThread(new Runnable() {
-
                     public void run() {
                         renameTrack(selectedTracks);
                     }
@@ -458,7 +445,6 @@ public class TrackMenuUtils {
         JMenuItem item = new JMenuItem("Set Heatmap Scale...");
 
         item.addActionListener(new ActionListener() {
-
             public void actionPerformed(ActionEvent evt) {
                 if (selectedTracks.size() > 0) {
 
@@ -487,7 +473,6 @@ public class TrackMenuUtils {
         JMenuItem item = new JMenuItem("Set Data Range...");
 
         item.addActionListener(new ActionListener() {
-
             public void actionPerformed(ActionEvent evt) {
                 if (selectedTracks.size() > 0) {
                     // Create a datarange that spans the extent of prev tracks range
@@ -542,7 +527,6 @@ public class TrackMenuUtils {
         final JCheckBoxMenuItem drawBorderItem = new JCheckBoxMenuItem("Draw borders");
         drawBorderItem.setSelected(FeatureTrack.isDrawBorder());
         drawBorderItem.addActionListener(new ActionListener() {
-
             public void actionPerformed(ActionEvent evt) {
                 FeatureTrack.setDrawBorder(drawBorderItem.isSelected());
                 IGV.getInstance().repaintDataPanels();
@@ -552,7 +536,6 @@ public class TrackMenuUtils {
         return drawBorderItem;
     }
 
-
     public static JMenuItem getLogScaleItem(final Collection<Track> selectedTracks) {
         // Change track height by attribute
 
@@ -561,11 +544,10 @@ public class TrackMenuUtils {
         final boolean logScale = selectedTracks.iterator().next().getDataRange().isLog();
         logScaleItem.setSelected(logScale);
         logScaleItem.addActionListener(new ActionListener() {
-
             public void actionPerformed(ActionEvent evt) {
-                DataRange.Type scaleType = logScaleItem.isSelected() ?
-                        DataRange.Type.LOG :
-                        DataRange.Type.LINEAR;
+                DataRange.Type scaleType = logScaleItem.isSelected()
+                        ? DataRange.Type.LOG
+                        : DataRange.Type.LINEAR;
                 for (Track t : selectedTracks) {
                     t.getDataRange().setType(scaleType);
                 }
@@ -593,7 +575,6 @@ public class TrackMenuUtils {
 
             autoscaleItem.setSelected(autoScale);
             autoscaleItem.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent evt) {
 
                     boolean autoScale = autoscaleItem.isSelected();
@@ -626,7 +607,6 @@ public class TrackMenuUtils {
 
             item.setSelected(showDataRange);
             item.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent evt) {
 
                     boolean showDataRange = item.isSelected();
@@ -641,7 +621,6 @@ public class TrackMenuUtils {
         }
         return item;
     }
-
 
     public static void addDisplayModeItems(final Collection<Track> tracks, JPopupMenu menu) {
 
@@ -690,7 +669,6 @@ public class TrackMenuUtils {
 
     }
 
-
     private static void setTrackDisplayMode(Collection<Track> tracks, Track.DisplayMode mode) {
 
         for (Track t : tracks) {
@@ -698,14 +676,12 @@ public class TrackMenuUtils {
         }
     }
 
-
     public static JMenuItem getRemoveMenuItem(final Collection<Track> selectedTracks) {
 
         boolean multiple = selectedTracks.size() > 1;
 
         JMenuItem item = new JMenuItem("Remove Track" + (multiple ? "s" : ""));
         item.addActionListener(new ActionListener() {
-
             public void actionPerformed(ActionEvent evt) {
                 if (selectedTracks.isEmpty()) {
                     return;
@@ -741,7 +717,6 @@ public class TrackMenuUtils {
         });
         return item;
     }
-
 
     public static void changeRenderer(final Collection<Track> selectedTracks, Class rendererClass) {
         for (Track track : selectedTracks) {
@@ -792,6 +767,13 @@ public class TrackMenuUtils {
         for (Track track : selectedTracks) {
 
             track.setHeight(value);
+            log.info("Track " + track.getName() + " now has height: " + value + "/" + track.getHeight());
+            if (track instanceof VariantTrack) {
+                VariantTrack vt = (VariantTrack) track;
+                log.info("Got a variant track");
+                vt.setUserSetHeight(true);
+
+            }
 
         }
 
@@ -846,7 +828,6 @@ public class TrackMenuUtils {
 
         refresh();
     }
-
 
     public static int getIntValue(String parameter, int value) {
 
@@ -935,6 +916,7 @@ public class TrackMenuUtils {
         refresh();
 
     }
+
     public static void changeMidTrackColor(final Collection<Track> selectedTracks) {
 
         if (selectedTracks.isEmpty()) {
@@ -958,6 +940,7 @@ public class TrackMenuUtils {
         refresh();
 
     }
+
     public static void changeCutOff(final Collection<Track> selectedTracks) {
 
         if (selectedTracks.isEmpty()) {
@@ -967,15 +950,14 @@ public class TrackMenuUtils {
         double cut = selectedTracks.iterator().next().getCutoffScore();
 
         String ans = JOptionPane.showInputDialog(IGV.getMainFrame(),
-                "Enter a value where the color changes from low to high (current value: "+cut+")");
+                "Enter a value where the color changes from low to high (current value: " + cut + ")");
 
         if (ans == null) {
             return;
         }
         try {
             cut = Double.parseDouble(ans);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             return;
         }
         for (Track track : selectedTracks) {
@@ -986,11 +968,9 @@ public class TrackMenuUtils {
 
     }
 
-
     public static JMenuItem getCopyDetailsItem(final Feature f, final TrackClickEvent evt) {
         JMenuItem item = new JMenuItem("Copy Details to Clipboard");
         item.addActionListener(new ActionListener() {
-
             public void actionPerformed(ActionEvent e) {
 
                 ReferenceFrame frame = evt.getFrame();
@@ -1001,8 +981,8 @@ public class TrackMenuUtils {
                     String details = ((IGVFeature) f).getValueString(location, null);
                     if (details != null) {
                         details = details.replace("<br>", System.getProperty("line.separator"));
-                        details += System.getProperty("line.separator") +
-                                f.getChr() + ":" + (f.getStart() + 1) + "-" + f.getEnd();
+                        details += System.getProperty("line.separator")
+                                + f.getChr() + ":" + (f.getStart() + 1) + "-" + f.getEnd();
                         StringUtils.copyTextToClipboard(details);
                     }
                 }
@@ -1011,11 +991,9 @@ public class TrackMenuUtils {
         return item;
     }
 
-
     public static JMenuItem getCopySequenceItem(final Feature f) {
         JMenuItem item = new JMenuItem("Copy Sequence");
         item.addActionListener(new ActionListener() {
-
             public void actionPerformed(ActionEvent evt) {
                 Genome genome = GenomeManager.getInstance().getCurrentGenome();
                 IGV.copySequenceToClipboard(genome, f.getChr(), f.getStart(), f.getEnd());
@@ -1024,11 +1002,9 @@ public class TrackMenuUtils {
         return item;
     }
 
-
     public static JMenuItem getBlatItem(final Feature f) {
         JMenuItem item = new JMenuItem("Blat Sequence");
         item.addActionListener(new ActionListener() {
-
             public void actionPerformed(ActionEvent evt) {
                 BlatClient.doBlatQuery(f.getChr(), f.getStart(), f.getEnd());
             }
@@ -1036,11 +1012,9 @@ public class TrackMenuUtils {
         return item;
     }
 
-
-
     /**
-     * Return a representative track height to use as the default.  For now
-     * using the median track height.
+     * Return a representative track height to use as the default. For now using
+     * the median track height.
      *
      * @return
      */
@@ -1072,7 +1046,6 @@ public class TrackMenuUtils {
         // Change track height by attribute
         JMenuItem item = new JMenuItem("Change Track Height...");
         item.addActionListener(new ActionListener() {
-
             public void actionPerformed(ActionEvent evt) {
                 changeTrackHeight(selectedTracks);
             }
@@ -1088,8 +1061,8 @@ public class TrackMenuUtils {
 
                 // If one or fewer tracks are selected assume the intent is to use all tracks.  A right-click
                 // will always result in one selected track.
-                Collection<Track> tracks = selectedTracks.size() > 1 ? selectedTracks :
-                        IGV.getInstance().getAllTracks();
+                Collection<Track> tracks = selectedTracks.size() > 1 ? selectedTracks
+                        : IGV.getInstance().getAllTracks();
                 KMPlotFrame frame = new KMPlotFrame(tracks);
                 frame.setVisible(true);
             }
@@ -1107,7 +1080,6 @@ public class TrackMenuUtils {
         // Change track height by attribute
         JMenuItem item = new JMenuItem("Set Feature Visibility Window...");
         item.addActionListener(new ActionListener() {
-
             public void actionPerformed(ActionEvent evt) {
                 changeFeatureVisibilityWindow(selectedTracks);
             }
@@ -1119,13 +1091,10 @@ public class TrackMenuUtils {
         // Change track height by attribute
         JMenuItem item = new JMenuItem("Change Font Size...");
         item.addActionListener(new ActionListener() {
-
             public void actionPerformed(ActionEvent evt) {
                 changeFontSize(selectedTracks);
             }
         });
         return item;
     }
-
 }
-

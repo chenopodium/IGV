@@ -16,8 +16,8 @@ import org.broad.tribble.Feature;
  */
 public class LocusScoreMetaInfo extends FeatureMetaInfo {
 
-    public LocusScoreMetaInfo(String name) {
-        super(name);
+    public LocusScoreMetaInfo(KaryoTrack track, String name) {
+        super(track, name);
     }
     @Override
     public void populateMetaInfo(Feature f) {

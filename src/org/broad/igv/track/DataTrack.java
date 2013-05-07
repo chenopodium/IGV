@@ -97,8 +97,15 @@ public abstract class DataTrack extends AbstractTrack {
             InViewInterval inter = computeScale(start, end, inViewScores);
             if (inter.endIdx > inter.startIdx) {
                 inViewScores = inViewScores.subList(inter.startIdx, inter.endIdx);
-
+               // p("Got InViewInterval: "+inter.toString());
                 DataRange dr = getDataRange();
+              //  log.info("Got data range: "+dr);
+                for (LocusScore sc: inViewScores) {
+                    if (sc.getScore()>dr.getMaximum()) {
+                      //  log.info("Got larger value: "+sc.getScore());
+                        dr.setMaximum((float)sc.getScore());
+                    }
+                }
                 float min = Math.min(0, inter.dataMin);
                 float base = Math.max(min, dr.getBaseline());
                 float max = inter.dataMax;
@@ -264,11 +271,14 @@ public abstract class DataTrack extends AbstractTrack {
         super.setAltColor(color);
 
     }
-
+    private void p(String s) {
+        Logger.getLogger("DataTrack: "+s);
+    }
     private InViewInterval computeScale(double origin, double end, List<LocusScore> scores) {
 
         InViewInterval interval = new InViewInterval();
-
+        boolean show = scores.size()==2;
+        
         if (scores.size() == 1) {
             interval.dataMax = Math.max(0, scores.get(0).getScore());
             interval.dataMin = Math.min(0, scores.get(0).getScore());
@@ -278,11 +288,13 @@ public abstract class DataTrack extends AbstractTrack {
             for (int i = 1; i < scores.size(); i++) {
                 if (scores.get(i).getEnd() >= origin) {
                     interval.startIdx = i - 1;
+                    
                     break;
                 }
             }
-
-            for (int i = interval.startIdx + 1; i < scores.size(); i++) {
+            if (show) p("interval: "+interval.toString());
+            
+            for (int i = interval.startIdx ; i < scores.size(); i++) {
                 LocusScore locusScore = scores.get(i);
                 float value = locusScore.getScore();
                 if (Float.isNaN(value)) value = 0;
@@ -450,6 +462,10 @@ public abstract class DataTrack extends AbstractTrack {
         int endIdx;
         float dataMax = 0;
         float dataMin = 0;
+        
+        public String toString() {
+            return "startIdx="+startIdx+", endIdx="+endIdx+", dataMin="+dataMin+", dataMax="+dataMax;
+        }
     }
 
 }

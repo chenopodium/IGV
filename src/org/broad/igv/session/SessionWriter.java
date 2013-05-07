@@ -354,10 +354,16 @@ public class SessionWriter {
                     trackElement.setAttribute(IGVSessionReader.SessionAttribute.ID.getText(), track.getId());
                     trackElement.setAttribute(IGVSessionReader.SessionAttribute.NAME.getText(), track.getName());
                     double cutoff = track.getCutoffScore();
+                    String trackline ="";
                     if (cutoff != 0) {
-                       String trackline = "cutoffscore="+cutoff+" ";
-                       trackElement.setAttribute(IGVSessionReader.SessionAttribute.TRACK_LINE.getText(), trackline);
+                       trackline += "cutoffscore="+cutoff+" ";
+                       
                     }
+                     if (track.getTrackorder() != 0) {
+                       trackline += "trackorder="+track.getTrackorder()+" ";
+                       
+                    }
+                     if (trackline.length()>0) trackElement.setAttribute(IGVSessionReader.SessionAttribute.TRACK_LINE.getText(), trackline);
                     if (track.getSample() != null && track.getSample().length()>0) {
                         trackElement.setAttribute(IGVSessionReader.SessionAttribute.SAMPLE_ID.getText(), track.getSample());
                     }

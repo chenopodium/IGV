@@ -54,6 +54,13 @@ public class TrackProperties {
         this.cutoffScore = cutoffScore;
     }
 
+    public int getTrackorder() {
+        return trackorder;
+    }
+    public void setTrackorder(int order) {
+        this.trackorder = order;
+        log.info("Got trackorder "+trackorder);
+    }
     public enum BaseCoord {
         ZERO, ONE, UNSPECIFIED
     }
@@ -148,6 +155,9 @@ public class TrackProperties {
     
     /** The score that can be used for instance in switching colors from low to high value */
     private double cutoffScore;
+    
+    /** used for sorting tracks */
+    private int trackorder; 
 
     /**
      * Track attributes (meta data)

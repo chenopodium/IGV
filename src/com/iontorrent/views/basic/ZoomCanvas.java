@@ -1,21 +1,21 @@
 /*
-*	Copyright (C) 2011 Life Technologies Inc.
-*
-*   This program is free software: you can redistribute it and/or modify
-*   it under the terms of the GNU General Public License as published by
-*   the Free Software Foundation, either version 2 of the License, or
-*   (at your option) any later version.
-*
-*   This program is distributed in the hope that it will be useful,
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*   GNU General Public License for more details.
-*
-*   You should have received a copy of the GNU General Public License
-*   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-* 
-*  @Author Chantal Roth
-*/
+ *	Copyright (C) 2011 Life Technologies Inc.
+ *
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * 
+ *  @Author Chantal Roth
+ */
 package com.iontorrent.views.basic;
 
 import com.iontorrent.event.*;
@@ -121,7 +121,7 @@ public class ZoomCanvas extends BasicTabView
             zoomslider = new JSlider(SwingConstants.HORIZONTAL);
         }
         zoomslider.setValue(realToSlider(10));
-       
+
         canvas = new GuiCanvas(new ArrayList<Drawable>(), null, width, height, zoom_x, zoom_y);
         int h = TOP_HEIGHT;
         if (zoom_y) {
@@ -143,7 +143,6 @@ public class ZoomCanvas extends BasicTabView
 
 
         MouseMotionAdapter motionadapter = new MouseMotionAdapter() {
-
             @Override
             public void mouseDragged(MouseEvent e) {
                 //	p("**** mouse dragged");
@@ -553,7 +552,7 @@ public class ZoomCanvas extends BasicTabView
 
     public int sliderToReal(int slidervalue) {
         //int zoomfactor = (int) Math.exp((double) s / 1000.0);
-        int zoomfactor = (int) (slidervalue/ 1000.0);
+        int zoomfactor = (int) (slidervalue / 1000.0);
         //	p("slider -> real:"+s+" ->"+r);
         return zoomfactor;
 
@@ -571,15 +570,18 @@ public class ZoomCanvas extends BasicTabView
     }
 
     private void setZoomRange(int start, int end, double multi) {
+
         double minfactor = getMinFactor();
         this.multiplier = multi;
         int zoomstart = Math.max((int) minfactor, start);
         int zoomend = Math.max((int) minfactor, end);
+        p("setZoomRange: Setting slider min-max=" + zoomstart + "-" + zoomend + ", minfactor is: " + minfactor);
         ignorechange = true;
-        p("Setting slider min-max="+zoomstart+"-"+zoomend+", minfactor is: "+minfactor);
+
         zoomslider.setMinimum(realToSlider(zoomstart));
         zoomslider.setMaximum(realToSlider(zoomend));
         ignorechange = false;
+        p("ignorechange is " + ignorechange);
     }
 
     protected void setZoomSliderVisible(boolean visible) {
@@ -632,10 +634,12 @@ public class ZoomCanvas extends BasicTabView
 
     public void setZoomValue(double value) {
         zoomValue = value;
+        p("===== setZoomValue " + value);
         ignorechange = true;
         zoomslider.setValue(realToSlider(value));
         ignorechange = false;
         double zoomfactor = value / multiplier;
+
         adjustCanvas(zoomfactor);
     }
 
@@ -700,6 +704,30 @@ public class ZoomCanvas extends BasicTabView
         return LEFT_WIDTH;
     }
 
+    private void handleSliderChange() {
+        p("******* slider state changed ****** ignorechange=" + ignorechange);
+        if (ignorechange == true) {
+            p("--------- Ignoring slider");
+            return;
+        }
+        double minfactor = getMinFactor();
+        // p("minfactor: "+minfactor);
+        p("old slider value: " + zoomslider.getValue());
+
+        if (minfactor * multiplier > zoomfactor) {
+            p("=== minfactor " + minfactor + " is > than zoomfactor " + zoomfactor);
+            setZoomRange(5, 100, 100);
+        }
+        zoomfactor = (double) sliderToReal(zoomslider.getValue());
+        // p("new zoomfactor: " + zoomfactor + ", minfactor: " + minfactor);
+        //	zoomfactor = zoomfactor/multiplier;
+        zoomfactor = Math.max(zoomfactor, minfactor) / multiplier;
+        //   p("zoomfactor:" + zoomfactor + ", multiplier is:" + multiplier);
+        adjustCanvas(zoomfactor);
+        //repaint();
+        
+    }
+
     private class HorListener implements AdjustmentListener {
 
         @Override
@@ -728,6 +756,7 @@ public class ZoomCanvas extends BasicTabView
         pan_canvas.setLayout(new BorderLayout());
 
         canvas.setBackground(color_back);
+        p("CreateGui: factor="+zoomfactor);
         canvas.setZoomFactor(zoomfactor);
         pane_canvas = new JScrollPane(canvas, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
 
@@ -779,7 +808,7 @@ public class ZoomCanvas extends BasicTabView
     public void showMiddle() {
         int value = pane_canvas.getVerticalScrollBar().getMaximum() / 2;
         pane_canvas.getVerticalScrollBar().setValue(value);
-      
+
     }
 
     /**
@@ -935,8 +964,8 @@ public class ZoomCanvas extends BasicTabView
         Dimension extent = viewport.getExtentSize();
         Dimension abssize = canvas.getStartingSize();
 
-        p("viewport extent:"+extent.toString());
-        p("canvas startsize:"+abssize.toString());
+        // p("viewport extent:"+extent.toString());
+        //  p("canvas startsize:"+abssize.toString());
 
         double ew = extent.getWidth();
         double eh = extent.getHeight();
@@ -947,8 +976,8 @@ public class ZoomCanvas extends BasicTabView
         double minfactorx = ew / vw * multiplier;
         double minfactory = eh / vh * multiplier;
 
-        p("extent/absolute: "+eh+"/"+vh);
-        p("minfactors:"+minfactorx+"/"+minfactory);
+        //  p("extent/absolute: "+eh+"/"+vh);
+        p("getMinFactor: minfactorsx and y:" + minfactorx + "/" + minfactory);
 
         //return 1;
         if (!zoom_x) {
@@ -1064,7 +1093,9 @@ public class ZoomCanvas extends BasicTabView
     }
 
     protected void adjustCanvas(double zoomfactor) {
+        
         zoomValue = zoomfactor * multiplier;
+        p("adjustCanvas: setZoomValue with factor " + zoomfactor+", value="+zoomValue);
         canvas.setZoomFactor(zoomfactor);
         if (showleft) {
             canvasleft.setZoomFactor(zoomfactor);
@@ -1072,35 +1103,21 @@ public class ZoomCanvas extends BasicTabView
         if (showtop) {
             canvastop.setZoomFactor(zoomfactor);
         }
-        repaint();
-
+        p("REPAINTING");
+       repaint();
     }
 
     @Override
     public void stateChanged(ChangeEvent e) {
-        if (ignorechange == true) {
-            return;
-        }
-        p("*** state changed ***");
 
-        double minfactor = getMinFactor();
+        handleSliderChange();
 
-        p("minfactor: "+minfactor);
-        p("old zoomfactor: "+zoomfactor*multiplier);
-        if (minfactor*multiplier > zoomfactor) {
-            p("=== minfactor is > than zoomfactor "+zoomfactor);
-            setZoomRange(5, 100, 100);
-        }
-        zoomfactor = (double) sliderToReal(zoomslider.getValue());
-        p("new zoomfactor: "+zoomfactor+", minfactor: "+minfactor);
-        //	zoomfactor = zoomfactor/multiplier;
-        zoomfactor = Math.max(zoomfactor, minfactor) / multiplier;
-        p("zoomfactor:"+zoomfactor+", multiplier is:"+multiplier);
+    }
 
-        adjustCanvas(zoomfactor);
-        //	repaint();
-        
-
+    public void setSliderValuePercent(int value) {
+        this.ignorechange = false;
+        this.zoomslider.setValue(value * 1000);
+        handleSliderChange();
     }
 
     private class MouseHandler extends MouseAdapter {
@@ -1227,7 +1244,7 @@ public class ZoomCanvas extends BasicTabView
                 if (res == null) {
                     //			p("Got no drawables at "+rect.toString());
                 }
-               
+
                 for (int i = 0; i < res.size(); i++) {
                     Drawable d = (Drawable) res.get(i);
                     if (d.isSelectable()) {

@@ -8,10 +8,14 @@
  * This software is licensed under the terms of the GNU Lesser General Public License (LGPL),
  * Version 2.1 which is available at http://www.opensource.org/licenses/lgpl-2.1.php.
  */
-
 package org.broad.igv.feature.tribble;
 
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Map;
+import org.apache.log4j.Logger;
 import org.broad.igv.feature.genome.Genome;
+import org.broad.igv.variant.Genotype;
 import org.broad.igv.variant.vcf.VCFVariant;
 import org.broad.tribble.AsciiFeatureCodec;
 import org.broad.tribble.Feature;
@@ -40,12 +44,22 @@ public class VCFWrapperCodec extends AsciiFeatureCodec<VCFVariant> {
 
     @Override
     public VCFVariant decode(String line) {
-        VariantContext vc = (VariantContext) wrappedCodec.decode(line);
+       // Logger.getLogger(VCFWrapperCodec.class).info("VCFWrapperCodec: got line:\n" + line);
+        VariantContext vc  = null;
+        try {
+             vc = (VariantContext) wrappedCodec.decode(line);
+        }
+        catch (Exception e) {
+             Logger.getLogger(VCFWrapperCodec.class).info("Got error:"+e.getMessage()+" for line: "+line);
+        }
         if (vc == null) {
             return null;
         }
         String chr = genome == null ? vc.getChr() : genome.getChromosomeAlias(vc.getChr());
-        return new VCFVariant(vc, chr);
+        VCFVariant variant = new VCFVariant(vc, chr);
+        //Logger.getLogger("VCFWrapperCodec: got variant: " + variant.toString());
+                
+        return variant;
 
     }
 

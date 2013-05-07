@@ -5,6 +5,7 @@
 package com.iontorrent.karyo.views;
 
 import com.iontorrent.karyo.data.KaryoTrack;
+import com.iontorrent.karyo.renderer.RenderManager;
 import com.iontorrent.utils.ErrorHandler;
 import java.awt.BorderLayout;
 import java.awt.GridLayout;
@@ -47,15 +48,16 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
         JPanel north = new JPanel();
         north.setLayout(new BorderLayout());
         north.add("North",new JLabel("Please pick the tracks you wish to see in the Karyo View") );
-        JButton btnall = new JButton("All/None");
+        JButton btnall = new JButton("Toggle all");
         north.add("West", btnall);
         btnall.addActionListener(new ActionListener() {
 
             @Override
             public void actionPerformed(ActionEvent e) {
                 for (SingleTrackPanel cb: panels) {
-                    cb.setSelected(toggleall);
+                    cb.setSelected(!cb.isSelected());
                 }
+                repaint();
                 toggleall = !toggleall;
             }
             
@@ -195,6 +197,9 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
                         }
                     }
                     if (cb != null) {
+                        GuiProperties gui = RenderManager.getGuiProperties();
+                        boolean visible = gui.isKaryoVisible(ktrack.getGuiSample(), ktrack.getGuiKey(), ktrack.getFileExt());
+                        if (!visible) cb.setSelected(false);
                         center.add(cb);
                         panels.add(cb);
                         karyotracks.add(ktrack);

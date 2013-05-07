@@ -197,10 +197,15 @@ public class Ionogram {
     public boolean isSelected(int slot) {
         return selected[slot];
     }
+    public void setSelected(int slot, boolean b) {
+        selected[slot] = b;
+    }
     public void toggleSelect(int slot) {
         selected[slot] = !selected[slot];
     }
-    
+    public FlowValue getFlowValue(int slot) {
+        return slotrow[slot];
+    }
     public double getMaxValue() {
         double max = 0;
         for (FlowValue f: flowvalues) {

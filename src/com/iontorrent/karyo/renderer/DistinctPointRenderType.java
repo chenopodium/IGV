@@ -29,14 +29,7 @@ public class DistinctPointRenderType extends PointRenderType {
     public Color getColor(FeatureMetaInfo meta, KaryoFeature f) {        
         return super.getDistinctColor(meta, f);
     }
-    
-    private void err(String s) {
-            Logger.getLogger("DistinctPointRenderType").warn(s);
-    }
-    private void p(String s) {
-            Logger.getLogger("DistinctPointRenderType").info(s);
-    }
-    
+       
     @Override
      public double getMinPointHeight() {
         return 8;

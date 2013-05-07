@@ -54,7 +54,7 @@ public abstract class XYPlotRenderer extends DataRenderer {
     public Color getGradientColor(double MIN, double MAX, double score, Color chigh, Color clow, Color cmid, double middle) {
               
        
-        
+       if (cmid == null) cmid = Color.darkGray; 
         if (chigh == null) chigh = cmid;
         if (clow == null) clow = cmid;
         double rangedelta = MAX-MIN;

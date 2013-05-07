@@ -8,12 +8,18 @@ import com.iontorrent.data.IonogramAlignment;
 import com.iontorrent.data.Ionogram;
 import com.iontorrent.data.PeakFunction;
 import com.iontorrent.rawdataaccess.FlowValue;
+import com.iontorrent.wellmodel.WellFlowDataResult;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.DecimalFormat;
 import javax.swing.JComponent;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.ToolTipManager;
 import org.broad.igv.PreferenceManager;
 
@@ -70,7 +76,7 @@ public class AlignmentPanel extends JPanel {
         this.ionogram = ionogram;
         this.alignment = alignment;
         this.isHeader = isHeader;
-       
+
         this.setBackground(Color.white);
         prefs = PreferenceManager.getInstance();
         slotheight = prefs.getAsInt(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN);
@@ -85,19 +91,30 @@ public class AlignmentPanel extends JPanel {
         setFocusTraversalKeysEnabled(false);
         ToolTipManager.sharedInstance().registerComponent(this);
         this.addMouseListener(new MouseAdapter() {
-             public void mouseClicked(MouseEvent e) {
-                 int slot = e.getX()/slotwidth;
-                  if (slot >= 0 && slot < AlignmentPanel.this.alignment.getNrslots()) {
-                      if (!AlignmentPanel.this.isHeader) {
-                          p("Selecting slot "+slot);
-                          AlignmentPanel.this.ionogram.toggleSelect(slot);
-                          repaint();
-                      }
-                  }
-             }
+            public void mouseClicked(MouseEvent e) {
+                int slot = getSlot(e);
+                if (slot >= 0 && slot < AlignmentPanel.this.alignment.getNrslots()) {
+                    if (!AlignmentPanel.this.isHeader) {
+                        p("Selecting slot " + slot);
+                        AlignmentPanel.this.ionogram.toggleSelect(slot);
+                        repaint();
+                    }
+                }
+            }
         });
     }
 
+    public int getSlot(MouseEvent e) {
+        int slot = e.getX() / slotwidth;
+        return slot;
+    }
+
+    public Ionogram getIonogram() {
+
+        return ionogram;
+    }
+
+    //btnRaw.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/raw.png")))
     @Override
     public String getToolTipText(MouseEvent evt) {
         //  p("Get Ionopanel tool tip");
@@ -164,7 +181,7 @@ public class AlignmentPanel extends JPanel {
         } else {
             s += ionogram.toHtml();
         }
-
+        s += "<br><b>Double click (or right click) to load raw trace ";
         return "<html>" + s + "</html>";
     }
 
@@ -210,14 +227,21 @@ public class AlignmentPanel extends JPanel {
         g.drawLine(BORDER, y0, width, y0);
         for (int slot = 0; slot < slotrow.length; slot++) {
             FlowValue fv = slotrow[slot];
+            boolean hasRaw = fv != null&& fv.getTimeseries() != null;
             int x = (int) (slot * dx) + x0;
             if (!isHeader && ionogram.isSelected(slot)) {
-                g.setColor(selectedcolor);
+                if (hasRaw) {
+                    g.setColor(Color.blue.darker());
+                    
+                }
+                else g.setColor(selectedcolor);
                 g.fillRect(x, y0 - h, slotwidth, h);
-                
-            }
-            else if (slot == alignment.getCenterSlot()) {
-                g.setColor(highlight);
+
+            } else if (slot == alignment.getCenterSlot()) {
+                if (hasRaw) {
+                    g.setColor(Color.black);
+                }
+                else  g.setColor(highlight);
                 g.fillRect(x, y0 - h, slotwidth, h);
             }
             gg.setStroke(line);
@@ -242,12 +266,20 @@ public class AlignmentPanel extends JPanel {
             } else {
                 if (fv == null) {
                 } else {
-                    if (slot != alignment.getCenterSlot()) {
+                    if (slot != alignment.getCenterSlot() && !ionogram.isSelected(slot)) {
                         //if (!isHeader) {
                         if (!fv.isEmpty()) {
-                            g.setColor(flowcolor);
+                            if (hasRaw) {
+                                g.setColor(Color.black);
+                            } else {
+                                g.setColor(flowcolor);
+                            }
                         } else {
-                            g.setColor(emptycolor);
+                            if (hasRaw) {
+                                g.setColor(Color.darkGray);
+                            } else {
+                                g.setColor(emptycolor);
+                            }
                         }
                         g.fillRect(x, y0 - h, slotwidth, h);
                         // }
@@ -266,7 +298,34 @@ public class AlignmentPanel extends JPanel {
                     g.setColor(color.darker());
                     int maxy = (int) (value * dy);
 // DRAW PEAK FUNCTION
-                    if (drawPeak) {
+                    if (hasRaw) {
+                      //  p("Drawing RAW timeseries data");
+                        // g.fill3DRect(mx - barwidth / 2, y, barwidth, maxy, true);
+                        // 1. normalize
+                        g.setColor(Color.yellow);
+                        double data[] = fv.getTimeseries().getData();
+                        WellFlowDataResult res = fv.getTimeseries();
+                        double rawmin = res.getMin();
+                        double rawmax = res.getMax();
+                        double rawdv = rawmax - rawmin;
+                        double rawdy = maxy / rawdv;
+                        double sx = x + 1.0;
+                        double prevx = sx;
+                        double prevy = y0;
+                        double rawdx = (double)slotwidth/(double)data.length;
+                      //  p("rawdx: "+rawdx);
+                        gg.setStroke(fatline);
+                        for (int i = 0; i < data.length; i++) {
+                            double v = data[i];                          
+                            double offy = (double) (v * rawdy);
+                            double nextx = sx + i*rawdx;
+                            double nexty = y0 - offy;
+                            g.drawLine((int)prevx, (int)prevy, (int)nextx, (int)nexty);
+                            prevx = nextx;
+                            prevy = nexty;
+
+                        }
+                    } else if (drawPeak) {
                         int sx = x + slotwidth / 3;
                         gg.setColor(Color.gray);
                         for (int i = 100; i + 50 < value; i += 100) {
@@ -293,7 +352,8 @@ public class AlignmentPanel extends JPanel {
                         g.drawString("" + fv.getRawFlowvalue(), x + slotwidth - 20, y0 - 5);
                     }
                     if (showText) {
-                        g.setColor(Color.darkGray);
+                        if (hasRaw) g.setColor(Color.orange);
+                        else g.setColor(Color.darkGray);
                         g.drawString("" + fv.getFlowPosition(), x + 2, y0 - h + 10);
                     }
 

@@ -46,6 +46,8 @@ public class GuiPointTree extends GuiFeatureTree {
     public GuiPointTree(KaryoTrack ktrack, DrawingCanvas canvas, GuiChromosome chromo, FeatureTree tree, int dx, double scale) {
         super(ktrack, canvas, chromo, tree, dx, scale);
         pointType = (PointRenderType) ktrack.getRenderType();
+        setWidth(Math.max(WIDTH, 2*((int) pointType.getMinPointWidth()+2)));
+         update(tree);
     }
 
 // ***************************************************************************
@@ -64,10 +66,14 @@ public class GuiPointTree extends GuiFeatureTree {
         int h = (int) chromo.getHeight();
         int w = (int) getAbsoluteSize().getWidth();
         y += h;
-        g.setColor(Color.white);
-        g.drawLine(x - w, y - h, x - w, y);
-        g.drawLine(x, y - h, x, y);
-        g.setColor(new Color(240, 240, 240));
+        int minwidth = (int) pointType.getMinPointWidth()+2;
+        g.setColor(new Color(252, 252, 252));
+        g.fillRect(x-w, y-h, w, h);
+        g.setColor(new Color(250, 250, 250));
+        g.drawRect(x-w, y-h, w, h);
+        //g.drawLine(x - w, y - h, x - w, y);
+        //g.drawLine(x, y - h, x, y);
+        g.setColor(new Color(245, 245, 245));
         g.drawLine(x - w / 2, y - h, x - w / 2, y);
         super.draw(g0);
 
@@ -140,7 +146,7 @@ public class GuiPointTree extends GuiFeatureTree {
             max = min+1;
             min = min-1;
         }
-        double dxpixels = Math.max(0.0000001, (double)trackwidth/(double)(max-min+1));
+        double dxpixels = Math.max(0.0000001, (double)trackwidth/2/(double)(max-min+1));
           
         double cutoff = renderType.getCutoffScore();
         
@@ -161,10 +167,15 @@ public class GuiPointTree extends GuiFeatureTree {
                         ( times ==2 &&  pointType.outlineOval(min, max, cutoff, score))) {
                     score = score - min;
 
-                    Color c = renderType.getColor(ktrack.getMetaInfo(), f);
+                    Color c = pointType.getColor(ktrack.getMetaInfo(), f);
 
                     gg.setPaint(c);
 
+//                    if ( nr < 3) {
+//                        pointType.debug = true;
+//                       // p("Got color: "+c+" for feature "+f+", times="+times+", meta="+ktrack.getMetaInfo());
+//                    }
+//                    else pointType.debug = true; 
                     boolean drawit = true;
                     if (filter != null) {
                         if (filter.isHighlightFiltered()) {
@@ -181,7 +192,7 @@ public class GuiPointTree extends GuiFeatureTree {
 
                         int dx = (int)(dxpixels*score);
                         if (nrerrors < 50 && times == 2) {
-                            p(this.ktrack.getTrackName()+"/"+this.renderType.getClass().getName()+": f="+f.toString()+", y1-y2="+y1+"-"+y2);
+                       //     p(this.ktrack.getTrackName()+"/"+this.renderType.getClass().getName()+": f="+f.toString()+", y1-y2="+y1+"-"+y2);
                             nrerrors++;
                         }
                         //int dy = Math.max(wb, y2 - y1);
@@ -196,8 +207,8 @@ public class GuiPointTree extends GuiFeatureTree {
                          if (toLeft) {
                              g.fillRoundRect(trackstartx - (int) dx, my, r,rh, r, r);
                            // g.fillOval(trackstartx - (int) dx, my, r,rh);
-                           if (times == 2 )  {
-                                gg.setPaint(c.darker().darker());
+                           if (times == 2 && r>3)  {
+                                gg.setPaint(c.darker());
                                 g.drawRoundRect(trackstartx - (int) dx,my, r,rh, r, r);
                                // g.drawOval(trackstartx - (int) dx,my, r,rh);
                             }
@@ -205,8 +216,8 @@ public class GuiPointTree extends GuiFeatureTree {
                         } else {
                               g.fillRoundRect(trackstartx + (int) dx, my, r,rh, r, r);
                             //g.fillOval(trackstartx + (int) dx,my, r,rh);
-                            if (times == 2)  {
-                                gg.setPaint(c.darker().darker());
+                            if (times == 2 && r>3)  {
+                                gg.setPaint(c.darker());
                                 //g.drawOval(trackstartx +(int) dx,my, r,rh);
                                 g.drawRoundRect(trackstartx + (int) dx,my, r,rh, r, r);
                             }

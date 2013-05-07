@@ -8,7 +8,6 @@
  * This software is licensed under the terms of the GNU Lesser General Public License (LGPL),
  * Version 2.1 which is available at http://www.opensource.org/licenses/lgpl-2.1.php.
  */
-
 package org.broad.igv.variant;
 
 import org.apache.log4j.Logger;
@@ -24,17 +23,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * User: Jesse Whitworth
- * Date: Jul 16, 2010
+ * User: Jesse Whitworth Date: Jul 16, 2010
  */
-
 public class VariantRenderer { //extends FeatureRenderer {
 
     private static Logger log = Logger.getLogger(VariantRenderer.class);
-
     public static final int BOTTOM_MARGIN = 0;
     public static final int TOP_MARGIN = 3;
-
     private static float alphaValue = 0.2f;
     public static Color colorHomRef = new Color(235, 235, 235);
     public static Color colorHomRefAlpha = ColorUtilities.getCompositeColor(colorHomRef, alphaValue);
@@ -50,9 +45,7 @@ public class VariantRenderer { //extends FeatureRenderer {
     public static Color colorAlleleRefAlpha = ColorUtilities.getCompositeColor(colorAlleleRef, alphaValue);
     private static final Color blue = new Color(0, 0, 220);
     public static Color blueAlpha = ColorUtilities.getCompositeColor(blue, alphaValue);
-
     static Map<Character, Color> nucleotideColors = new HashMap<Character, Color>();
-
     private VariantTrack track;
 
     static {
@@ -84,9 +77,9 @@ public class VariantRenderer { //extends FeatureRenderer {
      * @param context
      */
     public void renderSiteBand(Variant variant,
-                               Rectangle bandRectangle,
-                               int pX0, int dX,
-                               RenderContext context) {
+            Rectangle bandRectangle,
+            int pX0, int dX,
+            RenderContext context) {
 
 
         final boolean filtered = variant.isFiltered();
@@ -97,12 +90,31 @@ public class VariantRenderer { //extends FeatureRenderer {
             alleleColor = this.convertMethylationRateToColor((float) variant.getMethlationRate() / 100);
             percent = variant.getCoveredSampleFraction();
             refColor = filtered ? colorAlleleRefAlpha : colorAlleleRef;   // Gray
+        } else if (track.getColorMode() == VariantTrack.ColorMode.TRACK) {
+            refColor = track.getColor();
+            alleleColor = track.getColor();
+            double af = variant.getAlleleFraction();
+            if (af < 0) {
+                double[] afreqs = variant.getAlleleFreqs();
+                if (afreqs != null && afreqs.length > 0) {
+                    af = afreqs[0];
+                }
+            }
+            percent = Math.min(1, af);
+             if (percent <= 0) {
+                percent = 0;
+             }
         } else {
+//            if (variant.getEnd() - variant.getStart() > 1000000) {
+//                log.info("For this huge variant, it makse no sense to use band colors... use track color instaed");
+//                alleleColor = filtered ? colorAlleleBandAlpha : track.getColor();
+//            }
+//            else {
             alleleColor = filtered ? colorAlleleBandAlpha : colorAlleleBand; // Red
             double af = variant.getAlleleFraction();
             if (af < 0) {
                 double[] afreqs = variant.getAlleleFreqs();
-                if(afreqs != null && afreqs.length > 0) {
+                if (afreqs != null && afreqs.length > 0) {
                     af = afreqs[0];
                 }
             }
@@ -134,9 +146,8 @@ public class VariantRenderer { //extends FeatureRenderer {
 
     }
 
-
     public void renderGenotypeBandSNP(Variant variant, RenderContext context, Rectangle bandRectangle, int pX0, int dX,
-                                      String sampleName, VariantTrack.ColorMode coloring, boolean hideFiltered) {
+            String sampleName, VariantTrack.ColorMode coloring, boolean hideFiltered) {
 
         int pY = (int) bandRectangle.getY();
         int dY = (int) bandRectangle.getHeight();
@@ -161,6 +172,11 @@ public class VariantRenderer { //extends FeatureRenderer {
         boolean isFiltered = variant.isFiltered() && hideFiltered;
 
         Genotype genotype = variant.getGenotype(sampleName);
+        if (variant.getEnd() - variant.getStart() > 100000) {
+            // this is no ordinary variant... some kind of indel of ploidy... so rendering by genotype makes no sense
+            log.info("Large variant, using coloring by track. Genotype would be: " + genotype + ", track color is: " + track.getColor());
+            coloring = VariantTrack.ColorMode.TRACK;
+        }
         if (genotype == null) {
             log.error("Now what?");
         } else {
@@ -170,6 +186,12 @@ public class VariantRenderer { //extends FeatureRenderer {
             char b2 = ' ';
             //Assign proper coloring
             switch (coloring) {
+                case TRACK:
+
+                    b1Color = this.track.getColor();
+                    b2Color = b1Color;
+                    break;
+
                 case GENOTYPE:
 
                     b1Color = getGenotypeColor(genotype, isFiltered);
@@ -218,7 +240,7 @@ public class VariantRenderer { //extends FeatureRenderer {
             int y0 = track.getDisplayMode() == Track.DisplayMode.EXPANDED ? pY + 1 : pY;
             int h = Math.max(1, track.getDisplayMode() == Track.DisplayMode.EXPANDED ? dY - 2 : dY);
 
-            if (coloring == VariantTrack.ColorMode.GENOTYPE) {
+            if (coloring == VariantTrack.ColorMode.GENOTYPE || coloring == VariantTrack.ColorMode.TRACK) {
 
                 g.setColor(b1Color);
                 g.fillRect(pX0, y0, dX, h);
@@ -248,13 +270,13 @@ public class VariantRenderer { //extends FeatureRenderer {
     private Color convertMethylationRateToColor(float mr) {
         Color color;
         /*
-        if (mr >= .25) {
-            return Color.getHSBColor((mr - .25f) * (1f / 0.75f), 1, 1);
-        } else {
-            // use a light grey between 0 and 0.25 brightness to indicate moderate methylation at the site.
-            return new Color(1f - mr, 1f - mr, 1f - mr);
-        }
-          */
+         if (mr >= .25) {
+         return Color.getHSBColor((mr - .25f) * (1f / 0.75f), 1, 1);
+         } else {
+         // use a light grey between 0 and 0.25 brightness to indicate moderate methylation at the site.
+         return new Color(1f - mr, 1f - mr, 1f - mr);
+         }
+         */
         float v = 1.5f + (mr / 2); //add one to have a floor. getHSBColor removes the floor to yield a fraction betweeen 0 and 1.
         return Color.getHSBColor(v, .75f, 1);
     }
@@ -282,7 +304,7 @@ public class VariantRenderer { //extends FeatureRenderer {
     }
 
     private void drawCenteredText(Graphics2D g, char[] chars, int x, int y,
-                                  int w, int h) {
+            int w, int h) {
 
         // Get measures needed to center the message
         FontMetrics fm = g.getFontMetrics();

@@ -15,6 +15,7 @@
  */
 package org.broad.igv.sam;
 
+import com.iontorrent.rawdataaccess.FlowValue;
 import org.broad.igv.feature.Strand;
 import org.broad.igv.track.WindowFunction;
 
@@ -136,6 +137,32 @@ public abstract class AbstractAlignment implements Alignment {
         }
     }
 
+    public FlowValue getCurrentFlowValue(AlignmentBlock block, int offset) {
+        if (block.hasFlowSignals()) {            
+            FlowSignalSubContext f = block.getFlowSignalSubContext(offset);
+            if (f != null ) {
+               return f.getCurrentValue();
+            }
+        }
+        
+        return null;
+    }
+    
+    public FlowValue getFlowValue(double position) {
+        int basePosition = (int) position;
+         // First check insertions.  Position is zero based, block coords 1 based
+        for (AlignmentBlock block : this.alignmentBlocks) {
+            if (block.contains(basePosition)) {
+                int offset = basePosition - block.getStart();
+               
+                // raw flow signals
+                if (block.hasFlowSignals()) {
+                   return getCurrentFlowValue(block,  offset);
+                }
+            }
+        }
+        return null;
+    }
     @Override
     public String getValueString(double position, WindowFunction windowFunction) {
         StringBuffer buf = null;

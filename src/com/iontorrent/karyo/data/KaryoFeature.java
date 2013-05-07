@@ -8,6 +8,8 @@ import com.iontorrent.karyo.filter.KaryoFilter;
 import com.iontorrent.karyo.filter.LocusScoreFilter;
 import com.iontorrent.karyo.filter.VariantAttributeFilter;
 import com.iontorrent.karyo.filter.VariantFrequencyFilter;
+import com.iontorrent.karyo.renderer.RenderManager;
+import com.iontorrent.karyo.views.GuiProperties;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -19,9 +21,11 @@ import org.apache.log4j.Logger;
 import org.broad.igv.data.seg.Segment;
 import org.broad.igv.feature.BasicFeature;
 import org.broad.igv.feature.LocusScore;
+import org.broad.igv.track.AbstractTrack;
 import org.broad.igv.variant.Allele;
 import org.broad.igv.variant.Genotype;
 import org.broad.igv.variant.Variant;
+import org.broad.igv.variant.VariantTrack;
 import org.broad.igv.variant.vcf.VCFVariant;
 import org.broad.tribble.Feature;
 import org.broadinstitute.sting.utils.variantcontext.VariantContext;
@@ -36,11 +40,17 @@ public class KaryoFeature implements Feature {
     private Range range;
     private DecimalFormat f = new DecimalFormat("#0.00");
     private int msgs = 0;
-
+    private static GuiProperties gui;
+    //private FeatureTree tree;
+    
     public KaryoFeature(Feature f) {
         this.feature = f;
+        //this.tree = tree;
         range = new Range(f.getStart(), f.getEnd());
     }
+//    public FeatureTree getTree() {
+//        return tree;
+//    }
 
     public boolean overlaps(KaryoFeature f) {
         return f.range.overlaps(range);
@@ -55,9 +65,9 @@ public class KaryoFeature implements Feature {
                 if (n.equalsIgnoreCase(rel)) {
                     rel = n;
                     res = var.getAttributeAsString(rel);
-                 //    p("Got att "+rel+": "+n);     
+                    //    p("Got att "+rel+": "+n);     
                 }
-                                  
+
             }
         }
         return res;
@@ -85,7 +95,7 @@ public class KaryoFeature implements Feature {
             }
 
             String rel = "INDELTYPE";
-            String indeltype = getAttribute(var,rel);
+            String indeltype = getAttribute(var, rel);
 
             if (indeltype != null) {
                 p("Got indeltype from " + rel + ":" + indeltype);
@@ -216,9 +226,10 @@ public class KaryoFeature implements Feature {
 
     }
 
-    public String toString(String nl) {
+    public String toString(FeatureMetaInfo info, String nl) {
         if (feature instanceof Variant) {
             Variant v = (Variant) feature;
+            
             String h = "Variant type: " + v.getType() + nl;
             h += "Position: " + v.getPositionString() + nl;
             if (v.getAlleleFraction() > 0) {
@@ -269,6 +280,17 @@ public class KaryoFeature implements Feature {
                     Genotype gt = v.getGenotype(sample);
                     if (gt != null) {
                         h += "<b>Sample: " + sample + " has genotype " + gt.getGenotypeString() + "</b>" + nl;
+                        Map map = gt.getAttributes();
+                        if (map != null && map.size() > 0) {
+                            Iterator it = map.keySet().iterator();
+                            while (it.hasNext()) {
+                                String key = (String) it.next();
+                                String val = "" + map.get(key);
+                                
+                                h += key + ": " + val + nl;
+                            }
+                            h += "</b>";
+                        }
                     }
                 }
             }
@@ -291,19 +313,23 @@ public class KaryoFeature implements Feature {
                 }
                 h += "</b>";
             }
-            
+
             return h;
         } else if (feature instanceof LocusScore) {
             LocusScore basic = (LocusScore) feature;
-            return "LocusScore, <b>score =" + basic.getScore() +"</b>"+ nl+"Position: " + feature.getStart() + "-" + feature.getEnd() + nl;
+            String scorename= "Score";
+            if (info != null) scorename = info.getScoreLabel();
+            return "<b>"+scorename+" =" + basic.getScore() + "</b>" + nl + "Position: " + feature.getStart() + "-" + feature.getEnd() + nl;
         } else if (feature instanceof Segment) {
             Segment basic = (Segment) feature;
-            return "Segment,  <b>score =" + basic.getScore() + "</b>"+ nl+"Position: " + feature.getStart() + "-" + feature.getEnd() + nl;
+            String scorename= "Score";
+            if (info != null) scorename = info.getScoreLabel();
+            return "<b>"+scorename+" =" + basic.getScore() + "</b>" + nl + "Position: " + feature.getStart() + "-" + feature.getEnd() + nl;
         } else if (feature instanceof BasicFeature) {
             BasicFeature basic = (BasicFeature) feature;
-            return basic.getName() + ": " + basic.getType() + nl+"Position: " + getChr() + " "+ feature.getStart() + "-" + feature.getEnd() + nl + feature.toString();
+            return basic.getName() + ": " + basic.getType() + nl + "Position: " + getChr() + " " + feature.getStart() + "-" + feature.getEnd() + nl + feature.toString();
         } else {
-            return feature.getClass().getName() + nl+"Position: " + getChr() + " " + feature.getStart() + "-" + feature.getEnd() + nl + feature.toString();
+            return feature.getClass().getName() + nl + "Position: " + getChr() + " " + feature.getStart() + "-" + feature.getEnd() + nl + feature.toString();
         }
     }
 
@@ -329,30 +355,40 @@ public class KaryoFeature implements Feature {
 
     @Override
     public String toString() {
+        return toString(null);
+    }
+    public String toString(FeatureMetaInfo info) {
         if (feature instanceof Variant) {
-            return toString("\n");
+            return toString(info, "\n");
         } else if (feature instanceof LocusScore) {
-            return toString("\n");
+            return toString(info, "\n");
         } else if (feature instanceof Segment) {
-            return toString("\n");
+            return toString(info, "\n");
         } else {
             return feature.toString();
         }
     }
 
-    public String toHtml() {
+    public String toHtml(FeatureMetaInfo info) {
         String nl = "<br>";
+        AbstractTrack igvtrack = info.getTrack().getTrack();
         if (feature instanceof Variant) {
-            return toString(nl);
+            if (igvtrack != null && igvtrack instanceof VariantTrack) {
+                VariantTrack vtrack = (VariantTrack)igvtrack;
+                return vtrack.getVariantToolTip((Variant)feature);
+            }
+            else return toString(info, nl);
         } else {
-            return toString(nl);
+            return toString(info, nl);
         }
     }
 
     @Override
     public String getChr() {
-        String chr= feature.getChr();
-        if (chr == null) chr = "";
+        String chr = feature.getChr();
+        if (chr == null) {
+            chr = "";
+        }
         return chr;
     }
 

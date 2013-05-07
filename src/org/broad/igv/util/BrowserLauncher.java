@@ -25,6 +25,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import org.broad.igv.ui.IGV;
+import org.broad.igv.ui.util.MessageUtils;
 
 /**
  * @author Joshua Gould
@@ -98,6 +100,8 @@ public class BrowserLauncher {
                 Desktop.getDesktop().browse(new URI(url));
             } catch (URISyntaxException e) {
                 log.error("Error opening url " + url, e);
+                
+                MessageUtils.showMessage("I could not open URL: "+url.toString()+", maybe copy/paste it in a browser yourself?");
             }
 
         }

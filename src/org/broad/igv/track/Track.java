@@ -151,6 +151,11 @@ public interface Track extends Persistable {
     
     void setCutoffScore(double d);
 
+    
+    int getTrackorder();
+    
+    void setTrackorder(int order);
+    
     void setWindowFunction(WindowFunction type);
 
     WindowFunction getWindowFunction();

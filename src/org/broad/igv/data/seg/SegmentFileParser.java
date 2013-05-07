@@ -80,7 +80,7 @@ public class SegmentFileParser implements SegFileParser {
         AsciiLineReader reader = null;
         String nextLine = null;
         int lineNumber = 0;
-        log.info("About to aprse: "+locator.getPath());
+        log.info("About to parse: "+locator.getPath());
         try {
             reader = ParsingUtils.openAsciiReader(locator);
 

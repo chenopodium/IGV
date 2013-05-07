@@ -309,7 +309,7 @@ public class Main {
                     locusString = val;
                     arg = val;
                 } else {
-                    log.info("Adding to preferences TMP: set " + key + "=" + val);
+                //    log.info("Adding to preferences TMP: set " + key + "=" + val);
                     if (IGV.DEBUG) MessageUtils.showMessage("Currently not handled specifically, adding it to preferences: "+ key + "=" + val);
                     if (prefs.contains(key)) {
                         prefs.put(key, val);

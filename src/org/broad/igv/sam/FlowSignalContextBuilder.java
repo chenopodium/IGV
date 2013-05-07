@@ -14,6 +14,7 @@ import org.apache.log4j.Logger;
  */
 public class FlowSignalContextBuilder {
 
+    private boolean show;
     private float[] flowSignals = null;
     /**
      * obsolete, will be removed soon
@@ -34,11 +35,12 @@ public class FlowSignalContextBuilder {
     //  private FlowSeq flowseq;
     static int NRMESS = 0;
 
-    public FlowSignalContextBuilder(FlowSeq flowseq, float[] oldSignals, float[] flowSignals, String flowOrder, int flowOrderStart,
+    public FlowSignalContextBuilder(boolean show, FlowSeq flowseq, float[] oldSignals, float[] flowSignals, String flowOrder, int flowOrderStart,
             byte[] readBases, int fromIdx, boolean readNegativeStrandFlag) {
         if (null == flowSignals || null == flowOrder || flowOrderStart < 0) {
             return;
         }
+        this.show = show;
         // this.flowseq = flowseq;
 
         this.flowSignals = flowSignals;
@@ -53,7 +55,7 @@ public class FlowSignalContextBuilder {
         this.readNegativeStrandFlag = readNegativeStrandFlag;
 
 
-        if (NRMESS < 10 && readNegativeStrandFlag) {
+        if (NRMESS < 10 && readNegativeStrandFlag || show) {
             p("nr bases=" + readBases.length + ",  flowsignals.length=" + flowSignals.length + ", softclippedbasecount (fromIndx)=" + fromIdx + ", flowOrderStart=" + flowOrderStart);
             NRMESS++;
         }
@@ -167,6 +169,7 @@ public class FlowSignalContextBuilder {
 
         int[] flowOrderIndices = new int[nrBasesInBlock];
 
+        
         while (flowStartAfterKeyOrBarcode >= 0 && flowStartAfterKeyOrBarcode < this.flowSignals.length && currentBasePosition < startBasePosition + nrBasesInBlock) {
             float curvalue = this.flowSignals[flowStartAfterKeyOrBarcode];
             float oldcurvalue = 0;
@@ -212,8 +215,11 @@ public class FlowSignalContextBuilder {
             blockFlowValues[flow] = new FlowValue[3][];
             // now we are at the beginning of a HP, and the flow number is flowOrderIndex
             // this.previous context
+            boolean showflow =false;// show && (startBasePosition > 1);
+            
             if (0 <= this.prevFlowSignalsStart && this.prevFlowSignalsStart <= this.prevFlowSignalsEnd && this.prevFlowSignalsEnd < this.flowSignals.length) {
                 blockFlowValues[flow][PREV] = new FlowValue[this.prevFlowSignalsEnd - this.prevFlowSignalsStart + 1];
+                
                 if (this.readNegativeStrandFlag) {
                     for (int flowpos = this.prevFlowSignalsEnd; this.prevFlowSignalsStart <= flowpos; flowpos--) {
                         char c = this.flowOrder.charAt((flowpos + this.flowOrderStart) % this.flowOrder.length());
@@ -222,6 +228,7 @@ public class FlowSignalContextBuilder {
                             fv.setOldvalue(oldSignals[flowpos]);
                         }
                         blockFlowValues[flow][PREV][this.prevFlowSignalsEnd - flowpos] = fv;
+                        if (showflow) p("blockFlow["+flow+", "+PREV+", this.prevFlowSignalsEnd - flowpos]="+fv);
 
                     }
                 } else {
@@ -232,6 +239,7 @@ public class FlowSignalContextBuilder {
                             fv.setOldvalue(oldSignals[flowpos]);
                         }
                         blockFlowValues[flow][PREV][flowpos - this.prevFlowSignalsStart] = fv;
+                        if (showflow) p("blockFlow["+flow+", "+PREV+", flowpos - this.prevFlowSignalsStart]="+fv);
                     }
                 }
             } else {
@@ -246,6 +254,7 @@ public class FlowSignalContextBuilder {
                 fv.setOldvalue(oldcurvalue);
             }
             blockFlowValues[flow][CURR][0] = fv;
+            if (showflow) p("blockFlow["+flow+", "+CURR+", 0]="+fv);
             // next context
             if (0 <= nextFlowSignalsStart && nextFlowSignalsStart <= nextFlowSignalsEnd && nextFlowSignalsEnd < this.flowSignals.length) {
 
@@ -261,6 +270,7 @@ public class FlowSignalContextBuilder {
                             fv.setOldvalue(oldSignals[flowpos]);
                         }
                         blockFlowValues[flow][NEXT][nextFlowSignalsEnd - flowpos] = fv;
+                        if (showflow) p("blockFlow["+flow+", "+NEXT+", "+(nextFlowSignalsEnd - flowpos)+"]="+fv);
                     }
                 } else {
                     for (int flowpos = nextFlowSignalsStart; flowpos <= nextFlowSignalsEnd; flowpos++) {
@@ -270,6 +280,7 @@ public class FlowSignalContextBuilder {
                             fv.setOldvalue(oldSignals[flowpos]);
                         }
                         blockFlowValues[flow][NEXT][flowpos - nextFlowSignalsStart] = fv;
+                        if (showflow) p("blockFlow["+flow+", "+NEXT+", "+(flowpos - nextFlowSignalsStart)+"]="+fv);
                     }
                 }
             } else {
@@ -286,6 +297,6 @@ public class FlowSignalContextBuilder {
     }
 
     private void p(String s) {
-      //  System.out.println("FlowSignalContextBuilder: " + s);
+        if (show) System.out.println("FlowSignalContextBuilder: " + s);
     }
 }

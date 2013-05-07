@@ -57,7 +57,7 @@ public class KaryoControlPanel extends javax.swing.JPanel {
         if (frame.getIconImage() != null) {
             kframe.setIconImage(frame.getIconImage());
         }
-        kframe.setSize(1200, 800);
+       // kframe.setSize(1600, 800);
         kframe.setVisible(true);
         kframe.toFront();
         // view.test1();
@@ -89,13 +89,18 @@ public class KaryoControlPanel extends javax.swing.JPanel {
             p("Adding SimpleTrackListPanel to west");
             panWest.add("North", trackp);
 
-            repaint();
-            view.repaint();
-           this.paintImmediately(0,0,1000,1000);
+      //      repaint();
+     //       view.repaint();
+     //      this.paintImmediately(0,0,1000,1000);
            this.invalidate();
            this.revalidate();
            panWest.invalidate();
            panWest.revalidate();
+           
+          
+        view.setSliderValue(10);
+        
+       
             p("=== control repainted");
         }
 //        FilterListPanel filterp = new FilterListPanel(manager);       

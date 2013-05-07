@@ -80,6 +80,10 @@ import java.util.List;
 import java.util.Map;
 import org.apache.commons.logging.Log;
 import org.broad.igv.session.RendererFactory;
+import org.broad.tribble.AsciiFeatureCodec;
+import org.broad.tribble.TabixFeatureReader;
+import org.broad.tribble.TribbleException;
+import org.broad.tribble.TribbleIndexedFeatureReaderToken;
 
 /**
  * User: jrobinso Date: Feb 14, 2010
@@ -245,7 +249,7 @@ public class TrackLoader {
             } else if (GFFFeatureSource.isGFF(locator.getPath())) {
                 loadGFFfile(locator, newTracks, genome);
             } else if (AbstractFeatureParser.canParse(locator.getPath())) {
-       //         p("load: loadFeatureFile for " + path);
+                p("load: loadFeatureFile for " + path);
                 loadFeatureFile(locator, newTracks, genome);
             } else if (typeString.endsWith(".mut")) { //  MutationParser.isMutationAnnotationFile(locator)) {
                 this.loadMutFile(locator, newTracks, genome);
@@ -463,6 +467,37 @@ public class TrackLoader {
         newTracks.addAll(tracks);
     }
 
+    public static final AbstractFeatureReader getFeatureReader(String featureFile, FeatureCodec codec) throws TribbleException {
+        return getFeatureReader(featureFile, codec, true);
+    }
+
+    /**
+     * factory for unknown file type,  could be ascii, binary, or could be tabix, or something else.
+     *
+     * @param featureResource the feature file to create from
+     * @param codec           the codec to read features with
+     */
+    public static final AbstractFeatureReader getFeatureReader(String featureResource, FeatureCodec codec, boolean requireIndex) throws TribbleException {
+
+        try {
+            // Test for tabix index
+            if (featureResource.endsWith(".gz") &&
+                    org.broad.tribble.util.ParsingUtils.resourceExists(featureResource + ".tbi")) {
+                if ( ! (codec instanceof AsciiFeatureCodec) )
+                    throw new TribbleException("Tabix indexed files only work with ASCII codecs, but received non-Ascii codec " + codec.getClass().getSimpleName());
+                return new TabixFeatureReader(featureResource, (AsciiFeatureCodec)codec);
+            }
+            // Not tabix => tribble index file (might be gzipped, but not block gzipped)
+            else {
+                return new TribbleIndexedFeatureReaderToken(featureResource, codec, requireIndex);
+            }
+        } catch (IOException e) {
+            throw new TribbleException.MalformedFeatureFile("Unable to create BasicFeatureReader using feature file ", featureResource, e);
+        } catch (TribbleException e) {
+            e.setSource(featureResource);
+            throw e;
+        }
+    }
     /**
      * Load the input file as a feature, mutation, or maf (multiple alignment)
      * file.
@@ -482,9 +517,11 @@ public class TrackLoader {
 
         FeatureCodec codec = CodecFactory.getCodec(locator.getPath(), genome);
         if (codec != null) {
-          //  p("Got codec: " + codec);
-            AbstractFeatureReader<Feature> bfs = AbstractFeatureReader.getFeatureReader(locator.getPath(), codec, false);
+            p("Got codec: " + codec.getClass().getName());
+            AbstractFeatureReader<Feature> bfs = getFeatureReader(locator.getPath(), codec, false);
+            p("Got reader: "+bfs.getClass().getName());
             Iterable<Feature> iter = bfs.iterator();
+            p("Got iterator: "+iter.getClass().getName());
             Object header = bfs.getHeader();
             TrackProperties trackProperties = getTrackProperties(header);
             List<FeatureTrack> tracks = AbstractFeatureParser.loadTracks(iter, locator, genome, trackProperties);

@@ -289,6 +289,16 @@ public class ParsingUtils {
                             log.info("Could not parse "+value+" to double for "+key);
                         }
                         trackProperties.setCutoffScore(d);
+                     } else if (key.equalsIgnoreCase("trackorder")) {
+                        log.info("parseTrackLine: Got "+key+"="+value);
+                        int i = 0;
+                        try {
+                            i = Integer.parseInt(value);
+                        }
+                        catch (Exception e) { 
+                            log.info("Could not parse "+value+" to double for "+key);
+                        }
+                        trackProperties.setTrackorder(i);
                     } else {
                         final String valueLowerCase = value.toLowerCase();
                         if (key.equals("itemrgb")) {

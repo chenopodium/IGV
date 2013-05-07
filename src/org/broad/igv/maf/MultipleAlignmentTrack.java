@@ -51,7 +51,7 @@ public class MultipleAlignmentTrack extends AbstractTrack {
     Rectangle visibleNameRect;
 
     Genome genome;
-
+ 
     /**
      * Map of chr alias -> "true" chromosome names.
      */

@@ -204,6 +204,9 @@ public class SingleTrackPanel extends JPanel {
     public void setSelected(boolean b) {
         this.box.setSelected(b);
     }
+    public boolean isSelected() {
+        return box.isSelected();
+    }
 
     public KaryoTrack getTrack() {
         return this.track;

@@ -29,7 +29,7 @@ import org.broad.tribble.Feature;
 public class PointRenderType extends RenderType {
     
     boolean errorShown = false;
-    
+   
     
     public PointRenderType(KaryoTrack ktrack, String name, String desc) {
         super(ktrack, name, desc, 3);
@@ -93,7 +93,7 @@ public class PointRenderType extends RenderType {
         return 2;
     }
     public double getMinPointWidth() {
-        return 2;
+        return 1;
     }
 
     

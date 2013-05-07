@@ -8,19 +8,28 @@ import com.iontorrent.data.ConfidenceDistribution;
 import com.iontorrent.data.Ionogram;
 import com.iontorrent.data.IonogramAlignment;
 import com.iontorrent.expmodel.ExperimentContext;
+import com.iontorrent.raw.ThreadDoneListener;
 import com.iontorrent.rawdataaccess.FlowValue;
 import com.iontorrent.rawdataaccess.ReadFlow;
 import com.iontorrent.torrentscout.explorer.process.*;
 import com.iontorrent.utils.*;
 import com.iontorrent.views.dist.DistPanel;
 import com.iontorrent.wellmodel.WellCoordinate;
+import com.iontorrent.wellmodel.WellFlowDataResult;
+import com.iontorrent.wellmodel.WellFlowDataResult.ResultType;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.awt.image.RenderedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import org.broad.igv.PreferenceManager;
@@ -48,19 +57,30 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
     private JScrollPane sheader;
     private JLabel corner;
     private boolean flowBased;
-    private SignalFetchPanel sig;
-
+    private static SignalFetchPanel sig;
+    private JPopupMenu slotMenu;
+    private AlignmentPanel currow;
+    private int curslot;
+    private ArrayList<ReadFlow> readflows;
+    private HashMap<ReadFlow, IonoSlot> flowmap;
+    private HashMap<String, WellFlowDataResult> timeseriesmap;
+    private FlowValue curFlowValue;
+    private static AlignmentControlPanel forpanel;
+    private static AlignmentControlPanel revpanel;
+    private static SimpleDialog fordia;
+    private static SimpleDialog revdia;
+    private boolean rawDataLoadProblem;
+            
     /**
      * Creates new form IonogramAlignmentPanel
      */
-    public AlignmentControlPanel(int location, IonogramAlignment alignment) {
+    public AlignmentControlPanel(int location, IonogramAlignment alignment, FlowValue curFlowValue) {
         this.location = location;
-
+        this.curFlowValue = curFlowValue;
         initComponents();
         this.setFocusable(true);
         setFocusTraversalKeysEnabled(false);
         addKeyListener(new java.awt.event.KeyAdapter() {
-
             public void keyPressed(java.awt.event.KeyEvent evt) {
                 formKeyTyped(evt);
             }
@@ -73,7 +93,37 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
         add("Center", main);
 
     }
-
+    public static void showForwardPanel(AlignmentControlPanel forpanel, String locus, ImageIcon image) {
+        
+        fordia = new SimpleDialog("Ionogram Alignment (forward) at " + locus, forpanel, 1200, 600, 200, 100, image.getImage());
+        forpanel.scrollToCenter();
+        fordia.setLocation(200, 100);
+    }
+     public static void showReversePanel(AlignmentControlPanel forpanel, String locus, ImageIcon image) {
+        
+        revdia = new SimpleDialog("Ionogram Alignment (reverse) at " + locus, forpanel, 1200, 600, 400, 600, image.getImage());
+        revpanel.scrollToCenter();
+        revdia.setLocation(200, 100);
+    }
+    public static AlignmentControlPanel getForPanel(int location, IonogramAlignment alignment, FlowValue curFlowValue) {
+        if (forpanel == null) forpanel = new AlignmentControlPanel(location, alignment, curFlowValue);
+        else {
+            forpanel.setCurFlowValue(curFlowValue);
+            forpanel.setAlignment(alignment, location);
+        }
+        return forpanel;
+    }
+     public static AlignmentControlPanel getRevPanel(int location, IonogramAlignment alignment, FlowValue curFlowValue) {
+        if (revpanel == null) revpanel = new AlignmentControlPanel(location, alignment, curFlowValue);
+        else {
+            revpanel.setCurFlowValue(curFlowValue);
+            revpanel.setAlignment(alignment, location);
+        }
+        return revpanel;
+    }
+    public void setCurFlowValue(FlowValue curFlowValue) {
+        this.curFlowValue = curFlowValue;
+    }
     public void recomputeAlignment() {
         alignment.recomputeAlignment();
         flowBased = true;
@@ -81,10 +131,15 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
         setAlignment(alignment, location);
     }
 
+    public boolean hasAlignment() {
+        return alignment != null;
+    }
+
     public void setAlignment(IonogramAlignment alignment, int chromosomepos) {
         location = chromosomepos;
         if (alignment == null) {
             p("Got no alignment");
+            JOptionPane.showMessageDialog(this, "I got no ionogram alignment to display");
             return;
         }
         this.ionograms = alignment.getIonograms();
@@ -126,9 +181,42 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
         int slotheight = prefs.getAsInt(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN) + AlignmentPanel.TOP;
         int slotwidth = prefs.getAsInt(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN) + AlignmentPanel.BORDER;
         int lblwidth = 40;
+        boolean found = true;
+        if (this.curFlowValue != null) {
+            found = false;
+        }
         for (Ionogram iono : ionograms) {
             // p("Adding ionogram to alignmentpanel: " + iono.toString());
-            AlignmentPanel ionopanel = new AlignmentPanel(iono, alignment, false);
+            WellCoordinate coord = iono.getCoord();
+            if (timeseriesmap != null) {
+                for (FlowValue fv : iono.getFlowvalues()) {
+                    ReadFlow rf = new ReadFlow(fv.getFlowPosition(), coord.getX(), coord.getY());
+                    WellFlowDataResult r = timeseriesmap.get(rf.toString());
+                    if (r != null) {
+                        p("found cached raw data for " + rf);
+                        fv.setTimeseries(r);
+                    }
+                }
+            }
+            final AlignmentPanel ionopanel = new AlignmentPanel(iono, alignment, false);
+            slotMenu = new JPopupMenu("Slot Actions");
+            JMenuItem item = new JMenuItem("<html>View raw trace for <b>this</b> slot</html>");
+            item.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent aEvt) {
+                    loadRaw(currow, curslot);
+
+                }
+            });
+            slotMenu.add(item);
+            item = new JMenuItem("<html>View raw traces for <b>all selected</b> slots</html>");
+            item.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent aEvt) {
+                    loadRawTracesForSelectedSlots();
+                }
+            });
+            slotMenu.add(item);
+
+            ionopanel.addMouseListener(new SlotPopupListener(ionopanel));
             //ionopanel.setToolTipText(iono.getFloworder());
             center.add(ionopanel);
             JLabel lbl = new JLabel(iono.getReadname());
@@ -140,8 +228,27 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
             lbl.setMaximumSize(new Dimension(lblwidth, slotheight));
             lbl.setPreferredSize(new Dimension(lblwidth, slotheight));
             labels.add(lbl);
-        }
 
+            if (this.curFlowValue != null) {
+                for (int i = 0; !found && i < iono.getSlotrow().length; i++) {
+                    FlowValue fv = iono.getSlotrow()[i];
+                    if (fv != null) {
+                        if (curFlowValue != null&& fv.getFlowPosition() == curFlowValue.getFlowPosition()) {
+                            // p("comparing with flow="+fv.getFlowPosition()+", v="+fv.getRawFlowvalue());
+                            if ((int) fv.getRawFlowvalue() == (int) curFlowValue.getRawFlowvalue()) {
+                                p("Getting raw data for this one: " + fv);
+                                this.currow = ionopanel;
+                                this.curslot = i;
+                                
+                                found = true;
+                                curFlowValue = null;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+       
         int totwidth = slotwidth * alignment.getNrslots() + AlignmentPanel.BORDER;
         int totheight = (nrionograms + 1) * slotheight;
         center.setSize(totwidth, totheight);
@@ -150,10 +257,11 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
         labels.setPreferredSize(new Dimension(lblwidth, totheight));
 
         center.setMinimumSize(new Dimension(totwidth, totheight));
-        //   p("Setting size of center: " + totheight + ", single height=" + slotheight);
+        p("Setting size of center: " + totwidth + "/" + totheight + ", single height=" + slotheight);
 
         slabels = new JScrollPane(labels, JScrollPane.VERTICAL_SCROLLBAR_NEVER, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scenter = new JScrollPane(center);
+        this.scrollToCenter();
         sheader = new JScrollPane(header, JScrollPane.VERTICAL_SCROLLBAR_NEVER, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
         slabels.getVerticalScrollBar().setModel(scenter.getVerticalScrollBar().getModel());
@@ -189,6 +297,237 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
         }
         // I know this is a hack, but it just won't repaint... not sure why
         paintImmediately(0, 0, 1000, 1000);
+        
+         if (!found) {
+             p("I was not able to find flow " + curFlowValue.getFlowPosition()+", base "+curFlowValue.getBase() + " in this alignment for some reason - just double click on the slot to load the raw data");
+            //OptionPane.showMessageDialog(this, "I was not able to find flow " + curFlowValue.getFlowPosition()+", base "+curFlowValue.getBase() + " in this alignment for some reason - just double click on the slot to load the raw data");
+        } else loadRaw(currow, curslot);
+    }
+
+    public void scrollToCenter() {
+        int w = center.getWidth();
+        int vw = (int) scenter.getViewport().getVisibleRect().getWidth();
+        p("scrollToCenter:  w=" + w + ", vw=" + vw);
+        scenter.getViewport().setViewPosition(new Point(w / 3, 0));
+        // scenter.getViewport().scrollRectToVisible(new Rectangle(center.getWidth()/2, center.getHeight()/2, 10,10));
+    }
+
+    private void loadRawTracesForSelectedSlots() throws HeadlessException {
+        final long loc = alignment.getChromosome_center_location();
+
+        final String chr = alignment.getChromosome();
+        // LinkUtils.linkToTSL(readnames, chr, loc);
+
+        final ArrayList<ReadFlow> readflows = new ArrayList<ReadFlow>();
+        if (flowmap == null) {
+            flowmap = new HashMap<ReadFlow, IonoSlot>();
+        }
+        if (timeseriesmap == null) {
+            timeseriesmap = new HashMap<String, WellFlowDataResult>();
+        }
+        int nrselected = 0;
+        for (Ionogram iono : this.alignment.getIonograms()) {
+            WellCoordinate coord = iono.getCoord();
+            for (int slot = 0; slot < iono.getSlotrow().length; slot++) {
+                if (iono.isSelected(slot)) {
+                    nrselected++;
+                    FlowValue fv = iono.getSlotrow()[slot];
+                    ReadFlow rf = new ReadFlow(fv.getFlowPosition(), coord.getX(), coord.getY());
+                    rf.setFlowValue(fv);
+                    IonoSlot is = new IonoSlot(iono, slot);
+                    flowmap.put(rf, is);
+                    readflows.add(rf);
+                }
+            }
+        }
+
+        if (nrselected == 0) {
+            int max = 5;
+            JOptionPane.showMessageDialog(IGV.getMainFrame(), "<html>I will get the first " + max + " raw traces of the <b>yellow slots</b> in the alignment."
+                    + "<br>Otherwise, just <b>select any slots</b> you would like me to get and click again<br>"
+                    + "Or  <b>double click</b> on a slot to load/view the raw trace!</html>");
+
+
+            for (Ionogram iono : this.alignment.getIonograms()) {
+                if (readflows.size() > max) {
+                    break;
+                }
+                iono.getChromosome_center_location();
+                int center = alignment.getCenterSlot();
+                WellCoordinate coord = iono.getCoord();
+                if (nrselected < max) {
+                    FlowValue fv = iono.getSlotrow()[center];
+                    if (fv != null) {
+                        p("got coord: " + coord + " and fv:" + fv);
+                        ReadFlow rf = new ReadFlow(fv.getFlowPosition(), coord.getX(), coord.getY());
+                        rf.setFlowValue(fv);
+                        IonoSlot is = new IonoSlot(iono, center);
+                        flowmap.put(rf, is);
+                        readflows.add(rf);
+                        nrselected++;
+                    }
+                }
+            }
+        }
+        loadReadFlows(readflows, rawDataLoadProblem || sig == null, true);
+    }
+
+    private class IonoSlot {
+
+        Ionogram iono;
+        int slot;
+
+        private IonoSlot(Ionogram currow, int curslot) {
+            this.iono = currow;
+            this.slot = curslot;
+        }
+    }
+
+    private void loadReadFlows(final ArrayList<ReadFlow> readflows, boolean askToCheck, boolean load) {
+        this.readflows = readflows;
+        String chr = alignment.getChromosome();
+
+        PreferenceManager prefs = PreferenceManager.getInstance();
+        String server = prefs.get(PreferenceManager.IONTORRENT_SERVER);
+        String expinfo = prefs.get(PreferenceManager.BAM_FILE);
+
+        ExperimentContext exp = new ExperimentContext();
+        exp.setExperimentInfo(expinfo);
+
+        boolean show = sig == null;
+        if (sig == null) {
+            sig = new SignalFetchPanel(exp, readflows, "location " + chr + ":" + location, new RawDataLoadedListener());
+
+
+        } else {
+            server = sig.getServer();
+            sig.setReadflows(readflows);
+            sig.setExp(exp);
+            sig.setTitle("location " + chr + ":" + location);
+
+        }
+        sig.setServer(server);
+        String servermsg = "<html><b>Please verify that the server <font color='770000'>"+server+"</font> is correct</b></html>";
+        p("loadReadFlows: load is "+load+", problems is: "+rawDataLoadProblem);
+        if (load) {
+            
+            if (show || rawDataLoadProblem || askToCheck) {
+                sig.showPanel(servermsg, askToCheck);
+            } else {
+                sig.loadDataFromServer(rawDataLoadProblem);
+            }
+        } else {
+            boolean ok = sig.showResult(readflows);
+            if (!ok) {
+                 this.rawDataLoadProblem = true;
+                sig.showPanel(servermsg, true);
+               
+            }
+            else {
+                p("all was ok");
+                rawDataLoadProblem = false;
+            }
+        }
+    }
+
+    private class RawDataLoadedListener implements ThreadDoneListener {
+
+        @Override
+        public void threadDone(boolean ok, String msg) {
+            p("Raw data loading thread is done, ok is: " + ok + ", msg ist: " + msg);
+            if (!ok) rawDataLoadProblem = true;
+            else rawDataLoadProblem = false;
+            if (msg != null && msg.indexOf("server")>0) {
+                // problem with server?
+                rawDataLoadProblem = true;
+            }
+            afterRawDataLoading();
+        }
+    }
+
+    private void afterRawDataLoading() {
+        // now open curve panel with read flows
+
+        boolean found = false;
+        Iterator it = flowmap.keySet().iterator();
+        p("afterRawDataLoading: " + flowmap.size() + " readflows");
+        for (; it.hasNext();) {
+            ReadFlow rf = (ReadFlow) it.next();
+            p("Got key rf: " + rf);
+            if (rf.getFlowdata() != null) {
+                p("Found raw data for rf " + rf);
+                IonoSlot is = flowmap.get(rf);
+
+                ArrayList<WellFlowDataResult> res = rf.getFlowdata();
+                for (WellFlowDataResult r : res) {
+                    p("Got data " + r + " for " + is.iono.getLocusinfo() + ", slot " + is.slot);
+
+                    if (r.getName().startsWith("sig") || r.getResultType().equals(ResultType.NN_RAW_BG)) {
+                        FlowValue fv = is.iono.getFlowValue(is.slot);
+                        fv.setTimeseries(r);
+                        timeseriesmap.put(rf.toString(), r);
+                        is.iono.setSelected(is.slot, false);
+                        p("Setting timeseries for " + fv);
+                        found = true;
+                    }
+                }
+
+            } else {
+                p("Found no data for rf " + rf);
+                rawDataLoadProblem = true;
+                
+            }
+            //flowmap.remove(rf);
+        }
+
+        if (found) {
+            p("Found at least one new timeseries, repainting view");
+            repaint();
+            center.repaint();
+            center.paintImmediately(0, 0, 1000, 1000);
+            paintImmediately(0, 0, 1000, 1000);
+            rawDataLoadProblem = false;
+        }
+        else {
+            rawDataLoadProblem = true;
+        }
+        p("rawdataproblem: "+rawDataLoadProblem);
+        if (rawDataLoadProblem) {
+            String servermsg = "<html><b>Please verify that the server <font color='770000'>"+sig.getServer()+"</font> is correct</b></html>";
+           sig.showPanel(servermsg, true);
+        }
+    }
+
+    private class SlotPopupListener extends MouseAdapter {
+
+        AlignmentPanel pan;
+
+        public SlotPopupListener(AlignmentPanel pan) {
+            this.pan = pan;
+        }
+
+        public void mouseReleased(MouseEvent e) {
+
+            if (e.isPopupTrigger()) {
+                // 
+                int slot = pan.getSlot(e);
+                currow = pan;
+                curslot = slot;
+                p("Popup: Current row: " + currow.getName() + ", curslot=" + slot);
+                slotMenu.show(e.getComponent(), e.getX(), e.getY());
+            }
+        }
+
+        public void mouseClicked(MouseEvent e) {
+            if (e.getClickCount() > 1) {
+                int slot = pan.getSlot(e);
+                currow = pan;
+                curslot = slot;
+                p("MouseClicked: Current row: " + currow.getName() + ", curslot=" + slot);
+                loadRaw(currow, curslot);
+
+            }
+        }
     }
 
     /**
@@ -201,7 +540,6 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
     private void initComponents() {
 
         topbar = new javax.swing.JToolBar();
-        btnRecompute = new javax.swing.JButton();
         btnDist = new javax.swing.JButton();
         btnRaw = new javax.swing.JButton();
         btnLeft = new javax.swing.JButton();
@@ -219,18 +557,6 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
         setLayout(new java.awt.BorderLayout());
 
         topbar.setRollover(true);
-
-        btnRecompute.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/msa_flows.png"))); // NOI18N
-        btnRecompute.setToolTipText("Recompute alignment by considering empty flows as well");
-        btnRecompute.setFocusable(false);
-        btnRecompute.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-        btnRecompute.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        btnRecompute.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnRecomputeActionPerformed(evt);
-            }
-        });
-        topbar.add(btnRecompute);
 
         btnDist.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/dist.png"))); // NOI18N
         btnDist.setToolTipText("show confidence distribution for currently selected slot");
@@ -344,7 +670,7 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
 
         add(topbar, java.awt.BorderLayout.PAGE_START);
 
-        leftbar.setOrientation(1);
+        leftbar.setOrientation(javax.swing.SwingConstants.VERTICAL);
         leftbar.setRollover(true);
 
         zoomIn.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/zoom-in.png"))); // NOI18N
@@ -473,70 +799,46 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
         getListener().locationChanged(location);
 
     }
-    private void btnRawActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRawActionPerformed
 
-
-        final long loc = alignment.getChromosome_center_location();
-
-        final String chr = alignment.getChromosome();
-        // LinkUtils.linkToTSL(readnames, chr, loc);
-
+    private void loadRaw(AlignmentPanel pan, int slot) {
+        if (pan == null) {
+            p("Got no panel");
+            return;
+        }
+        Ionogram iono = pan.getIonogram();
+        FlowValue fv = iono.getFlowValue(slot);
         final ArrayList<ReadFlow> readflows = new ArrayList<ReadFlow>();
-
-        int nrselected = 0;
-        for (Ionogram iono : this.alignment.getIonograms()) {
-            int center = alignment.getCenterSlot();
-            if (iono.isSelected(center)) {
-                nrselected++;
-            }
-        }
-        int max = 10;
-        if (nrselected == 0) {
-            JOptionPane.showMessageDialog(IGV.getMainFrame(), "I will get the first " + max + " raw traces in the alignment.\nOtherwise, just select the (center) flows you would like me to get!");
-        }
-        for (Ionogram iono : this.alignment.getIonograms()) {
-            if (readflows.size() > max) {
-                break;
-            }
-            WellCoordinate coord = iono.getCoord();
-
-            iono.getChromosome_center_location();
-            int center = alignment.getCenterSlot();
-            if (nrselected < 1 || iono.isSelected(center)) {
-                FlowValue fv = iono.getSlotrow()[center];
-
-                if (fv != null) {
-                    p("got coord: " + coord + " and fv:" + fv);
-                    ReadFlow rf = new ReadFlow(fv.getFlowPosition(), coord.getX(), coord.getY());
-                    rf.setFlowValue(fv);
-                    readflows.add(rf);
-                }
+        WellCoordinate coord = iono.getCoord();
+        ReadFlow rf = new ReadFlow(fv.getFlowPosition(), coord.getX(), coord.getY());
+        rf.setFlowValue(fv);
+        readflows.add(rf);
+        boolean gotRaw = false;
+        if (this.timeseriesmap != null) {
+            WellFlowDataResult r = timeseriesmap.get(rf.toString());
+            if (r != null) {
+                p("Already got result");
+                ArrayList<WellFlowDataResult> res = new ArrayList<WellFlowDataResult>();
+                res.add(r);
+                gotRaw = true;
+                rf.setFlowdata(res);
             }
         }
 
-        PreferenceManager prefs = PreferenceManager.getInstance();
-        String server = prefs.get(PreferenceManager.IONTORRENT_SERVER);
-        String expinfo = prefs.get(PreferenceManager.BAM_FILE);
-
-        ExperimentContext exp = new ExperimentContext();
-        exp.setExperimentInfo(expinfo);
-
-        boolean show = sig == null;
-        if (sig == null) {
-            sig = new SignalFetchPanel(exp, readflows, "location " + chr + ":" + location);
-
+        if (flowmap == null) {
+            flowmap = new HashMap<ReadFlow, IonoSlot>();
+            timeseriesmap = new HashMap<String, WellFlowDataResult>();
+        }
+        IonoSlot is = new IonoSlot(currow.getIonogram(), curslot);
+        flowmap.put(rf, is);
+        if (gotRaw) {
+            loadReadFlows(readflows, false, false);
+            afterRawDataLoading();
         } else {
-            sig.setReadflows(readflows);
-            sig.setExp(exp);
-            sig.setTitle("location " + chr + ":" + location);
-
+            this.loadReadFlows(readflows, false, true);
         }
-        sig.setServer(server);
-        if (show || sig.isShow()) {
-            sig.showPanel();
-        } else {
-            sig.loadDataFromServer();
-        }
+    }
+    private void btnRawActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRawActionPerformed
+        loadRawTracesForSelectedSlots();
 
     }//GEN-LAST:event_btnRawActionPerformed
 
@@ -576,10 +878,6 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
         changeIonoHeight(this.iono_height - 5);
     }//GEN-LAST:event_zoomOutActionPerformed
 
-    private void btnRecomputeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRecomputeActionPerformed
-        recomputeAlignment();
-    }//GEN-LAST:event_btnRecomputeActionPerformed
-
     private void btnRefreshActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRefreshActionPerformed
         refresh();
     }//GEN-LAST:event_btnRefreshActionPerformed
@@ -606,7 +904,6 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
         final ArrayList<DistPanel> pans = DistPanel.createPanels(distributions, 3);
         for (final DistPanel pan : pans) {
             LocationListener listener = new LocationListener() {
-
                 @Override
                 public void locationChanged(int newslot) {
                     log.info("Got new location from panel: " + newslot + ", (old location was: " + location + ")");
@@ -678,6 +975,7 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
     }
 
     private void p(String msg) {
+        System.out.println("AlignmentControlpanel: " + msg);
         log.info(msg);
     }
 
@@ -690,7 +988,6 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
     private javax.swing.JButton btnLeft;
     private javax.swing.JButton btnLink;
     private javax.swing.JButton btnRaw;
-    private javax.swing.JButton btnRecompute;
     private javax.swing.JButton btnRefresh;
     private javax.swing.JButton btnRight;
     private javax.swing.JButton btnSave;

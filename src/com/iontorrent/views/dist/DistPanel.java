@@ -905,15 +905,17 @@ public class DistPanel extends javax.swing.JPanel {
             }
         }
         PreferenceManager prefs = PreferenceManager.getInstance();
-        String server = prefs.get(PreferenceManager.IONTORRENT_SERVER);
+        String server = prefs.getTemp("server");
+        if (server == null)server = prefs.getTemp("SERVER");
+        p("Gpt server:"+server);
         String expinfo = prefs.get(PreferenceManager.BAM_FILE);
 
         ExperimentContext exp = new ExperimentContext();
         exp.setExperimentInfo(expinfo);
 
-        SignalFetchPanel sig = new SignalFetchPanel(exp, readflows, distributions.get(0).getInformation());
+        SignalFetchPanel sig = new SignalFetchPanel(exp, readflows, distributions.get(0).getInformation(), null);
         sig.setServer(server);
-        sig.showPanel();
+        sig.showPanel(false);
 
     }//GEN-LAST:event_btnRawActionPerformed
 

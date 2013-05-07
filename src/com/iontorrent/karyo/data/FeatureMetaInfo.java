@@ -26,18 +26,28 @@ public abstract class FeatureMetaInfo {
     protected HashMap<String, Range> attrangemap;
     private int msgs;
     private String trackname;
+    private KaryoTrack track;
     
-    
-    public FeatureMetaInfo(String trackname) {
+    public FeatureMetaInfo(KaryoTrack track, String trackname) {
         atts = new ArrayList<String>();
+        this.track = track;
         this.trackname = trackname;
         attvaluesmap = new HashMap<String, ArrayList<String>>();
         attrangemap = new HashMap<String, Range>();
     }
-     public String getScoreFieldName(Feature f) {
-        return "Score";
+    public KaryoTrack getTrack() {
+        return track;
     }
-
+    
+     public String getScoreFieldName(Feature f) {        
+        if (track.getRenderType()!= null) return track.getRenderType().getKaryoScoreName();
+        else return "Score";
+    } 
+    public String getScoreLabel() {        
+        if (track.getRenderType()!= null) return track.getRenderType().getKaryoScoreLabel();
+        else return "Score";
+    } 
+     
     public double getValue(String relevantAttName, Feature f) {
         p("getValue(String relevantAttName, Feature f): not implemented");
         return 0;
@@ -93,20 +103,20 @@ public abstract class FeatureMetaInfo {
      //   p("Creating metainfo for feature " + samplefeature.getClass().getName());
         if (samplefeature instanceof Variant) {
     //        p("Creating variant meta info");
-            return new VariantMetaInfo(track.getTrackDisplayName());
+            return new VariantMetaInfo(track, track.getTrackDisplayName());
         } else if (samplefeature instanceof Segment) {
             Segment f = (Segment) samplefeature;            
    //         p("Got type:" + f.getDescription() + ", creating SegmentMetaInfo");
-            return new SegmentMetaInfo(track.getTrackDisplayName());
+            return new SegmentMetaInfo(track,track.getTrackDisplayName());
         } else if (samplefeature instanceof LocusScore) {
             LocusScore f = (LocusScore) samplefeature;
   //          p("Got type:" + f+ ", creating LocusScoreMetaInfo");
-            return new LocusScoreMetaInfo(track.getTrackDisplayName());
+            return new LocusScoreMetaInfo(track,track.getTrackDisplayName());
         } else if (samplefeature instanceof BasicFeature) {
 
             BasicFeature f = (BasicFeature) samplefeature;
    //         p("Got type:" + f.getType());
-            return new BedMetaInfo(track.getTrackDisplayName());
+            return new BedMetaInfo(track,track.getTrackDisplayName());
         } else {
             err("Don't know what meta info to use for " + samplefeature.getClass().getName());
             return null;
