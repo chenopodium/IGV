@@ -19,9 +19,9 @@ public class LinkUtils {
     private static org.apache.log4j.Logger log = org.apache.log4j.Logger.getLogger(LinkUtils.class);
     
     public static boolean linkToTSL(String readnames, String chromosome, long location) {
-        String server = PreferenceManager.getInstance().get(PreferenceManager.IONTORRENT_SERVER);
+        String server = PreferenceManager.getInstance().get(IonTorrentPreferencesManager.IONTORRENT_SERVER);
         
-        String expinfo = PreferenceManager.getInstance().get(PreferenceManager.BAM_FILE);        
+        String expinfo = PreferenceManager.getInstance().get(IonTorrentPreferencesManager.BAM_FILE);        
         ExperimentContext exp = new ExperimentContext();        
         exp.setExperimentInfo(expinfo);
         long id = exp.getId();

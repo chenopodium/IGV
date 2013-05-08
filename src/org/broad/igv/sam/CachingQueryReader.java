@@ -10,7 +10,7 @@
  */
 
 package org.broad.igv.sam;
-
+ 
 
 import net.sf.samtools.util.CloseableIterator;
 import org.apache.log4j.Logger;

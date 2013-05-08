@@ -16,6 +16,7 @@
 package org.broad.igv.batch;
 
 import com.iontorrent.utils.ErrorHandler;
+import com.iontorrent.utils.IonTorrentCommandExecutor;
 import com.iontorrent.utils.StringTools;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
@@ -66,22 +67,17 @@ public class CommandExecutor {
 
     public String execute(String command) {
 
-       // command = StringTools.replace(command, "?", " ");
-//        if (command.startsWith("set")) {
-//            int eq = command.indexOf("=");
-//            if (eq > 0 && eq < 15) {
-//                String left = command.substring(0, eq);
-//                String right = command.substring(eq+1);
-//                command = left+" "+right;
-//                log.info("Command is now: "+command);
-//            }
-//        }
         List<String> args = getArgs(StringUtils.breakQuotedString(command, ' ').toArray(new String[]{}));
 
-        String result = "OK";
-
-      //  log.info("Executing: " + command);
-       
+        IonTorrentCommandExecutor itexe = new IonTorrentCommandExecutor();
+        String result = itexe.execute(command);
+        if (result == null || !result.equalsIgnoreCase("NOTHANDLED")) {
+            log.info("Command was handled with IonTorrentCommandExecutor");
+            return result;
+        }
+        
+        result = "OK";
+        
         try {
             if (args.size() > 0) {
                 String cmd = args.get(0).toLowerCase();
@@ -148,10 +144,6 @@ public class CommandExecutor {
                 } else if (cmd.equalsIgnoreCase("get")) {
                     log.info("Get, param1: "+param1);
                     if (param1 != null) {
-//                        if (IGV.DEBUG) {
-//                            MessageUtils.showMessage("CommandExecutor: returning " + param1 + "=" + param2);
-//                        }
-                        
                         result =  prefs.getTemp(param1);
                         if (result == null) result = " ";
                         

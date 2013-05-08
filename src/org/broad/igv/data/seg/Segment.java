@@ -62,31 +62,39 @@ public class Segment implements LocusScore {
         return new Segment(start, extendedStart, end, extendedEnd, score, description);
     }
 
+    /** Added by CR */
+    @Override
     public String getChr() {
         return null;  //To change body of implemented methods use File | Settings | File Templates.
     }
-
+/** Added by CR */
+    @Override
     public int getStart() {
         return start;
     }
-
+/** Added by CR */
+    @Override
     public int getEnd() {
         return end;
     }
-
+/** Added by CR */
+    @Override
     public float getScore() {
         return score;
     }
-
+/** Added by CR */
+    @Override
     public void setStart(int start) {
         this.start = start;
     }
-
+/** Added by CR */
+    @Override
     public void setEnd(int end) {
         this.end = end;
     }
 
 
+    @Override
     public String getValueString(double position, WindowFunction ignored) {
         String valueString = "Value: " + getScore();
         if (description != null) {

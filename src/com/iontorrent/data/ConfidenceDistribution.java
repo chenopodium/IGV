@@ -7,6 +7,7 @@ package com.iontorrent.data;
 import com.iontorrent.expmodel.ExperimentContext;
 import com.iontorrent.expmodel.FlowSeq;
 import com.iontorrent.rawdataaccess.FlowValue;
+import com.iontorrent.utils.IonTorrentPreferencesManager;
 import java.util.ArrayList;
 import java.util.Iterator;
 
@@ -118,7 +119,7 @@ public class ConfidenceDistribution {
         ArrayList< ArrayList<FlowValue>> allelelists = new ArrayList< ArrayList<FlowValue>>();
         exp = new ExperimentContext();
         PreferenceManager prefs = PreferenceManager.getInstance();
-        String expinfo = prefs.get(PreferenceManager.BAM_FILE);
+        String expinfo = prefs.get(IonTorrentPreferencesManager.BAM_FILE);
         exp.setExperimentInfo(expinfo);
 
         boolean hasOld = false;
@@ -145,7 +146,7 @@ public class ConfidenceDistribution {
                     continue;
                 }
                 // also throw away positions near the end if we have the same base until the end if the user preference is set that way
-                boolean hideFirstHPs = PreferenceManager.getInstance().getAsBoolean(PreferenceManager.IONTORRENT_FLOWDIST_HIDE_FIRST_HP);
+                boolean hideFirstHPs = PreferenceManager.getInstance().getAsBoolean(IonTorrentPreferencesManager.IONTORRENT_FLOWDIST_HIDE_FIRST_HP);
 
                 if (hideFirstHPs) {
                     char baseatpos = (char) alignment.getBase(location);

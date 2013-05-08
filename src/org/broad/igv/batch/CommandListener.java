@@ -17,11 +17,10 @@
  */
 package org.broad.igv.batch;
 
-import com.iontorrent.utils.ErrorHandler;
-import com.iontorrent.utils.StringTools;
+import com.iontorrent.utils.IonTorrentCommandHandler;
+import com.iontorrent.utils.IonTorrentPreferencesManager;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
-import org.broad.igv.feature.genome.GenomeManager;
 import org.broad.igv.ui.IGV;
 import org.broad.igv.util.StringUtils;
 
@@ -38,10 +37,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import org.broad.igv.PreferenceManager;
-import org.broad.igv.batch.CommandExecutor.LoadRunnable;
-import org.broad.igv.ui.util.MessageUtils;
 import org.broad.igv.util.LongRunningTask;
-import org.openide.util.Exceptions;
 
 public class CommandListener implements Runnable {
 
@@ -71,6 +67,9 @@ public class CommandListener implements Runnable {
         }
     }
 
+    public static CommandListener getListener() {
+        return listener;        
+    }
     private CommandListener(int port) {
         this.port = port;
         listenerThread = new Thread(this);
@@ -117,27 +116,23 @@ public class CommandListener implements Runnable {
 
     /**
      * Process a client session.  Loop continuously until client sends the "halt" message, or closes the connection.
-     *
+     * Changed by CR to make it more resilient
      * @param cmdExe
      * @throws IOException
      */
     private void processClientSession(CommandExecutor cmdExe) throws IOException {
         PrintWriter out = null;
         BufferedReader in = null;
-
         
         try {
-        //    log.info("processClientSession");
             out = new PrintWriter(clientSocket.getOutputStream(), true);
             in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             String inputLine;
 
             while (!halt && (inputLine = in.readLine()) != null) {
-                long start = System.currentTimeMillis();
                 String cmd = inputLine;
                 cmd = cmd.replace("%20", " ");
                 cmd = cmd.replace("GET /?", "GET /");
-                //cmd = cmd.replace("GET /", "GET ");
                 log.info("Got command line:"+cmd);
                 if (cmd.startsWith("GET")) {
                     String command = null;
@@ -149,21 +144,19 @@ public class CommandListener implements Runnable {
                         sendHTTPResponse(out, "ERROR unexpected command line (< than 1 elements in command): " + inputLine);
                         return;
                     } else {
-                      //  log.info("First part:"+tokens[1]);
                         String[] parts = tokens[1].split("\\?", 2);
                         if (parts.length < 1) {
                             sendHTTPResponse(out, "ERROR unexpected command line: " + inputLine);
                             return;
                         } else {
                             if (parts.length>1) {
-                                command = parts[0];
-                                log.info("parsing parts[1]="+parts[1]+", setting command to "+command);
+                                command = parts[0];                               
                                 params = parseParameters(parts[1]);
                             }
                             else {
-                                command = tokens[1];
+                               command = tokens[1];
                                log.info("setting command to "+command);
-                                params =  new HashMap<String, String>();
+                               params =  new HashMap<String, String>();
                             }
                         }
                     }
@@ -186,10 +179,7 @@ public class CommandListener implements Runnable {
                     // If no callback was specified write back a "no response" header
                     if (callback == null) {
                         sendHTTPResponse(out, null);
-                    }
-                    long end = System.currentTimeMillis();
-                    long diff = end-start;
-                    log.info("Command done: "+diff+" ms");
+                    }                    
                     // http sockets are used for one request onle
                     return;
 
@@ -239,9 +229,11 @@ public class CommandListener implements Runnable {
     private static final String CONTENT_TYPE_TEXT_HTML = "text/html";
     private static final String CONNECTION_CLOSE = "Connection: close";
     private static final String NO_CACHE = "Cache-Control: no-cache, no-store";
+    /** CR: to allow the control of the IGV client from a JavaScript method in a browser */
     private static final String ACCESSCONTROL ="Access-Control-Allow-Origin: *"; 
 
-    private void sendHTTPResponse(PrintWriter out, String result) {
+    
+    public void sendHTTPResponse(PrintWriter out, String result) {
 
         out.println(result == null ? HTTP_NO_RESPONSE : HTTP_RESPONSE);
         if (result != null) {
@@ -253,14 +245,14 @@ public class CommandListener implements Runnable {
             out.print(CRNL);
             out.print(CONNECTION_CLOSE);
             out.print(CRNL);
+            /** CR: to allow the control of the IGV client from a JavaScript method in a browser */
             out.print(ACCESSCONTROL);
             out.print(CRNL);
             out.print(CRNL);
             out.print(result);
             out.print(CRNL);
         }
-        out.close();
-        p("sent response "+result);
+        out.close();        
     }
 
     /**
@@ -269,8 +261,6 @@ public class CommandListener implements Runnable {
 
     private String processGet(String command, Map<String, String> params, CommandExecutor cmdExe, PrintWriter out) throws IOException {
 
-        //if (DEBUG) MessageUtils.showMessage("CommandListener: got command: "+command);
-       // log.info("Processing get: "+command);
         String result = "OK";
         final Frame mainFrame = IGV.getMainFrame();
 
@@ -283,12 +273,12 @@ public class CommandListener implements Runnable {
 
         /** from what server was IGV started? Used to link to other tools/apps */
         
-        String server = params.get("server");
-        if (server == null || server.trim().length()<1) server = PreferenceManager.getInstance().get(PreferenceManager.IONTORRENT_SERVER);
-        else {
-            log.info("Got server:"+server);
-            PreferenceManager.getInstance().put(PreferenceManager.IONTORRENT_SERVER, server);
+        IonTorrentCommandHandler ithandler = IonTorrentCommandHandler.getCommandHandler();
+        result = ithandler.processGet(command, params, cmdExe, out);
+        if (result == null || !result.equals("NOTHANDLED")) {
+            return result;
         }
+        
         if (command.equals("/load")) {
             String file = params.get("file");
             if (file == null) {
@@ -303,7 +293,6 @@ public class CommandListener implements Runnable {
 
 
             if (file != null) {
-                PreferenceManager.getInstance().put(PreferenceManager.IONTORRENT_RESULTS, file);
                 String genome = params.get("genome");
                 if (genome == null) {
                     genome = params.get("db");  // <- UCSC track line param
@@ -320,7 +309,6 @@ public class CommandListener implements Runnable {
 
                 String mergeValue = params.get("merge");
                 if (mergeValue != null) mergeValue = URLDecoder.decode(mergeValue, "UTF-8");
-
 
                 // Default for merge is "false" for session files,  "true" otherwise
                 boolean merge;
@@ -344,17 +332,13 @@ public class CommandListener implements Runnable {
                 result = "OK (executing load "+file+" in thread)";
                 sendHTTPResponse(out, result);
                 result = null;
-                LongRunningTask.submit(new CommandExecutor.LoadRunnable(file, locus, merge, name, params, cmdExe));
-                // result = file;//cmdExe.loadFiles(file, locus, merge, name, params);
+                LongRunningTask.submit(new CommandExecutor.LoadRunnable(file, locus, merge, name, params, cmdExe));             
                
             } else {
                 return ("ERROR Parameter \"file\" is required");
             }
         } else if (command.equals("/reload") || command.equals("/goto") || command.equals("goto")) {
-            String locus = params.get("locus");
-         //   log.info("Got locus: "+locus);
-            //Runnable r = new GotoRunnable(locus);
-           // r.run();
+            String locus = params.get("locus");        
             result = "OK (executing "+command+" in thread)";
             sendHTTPResponse(out, result);
             result = null;
@@ -370,15 +354,10 @@ public class CommandListener implements Runnable {
                 String key=(String) it.next();
                 String val=params.get(key);
                 args += " "+key;
-                p("Adding param "+key+" to args");
-                if (val != null) args += "="+val;
-                p("Adding ="+val+" to args");
-            }
-          //  if (IGV.DEBUG) MessageUtils.showMessage("CommandListener: Got other command: "+command+args);
+                if (val != null) args += "="+val;             
+            }          
             result = "OK (executing "+command+" in thread)";
             String cmd = command + args;
-//            cmd = StringTools.replace(cmd, "?", " ");
-//            cmd = StringTools.replace(cmd, "=", " ");
             if (cmd.startsWith("get")) {
                 result = cmdExe.execute(command+args);
             }
@@ -389,7 +368,6 @@ public class CommandListener implements Runnable {
                 LongRunningTask.submit(new OtherRunnable(command+args, cmdExe));
             }            
         }
-
         return result;
     }
      private class OtherRunnable implements Runnable{

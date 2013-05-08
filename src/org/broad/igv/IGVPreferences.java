@@ -53,6 +53,7 @@ public class IGVPreferences {
         this.prefFile = null;
     }
 
+    /** CR: simple utility method to check for a key in userPreferences */
     public boolean contains(String key) {
         return userPreferences.containsKey(key);
     }

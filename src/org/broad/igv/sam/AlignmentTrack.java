@@ -14,6 +14,7 @@ package org.broad.igv.sam;
 import com.iontorrent.data.*;
 import com.iontorrent.guiutils.GuiUtils;
 import com.iontorrent.rawdataaccess.FlowValue;
+import com.iontorrent.utils.IonTorrentPreferencesManager;
 import com.iontorrent.utils.LocationListener;
 import com.iontorrent.utils.SimpleDialog;
 import com.iontorrent.views.alignment.AlignmentControlPanel;
@@ -1909,7 +1910,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
     private void showIonogramAlignment(final int center_location, final ReferenceFrame frame, FlowValue fv) {
         // first get parameters from preferences such as how many bases to the left/right we want to consider
         PreferenceManager prefs = PreferenceManager.getInstance();
-        int nrbases_left_right = prefs.getAsInt(PreferenceManager.IONTORRENT_NRBASES_IONOGRAM_ALIGN);
+        int nrbases_left_right = prefs.getAsInt(IonTorrentPreferencesManager.IONTORRENT_NRBASES_IONOGRAM_ALIGN);
         nrbases_left_right = Math.max(2, nrbases_left_right);
         nrbases_left_right = Math.min(20, nrbases_left_right);
         final int bases = nrbases_left_right;

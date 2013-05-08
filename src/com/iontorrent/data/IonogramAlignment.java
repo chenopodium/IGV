@@ -19,6 +19,7 @@ import org.broad.igv.ui.panel.ReferenceFrame;
 import com.iontorrent.sam2flowgram.flowalign.FlowOrder;
 
 import com.iontorrent.sam2flowgram.util.AlignUtil;
+import com.iontorrent.utils.IonTorrentPreferencesManager;
 
 /**
  * compute the slots/flows for a list of subread ionograms
@@ -68,7 +69,7 @@ public class IonogramAlignment {
          boolean reverse = !forward;
         int alignmentwidth = nrbases_left_right * 2 + 1;
         PreferenceManager prefs = PreferenceManager.getInstance();
-        float maxNrReads = prefs.getAsFloat(PreferenceManager.IONTORRENT_MAXNREADS_IONOGRAM_ALIGN);
+        float maxNrReads = prefs.getAsFloat(IonTorrentPreferencesManager.IONTORRENT_MAXNREADS_IONOGRAM_ALIGN);
 
 
         ArrayList<Ionogram> ionograms = new ArrayList<Ionogram>();
@@ -220,7 +221,7 @@ public class IonogramAlignment {
             if (fv != null) {
                 curloc = fv.getBasecall_location();
                 // also throw away positions near the end if we have the same base until the end if the user preference is set that way
-                boolean hideFirstHPs = PreferenceManager.getInstance().getAsBoolean(PreferenceManager.IONTORRENT_FLOWDIST_HIDE_FIRST_HP);
+                boolean hideFirstHPs = PreferenceManager.getInstance().getAsBoolean(IonTorrentPreferencesManager.IONTORRENT_FLOWDIST_HIDE_FIRST_HP);
                 int posinread = fv.getFlowPosition();
                 if (hideFirstHPs) {
                     boolean hp = posinread == 0; // also add if last position, which we don't know as we need the read length in iono || posinread == iono.g                    

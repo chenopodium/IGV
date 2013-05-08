@@ -14,6 +14,7 @@
  */
 package org.broad.igv;
 
+import com.iontorrent.utils.IonTorrentPreferencesManager;
 import org.apache.log4j.Logger;
 import org.broad.igv.maf.MAFManager;
 import org.broad.igv.renderer.ColorScaleFactory;
@@ -59,29 +60,6 @@ public class PreferenceManager implements PropertyManager {
     public static final String CHART_AUTOSCALE = "CHART.AUTOSCALE";
     public static final String CHART_SHOW_DATA_RANGE = "CHART.SHOW_DATA_RANGE";
 
-    /** Added by Chantal Roth, June 25th 2012 */
-    public static final String IONTORRENT_FLOWDIST_HIDE_FIRST_HP = "IONTORRENT.FLOWDIST_HIDE_FIRST_HP";
-    public static final String IONTORRENT_FLOWDIST_BINSIZE = "IONTORRENT.FLOWDIST_BINSIZE";
-    public static final String IONTORRENT_FLOWDIST_CHARTTYPE = "IONTORRENT.FLOWDIST_CHARTTYPE";
-    public static final String IONTORRENT_SERVER = "IONTORRENT.SERVER";
-    public static final String IONTORRENT_RESULTS = "IONTORRENT.RESULTS";
-    public static final String STARTUP_AUTOLOAD_GENOME = "STARTUP.AUTOLOAD_GENOME";
-    public static final String BAM_FILE = "BAM.FILENAME";
-    /** the number of bases to the left and right of the current location we wish to include in the ionogram alignment view */
-    public static final String IONTORRENT_NRBASES_IONOGRAM_ALIGN= "IONTORRENT.NRBASES_IONOGRAM_ALIGN";
-    /** the currently preferred height of one line in the ionogram alignment (can be zoomed, and we want to remember the setting */
-    public static final String IONTORRENT_HEIGHT_IONOGRAM_ALIGN= "IONTORRENT.HEIGHT_IONOGRAM_ALIGN";
-    /** the maximum number of reads we want to include in the ionogram alignment (showing hundreds may not make sense  :-)*/
-    public static final String IONTORRENT_MAXNREADS_IONOGRAM_ALIGN= "IONTORRENT.MAXNRREADS_IONOGRAM_ALIGN";
-    public static final String IONTORRENT_IONOGRAM_ALIGN_DRAWTYPE= "IONTORRENT.ONOGRAM_ALIGN_DRAWTYPE";
-    public static final String IONTORRENT_BAM_HAS_FLOWVALUES= "IONTORRENT.BAM_HAS_FLOWVALUES";
-    
-    
-    /** Added by Chantal Roth for whole genome Karyo views */ 
-    public static final String KARYO_ALLOW_BAMFILES= "KARYO.ALLOW_BAMFILES";
-    public static final String KARYO_ALLOW_GENEFILES= "KARYO.ALLOW_GENEFILES";
-    public static final String KARYO_ALLOW_EXPFILES= "KARYO.ALLOW_EXPFILES";
-    
     public static final String SAM_ALLELE_THRESHOLD = "SAM.ALLELE_THRESHOLD";
     public static final String SAM_QUALITY_THRESHOLD = "SAM.QUALITY_THRESHOLD";
     public static final String SAM_MAX_INSERT_SIZE_THRESHOLD = "SAM.INSERT_SIZE_THRESHOLD";
@@ -274,11 +252,13 @@ public class PreferenceManager implements PropertyManager {
     }
 
     private static PreferenceManager instance = new PreferenceManager();
-
+    private static IonTorrentPreferencesManager iontorrentinstance;
+    
     private PreferenceManager() {
         preferences = new IGVPreferences();
         temporaryValues = new HashMap<String, String>();
         initDefaultValues();
+        iontorrentinstance = new IonTorrentPreferencesManager(defaultValues);
     }
     public Map<String, String> getTempProperties() {
         return temporaryValues;
@@ -1008,20 +988,6 @@ public class PreferenceManager implements PropertyManager {
         defaultValues.put(SHOW_MISSING_DATA_KEY, "false");
         defaultValues.put(SHOW_SINGLE_TRACK_PANE_KEY, "false");
         defaultValues.put(SHOW_EXPAND_ICON, "false");
-
-        defaultValues.put(IONTORRENT_FLOWDIST_HIDE_FIRST_HP, "true");
-        defaultValues.put(IONTORRENT_IONOGRAM_ALIGN_DRAWTYPE, "peak");
-        defaultValues.put(IONTORRENT_BAM_HAS_FLOWVALUES, "false");
-        defaultValues.put(IONTORRENT_FLOWDIST_BINSIZE, "15");
-        defaultValues.put(IONTORRENT_FLOWDIST_CHARTTYPE, "LINE");
-        defaultValues.put(IONTORRENT_SERVER, "ioneast.ite");
-        defaultValues.put(IONTORRENT_RESULTS, "/results/analysis/output/Home/");
-        defaultValues.put(IONTORRENT_NRBASES_IONOGRAM_ALIGN, "5");
-        defaultValues.put(IONTORRENT_HEIGHT_IONOGRAM_ALIGN, "50");
-        defaultValues.put(IONTORRENT_MAXNREADS_IONOGRAM_ALIGN, "100");
-        defaultValues.put(KARYO_ALLOW_BAMFILES, "false");
-        defaultValues.put(KARYO_ALLOW_GENEFILES, "false");
-        defaultValues.put(KARYO_ALLOW_EXPFILES, "false");
         
         defaultValues.put(CHART_DRAW_TOP_BORDER, "false");
         defaultValues.put(CHART_DRAW_BOTTOM_BORDER, "false");
