@@ -13,12 +13,12 @@ package org.broad.igv.sam.reader;
 
 import com.iontorrent.utils.ErrorHandler;
 import net.sf.samtools.SAMFileHeader;
-import net.sf.samtools.SAMFileReader;
+//import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMRecord;
 import net.sf.samtools.SAMSequenceRecord;
 import net.sf.samtools.util.CloseableIterator;
-import net.sf.samtools.util.SeekableBufferedStream;
-import net.sf.samtools.util.SeekableStream;
+//import net.sf.samtools.util.SeekableBufferedStream;
+//import net.sf.samtools.util.SeekableStream;
 import org.apache.log4j.Logger;
 import org.broad.igv.DirectoryManager;
 import org.broad.igv.exceptions.DataLoadException;
@@ -36,6 +36,9 @@ import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Set;
+import net.sf.samtools.SAMFileReader;
+import net.sf.samtools.seekablestream.SeekableBufferedStream;
+import net.sf.samtools.seekablestream.SeekableStream;
 
 /**
  * Created by IntelliJ IDEA.

@@ -956,7 +956,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         toolTip.append("<br>Allele Frequency: " + afMsg + "<br>");
 
         if (variant.getSampleNames().size() > 0) {
-            toolTip = toolTip.append(getSampleToolTip(variant));
+            toolTip = toolTip.append(getSampleToolTip(null, variant));
             double afrac = variant.getAlleleFraction();
             toolTip = toolTip.append("<br>Minor Allele Fraction: " + numFormat.format(afrac) + "<br>");
         }
@@ -1098,7 +1098,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
     private String getSampleToolTip(String sample, Variant variant) {
         double goodBaseCount = variant.getGenotype(sample).getAttributeAsDouble("GB");
         if (Double.isNaN(goodBaseCount)) goodBaseCount = 0;
-        if (isEnableMethylationRateSupport() && goodBaseCount < 10) {
+        if (sample != null && isEnableMethylationRateSupport() && goodBaseCount < 10) {
             return sample;
         }
         String id = variant.getID();

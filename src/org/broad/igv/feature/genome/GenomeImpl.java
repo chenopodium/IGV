@@ -403,12 +403,12 @@ public class GenomeImpl implements Genome {
         this.geneTrack = geneFeatureTrack;
     }
 
-    @Override
+   
     public FeatureTrack getGeneTrack() {
         return geneTrack;
     }
 
-    @Override
+    
     public List<String> getLongChromosomeNames() {
         if (longChromosomeNames == null) {
             longChromosomeNames = new ArrayList(getAllChromosomeNames().size());
@@ -424,7 +424,7 @@ public class GenomeImpl implements Genome {
     }
 
 
-    @Override
+   
     public long getNominalLength() {
         if (nominalLength < 0) {
             nominalLength = 0;

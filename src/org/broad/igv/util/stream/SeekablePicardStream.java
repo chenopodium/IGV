@@ -1,10 +1,11 @@
 package org.broad.igv.util.stream;
 
 
-import net.sf.samtools.util.SeekableStream;
+
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
+import net.sf.samtools.seekablestream.SeekableStream;
 
 /**
  * Unfortunately the seekable stream classes exist for both Tribble and Picard, and we need both.  This class
@@ -14,7 +15,7 @@ import java.io.IOException;
  * @date Dec 23, 2011
  */
 
-public class SeekablePicardStream extends net.sf.samtools.util.SeekableStream {
+public class SeekablePicardStream extends SeekableStream {
 
     public static final int DEFAULT_BUFFER_SIZE = 1024000;
 
@@ -77,5 +78,10 @@ public class SeekablePicardStream extends net.sf.samtools.util.SeekableStream {
     @Override
     public String getSource() {
         return source;
+    }
+
+    @Override
+    public long position() throws IOException {
+        return position;
     }
 }
