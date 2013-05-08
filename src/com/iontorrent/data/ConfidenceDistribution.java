@@ -7,7 +7,7 @@ package com.iontorrent.data;
 import com.iontorrent.expmodel.ExperimentContext;
 import com.iontorrent.expmodel.FlowSeq;
 import com.iontorrent.rawdataaccess.FlowValue;
-import com.iontorrent.utils.IonTorrentPreferencesManager;
+import com.iontorrent.prefs.IonTorrentPreferencesManager;
 import java.util.ArrayList;
 import java.util.Iterator;
 

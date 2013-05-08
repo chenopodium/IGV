@@ -18,7 +18,7 @@
 package org.broad.igv.batch;
 
 import com.iontorrent.utils.IonTorrentCommandHandler;
-import com.iontorrent.utils.IonTorrentPreferencesManager;
+import com.iontorrent.prefs.IonTorrentPreferencesManager;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.ui.IGV;

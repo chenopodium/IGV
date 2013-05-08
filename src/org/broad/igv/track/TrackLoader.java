@@ -10,6 +10,7 @@
  */
 package org.broad.igv.track;
 
+import com.iontorrent.prefs.IonTorrentPreferencesManager;
 import org.apache.log4j.Logger;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.bbfile.BBFileReader;
@@ -1001,7 +1002,7 @@ public class TrackLoader {
 
             // Store information about what bam file is used
             log.info("Storing BAM File " + locator.getPath() + " in BAM_FILE preferences");
-            PreferenceManager.getInstance().put(PreferenceManager.BAM_FILE, locator.getPath());
+            PreferenceManager.getInstance().put(IonTorrentPreferencesManager.BAM_FILE, locator.getPath());
 
             AlignmentTrack alignmentTrack = new AlignmentTrack(locator, dataManager, genome);    // parser.loadTrack(locator, dsName);
             alignmentTrack.setName(dsName);

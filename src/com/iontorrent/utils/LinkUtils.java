@@ -4,6 +4,7 @@
  */
 package com.iontorrent.utils;
 
+import com.iontorrent.prefs.IonTorrentPreferencesManager;
 import com.iontorrent.expmodel.ExperimentContext;
 import java.awt.Dimension;
 import javax.swing.*;

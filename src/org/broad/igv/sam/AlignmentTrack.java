@@ -14,7 +14,7 @@ package org.broad.igv.sam;
 import com.iontorrent.data.*;
 import com.iontorrent.guiutils.GuiUtils;
 import com.iontorrent.rawdataaccess.FlowValue;
-import com.iontorrent.utils.IonTorrentPreferencesManager;
+import com.iontorrent.prefs.IonTorrentPreferencesManager;
 import com.iontorrent.utils.LocationListener;
 import com.iontorrent.utils.SimpleDialog;
 import com.iontorrent.views.alignment.AlignmentControlPanel;

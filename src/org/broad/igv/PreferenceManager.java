@@ -14,7 +14,7 @@
  */
 package org.broad.igv;
 
-import com.iontorrent.utils.IonTorrentPreferencesManager;
+import com.iontorrent.prefs.IonTorrentPreferencesManager;
 import org.apache.log4j.Logger;
 import org.broad.igv.maf.MAFManager;
 import org.broad.igv.renderer.ColorScaleFactory;

@@ -19,7 +19,7 @@ import org.broad.igv.ui.panel.ReferenceFrame;
 import com.iontorrent.sam2flowgram.flowalign.FlowOrder;
 
 import com.iontorrent.sam2flowgram.util.AlignUtil;
-import com.iontorrent.utils.IonTorrentPreferencesManager;
+import com.iontorrent.prefs.IonTorrentPreferencesManager;
 
 /**
  * compute the slots/flows for a list of subread ionograms

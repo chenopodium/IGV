@@ -17,11 +17,11 @@
  */
 package org.broad.igv.ui;
  
+import com.iontorrent.prefs.*;
+//import com.iontorrent.prefs.IonTorrentPreferencesManager;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.border.*;
-import javax.swing.event.*;
-import com.jgoodies.forms.layout.*;
 
 import com.jidesoft.dialog.*;
 import org.broad.igv.DirectoryManager;
@@ -35,7 +35,6 @@ import org.broad.igv.ui.color.ColorUtilities;
 import org.broad.igv.ui.color.PaletteColorTable;
 import org.broad.igv.ui.event.AlignmentTrackEvent;
 import org.broad.igv.ui.legend.ColorMapEditor;
-import org.broad.igv.ui.legend.LegendDialog;
 import org.broad.igv.ui.util.FileDialogUtils;
 import org.broad.igv.ui.util.FontChooser;
 import org.broad.igv.ui.util.MessageUtils;
@@ -90,138 +89,30 @@ public class PreferencesEditor extends javax.swing.JDialog {
         }
 
     }
-
-    private void extractBinSize() {
-        String sbin = this.binSizeText.getText();
-        if (sbin != null) {
-            sbin = sbin.trim();
-            try {
-                Integer.parseInt(sbin);
-                updatedPreferenceMap.put(PreferenceManager.IONTORRENT_FLOWDIST_BINSIZE, sbin);
-            } catch (NumberFormatException numberFormatException) {
-                inputValidated = false;
-                MessageUtils.showMessage(
-                        "Bin size must be an integer.");
-            }
-        }
-    }
-
-    private void extractNrBasesLeftRight() {
-        String snr = this.textNrIonograms.getText();
-        if (snr != null) {
-            try {
-                int bases = Integer.parseInt(snr);
-                updatedPreferenceMap.put(PreferenceManager.IONTORRENT_NRBASES_IONOGRAM_ALIGN, snr);            
-            }
-            catch (Exception ex){}
-        }
-    }
-
-    private void extractNrIonograms() {
-        String siono = this.textNrIonograms.getText();
-        if (siono != null) {
-            try {
-                int iono = Integer.parseInt(siono);
-                updatedPreferenceMap.put(PreferenceManager.IONTORRENT_MAXNREADS_IONOGRAM_ALIGN, siono);            
-            }
-            catch (Exception ex){}
-        }
-    }
-
-    private void extractServerInfo() {
-        String server = this.textServer2.getText();
-        if (server != null) {
-            server = server.trim();
-            updatedPreferenceMap.put(PreferenceManager.IONTORRENT_SERVER, server);            
-        }
-    }
-
-    private void storeSelectedIonoAlignDrawType() {
-        if (this.radioPeak.isSelected()) updatedPreferenceMap.put(PreferenceManager.IONTORRENT_IONOGRAM_ALIGN_DRAWTYPE, "PEAK");        
-        else updatedPreferenceMap.put(PreferenceManager.IONTORRENT_IONOGRAM_ALIGN_DRAWTYPE, "BAR");
-    }
-
-    private void resetBackgroundButtonActionPerformed(ActionEvent e) {
-        final PreferenceManager prefMgr = PreferenceManager.getInstance();
-        prefMgr.remove(PreferenceManager.BACKGROUND_COLOR);
-        Color backgroundColor = prefMgr.getAsColor(PreferenceManager.BACKGROUND_COLOR);
-        if (backgroundColor != null) {
-            prefMgr.put(PreferenceManager.BACKGROUND_COLOR, ColorUtilities.colorToString(backgroundColor));
-            IGV.getInstance().getMainPanel().setBackground(backgroundColor);
-            backgroundColorPanel.setBackground(backgroundColor);
-        }
-
-    }
-
-    private void binSizeTextActionPerformed(ActionEvent e) {
-        extractBinSize();
-    }
-
-    private void hideFirstHPActionPerformed(ActionEvent e) {
-        updatedPreferenceMap.put(
-                PreferenceManager.IONTORRENT_FLOWDIST_HIDE_FIRST_HP,
-                String.valueOf(this.hideFirstHP.isSelected()));
-    }
-
-    private void radioButton1ActionPerformed(ActionEvent e) {
-         storeSelectedFlowDistChartType();
-    }
-    private void radioLineActionPerformed(ActionEvent e) {
-        if (this.radioLine.isSelected()) {
-            updatedPreferenceMap.put(PreferenceManager.IONTORRENT_FLOWDIST_CHARTTYPE, "LINE");
-        }
-    }
-
-    private void radioAreaActionPerformed(ActionEvent e) {
-         storeSelectedFlowDistChartType();
-    }
-
-    private void radioBarActionPerformed(ActionEvent e) {
-         storeSelectedFlowDistChartType();
-    }
-
-
-    private void radioStackedActionPerformed(ActionEvent e) {
-        storeSelectedFlowDistChartType();
-    }
-
-    private void storeSelectedFlowDistChartType() {
-        if (this.radioBar.isSelected())  updatedPreferenceMap.put(PreferenceManager.IONTORRENT_FLOWDIST_CHARTTYPE, "BAR");        
-        else if (this.radioStacked.isSelected()) updatedPreferenceMap.put(PreferenceManager.IONTORRENT_FLOWDIST_CHARTTYPE, "STACKED");
-        else if (this.radioArea.isSelected()) updatedPreferenceMap.put(PreferenceManager.IONTORRENT_FLOWDIST_CHARTTYPE, "AREA");
-        else updatedPreferenceMap.put(PreferenceManager.IONTORRENT_FLOWDIST_CHARTTYPE, "LINE");
-    }
+  
 
     private void textServerActionPerformed(ActionEvent e) {
-        extractServerInfo();
+        //extractServerInfo();
     }
 
     private void binSizeTextFocusLost(FocusEvent e) {
-        extractBinSize();
+       // extractBinSize();
     }
 
     private void textNrIonogramsActionPerformed(ActionEvent e) {
-        extractNrIonograms();
+        //extractNrIonograms();
     }
 
     private void textNrBasesActionPerformed(ActionEvent e) {
-        extractNrBasesLeftRight();
+        //extractNrBasesLeftRight();
     }
 
     private void textNrIonogramsFocusLost(FocusEvent e) {
-        extractNrIonograms();
+        //extractNrIonograms();
     }
 
     private void textNrBasesFocusLost(FocusEvent e) {
-       extractNrBasesLeftRight();
-    }
-
-    private void radioPeakActionPerformed(ActionEvent e) {
-        storeSelectedIonoAlignDrawType();
-    }
-
-    private void radioFlowBarActionPerformed(ActionEvent e) {
-       storeSelectedIonoAlignDrawType();
+      // extractNrBasesLeftRight();
     }
 
     private void defaultUsernameFieldFocusLost(FocusEvent e) {
@@ -254,37 +145,20 @@ public class PreferencesEditor extends javax.swing.JDialog {
        updateDefaultPw();
     }
 
-    private void checkBAMHasFlowValuesActionPerformed(ActionEvent e) {
-        boolean sel = this.checkBAMHasFlowValues.isSelected();
-        updatedPreferenceMap.put(PreferenceManager.IONTORRENT_BAM_HAS_FLOWVALUES, ""+sel);
-    }
-
-    
     private void boxAutoLoadGenomeActionPerformed(ActionEvent e) {
         boolean sel = this.boxAutoLoadGenome.isSelected();  
-        updatedPreferenceMap.put(PreferenceManager.STARTUP_AUTOLOAD_GENOME, ""+sel);
+        updatedPreferenceMap.put(IonTorrentPreferencesManager.STARTUP_AUTOLOAD_GENOME, ""+sel);
     }
 
-    private void checkKaryoBamAllowedActionPerformed(ActionEvent e) {
-       boolean sel = this.checkKaryoBamAllowed.isSelected();
-        updatedPreferenceMap.put(PreferenceManager.KARYO_ALLOW_BAMFILES, ""+sel);
+    private void resetBackgroundButtonActionPerformed(ActionEvent e) {
+        // TODO add your code here
     }
-
-    private void checkKaryoGeneExprAllowedStateChanged(ChangeEvent e) {
-        boolean sel = this.checkKaryoGeneExprAllowed.isSelected();
-        updatedPreferenceMap.put(PreferenceManager.KARYO_ALLOW_EXPFILES, ""+sel);
-    }
-
-    private void checkKaryoGeneAllowedStateChanged(ChangeEvent e) {
-         boolean sel = this.checkKaryoGeneAllowed.isSelected();
-        updatedPreferenceMap.put(PreferenceManager.KARYO_ALLOW_GENEFILES, ""+sel);
-    }
-
 
     public PreferencesEditor(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
         initValues();
+        
 
         tabbedPane.setSelectedIndex(lastSelectedIndex);
 
@@ -424,29 +298,6 @@ public class PreferencesEditor extends javax.swing.JDialog {
         label15 = new JLabel();
         label16 = new JLabel();
         junctionCoverageTextField = new JTextField();
-        panel5 = new JPanel();
-        panel6 = new JPanel();
-        hideFirstHP = new JCheckBox();
-        binSizeText = new JTextField();
-        label28 = new JLabel();
-        label29 = new JLabel();
-        radioLine = new JRadioButton();
-        radioArea = new JRadioButton();
-        radioBar = new JRadioButton();
-        radioStacked = new JRadioButton();
-        panel7 = new JPanel();
-        label30 = new JLabel();
-        textNrIonograms = new JTextField();
-        label27 = new JLabel();
-        textNrBases = new JTextField();
-        label32 = new JLabel();
-        radioPeak = new JRadioButton();
-        radioFlowBar = new JRadioButton();
-        panel8 = new JPanel();
-        label31 = new JLabel();
-        textServer2 = new JTextField();
-        panel9 = new JPanel();
-        checkBAMHasFlowValues = new JCheckBox();
         expressionPane = new JPanel();
         jPanel8 = new JPanel();
         expMapToGeneCB = new JRadioButton();
@@ -511,12 +362,8 @@ public class PreferencesEditor extends javax.swing.JDialog {
         tooltipReshowDelayField = new JTextField();
         tooltipDismissDelayField = new JTextField();
         antialisingCB = new JCheckBox();
-        panel10 = new JPanel();
-        panel12 = new JPanel();
-        panel13 = new JPanel();
-        checkKaryoBamAllowed = new JCheckBox();
-        checkKaryoGeneAllowed = new JCheckBox();
-        checkKaryoGeneExprAllowed = new JCheckBox();
+        ionTorrentTab = new IonTorrentTab();
+        karyoPreferencesTab1 = new KaryoPreferencesTab();
         okCancelButtonPanel = new ButtonPanel();
         okButton = new JButton();
         cancelButton = new JButton();
@@ -1841,288 +1688,6 @@ public class PreferencesEditor extends javax.swing.JDialog {
             tabbedPane.addTab("Alignments", alignmentPanel);
 
 
-            //======== panel5 ========
-            {
-                panel5.setLayout(new BoxLayout(panel5, BoxLayout.Y_AXIS));
-
-                //======== panel6 ========
-                {
-                    panel6.setBorder(new TitledBorder("Confidence Distribution Chart Options"));
-                    panel6.setLayout(null);
-
-                    //---- hideFirstHP ----
-                    hideFirstHP.setText("skip data for homo polymers at start or end of read (including HP of size 1)");
-                    hideFirstHP.setToolTipText("discards flow signals from HP at beginning or end of reads (including HP of size 1), in order to not skew the results due to short reads");
-                    hideFirstHP.setSelected(true);
-                    hideFirstHP.addActionListener(new ActionListener() {
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            showJunctionTrackCBActionPerformed(e);
-                            hideFirstHPActionPerformed(e);
-                        }
-                    });
-                    panel6.add(hideFirstHP);
-                    hideFirstHP.setBounds(new Rectangle(new Point(5, 25), hideFirstHP.getPreferredSize()));
-
-                    //---- binSizeText ----
-                    binSizeText.setToolTipText("The size of the bins by which the data in the chart is grouped. Small bin size means small granularity, large bin size means smoother chart");
-                    binSizeText.setText("15");
-                    binSizeText.addActionListener(new ActionListener() {
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            junctionFlankingTextFieldActionPerformed(e);
-                            binSizeTextActionPerformed(e);
-                            binSizeTextActionPerformed(e);
-                        }
-                    });
-                    binSizeText.addFocusListener(new FocusAdapter() {
-                        @Override
-                        public void focusLost(FocusEvent e) {
-                            junctionFlankingTextFieldFocusLost(e);
-                            binSizeTextFocusLost(e);
-                        }
-                    });
-                    panel6.add(binSizeText);
-                    binSizeText.setBounds(135, 55, 95, 25);
-
-                    //---- label28 ----
-                    label28.setText("Bin size in chart:");
-                    panel6.add(label28);
-                    label28.setBounds(10, 55, 125, label28.getPreferredSize().height);
-
-                    //---- label29 ----
-                    label29.setText("Default chart type:");
-                    panel6.add(label29);
-                    label29.setBounds(new Rectangle(new Point(10, 90), label29.getPreferredSize()));
-
-                    //---- radioLine ----
-                    radioLine.setText("line chart");
-                    radioLine.addActionListener(new ActionListener() {
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            radioButton1ActionPerformed(e);
-                            radioLineActionPerformed(e);
-                        }
-                    });
-                    panel6.add(radioLine);
-                    radioLine.setBounds(new Rectangle(new Point(135, 90), radioLine.getPreferredSize()));
-
-                    //---- radioArea ----
-                    radioArea.setText("area chart");
-                    radioArea.addActionListener(new ActionListener() {
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            radioAreaActionPerformed(e);
-                        }
-                    });
-                    panel6.add(radioArea);
-                    radioArea.setBounds(new Rectangle(new Point(135, 115), radioArea.getPreferredSize()));
-
-                    //---- radioBar ----
-                    radioBar.setText("bar chart");
-                    radioBar.addActionListener(new ActionListener() {
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            radioBarActionPerformed(e);
-                        }
-                    });
-                    panel6.add(radioBar);
-                    radioBar.setBounds(new Rectangle(new Point(135, 140), radioBar.getPreferredSize()));
-
-                    //---- radioStacked ----
-                    radioStacked.setText("(stacked bar chart)");
-                    radioStacked.addActionListener(new ActionListener() {
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            radioStackedActionPerformed(e);
-                        }
-                    });
-                    panel6.add(radioStacked);
-                    radioStacked.setBounds(new Rectangle(new Point(135, 165), radioStacked.getPreferredSize()));
-
-                    { // compute preferred size
-                        Dimension preferredSize = new Dimension();
-                        for(int i = 0; i < panel6.getComponentCount(); i++) {
-                            Rectangle bounds = panel6.getComponent(i).getBounds();
-                            preferredSize.width = Math.max(bounds.x + bounds.width, preferredSize.width);
-                            preferredSize.height = Math.max(bounds.y + bounds.height, preferredSize.height);
-                        }
-                        Insets insets = panel6.getInsets();
-                        preferredSize.width += insets.right;
-                        preferredSize.height += insets.bottom;
-                        panel6.setMinimumSize(preferredSize);
-                        panel6.setPreferredSize(preferredSize);
-                    }
-                }
-                panel5.add(panel6);
-
-                //======== panel7 ========
-                {
-                    panel7.setBorder(new TitledBorder("Ionogram Alignment Settings"));
-                    panel7.setLayout(null);
-
-                    //---- label30 ----
-                    label30.setText("Max. number of reads  in alignment");
-                    panel7.add(label30);
-                    label30.setBounds(new Rectangle(new Point(15, 25), label30.getPreferredSize()));
-
-                    //---- textNrIonograms ----
-                    textNrIonograms.setText("50");
-                    textNrIonograms.setToolTipText("Used to launch other applications (such as Torrent Scout Light)");
-                    textNrIonograms.addActionListener(new ActionListener() {
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            textServerActionPerformed(e);
-                            textNrIonogramsActionPerformed(e);
-                        }
-                    });
-                    textNrIonograms.addFocusListener(new FocusAdapter() {
-                        @Override
-                        public void focusLost(FocusEvent e) {
-                            textNrIonogramsFocusLost(e);
-                        }
-                    });
-                    panel7.add(textNrIonograms);
-                    textNrIonograms.setBounds(390, 20, 105, textNrIonograms.getPreferredSize().height);
-
-                    //---- label27 ----
-                    label27.setText("Number of base calls around main location to include in alignment");
-                    panel7.add(label27);
-                    label27.setBounds(15, 45, 365, label27.getPreferredSize().height);
-
-                    //---- textNrBases ----
-                    textNrBases.setText("5");
-                    textNrBases.addActionListener(new ActionListener() {
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            textNrBasesActionPerformed(e);
-                        }
-                    });
-                    textNrBases.addFocusListener(new FocusAdapter() {
-                        @Override
-                        public void focusLost(FocusEvent e) {
-                            textNrBasesFocusLost(e);
-                        }
-                    });
-                    panel7.add(textNrBases);
-                    textNrBases.setBounds(390, 45, 105, textNrBases.getPreferredSize().height);
-
-                    //---- label32 ----
-                    label32.setText("Alignmentl drawing type:");
-                    panel7.add(label32);
-                    label32.setBounds(15, 65, 150, 14);
-
-                    //---- radioPeak ----
-                    radioPeak.setText("peak function");
-                    radioPeak.addActionListener(new ActionListener() {
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            radioPeakActionPerformed(e);
-                        }
-                    });
-                    panel7.add(radioPeak);
-                    radioPeak.setBounds(390, 70, 105, radioPeak.getPreferredSize().height);
-
-                    //---- radioFlowBar ----
-                    radioFlowBar.setText("bar");
-                    radioFlowBar.addActionListener(new ActionListener() {
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            radioFlowBarActionPerformed(e);
-                        }
-                    });
-                    panel7.add(radioFlowBar);
-                    radioFlowBar.setBounds(390, 90, 95, radioFlowBar.getPreferredSize().height);
-
-                    { // compute preferred size
-                        Dimension preferredSize = new Dimension();
-                        for(int i = 0; i < panel7.getComponentCount(); i++) {
-                            Rectangle bounds = panel7.getComponent(i).getBounds();
-                            preferredSize.width = Math.max(bounds.x + bounds.width, preferredSize.width);
-                            preferredSize.height = Math.max(bounds.y + bounds.height, preferredSize.height);
-                        }
-                        Insets insets = panel7.getInsets();
-                        preferredSize.width += insets.right;
-                        preferredSize.height += insets.bottom;
-                        panel7.setMinimumSize(preferredSize);
-                        panel7.setPreferredSize(preferredSize);
-                    }
-                }
-                panel5.add(panel7);
-
-                //======== panel8 ========
-                {
-                    panel8.setBorder(new TitledBorder("Server Settings"));
-                    panel8.setLayout(null);
-
-                    //---- label31 ----
-                    label31.setText("Default Ion Torrent Server:");
-                    panel8.add(label31);
-                    label31.setBounds(new Rectangle(new Point(15, 25), label31.getPreferredSize()));
-
-                    //---- textServer2 ----
-                    textServer2.setText("ioneast.ite");
-                    textServer2.setToolTipText("Used to launch other applications (such as Torrent Scout Light)");
-                    textServer2.addActionListener(new ActionListener() {
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            textServerActionPerformed(e);
-                        }
-                    });
-                    panel8.add(textServer2);
-                    textServer2.setBounds(220, 20, 475, textServer2.getPreferredSize().height);
-
-                    { // compute preferred size
-                        Dimension preferredSize = new Dimension();
-                        for(int i = 0; i < panel8.getComponentCount(); i++) {
-                            Rectangle bounds = panel8.getComponent(i).getBounds();
-                            preferredSize.width = Math.max(bounds.x + bounds.width, preferredSize.width);
-                            preferredSize.height = Math.max(bounds.y + bounds.height, preferredSize.height);
-                        }
-                        Insets insets = panel8.getInsets();
-                        preferredSize.width += insets.right;
-                        preferredSize.height += insets.bottom;
-                        panel8.setMinimumSize(preferredSize);
-                        panel8.setPreferredSize(preferredSize);
-                    }
-                }
-                panel5.add(panel8);
-
-                //======== panel9 ========
-                {
-                    panel9.setBorder(new TitledBorder("BAM File Information"));
-                    panel9.setLayout(null);
-
-                    //---- checkBAMHasFlowValues ----
-                    checkBAMHasFlowValues.setText("The current BAM file contains raw flow information (select to show flow menu items)");
-                    checkBAMHasFlowValues.addActionListener(new ActionListener() {
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            checkBAMHasFlowValuesActionPerformed(e);
-                        }
-                    });
-                    panel9.add(checkBAMHasFlowValues);
-                    checkBAMHasFlowValues.setBounds(15, 20, 420, checkBAMHasFlowValues.getPreferredSize().height);
-
-                    { // compute preferred size
-                        Dimension preferredSize = new Dimension();
-                        for(int i = 0; i < panel9.getComponentCount(); i++) {
-                            Rectangle bounds = panel9.getComponent(i).getBounds();
-                            preferredSize.width = Math.max(bounds.x + bounds.width, preferredSize.width);
-                            preferredSize.height = Math.max(bounds.y + bounds.height, preferredSize.height);
-                        }
-                        Insets insets = panel9.getInsets();
-                        preferredSize.width += insets.right;
-                        preferredSize.height += insets.bottom;
-                        panel9.setMinimumSize(preferredSize);
-                        panel9.setPreferredSize(preferredSize);
-                    }
-                }
-                panel5.add(panel9);
-            }
-            tabbedPane.addTab("IonTorrent", panel5);
-
-
             //======== expressionPane ========
             {
                 expressionPane.setLayout(null);
@@ -2878,120 +2443,9 @@ public class PreferencesEditor extends javax.swing.JDialog {
             }
             tabbedPane.addTab("Advanced", advancedPanel);
 
+            tabbedPane.addTab("IonTorrent", ionTorrentTab);
 
-            //======== panel10 ========
-            {
-                panel10.setLayout(null);
-
-                //======== panel12 ========
-                {
-                    panel12.setLayout(null);
-
-                    { // compute preferred size
-                        Dimension preferredSize = new Dimension();
-                        for(int i = 0; i < panel12.getComponentCount(); i++) {
-                            Rectangle bounds = panel12.getComponent(i).getBounds();
-                            preferredSize.width = Math.max(bounds.x + bounds.width, preferredSize.width);
-                            preferredSize.height = Math.max(bounds.y + bounds.height, preferredSize.height);
-                        }
-                        Insets insets = panel12.getInsets();
-                        preferredSize.width += insets.right;
-                        preferredSize.height += insets.bottom;
-                        panel12.setMinimumSize(preferredSize);
-                        panel12.setPreferredSize(preferredSize);
-                    }
-                }
-                panel10.add(panel12);
-                panel12.setBounds(5, 5, panel12.getPreferredSize().width, 0);
-
-                //======== panel13 ========
-                {
-                    panel13.setBorder(new TitledBorder("Rendering of large files in whole genome view:"));
-                    panel13.setLayout(null);
-
-                    //---- checkKaryoBamAllowed ----
-                    checkKaryoBamAllowed.setText("<html>Allow rendering of <b>BAM</b> files<br></html>");
-                    checkKaryoBamAllowed.setToolTipText("<html><b>Note:</b> loading entire BAM files could take a <b>long time</b>, in particular if the .BAM file is not stored locally.<br>It is recommended <b>not</b> to enable this option, or use it only with small .BAM files</html>");
-                    checkKaryoBamAllowed.addActionListener(new ActionListener() {
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            checkBAMHasFlowValuesActionPerformed(e);
-                            checkKaryoBamAllowedActionPerformed(e);
-                        }
-                    });
-                    panel13.add(checkKaryoBamAllowed);
-                    checkKaryoBamAllowed.setBounds(10, 20, 375, 35);
-
-                    //---- checkKaryoGeneAllowed ----
-                    checkKaryoGeneAllowed.setText("<html>Allow rendering of <b>gene</b> files</html>");
-                    checkKaryoGeneAllowed.setToolTipText("<html><b>Note:</b> loading entire GENE files could take a <b>long time</b>, in particular if the file is not stored locally.<br>It is recommended <b>not</b> to enable this option, or use it only with small files</html>");
-                    checkKaryoGeneAllowed.addActionListener(new ActionListener() {
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            checkBAMHasFlowValuesActionPerformed(e);
-                            checkKaryoBamAllowedActionPerformed(e);
-                        }
-                    });
-                    checkKaryoGeneAllowed.addChangeListener(new ChangeListener() {
-                        @Override
-                        public void stateChanged(ChangeEvent e) {
-                            checkKaryoGeneAllowedStateChanged(e);
-                        }
-                    });
-                    panel13.add(checkKaryoGeneAllowed);
-                    checkKaryoGeneAllowed.setBounds(10, 55, 435, 30);
-
-                    //---- checkKaryoGeneExprAllowed ----
-                    checkKaryoGeneExprAllowed.setText("<html>Allow rendering of <b>expression</b> files</html>");
-                    checkKaryoGeneExprAllowed.setToolTipText("<html><b>Note:</b> loading entire GENE files could take a <b>long time</b>, in particular if the file is not stored locally.<br>It is recommended <b>not</b> to enable this option, or use it only with small files</html>");
-                    checkKaryoGeneExprAllowed.addActionListener(new ActionListener() {
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            checkBAMHasFlowValuesActionPerformed(e);
-                            checkKaryoBamAllowedActionPerformed(e);
-                        }
-                    });
-                    checkKaryoGeneExprAllowed.addChangeListener(new ChangeListener() {
-                        @Override
-                        public void stateChanged(ChangeEvent e) {
-                            checkKaryoGeneExprAllowedStateChanged(e);
-                        }
-                    });
-                    panel13.add(checkKaryoGeneExprAllowed);
-                    checkKaryoGeneExprAllowed.setBounds(10, 85, 470, 30);
-
-                    { // compute preferred size
-                        Dimension preferredSize = new Dimension();
-                        for(int i = 0; i < panel13.getComponentCount(); i++) {
-                            Rectangle bounds = panel13.getComponent(i).getBounds();
-                            preferredSize.width = Math.max(bounds.x + bounds.width, preferredSize.width);
-                            preferredSize.height = Math.max(bounds.y + bounds.height, preferredSize.height);
-                        }
-                        Insets insets = panel13.getInsets();
-                        preferredSize.width += insets.right;
-                        preferredSize.height += insets.bottom;
-                        panel13.setMinimumSize(preferredSize);
-                        panel13.setPreferredSize(preferredSize);
-                    }
-                }
-                panel10.add(panel13);
-                panel13.setBounds(0, 0, 785, 135);
-
-                { // compute preferred size
-                    Dimension preferredSize = new Dimension();
-                    for(int i = 0; i < panel10.getComponentCount(); i++) {
-                        Rectangle bounds = panel10.getComponent(i).getBounds();
-                        preferredSize.width = Math.max(bounds.x + bounds.width, preferredSize.width);
-                        preferredSize.height = Math.max(bounds.y + bounds.height, preferredSize.height);
-                    }
-                    Insets insets = panel10.getInsets();
-                    preferredSize.width += insets.right;
-                    preferredSize.height += insets.bottom;
-                    panel10.setMinimumSize(preferredSize);
-                    panel10.setPreferredSize(preferredSize);
-                }
-            }
-            tabbedPane.addTab("KaryoView", panel10);
+            tabbedPane.addTab("Karyo View", karyoPreferencesTab1);
 
         }
         contentPane.add(tabbedPane, BorderLayout.CENTER);
@@ -3026,14 +2480,14 @@ public class PreferencesEditor extends javax.swing.JDialog {
 
         //---- buttonGroup1 ----
         ButtonGroup buttonGroup1 = new ButtonGroup();
-        buttonGroup1.add(radioLine);
-        buttonGroup1.add(radioArea);
-        buttonGroup1.add(radioBar);
-        buttonGroup1.add(radioStacked);
         buttonGroup1.add(expMapToGeneCB);
         buttonGroup1.add(expMapToLociCB);
     }// </editor-fold>//GEN-END:initComponents
 
+    
+    private void checkBAMHasFlowValuesActionPerformed(ActionEvent e) {
+        // dummy
+    }
     private void cancelButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cancelButtonActionPerformed
         canceled = true;
         setVisible(false);
@@ -3046,6 +2500,10 @@ public class PreferencesEditor extends javax.swing.JDialog {
     private void okButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_okButtonActionPerformed
 
         p("Ok clicked");
+        // process all external tabs
+        this.ionTorrentTab.okButtonClicked();
+        
+        
         if (inputValidated) {
 
             checkForProbeChanges();
@@ -4090,6 +3548,9 @@ public class PreferencesEditor extends javax.swing.JDialog {
    * */
 
     private void initValues() {
+        
+        ionTorrentTab.initValues();
+        
         combinePanelsCB.setSelected(prefMgr.getAsBoolean(PreferenceManager.SHOW_SINGLE_TRACK_PANE_KEY));
         //drawExonNumbersCB.setSelected(preferenceManager.getDrawExonNumbers());
 
@@ -4131,37 +3592,6 @@ public class PreferencesEditor extends javax.swing.JDialog {
         showDatarangeCB.setSelected(prefMgr.getAsBoolean(PreferenceManager.CHART_SHOW_DATA_RANGE));
         labelYAxisCB.setSelected(prefMgr.getAsBoolean(PreferenceManager.CHART_DRAW_Y_AXIS));
         showAllHeatmapFeauresCB.setSelected(prefMgr.getAsBoolean(PreferenceManager.CHART_SHOW_ALL_HEATMAP));
-
-        /** Ion Torrent (Chantal Roth) */
-        this.binSizeText.setText(prefMgr.get(PreferenceManager.IONTORRENT_FLOWDIST_BINSIZE));
-        boolean hideHp = prefMgr.getAsBoolean(PreferenceManager.IONTORRENT_FLOWDIST_HIDE_FIRST_HP);
-        this.hideFirstHP.setSelected(hideHp);
-        String type = PreferenceManager.getInstance().get(PreferenceManager.IONTORRENT_FLOWDIST_CHARTTYPE);
-        if (type == null) type = "LINE";
-        if (type != null) {
-            type = type.trim().toUpperCase();
-            if (type.equals("LINE")) this.radioLine.setSelected(true);
-            else if (type.equals("AREA")) this.radioArea.setSelected(true);
-            else if (type.equals("BAR")) this.radioBar.setSelected(true);
-            else if (type.equals("STACKED")) this.radioStacked.setSelected(true);
-        }
-        String server = PreferenceManager.getInstance().get(PreferenceManager.IONTORRENT_SERVER);
-        if (server != null) this.textServer2.setText(server);
-        this.textNrBases.setText(prefMgr.get(PreferenceManager.IONTORRENT_NRBASES_IONOGRAM_ALIGN));
-        this.textNrIonograms.setText(prefMgr.get(PreferenceManager.IONTORRENT_MAXNREADS_IONOGRAM_ALIGN));
-        groupType.add(this.radioFlowBar);
-        groupType.add(this.radioPeak);
-        type = PreferenceManager.getInstance().get(PreferenceManager.IONTORRENT_IONOGRAM_ALIGN_DRAWTYPE);
-        if (type == null) type = "PEAK";
-        if (type != null) {
-            type = type.trim().toUpperCase();
-            if (type.equals("PEAK")) this.radioPeak.setSelected(true);
-            else this.radioFlowBar.setSelected(true);
-        }
-        
-        this.checkKaryoBamAllowed.setSelected(prefMgr.getAsBoolean(PreferenceManager.KARYO_ALLOW_BAMFILES));
-        this.checkKaryoGeneAllowed.setSelected(prefMgr.getAsBoolean(PreferenceManager.KARYO_ALLOW_GENEFILES));
-        this.checkKaryoGeneExprAllowed.setSelected(prefMgr.getAsBoolean(PreferenceManager.KARYO_ALLOW_EXPFILES));
         
         samMaxWindowSizeField.setText(prefMgr.get(PreferenceManager.SAM_MAX_VISIBLE_RANGE));
         samSamplingWindowField.setText(prefMgr.get(PreferenceManager.SAM_SAMPLING_WINDOW));
@@ -4482,29 +3912,6 @@ public class PreferencesEditor extends javax.swing.JDialog {
     private JLabel label15;
     private JLabel label16;
     private JTextField junctionCoverageTextField;
-    private JPanel panel5;
-    private JPanel panel6;
-    private JCheckBox hideFirstHP;
-    private JTextField binSizeText;
-    private JLabel label28;
-    private JLabel label29;
-    private JRadioButton radioLine;
-    private JRadioButton radioArea;
-    private JRadioButton radioBar;
-    private JRadioButton radioStacked;
-    private JPanel panel7;
-    private JLabel label30;
-    private JTextField textNrIonograms;
-    private JLabel label27;
-    private JTextField textNrBases;
-    private JLabel label32;
-    private JRadioButton radioPeak;
-    private JRadioButton radioFlowBar;
-    private JPanel panel8;
-    private JLabel label31;
-    private JTextField textServer2;
-    private JPanel panel9;
-    private JCheckBox checkBAMHasFlowValues;
     private JPanel expressionPane;
     private JPanel jPanel8;
     private JRadioButton expMapToGeneCB;
@@ -4569,12 +3976,8 @@ public class PreferencesEditor extends javax.swing.JDialog {
     private JTextField tooltipReshowDelayField;
     private JTextField tooltipDismissDelayField;
     private JCheckBox antialisingCB;
-    private JPanel panel10;
-    private JPanel panel12;
-    private JPanel panel13;
-    private JCheckBox checkKaryoBamAllowed;
-    private JCheckBox checkKaryoGeneAllowed;
-    private JCheckBox checkKaryoGeneExprAllowed;
+    private IonTorrentTab ionTorrentTab;
+    private KaryoPreferencesTab karyoPreferencesTab1;
     private ButtonPanel okCancelButtonPanel;
     private JButton okButton;
     private JButton cancelButton;
