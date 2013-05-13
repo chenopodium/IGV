@@ -1,0 +1,232 @@
+JFDML JFormDesigner: "5.1.0.1.63" Java: "1.7.0_10" encoding: "UTF-8"
+
+new FormModel {
+	contentType: "form/swing"
+	root: new FormRoot {
+		add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class com.jformdesigner.runtime.NullLayout ) ) {
+			name: "this"
+			add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class com.jformdesigner.runtime.NullLayout ) ) {
+				name: "panel6"
+				"border": new javax.swing.border.TitledBorder( "Confidence Distribution Chart Options" )
+				add( new FormComponent( "javax.swing.JCheckBox" ) {
+					name: "hideFirstHP"
+					"text": "skip data for homo polymers at start or end of read (including HP of size 1)"
+					"toolTipText": "discards flow signals from HP at beginning or end of reads (including HP of size 1), in order to not skew the results due to short reads"
+					"selected": true
+					addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "showJunctionTrackCBActionPerformed", true ) )
+					addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "hideFirstHPActionPerformed", true ) )
+				}, new FormLayoutConstraints( class com.jformdesigner.runtime.NullConstraints ) {
+					"x": 5
+					"y": 25
+				} )
+				add( new FormComponent( "javax.swing.JTextField" ) {
+					name: "binSizeText"
+					"toolTipText": "The size of the bins by which the data in the chart is grouped. Small bin size means small granularity, large bin size means smoother chart"
+					"text": "15"
+					addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "junctionFlankingTextFieldActionPerformed", true ) )
+					addEvent( new FormEvent( "java.awt.event.FocusListener", "focusLost", "junctionFlankingTextFieldFocusLost", true ) )
+					addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "binSizeTextActionPerformed", true ) )
+					addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "binSizeTextActionPerformed", true ) )
+					addEvent( new FormEvent( "java.awt.event.FocusListener", "focusLost", "binSizeTextFocusLost", true ) )
+					addEvent( new FormEvent( "java.awt.event.FocusListener", "focusLost", "binSizeTextFocusLost", true ) )
+					addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "binSizeTextActionPerformed", true ) )
+				}, new FormLayoutConstraints( class com.jformdesigner.runtime.NullConstraints ) {
+					"x": 135
+					"width": 95
+					"y": 55
+					"height": 25
+				} )
+				add( new FormComponent( "javax.swing.JLabel" ) {
+					name: "label28"
+					"text": "Bin size in chart:"
+				}, new FormLayoutConstraints( class com.jformdesigner.runtime.NullConstraints ) {
+					"x": 10
+					"y": 55
+					"width": 125
+				} )
+				add( new FormComponent( "javax.swing.JLabel" ) {
+					name: "label29"
+					"text": "Default chart type:"
+				}, new FormLayoutConstraints( class com.jformdesigner.runtime.NullConstraints ) {
+					"x": 10
+					"y": 90
+				} )
+				add( new FormComponent( "javax.swing.JRadioButton" ) {
+					name: "radioLine"
+					"text": "line chart"
+					"$buttonGroup": new FormReference( "buttonGroup1" )
+					auxiliary() {
+						"JavaCodeGenerator.variableName": "radioLine"
+					}
+					addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "radioButton1ActionPerformed", true ) )
+					addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "radioLineActionPerformed", true ) )
+					addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "radioLineActionPerformed", true ) )
+				}, new FormLayoutConstraints( class com.jformdesigner.runtime.NullConstraints ) {
+					"x": 135
+					"y": 90
+				} )
+				add( new FormComponent( "javax.swing.JRadioButton" ) {
+					name: "radioArea"
+					"text": "area chart"
+					"$buttonGroup": new FormReference( "buttonGroup1" )
+					auxiliary() {
+						"JavaCodeGenerator.variableName": "radioArea"
+					}
+					addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "radioAreaActionPerformed", true ) )
+				}, new FormLayoutConstraints( class com.jformdesigner.runtime.NullConstraints ) {
+					"x": 135
+					"y": 115
+				} )
+				add( new FormComponent( "javax.swing.JRadioButton" ) {
+					name: "radioBar"
+					"text": "bar chart"
+					"$buttonGroup": new FormReference( "buttonGroup1" )
+					auxiliary() {
+						"JavaCodeGenerator.variableName": "radioBar"
+					}
+					addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "radioBarActionPerformed", true ) )
+				}, new FormLayoutConstraints( class com.jformdesigner.runtime.NullConstraints ) {
+					"x": 135
+					"y": 140
+				} )
+				add( new FormComponent( "javax.swing.JRadioButton" ) {
+					name: "radioStacked"
+					"text": "(stacked bar chart)"
+					"$buttonGroup": new FormReference( "buttonGroup1" )
+					auxiliary() {
+						"JavaCodeGenerator.variableName": "radioStacked"
+					}
+					addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "radioStackedActionPerformed", true ) )
+				}, new FormLayoutConstraints( class com.jformdesigner.runtime.NullConstraints ) {
+					"x": 135
+					"y": 165
+				} )
+			}, new FormLayoutConstraints( class com.jformdesigner.runtime.NullConstraints ) {
+				"width": 784
+				"height": 243
+				"x": 0
+				"y": 0
+			} )
+			add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class com.jformdesigner.runtime.NullLayout ) ) {
+				name: "panel7"
+				"border": new javax.swing.border.TitledBorder( "Ionogram Alignment Settings" )
+				add( new FormComponent( "javax.swing.JLabel" ) {
+					name: "label30"
+					"text": "Max. number of reads  in alignment"
+				}, new FormLayoutConstraints( class com.jformdesigner.runtime.NullConstraints ) {
+					"x": 15
+					"y": 25
+				} )
+				add( new FormComponent( "javax.swing.JTextField" ) {
+					name: "textNrIonograms"
+					"text": "50"
+					"toolTipText": "Used to launch other applications (such as Torrent Scout Light)"
+					addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "textServerActionPerformed", true ) )
+					addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "textNrIonogramsActionPerformed", true ) )
+					addEvent( new FormEvent( "java.awt.event.FocusListener", "focusLost", "textNrIonogramsFocusLost", true ) )
+				}, new FormLayoutConstraints( class com.jformdesigner.runtime.NullConstraints ) {
+					"x": 390
+					"width": 105
+					"y": 20
+				} )
+				add( new FormComponent( "javax.swing.JLabel" ) {
+					name: "label27"
+					"text": "Number of base calls around main location to include in alignment"
+				}, new FormLayoutConstraints( class com.jformdesigner.runtime.NullConstraints ) {
+					"x": 15
+					"y": 45
+					"width": 365
+				} )
+				add( new FormComponent( "javax.swing.JTextField" ) {
+					name: "textNrBases"
+					"text": "5"
+					addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "textNrBasesActionPerformed", true ) )
+					addEvent( new FormEvent( "java.awt.event.FocusListener", "focusLost", "textNrBasesFocusLost", true ) )
+				}, new FormLayoutConstraints( class com.jformdesigner.runtime.NullConstraints ) {
+					"x": 390
+					"y": 45
+					"width": 105
+				} )
+				add( new FormComponent( "javax.swing.JLabel" ) {
+					name: "label32"
+					"text": "Alignmentl drawing type:"
+				}, new FormLayoutConstraints( class com.jformdesigner.runtime.NullConstraints ) {
+					"width": 150
+					"height": 14
+					"x": 15
+					"y": 65
+				} )
+				add( new FormComponent( "javax.swing.JRadioButton" ) {
+					name: "radioPeak"
+					"text": "peak function"
+					addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "radioPeakActionPerformed", true ) )
+				}, new FormLayoutConstraints( class com.jformdesigner.runtime.NullConstraints ) {
+					"x": 390
+					"y": 70
+					"width": 105
+				} )
+				add( new FormComponent( "javax.swing.JRadioButton" ) {
+					name: "radioFlowBar"
+					"text": "bar"
+					addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "radioFlowBarActionPerformed", true ) )
+				}, new FormLayoutConstraints( class com.jformdesigner.runtime.NullConstraints ) {
+					"x": 390
+					"y": 90
+					"width": 95
+				} )
+			}, new FormLayoutConstraints( class com.jformdesigner.runtime.NullConstraints ) {
+				"width": 784
+				"height": 168
+				"x": 0
+				"y": 243
+			} )
+			add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class com.jformdesigner.runtime.NullLayout ) ) {
+				name: "panel8"
+				"border": new javax.swing.border.TitledBorder( "Server Settings" )
+				add( new FormComponent( "javax.swing.JLabel" ) {
+					name: "label31"
+					"text": "Default Ion Torrent Server:"
+				}, new FormLayoutConstraints( class com.jformdesigner.runtime.NullConstraints ) {
+					"x": 15
+					"y": 25
+				} )
+				add( new FormComponent( "javax.swing.JTextField" ) {
+					name: "textServer2"
+					"text": "ioneast.ite"
+					"toolTipText": "Used to launch other applications (such as Torrent Scout Light)"
+					addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "textServerActionPerformed", true ) )
+				}, new FormLayoutConstraints( class com.jformdesigner.runtime.NullConstraints ) {
+					"x": 220
+					"width": 475
+					"y": 20
+				} )
+			}, new FormLayoutConstraints( class com.jformdesigner.runtime.NullConstraints ) {
+				"width": 784
+				"height": 96
+				"x": 0
+				"y": 411
+			} )
+			add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class com.jformdesigner.runtime.NullLayout ) ) {
+				name: "panel9"
+				"border": new javax.swing.border.TitledBorder( "BAM File Information" )
+				add( new FormComponent( "javax.swing.JCheckBox" ) {
+					name: "checkBAMHasFlowValues"
+					"text": "The current BAM file contains raw flow information (select to show flow menu items)"
+					addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "checkBAMHasFlowValuesActionPerformed", true ) )
+				}, new FormLayoutConstraints( class com.jformdesigner.runtime.NullConstraints ) {
+					"x": 15
+					"y": 20
+					"width": 420
+				} )
+			}, new FormLayoutConstraints( class com.jformdesigner.runtime.NullConstraints ) {
+				"width": 784
+				"height": 99
+				"x": 0
+				"y": 507
+			} )
+		}, new FormLayoutConstraints( null ) {
+			"location": new java.awt.Point( 0, 0 )
+			"size": new java.awt.Dimension( 790, 610 )
+		} )
+	}
+}
