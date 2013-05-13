@@ -8,6 +8,7 @@ import com.iontorrent.data.ConfidenceDistribution;
 import com.iontorrent.data.Ionogram;
 import com.iontorrent.data.IonogramAlignment;
 import com.iontorrent.expmodel.ExperimentContext;
+import com.iontorrent.prefs.IonTorrentPreferencesManager;
 import com.iontorrent.raw.ThreadDoneListener;
 import com.iontorrent.rawdataaccess.FlowValue;
 import com.iontorrent.rawdataaccess.ReadFlow;
@@ -145,7 +146,7 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
         this.ionograms = alignment.getIonograms();
         this.alignment = alignment;
         PreferenceManager prefs = PreferenceManager.getInstance();
-        this.iono_height = prefs.getAsInt(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN);
+        this.iono_height = prefs.getAsInt(IonTorrentPreferencesManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN);
         this.ignore_events = true;
         spinBin.setValue(iono_height);
         ignore_events = false;
@@ -178,8 +179,8 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
         AlignmentPanel header = new AlignmentPanel(ionograms.get(0), alignment, true);
 
 
-        int slotheight = prefs.getAsInt(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN) + AlignmentPanel.TOP;
-        int slotwidth = prefs.getAsInt(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN) + AlignmentPanel.BORDER;
+        int slotheight = prefs.getAsInt(IonTorrentPreferencesManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN) + AlignmentPanel.TOP;
+        int slotwidth = prefs.getAsInt(IonTorrentPreferencesManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN) + AlignmentPanel.BORDER;
         int lblwidth = 40;
         boolean found = true;
         if (this.curFlowValue != null) {
@@ -388,8 +389,8 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
         String chr = alignment.getChromosome();
 
         PreferenceManager prefs = PreferenceManager.getInstance();
-        String server = prefs.get(PreferenceManager.IONTORRENT_SERVER);
-        String expinfo = prefs.get(PreferenceManager.BAM_FILE);
+        String server = prefs.get(IonTorrentPreferencesManager.IONTORRENT_SERVER);
+        String expinfo = prefs.get(IonTorrentPreferencesManager.BAM_FILE);
 
         ExperimentContext exp = new ExperimentContext();
         exp.setExperimentInfo(expinfo);
@@ -854,7 +855,7 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
     private void changeIonoHeight(int new_iono_height) {
         this.iono_height = new_iono_height;
         PreferenceManager pref = PreferenceManager.getInstance();
-        pref.put(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN, "" + iono_height);
+        pref.put(IonTorrentPreferencesManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN, "" + iono_height);
         refresh();
         if (((Integer) spinBin.getValue()).intValue() != new_iono_height) {
             ignore_events = true;

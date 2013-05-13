@@ -16,8 +16,6 @@
 package org.broad.igv.batch;
 
 import com.iontorrent.utils.ErrorHandler;
-import com.iontorrent.utils.IonTorrentCommandExecutor;
-import com.iontorrent.utils.StringTools;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.PreferenceManager;
@@ -40,9 +38,8 @@ import java.io.IOException;
 import java.net.URLDecoder;
 import java.util.*;
 import java.util.List;
-import javax.swing.JOptionPane;
+import org.broad.igv.Handlers;
 import org.broad.igv.renderer.DataRange;
-import org.broad.igv.ui.panel.TrackPanel;
 
 public class CommandExecutor {
 
@@ -51,6 +48,7 @@ public class CommandExecutor {
     private IGV igv;
     private int sleepInterval = 100;
     private static PreferenceManager prefs = PreferenceManager.getInstance();
+
     public CommandExecutor() {
         igv = IGV.getInstance();
     }
@@ -68,16 +66,20 @@ public class CommandExecutor {
     public String execute(String command) {
 
         List<String> args = getArgs(StringUtils.breakQuotedString(command, ' ').toArray(new String[]{}));
+        String result = "OK";
 
-        IonTorrentCommandExecutor itexe = new IonTorrentCommandExecutor();
-        String result = itexe.execute(command);
-        if (result == null || !result.equalsIgnoreCase("NOTHANDLED")) {
-            log.info("Command was handled with IonTorrentCommandExecutor");
-            return result;
+        CommandExecutorIF specialexecutor = Handlers.getCommandExecutor();
+
+        if (specialexecutor != null) {
+            result = specialexecutor.execute(command);
+            if (result == null || !result.equalsIgnoreCase(CommandExecutorIF.NOTHANDLED)) {
+                log.info("Command was handled with " + specialexecutor.getClass().getName());
+                return result;
+            }
         }
-        
+
         result = "OK";
-        
+
         try {
             if (args.size() > 0) {
                 String cmd = args.get(0).toLowerCase();
@@ -90,65 +92,6 @@ public class CommandExecutor {
                     result = cmd;
                 } else if (cmd.equalsIgnoreCase("gotoimmediate")) {
                     return gotoImmediate(args);
-                } else if (cmd.equalsIgnoreCase("msg")) {
-                   String msg = param1;
-                   if (param2 != null) msg +="\n"+param2;
-                   if (param3 != null) msg +="\n"+param3;
-                   if (param4 != null) msg +="\n"+param4;
-                   MessageUtils.showMessage("Got msg: "+msg);
-                    result = param1;
-                } else if (cmd.equalsIgnoreCase("quit") || cmd.equalsIgnoreCase("exit")) {
-                    boolean ok = MessageUtils.confirm("IGV was asked to exit. Is that ok?");
-
-                    if (ok) {
-                        try {
-                            IGV.getInstance().saveStateForExit();
-                            Frame mainFrame = IGV.getMainFrame();
-                            // Hide and close the application
-                            mainFrame.setVisible(false);
-                            mainFrame.dispose();
-                        } finally {
-                            System.exit(0);
-                        }
-                    }
-                } else if (cmd.equalsIgnoreCase("set")) {
-                    String parts[] = param1.split("=", 2);
-                    String key = "";
-                    String value = "";
-                    if (parts.length > 1) {
-                        key = parts[0];
-                        value = parts[1];
-                    }
-                    if (param2 != null) value += " "+param2;
-                    if (param3 != null) value += " "+param3;
-                    if (param4 != null) value += " "+param4;
-                    if (key != null && value != null && key.length()>0) {
-                        if (IGV.DEBUG) {
-                            MessageUtils.showMessage("CommandExecutor: Setting " + key + "=" + value);
-                        }
-                        if (prefs.contains(key)) {
-                       //     log.info("Set: regular preference: put("+key+ ","+value+")");
-                            prefs.put(key, value);
-                            prefs.putTemp(key, value);
-                            // checking for some of the settings
-                            if (key.equalsIgnoreCase(PreferenceManager.SHOW_ATTRIBUTE_VIEWS_KEY)) {
-                                log.info("Dealing with "+key);
-                                IGV.getInstance().doShowAttributeDisplay(value.equalsIgnoreCase("true"));
-                            }
-                        }
-                       // log.info("Set: putTemp ("+key+ ","+value+")");
-                        prefs.putTemp(key, value);
-                        result = value;
-                    }
-                    else result="set requires 2 parameters, but I got: "+param1;
-                } else if (cmd.equalsIgnoreCase("get")) {
-                    log.info("Get, param1: "+param1);
-                    if (param1 != null) {
-                        result =  prefs.getTemp(param1);
-                        if (result == null) result = " ";
-                        
-                    }
-                    else result="Need to specify a variable";
                 } else if (cmd.equalsIgnoreCase("goto")) {
                     result = goto1(args);
                 } else if (cmd.equalsIgnoreCase("snapshot_fs")) {
@@ -198,8 +141,6 @@ public class CommandExecutor {
                     return this.setSamplingWindowSize(param1);
                 } else if (cmd.equalsIgnoreCase("maxdepth") || (cmd.equalsIgnoreCase("samplingreadcount"))) {
                     return this.setSamplingReadCount(param1);
-                } else if (cmd.equalsIgnoreCase("setSleepInterval")) {
-                    return this.setSleepInterval(param1);
                 } else if (cmd.equalsIgnoreCase("setCredentials")) {
                     return this.setCredentials(param1, param2);
                 } else if (cmd.equalsIgnoreCase("clearCredentials")) {
@@ -210,10 +151,9 @@ public class CommandExecutor {
                     System.exit(0);
                 } else {
                     if (command.indexOf("=") > 0) {
-                        log.info("Could be a set command: "+command);
-                        return this.execute("set "+command);
-                    }
-                    else {
+                        log.info("Could be a set command: " + command);
+                        return this.execute("set " + command);
+                    } else {
                         log.error("UNKOWN COMMAND: " + command);
                         return "UNKOWN COMMAND: " + command;
                     }
@@ -221,49 +161,41 @@ public class CommandExecutor {
             } else {
                 return "Empty command string";
             }
-           
-            Runnable r = new AfterCommandRunnable(command);
+
+            Runnable r = new AfterCommandRunnable();
             r.run();
         } catch (Exception e) {
             log.error(e);
             result = "Error: " + e.getMessage();
         }
-     //   log.info(result);
-      //  log.info("returning: "+result);
+      
         return result;
     }
 
-     private class AfterCommandRunnable implements Runnable{
-        private String command;
-        
-        
-        private AfterCommandRunnable(String command) { 
-            this.command = command;  
-           
-        }
+    private class AfterCommandRunnable implements Runnable {
+
+        private AfterCommandRunnable() {}
+
         @Override
         public void run() {
-           if (!command.startsWith("set "))  igv.doRefresh();
-
+            igv.doRefresh();
+           
             if (RuntimeUtils.getAvailableMemoryFraction() < 0.5) {
                 log.debug("Clearing caches");
                 LRUCache.clearCaches();
             }
-            if (!command.contains("nosleep")) {
-             //   log.info("Finished execution: " + command + "  sleeping ....");
-                if (sleepInterval > 0 && !command.startsWith("set ")) {
+            if (sleepInterval > 0) {
 
-                    try {
-                        Thread.currentThread().sleep(sleepInterval);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                   // log.debug("Finished sleeping");
+                try {
+                    Thread.currentThread().sleep(sleepInterval);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
-               
+                // log.debug("Finished sleeping");
             }
         }
     }
+
     private void newSession() {
         igv.resetSession(null);
         igv.setGenomeTracks(GenomeManager.getInstance().getCurrentGenome().getGeneTrack());
@@ -421,7 +353,7 @@ public class CommandExecutor {
             String workingDirectory = (new File("tmp")).getParent();
             genomePath = FileUtils.getAbsolutePath(genomeID, workingDirectory);
         }
-        log.info("Checking path: "+genomePath);
+        log.info("Checking path: " + genomePath);
         if (ParsingUtils.pathExists(genomePath)) {
             try {
                 log.info("CommandExecutor.genome");
@@ -492,15 +424,15 @@ public class CommandExecutor {
         return loadFiles(fileString, locus, merge, name, null);
     }
 
-    
     String loadFiles(final String fileString, final String locus, final boolean merge, String nameString, Map<String, String> params) throws IOException {
         return loadFiles(fileString, locus, merge, nameString, params, true);
-    
+
     }
+
     String loadFiles(final String fileString, final String locus, final boolean merge, String nameString, Map<String, String> params, boolean askUser) throws IOException {
 
 
-        log.info("Run load files "+fileString+", "+nameString);
+        log.info("Run load files " + fileString + ", " + nameString);
 
         String[] files = fileString.split(",");
         String[] names = nameString != null ? nameString.split(",") : null;
@@ -530,7 +462,9 @@ public class CommandExecutor {
             if (fileString.endsWith(".xml") || fileString.endsWith(".php") || fileString.endsWith(".php3")) {
                 unload = !merge;
             } else {
-                if (askUser) unload = MessageUtils.confirm("Unload current session before loading new tracks?");
+                if (askUser) {
+                    unload = MessageUtils.confirm("Unload current session before loading new tracks?");
+                }
             }
             if (unload) {
                 igv.resetSession(null);
@@ -571,7 +505,7 @@ public class CommandExecutor {
 
                 if (names != null) {
                     rl.setName(names[fi]);
-                    
+
                 }
                 if (params != null) {
                     String trackLine = createTrackLine(params);
@@ -596,13 +530,15 @@ public class CommandExecutor {
         return "OK";
     }
 
-     public static class LoadRunnable implements Runnable{
+    public static class LoadRunnable implements Runnable {
+
         Map<String, String> params;
         CommandExecutor cmdExe;
         String name;
         String locus;
         String file;
         boolean merge;
+
         public LoadRunnable(String file, String locus, boolean merge, String name, Map<String, String> params, CommandExecutor cmdExe) {
             this.params = params;
             this.cmdExe = cmdExe;
@@ -610,8 +546,9 @@ public class CommandExecutor {
             this.name = name;
             this.locus = locus;
             this.merge = merge;
-            
+
         }
+
         @Override
         public void run() {
             try {

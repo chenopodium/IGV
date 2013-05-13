@@ -98,6 +98,15 @@ public class Globals {
     public static String BEDtoolsPath = "/usr/local/bin/bedtools";
     public static boolean toolsMenuEnabled = false;
 
+    /*
+     * If nothing is specified, it will just use HttpUtils as is without any special handler
+ Otherwise, it will try to create an instance of this class (implementing HttpHandler), which will be
+ called whenever an URL is created.
+ This is for instance useful of a token mechanism is used and something needs to be written to the HTTP header
+     */
+    public static String HTTPHANDLER;
+    public static String COMMANDHANDLER;
+    
     static {
         Properties properties = new Properties();
         try {

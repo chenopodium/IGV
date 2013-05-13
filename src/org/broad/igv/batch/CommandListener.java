@@ -17,8 +17,7 @@
  */
 package org.broad.igv.batch;
 
-import com.iontorrent.utils.IonTorrentCommandHandler;
-import com.iontorrent.prefs.IonTorrentPreferencesManager;
+
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.ui.IGV;
@@ -36,7 +35,7 @@ import java.nio.channels.ClosedByInterruptException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import org.broad.igv.PreferenceManager;
+import org.broad.igv.Handlers;
 import org.broad.igv.util.LongRunningTask;
 
 public class CommandListener implements Runnable {
@@ -269,14 +268,17 @@ public class CommandListener implements Runnable {
         mainFrame.setAlwaysOnTop(true);
         mainFrame.setAlwaysOnTop(false);
 
-        //track%20type=bigBed%20name=%27hES_HUES1_p28.RRBS_CpG_meth%27%20description=%27RRBS%20CpG%20methylation%20for%20hES_HUES1_p28.RRBS%27%20visibility=4%20useScore=1%20color=0,60,120
-
-        /** from what server was IGV started? Used to link to other tools/apps */
         
-        IonTorrentCommandHandler ithandler = IonTorrentCommandHandler.getCommandHandler();
-        result = ithandler.processGet(command, params, cmdExe, out);
-        if (result == null || !result.equals("NOTHANDLED")) {
-            return result;
+        /**
+         * # if additional commands should be handled by the command executor (for processing batch files for instance)
+           # an instance of CommandExecutorIF can be specified here, which will use that class to execute those extra commands
+         */
+        CommandListenerIF specialcommandlistener = Handlers.getCommandListener();
+        if (specialcommandlistener != null) {
+            result = specialcommandlistener.processGet(command, params, cmdExe, out);
+            if (result == null || !result.equals(CommandListenerIF.NOTHANDLED) ){
+                return result;
+            }
         }
         
         if (command.equals("/load")) {

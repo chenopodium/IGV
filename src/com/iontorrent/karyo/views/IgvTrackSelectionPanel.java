@@ -6,6 +6,7 @@ package com.iontorrent.karyo.views;
 
 import com.iontorrent.karyo.data.KaryoTrack;
 import com.iontorrent.karyo.renderer.RenderManager;
+import com.iontorrent.prefs.IonTorrentPreferencesManager;
 import com.iontorrent.utils.ErrorHandler;
 import java.awt.BorderLayout;
 import java.awt.GridLayout;
@@ -84,9 +85,10 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
             String n = igvtrack.getDisplayName();
             //  p("Got track " + n + ":" + type);
             PreferenceManager prefs = PreferenceManager.getInstance();
-            boolean allowbam = prefs.getAsBoolean(prefs.KARYO_ALLOW_BAMFILES);
-            boolean allowgene = prefs.getAsBoolean(prefs.KARYO_ALLOW_GENEFILES);
-            boolean allowexp = prefs.getAsBoolean(prefs.KARYO_ALLOW_EXPFILES);
+            
+            boolean allowbam = prefs.getAsBoolean(IonTorrentPreferencesManager.KARYO_ALLOW_BAMFILES);
+            boolean allowgene = prefs.getAsBoolean(IonTorrentPreferencesManager.KARYO_ALLOW_GENEFILES);
+            boolean allowexp = prefs.getAsBoolean(IonTorrentPreferencesManager.KARYO_ALLOW_EXPFILES);
             try {
                 if (!(igvtrack instanceof AbstractTrack)) {
                     p("Don't know what to do with this track type " + n + "/" + type);

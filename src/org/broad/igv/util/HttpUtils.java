@@ -14,9 +14,7 @@ import sun.net.www.protocol.http.AuthCacheValue;
 import sun.net.www.protocol.http.AuthCacheImpl;
 
 import biz.source_code.base64Coder.Base64Coder;
-import com.iontorrent.utils.Encryptor;
 import com.iontorrent.utils.ErrorHandler;
-import com.iontorrent.utils.StringTools;
 import org.apache.log4j.Logger;
 import org.apache.tomcat.util.HttpDate;
 import org.broad.igv.Globals;
@@ -44,6 +42,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 import javax.net.ssl.*;
+import org.broad.igv.Handlers;
 import org.broad.igv.ui.util.MessageUtils;
 import org.openide.util.Exceptions;
 
@@ -55,7 +54,7 @@ import org.openide.util.Exceptions;
  */
 public class HttpUtils {
 
-    private static int HEADER_CHECKS;
+    //private static int HEADER_CHECKS;
     private static Logger log = Logger.getLogger(HttpUtils.class);
     private static HttpUtils instance;
     private Map<String, Boolean> byteRangeTestMap;
@@ -64,8 +63,7 @@ public class HttpUtils {
     private String defaultUserName = null;
     private char[] defaultPassword = null;
     private static Pattern URLmatcher = Pattern.compile(".{1,8}://.*");
-    private static boolean HEADER_SHOWN = false;
-    private static Map<String,String> name_ip_map;
+
     /**
      * @return the single instance
      */
@@ -213,14 +211,18 @@ public class HttpUtils {
     }
 
     public boolean resourceExists(String path) {
-        if (this.isRemoteURL(path)) try {
-            return resourceAvailable(new URL(path));
-        } catch (Exception e) {           
-            log.error("Error in resourceExists: " + path +", "+e.getMessage()+", "+ErrorHandler.getString(e));        
+        if (this.isRemoteURL(path)) {
+            try {
+                return resourceAvailable(new URL(path));
+            } catch (Exception e) {
+                log.error("Error in resourceExists: " + path + ", " + e.getMessage());
+            }
+        } else {
+            return FileUtils.resourceExists(path);
         }
-        else return FileUtils.resourceExists(path);
         return false;
     }
+
     public boolean resourceAvailable(URL url) {
 
         if (url.getProtocol().toLowerCase().equals("ftp")) {
@@ -542,17 +544,9 @@ public class HttpUtils {
 
         HttpURLConnection conn;
 
-     //   p(" ==== OPEN CONNECTION " + url);
-        if (requestProperties != null) {
-            Iterator iter = requestProperties.keySet().iterator();
-            for (; iter.hasNext();) {
-                String key = (String) iter.next();
-                //  p("Got request property: " + key + "=" + requestProperties.get(key));
-            }
-        }
+        //   log.info(" ==== OPEN CONNECTION " + url);
 
         if (useProxy) {
-            p("Using proxy");
             Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxySettings.proxyHost, proxySettings.proxyPort));
             conn = (HttpURLConnection) url.openConnection(proxy);
 
@@ -566,9 +560,6 @@ public class HttpUtils {
             conn = (HttpURLConnection) url.openConnection();
         }
         conn.setUseCaches(false);  // <= very important! due to Java 7 pack.gz issue 
-        // check if URL is ionreporter. We know this if there is a token that has to be passed
-        //  log.info("Checking if I have to set header paramters");
-
 
         try {
             conn.setConnectTimeout(Globals.CONNECT_TIMEOUT);
@@ -587,7 +578,7 @@ public class HttpUtils {
 
         if (requestProperties != null) {
             for (Map.Entry<String, String> prop : requestProperties.entrySet()) {
-           //     log.info("Setting HEADER "+prop.getKey()+"="+prop.getValue());
+                //     log.info("Setting HEADER "+prop.getKey()+"="+prop.getValue());
                 conn.setRequestProperty(prop.getKey(), prop.getValue());
             }
         }
@@ -603,23 +594,21 @@ public class HttpUtils {
             conn.setRequestProperty("Accept", "text/plain");
             //conn.setRequestProperty("Accept", "*/*");
         }
-       // p("CheckHeader for " + url);
-        this.checkForHeaderParameters(url, conn);
+
+        //CR: handle potential ion reporter or ion torrent links
+        HttpHandler specialhandler = Handlers.getHttpHandler();
+        if( specialhandler != null) specialhandler.handle(url, conn);
 
         if (method.equals("PUT")) {
-          //  p("Method put");
             return conn;
         } else {
-            //  p("Method is GET");
             int code = conn.getResponseCode();
-           // p("Got response code: " + code);
             // Redirects.  These can occur even if followRedirects == true if there is a change in protocol,
             // for example http -> https.
             if (code >= 300 && code < 400) {
                 if (redirectCount > MAX_REDIRECTS) {
                     throw new IOException("Too many redirects");
                 }
-
                 String newLocation = conn.getHeaderField("Location");
                 log.debug("Redirecting to " + newLocation);
 
@@ -635,20 +624,20 @@ public class HttpUtils {
                     message = conn.getResponseMessage();
                     for (Iterator it = conn.getHeaderFields().keySet().iterator(); it.hasNext();) {
                         String key = (String) it.next();
-                     //   p("Got header property: " + key + "=" + conn.getHeaderField(key));
+                        //   p("Got header property: " + key + "=" + conn.getHeaderField(key));
                     }
-                    
-                   
+
+
                     HttpResponseException exc = new HttpResponseException(code);
                     String details = readErrorStream(conn);
                     log.debug("error stream: " + details);
                     log.debug(message);
                     if (code == 403 || code == 401 || code == 500) {
-                        p(" ======== DEBUGGING ERROR " + code + " =================");
+                        log.info(" ======== DEBUGGING ERROR " + code + " =================");
 
                         if (this.defaultPassword != null || this.defaultUserName != null) {
                             MessageUtils.showMessage(exc.getMessage() + "<br>I will clear the credentials and try again");
-                            p("Clearing credentials");
+                            log.info("Clearing credentials");
 
                             this.clearDefaultCredentials();
                             resetAuthenticator();
@@ -672,149 +661,12 @@ public class HttpUtils {
         return conn;
     }
 
-    private void checkForHeaderParameters(URL url, HttpURLConnection conn) {
-        PreferenceManager pref = PreferenceManager.getInstance();
-        // get any header params
-        String header_key = pref.getTemp("header_key");
-        String header_value = pref.getTemp("header_value");
-        boolean header_encrypt = pref.getTempAsBoolean("header_encrypt");
-        String server = pref.getTemp("server");
-        if (server != null) {
-            int col = server.indexOf(":");
-            if (col > -1) {
-                server = server.substring(0, col);
-            }
-        }
-       // else p("Got no server");
-        if (header_value != null && header_key == null) {
-            header_key = "Authorization";
-        }
-        boolean show = HEADER_CHECKS < 5;/// || url.toString().endsWith(".seg") || url.toString().endsWith(".bed");
-//        if (show) {
-//            log.info("checkForHeaderParameters: header key and value: " + header_key + "=" + header_value + ", ecnryption is: " + header_encrypt + ", will add it to connection header");
-//            log.info("checkForHeaderParameters: server:" + server + ", URL is: " + url.toString());
-//        }
-        if (header_key != null && header_value != null && server != null) {
-            // by default no ecnryption is assumed.
-            
-            if (name_ip_map == null) name_ip_map = new HashMap<String, String>();
-            String ipAddress = name_ip_map.get(server);
-            if (ipAddress == null) {
-                try {
-                    InetAddress inetAddress = InetAddress.getByName(server);            
-                    ipAddress = inetAddress.getHostAddress().toString();
-                    p("Got IP address "+ipAddress+"  for "+server);
-                }
-                catch (Exception e ){
-                    p("Could not get IP of "+server+":"+e.getMessage());
-                }
-                if (ipAddress == null )ipAddress = server;
-                name_ip_map.put(server, ipAddress);
-            }
-            String ipURL = name_ip_map.get(url.getHost());;
-             if (ipURL == null) {
-                try {
-                    InetAddress inetAddress = InetAddress.getByName(url.getHost());            
-                    ipURL = inetAddress.getHostAddress().toString();
-                    p("Got ipURL address "+ipURL+"  for "+url.getHost());
-                }
-                catch (Exception e ){
-                    p("Could not get ipURL of  HOST "+url.getHost()+":"+e.getMessage());
-                }
-                if (ipURL == null )ipURL = url.getHost();
-                
-                name_ip_map.put(url.getHost(), ipURL);
-            }
-            if (url.toString().indexOf(server) > -1 || url.toString().indexOf(ipAddress)  > -1 ||
-                    server.indexOf(ipURL) > -1 || server.indexOf(url.getHost())  > -1) {
-                if (header_encrypt) {
-                    String encrypted = header_value;
-
-                    String algo = pref.getTemp("algorithm");
-                    if (algo == null) {
-                        algo = Encryptor.getDefaultAlgorithm();
-                    }
-
-//                    if (show) {
-//                        p("checkForHeaderParameters: About to decrypt with algo " + algo + " and url " + server + ", value length is " + header_value.length() + " is " + header_value);
-//                    }
-                    try {
-                        header_value = Encryptor.decrypt(algo, header_value, "IGVKEY123");
-                    } catch (Exception e) {
-                        p("checkForHeaderParameters: Could not decrypt: " + ErrorHandler.getString(e));
-                        byte b[] = fromHexadecimal(header_value);
-                    }
-
-                    if (show) {
-                      //  p("header encrypt is: " + header_encrypt + ", value is: " + header_value + ", host is: " + url.getHost());
-                        //  p("Got algorithm:"+algo);
-                        if (header_value == null) {
-                            log.error("Decrypted " + encrypted + " resulted in null. Algo is " + algo);
-                        } else {
-                        //    p("Decrypted token is: " + header_value);
-                        }
-                    }
-
-                } else {
-                    // replace _ with space
-
-                    header_value = StringTools.replace(header_value, "_", " ");
-                    if (show) {
-                        p("checkForHeaderParameters: Token was not not encrypted! encrypt=" + pref.getTemp("header_encrypt") + ", Using token " + header_value);
-                    }
-                }
-                conn.setRequestProperty("Accept", "*/*");
-                if (header_value != null) {
-                    if (show) {
-                        p("SETTING " + header_key + "=" + header_value);
-                    }
-                    conn.addRequestProperty(header_key, header_value);
-                }
-            } else {
-                log.info("checkForHeaderParameters: NOT using token becaue server is not in URL: server:" + server + ", URL is: " + url.toString());
-            }
-        } else {
-            if (show) {
-                p("checkForHeaderParameters: Got no header key or value, or url not server " + server + ":" + url);
-            }
-        }
-        HEADER_CHECKS++;
-    }
-
-    public byte[] fromHexadecimal(String message) {
-        if (message == null) {
-            return null;
-        }
-        if ((message.length() % 2) != 0) {
-            p("Message length should be % 2 = 0");
-            return null;
-        }
-        try {
-            byte[] result = new byte[message.length() / 2];
-            for (int i = 0; i < message.length(); i = i + 2) {
-                int first = Integer.parseInt("" + message.charAt(i), 16);
-                int second = Integer.parseInt("" + message.charAt(i + 1), 16);
-                result[i / 2] = (byte) (0x0 + ((first & 0xff) << 4) + (second & 0xff));
-            }
-            return result;
-        } catch (Exception e) {
-            p("Got an error: " + ErrorHandler.getString(e));
-        }
-        return null;
-    }
-
     public void setDefaultPassword(String defaultPassword) {
         this.defaultPassword = defaultPassword.toCharArray();
     }
 
     public void setDefaultUserName(String defaultUserName) {
         this.defaultUserName = defaultUserName;
-    }
-
-    private void p(String s) {
-        log.info(s);
-        //System.out.println("HttpUtils: " + s);
-
     }
 
     public void clearDefaultCredentials() {
@@ -974,13 +826,15 @@ public class HttpUtils {
 
     public InputStream openInputStream(String path) {
         try {
-            if (FileUtils.isRemote(path)) return this.openConnectionStream( new URL(path));
-            else return ParsingUtils.openInputStream(path);
+            if (FileUtils.isRemote(path)) {
+                return this.openConnectionStream(new URL(path));
+            } else {
+                return ParsingUtils.openInputStream(path);
+            }
+        } catch (Exception e) {
+            log.error("Error openInputStream: " + path + ", " + e.getMessage() + ", " + ErrorHandler.getString(e));
         }
-        catch (Exception e) {
-            log.error("Error openInputStream: " + path +", "+e.getMessage()+", "+ErrorHandler.getString(e));
-        }
-            
+
         return null;
     }
 
@@ -1065,7 +919,7 @@ public class HttpUtils {
                     proxySettings.user = userString;
                     proxySettings.pw = new String(userPass);
                 }
-                
+
                 defaultUserName = userString;
                 defaultPassword = userPass;
                 if (dlg.remember()) {
@@ -1073,7 +927,7 @@ public class HttpUtils {
                     PreferenceManager prefMgr = PreferenceManager.getInstance();
                     prefMgr.put(PreferenceManager.AUTHENTICATION_DEFAULT_USER, defaultUserName);
                     String pwcoded = Utilities.base64Encode(new String(defaultPassword));
-                    prefMgr.put(PreferenceManager.AUTHENTICATION_DEFAULT_PW, pwcoded);                
+                    prefMgr.put(PreferenceManager.AUTHENTICATION_DEFAULT_PW, pwcoded);
                 }
                 return new PasswordAuthentication(userString, userPass);
             }

@@ -8,12 +8,9 @@
  * This software is licensed under the terms of the GNU Lesser General Public License (LGPL),
  * Version 2.1 which is available at http://www.opensource.org/licenses/lgpl-2.1.php.
  */
-
-
 package org.broad.igv.ui.action;
 
 //~--- non-JDK imports --------------------------------------------------------
-
 import com.iontorrent.utils.ErrorHandler;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
@@ -26,35 +23,32 @@ import org.broad.igv.ui.IGV;
 import org.broad.igv.ui.panel.ReferenceFrame;
 import org.broad.igv.ui.util.MessageUtils;
 import org.broad.tribble.Feature;
- 
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.*;
 import java.util.List;
-import org.broad.igv.batch.CommandExecutor;
-import org.broad.igv.track.Track;
-import org.broad.igv.util.LongRunningTask;
+import org.broad.igv.Handlers;
 
 /**
- * A class for performing search actions.  The class takes a view context and
- * search string as parameters.   The search string can be either
- * (a) a feature (e.g. gene),  or
- * (b) a locus string in the UCSC form,  e.g. chr1:100,000-200,000
+ * A class for performing search actions. The class takes a view context and
+ * search string as parameters. The search string can be either (a) a feature
+ * (e.g. gene), or (b) a locus string in the UCSC form, e.g.
+ * chr1:100,000-200,000
  * <p/>
- * Note:  Currently the only recognized features are genes
+ * Note: Currently the only recognized features are genes
  *
  * @author jrobinso
  */
-
 /**
- * A class for performing search actions.  The class takes a view context and
- * search string as parameters.   The search string can be either
- * (a) a feature (e.g. gene),  or
- * (b) a locus string in the UCSC form,  e.g. chr1:100,000-200,000
+ * A class for performing search actions. The class takes a view context and
+ * search string as parameters. The search string can be either (a) a feature
+ * (e.g. gene), or (b) a locus string in the UCSC form, e.g.
+ * chr1:100,000-200,000
  * <p/>
- * Note:  Currently the only recognized features are genes
+ * Note: Currently the only recognized features are genes
  *
  * @author jrobinso
  */
@@ -63,12 +57,10 @@ public class SearchCommand implements Command {
     private static Logger log = Logger.getLogger(SearchCommand.class);
     public static int SEARCH_LIMIT = 20;
     private boolean askUser = false;
-
     String searchString;
     ReferenceFrame referenceFrame;
     boolean recordHistory = true;
     Genome genome;
-
 
     public SearchCommand(ReferenceFrame referenceFrame, String searchString) {
         this(referenceFrame, searchString, GenomeManager.getInstance().getCurrentGenome());
@@ -85,14 +77,38 @@ public class SearchCommand implements Command {
         this.genome = genome;
     }
 
+    public ReferenceFrame getReferenceFrame() {
+        return referenceFrame;
+    }
 
+    public boolean isAskUser() {
+        return askUser;
+    }
+
+    public String getSearchString() {
+        return searchString;
+    }
+    
+    @Override
     public void execute() {
 
         if (log.isDebugEnabled()) {
             log.info("Run search: " + searchString);
         }
 
-        String oldchr = this.referenceFrame.getChrName();
+        /**
+         * # If the search command (finding genes or similar) should do something special,
+         # then a search command handler can be specified here. If this is defined, it will invoke this execute
+        # method instead of the default execute method of SearchCommand
+         */
+        SearchCommandHandler specialhandler = Handlers.getSearchCommandHandler();
+        if (specialhandler != null) {
+            specialhandler.execute(this);
+            if (log.isDebugEnabled()) {
+                log.info("Executed special search handler " + specialhandler.getClass().getName() + ", returning now");
+            }
+            return;
+        }
         List<SearchResult> results = runSearch(searchString);
         if (askUser) {
             results = askUserFeature(results);
@@ -103,68 +119,28 @@ public class SearchCommand implements Command {
                 return;
             }
         }
-
         showSearchResult(results);
 
         if (log.isDebugEnabled()) {
             log.info("End search: " + searchString);
         }
-        
-        // we might have defined a variable chr1=location to file, to speed up loading of IGV
-        // in this case, we want to load the next chromosome now....
-        String newchr = this.referenceFrame.getChrName();
-        log.info("SearchCommand.execute: old: "+oldchr+", newchr: "+newchr);
-        if (newchr != null && oldchr != null && !(newchr.equalsIgnoreCase(oldchr))) {
-            String locationtofile = PreferenceManager.getInstance().getTemp(newchr);
-            if (locationtofile != null) {
-                 log.info("User moved to new chr "+newchr+", and we found a map to a file "+locationtofile+", will now use load command");
-                 // first remove other tracks
-                 String name = newchr; 
-                Collection<Track> remove = new ArrayList<Track>();
-                log.info("Trying to remove other tracks with name chr");
-                Collection<Track> alltracks = IGV.getInstance().getAllTracks();
-
-                for (Track other: alltracks) {
-                    if (other.getName().startsWith("chr")) {
-                        log.info("Found other track "+other.getName());
-                        remove.add(other);                                                 
-                    }
-                    else log.info("NOT removing track "+other.getName());
-                }
-                if (remove.size()>0) {
-                    log.info("Removing other tracks");
-                    IGV.getInstance().removeTracks(remove);
-                }   
-                 CommandExecutor cmdExe = new CommandExecutor();
-                
-                 Map<String, String> params = new HashMap<String, String>();                 
-//                 params.put("displayMode", "COLLAPSED");
-//                 params.put("mergeTrack", "true");
-//                 
-//                 LongRunningTask.submit(new CommandExecutor.LoadRunnable(locationtofile, searchString, true, name, null, cmdExe));
-//                 params.put("displayMode", "EXPANDED");                
-//                // name = "Alignments"; 
-                 LongRunningTask.submit(new CommandExecutor.LoadRunnable(locationtofile, searchString, true, name, params, cmdExe));
-            }
-        }
-            
     }
 
     /**
      * Given a string, search for the appropriate data to show the user.
      * Different syntaxes are accepted.
      * <p/>
-     * In general, whitespace delimited tokens are treated separately and each are shown.
-     * There is 1 exception to this. A locus of form chr1   1   10000 will be treated the same
-     * as chr1:1-10000. Only one entry of this form can be entered, chr1    1   10000 chr2:1-1000 will
-     * not be recognized.
+     * In general, whitespace delimited tokens are treated separately and each
+     * are shown. There is 1 exception to this. A locus of form chr1 1 10000
+     * will be treated the same as chr1:1-10000. Only one entry of this form can
+     * be entered, chr1 1 10000 chr2:1-1000 will not be recognized.
      *
-     * @param searchString Feature name (EGFR), chromosome (chr1), or locus string (chr1:1-100 or chr1:6)
-     *                     Partial matches to a feature name (EG) will return multiple results, and
-     *                     ask the user which they want.
-     * @return result
-     *         List<SearchResult> describing the results of the search. Will never
-     *         be null, field type will equal ResultType.ERROR if something went wrong.
+     * @param searchString Feature name (EGFR), chromosome (chr1), or locus
+     * string (chr1:1-100 or chr1:6) Partial matches to a feature name (EG) will
+     * return multiple results, and ask the user which they want.
+     * @return result List<SearchResult> describing the results of the search.
+     * Will never be null, field type will equal ResultType.ERROR if something
+     * went wrong.
      */
     public List<SearchResult> runSearch(String searchString) {
 
@@ -251,20 +227,20 @@ public class SearchCommand implements Command {
         }
         if (showMessage) {
             MessageUtils.showMessage(message);
-            Exception e = new Exception("Debug: "+message);
+            Exception e = new Exception("Debug: " + message);
             log.info(ErrorHandler.getString(e));
-                    
+
         }
 
     }
 
     /**
-     * Get a list of strings of feature names suitable for display, containing only
-     * those search results which were not an error
+     * Get a list of strings of feature names suitable for display, containing
+     * only those search results which were not an error
      *
      * @param results
-     * @param longName Whether to use the long (true) or short (false)
-     *                 of search results.
+     * @param longName Whether to use the long (true) or short (false) of search
+     * results.
      * @return Array of strings of results found.
      */
     public static Object[] getSelectionList(List<SearchResult> results, boolean longName) {
@@ -275,24 +251,24 @@ public class SearchCommand implements Command {
             }
             if (longName) {
                 options.add(result.getLongName());
-            } else
+            } else {
                 options.add(result.getShortName());
+            }
         }
 
         return options.toArray();
     }
 
     /**
-     * Display a dialog asking user which search result they want
-     * to display. Number of results are limited to SEARCH_LIMIT.
-     * The user can select multiple options, in which case all
-     * are displayed.
+     * Display a dialog asking user which search result they want to display.
+     * Number of results are limited to SEARCH_LIMIT. The user can select
+     * multiple options, in which case all are displayed.
      *
      * @param results
-     * @return SearchResults which the user has selected.
-     *         Will be null if cancelled
+     * @return SearchResults which the user has selected. Will be null if
+     * cancelled
      */
-    private List<SearchResult> askUserFeature(List<SearchResult> results) {
+    public List<SearchResult> askUserFeature(List<SearchResult> results) {
 
         Object[] list = getSelectionList(results, true);
         JList ls = new JList(list);
@@ -332,8 +308,8 @@ public class SearchCommand implements Command {
     }
 
     /**
-     * Check token type using regex.
-     * Intended to be inclusive, returns all possible matches
+     * Check token type using regex. Intended to be inclusive, returns all
+     * possible matches
      *
      * @param token
      * @return
@@ -471,19 +447,17 @@ public class SearchCommand implements Command {
 
     }
 
-
     /**
-     * Parse a string of locus coordinates.
-     * Can have whitespace delimiters, and be missing second coordinate,
-     * but must have 1st coordinate.
+     * Parse a string of locus coordinates. Can have whitespace delimiters, and
+     * be missing second coordinate, but must have 1st coordinate.
      *
      * @param searchString
      * @return
      */
     private SearchResult calcChromoLocus(String searchString) {
         /*
-        chromosome can have whitespace or : delimiter
-        chromosome also might have : in the name
+         chromosome can have whitespace or : delimiter
+         chromosome also might have : in the name
          */
         int[] startEnd = null;
         String[] tokens = searchString.split("\\s+");
@@ -550,10 +524,11 @@ public class SearchCommand implements Command {
 
     /**
      * Return the start and end positions as a 2 element array for the input
-     * position string.  UCSC conventions  are followed for coordinates,
+     * position string. UCSC conventions are followed for coordinates,
      * specifically the internal representation is "zero" based (first base is
-     * numbered 0) and end-exclusive, but the display representation is "one" based (first base is
-     * numbered 1) and end-inclusive.   Consequently 1 is subtracted from the parsed positions
+     * numbered 0) and end-exclusive, but the display representation is "one"
+     * based (first base is numbered 1) and end-inclusive. Consequently 1 is
+     * subtracted from the parsed positions
      */
     private static int[] getStartEnd(String posString) {
         try {
@@ -584,6 +559,7 @@ public class SearchCommand implements Command {
     }
 
     public enum ResultType {
+
         FEATURE,
         FEATURE_MUT_AA,
         FEATURE_MUT_NT,
@@ -593,14 +569,14 @@ public class SearchCommand implements Command {
     }
 
     /*
-    Container class for search results
+     Container class for search results
      */
     public static class SearchResult {
+
         String chr;
         private int start;
         private int end;
         ResultType type;
-
         private String locus;
         private String message;
         private NamedFeature feature;
@@ -634,8 +610,7 @@ public class SearchCommand implements Command {
         }
 
         /**
-         * Always a coordinate string.
-         * eg chr1:1-100
+         * Always a coordinate string. eg chr1:1-100
          *
          * @return
          */
@@ -661,8 +636,7 @@ public class SearchCommand implements Command {
         }
 
         /**
-         * Format for display. If a feature,
-         * Featurename (chromosome:start-end)
+         * Format for display. If a feature, Featurename (chromosome:start-end)
          * eg EGFR (chr7:55,054,218-55,242,525)
          * <p/>
          * Otherwise, just locus
@@ -695,8 +669,8 @@ public class SearchCommand implements Command {
     }
 
     /**
-     * Get a list of search results from the provided objects,
-     * which must be NamedFeature objects.
+     * Get a list of search results from the provided objects, which must be
+     * NamedFeature objects.
      *
      * @param objects
      * @return
@@ -708,6 +682,4 @@ public class SearchCommand implements Command {
         }
         return results;
     }
-
-
 }

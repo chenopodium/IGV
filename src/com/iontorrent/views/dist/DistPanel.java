@@ -8,6 +8,7 @@ import com.iontorrent.data.ConfidenceDistribution;
 import com.iontorrent.data.ReadInfo;
 
 import com.iontorrent.expmodel.ExperimentContext;
+import com.iontorrent.prefs.IonTorrentPreferencesManager;
 import com.iontorrent.rawdataaccess.FlowValue;
 import com.iontorrent.rawdataaccess.ReadFlow;
 import com.iontorrent.torrentscout.explorer.process.SignalFetchPanel;
@@ -210,7 +211,7 @@ public class DistPanel extends javax.swing.JPanel {
     }
 
     private void getPreferences() {
-        String type = PreferenceManager.getInstance().get(PreferenceManager.IONTORRENT_FLOWDIST_CHARTTYPE);
+        String type = PreferenceManager.getInstance().get(IonTorrentPreferencesManager.IONTORRENT_FLOWDIST_CHARTTYPE);
         if (type == null) {
             type = "LINE";
         }
@@ -224,7 +225,7 @@ public class DistPanel extends javax.swing.JPanel {
             chart_type = TYPE_STACKED;
         }
 
-        binsize = PreferenceManager.getInstance().getAsInt(PreferenceManager.IONTORRENT_FLOWDIST_BINSIZE);
+        binsize = PreferenceManager.getInstance().getAsInt(IonTorrentPreferencesManager.IONTORRENT_FLOWDIST_BINSIZE);
         if (binsize < 1) {
             binsize = 5;
         }
@@ -870,7 +871,7 @@ public class DistPanel extends javax.swing.JPanel {
     private void changeBinSize(int newbinsize) {
         this.binsize = newbinsize;
         PreferenceManager pref = PreferenceManager.getInstance();
-        pref.put(PreferenceManager.IONTORRENT_FLOWDIST_BINSIZE, "" + binsize);
+        pref.put(IonTorrentPreferencesManager.IONTORRENT_FLOWDIST_BINSIZE, "" + binsize);
         refresh();
         if (((Integer) spinBin.getValue()).intValue() != newbinsize) {
             ignore_events = true;
@@ -908,7 +909,7 @@ public class DistPanel extends javax.swing.JPanel {
         String server = prefs.getTemp("server");
         if (server == null)server = prefs.getTemp("SERVER");
         p("Gpt server:"+server);
-        String expinfo = prefs.get(PreferenceManager.BAM_FILE);
+        String expinfo = prefs.get(IonTorrentPreferencesManager.BAM_FILE);
 
         ExperimentContext exp = new ExperimentContext();
         exp.setExperimentInfo(expinfo);

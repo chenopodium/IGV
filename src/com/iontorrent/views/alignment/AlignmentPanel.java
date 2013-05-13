@@ -7,6 +7,7 @@ package com.iontorrent.views.alignment;
 import com.iontorrent.data.IonogramAlignment;
 import com.iontorrent.data.Ionogram;
 import com.iontorrent.data.PeakFunction;
+import com.iontorrent.prefs.IonTorrentPreferencesManager;
 import com.iontorrent.rawdataaccess.FlowValue;
 import com.iontorrent.wellmodel.WellFlowDataResult;
 import java.awt.*;
@@ -79,8 +80,8 @@ public class AlignmentPanel extends JPanel {
 
         this.setBackground(Color.white);
         prefs = PreferenceManager.getInstance();
-        slotheight = prefs.getAsInt(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN);
-        slotwidth = prefs.getAsInt(PreferenceManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN);
+        slotheight = prefs.getAsInt(IonTorrentPreferencesManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN);
+        slotwidth = prefs.getAsInt(IonTorrentPreferencesManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN);
         int totalwidth = slotwidth * alignment.getNrslots() + BORDER;
         this.setSize(totalwidth, slotheight + TOP);
         //  p("Got slot height: " + slotheight);
@@ -189,7 +190,7 @@ public class AlignmentPanel extends JPanel {
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
 
-        String type = prefs.get(PreferenceManager.IONTORRENT_IONOGRAM_ALIGN_DRAWTYPE);
+        String type = prefs.get(IonTorrentPreferencesManager.IONTORRENT_IONOGRAM_ALIGN_DRAWTYPE);
         drawPeak = type.equalsIgnoreCase("PEAK");
         Graphics2D gg = (Graphics2D) g;
         int width = this.getWidth();
