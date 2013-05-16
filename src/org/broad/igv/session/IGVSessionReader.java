@@ -18,6 +18,7 @@
 package org.broad.igv.session;
 
 import com.iontorrent.utils.ErrorHandler;
+import com.iontorrent.utils.io.FileTools;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.feature.Locus;
@@ -269,8 +270,19 @@ public class IGVSessionReader implements SessionReader {
         try {
             document = Utilities.createDOMDocumentFromXmlStream(inputStream);
         } catch (Exception e) {
-            log.error("Load session error", e);
-            throw new RuntimeException(e);
+            log.error("Load session error (will try to show content)", e);
+            // also try to read from input stream to see WHERE the error happened!
+            String result ="I was able to read anything from the input stream\n";
+            try {
+                result = "IGV got this from the server:\n"+FileTools.getIsAsString(inputStream);
+                log.error(result);
+            } catch (Exception e1) {
+                     log.error("Could not read input stream:"+ ErrorHandler.getString(e1));            
+            }
+            Exception usererror = new Exception(result+e.getMessage());
+            usererror.setStackTrace(e.getStackTrace());
+            
+            throw new RuntimeException(usererror);
         }
 
         NodeList tracks = document.getElementsByTagName("Track");

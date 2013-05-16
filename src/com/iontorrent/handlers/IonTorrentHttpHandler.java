@@ -70,7 +70,7 @@ public class IonTorrentHttpHandler implements HttpHandler {
         if (header_value != null && header_key == null) {
             header_key = "Authorization";
         }
-        boolean show = HEADER_CHECKS < 5;/// || url.toString().endsWith(".seg") || url.toString().endsWith(".bed");
+        boolean show = HEADER_CHECKS < 20;/// || url.toString().endsWith(".seg") || url.toString().endsWith(".bed");
 //        if (show) {
 //            log.info("checkForHeaderParameters: header key and value: " + header_key + "=" + header_value + ", ecnryption is: " + header_encrypt + ", will add it to connection header");
 //            log.info("checkForHeaderParameters: server:" + server + ", URL is: " + url.toString());
@@ -110,8 +110,21 @@ public class IonTorrentHttpHandler implements HttpHandler {
 
                 name_ip_map.put(url.getHost(), ipURL);
             }
-            if (url.toString().indexOf(server) > -1 || url.toString().indexOf(ipAddress) > -1
-                    || server.indexOf(ipURL) > -1 || server.indexOf(url.getHost()) > -1) {
+            
+            String surl = url.toString();
+            boolean useToken = surl.indexOf(server) > -1 || surl.indexOf(ipAddress) > -1
+                    || server.indexOf(ipURL) > -1 || server.indexOf(url.getHost()) > -1;
+            
+            // TESTING/DEBUG ON UAT: we also use the token if it NOT broad
+            if (!useToken) {
+                surl = surl.toLowerCase();
+                if (surl.indexOf("broad")<0 && surl.indexOf("hgdown")<0) {
+                    useToken = true;
+                    p("I would not use the token for "+surl+", but for debugging etc we are still using it");
+                }
+            }
+            
+            if (useToken) {
                 if (header_encrypt) {
                     String encrypted = header_value;
 
@@ -151,7 +164,7 @@ public class IonTorrentHttpHandler implements HttpHandler {
                 conn.setRequestProperty("Accept", "*/*");
                 if (header_value != null) {
                     if (show) {
-                        p("SETTING " + header_key + "=" + header_value);
+                        p("SETTING " + header_key + "=" + header_value+" for url "+ url.toString());
                     }
                     conn.addRequestProperty(header_key, header_value);
                 }
@@ -160,7 +173,7 @@ public class IonTorrentHttpHandler implements HttpHandler {
             }
         } else {
             if (show) {
-                p("checkForHeaderParameters: Got no header key or value, or url not server " + server + ":" + url);
+                p("checkForHeaderParameters: Got no header key or value or no server " + server + ":" + url);
             }
         }
         HEADER_CHECKS++;

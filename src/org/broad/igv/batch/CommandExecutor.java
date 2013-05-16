@@ -77,7 +77,8 @@ public class CommandExecutor {
                 return result;
             }
         }
-
+        else log.info("NO special command handler");
+        
         result = "OK";
 
         try {
@@ -149,14 +150,10 @@ public class CommandExecutor {
                     return Globals.VERSION;
                 } else if (cmd.equals("exit")) {
                     System.exit(0);
-                } else {
-                    if (command.indexOf("=") > 0) {
-                        log.info("Could be a set command: " + command);
-                        return this.execute("set " + command);
-                    } else {
+                } else {                    
                         log.error("UNKOWN COMMAND: " + command);
                         return "UNKOWN COMMAND: " + command;
-                    }
+                    
                 }
             } else {
                 return "Empty command string";

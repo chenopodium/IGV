@@ -41,7 +41,7 @@ public class Handlers {
             log.info("*** Was unable to load handler.properties, will use default handlers ***", e);
         }
         HTTPHANDLER = handlerproperties.getProperty("httphandler", null);
-        COMMANDEXECUTOR = handlerproperties.getProperty("commandhandler", null);
+        COMMANDEXECUTOR = handlerproperties.getProperty("commandexecutor", null);
         COMMANDLISTENER = handlerproperties.getProperty("commandlistener", null);
         SEARCHCOMMANDHANDLER = handlerproperties.getProperty("searchcommandhandler", null);
         ARGUMENTHANDLER = handlerproperties.getProperty("argumenthandler", null);
@@ -75,6 +75,7 @@ public class Handlers {
  */
     public static CommandExecutorIF getCommandExecutor() {
         if (COMMANDEXECUTOR == null) {
+            log.info("Got no commandexecutor");
             return null;
         }
         try {
