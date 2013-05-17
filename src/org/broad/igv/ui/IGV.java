@@ -1260,8 +1260,10 @@ public class IGV {
             // NOTE: Nothing to do if chr == all
             if (!FrameManager.isGeneListMode() && searchText != null &&
                     !searchText.equals(Globals.CHR_ALL) && searchText.trim().length() > 0) {
-                p("Going to locus: "+searchText);
-                goToLocus(searchText);
+                if (!searchText.contains("=")) {
+                    p("Going to locus: "+searchText);
+                    goToLocus(searchText);
+                }
             }
 
 

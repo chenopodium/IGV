@@ -195,7 +195,7 @@ public abstract class AbstractTrack implements Track {
         if (this.getResourceLocator() != null) {
             String sample = this.getResourceLocator().getSampleId();
             if (sample == null) sample = this.getSample();
-          //  log.info("getDisplayName: name is "+disp+", sample="+sample);
+            log.info("getDisplayName: name is "+disp+", sample="+sample);
             if (sample != null) {
                 if (!disp.toUpperCase().startsWith(sample.toUpperCase())) {
                     sample = Character.toUpperCase(sample.charAt(0)) + sample.substring(1);
@@ -203,6 +203,13 @@ public abstract class AbstractTrack implements Track {
                 }            
             }
        
+        }
+        else if (this.getSample() != null) {
+            String sample= this.getSample();
+            if (!disp.toUpperCase().startsWith(sample.toUpperCase())) {
+                    sample = Character.toUpperCase(sample.charAt(0)) + sample.substring(1);
+                    disp = sample+" "+disp;
+                } 
         }
         disp = disp.replace("_", " ");
         disp = disp.replace("-", " ");
@@ -345,7 +352,7 @@ public abstract class AbstractTrack implements Track {
 
     public String getSample() {
 
-        if (sampleId != null) {
+        if (sampleId != null && sampleId.length()>0) {
             return sampleId;
         }
 //        String sample = AttributeManager.getInstance().getSampleFor(getName());

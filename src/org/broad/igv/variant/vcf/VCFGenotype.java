@@ -12,6 +12,7 @@
 package org.broad.igv.variant.vcf;
 
 
+
 import org.broadinstitute.sting.utils.variantcontext.Allele;
 import org.broadinstitute.sting.utils.variantcontext.Genotype;
 
@@ -40,6 +41,7 @@ public class VCFGenotype implements org.broad.igv.variant.Genotype {
     }
 
     public Map<String, Object> getAttributes() {
+        if (vcfGenotype == null) return null;
         return vcfGenotype.getExtendedAttributes();
     }
 
@@ -85,6 +87,14 @@ public class VCFGenotype implements org.broad.igv.variant.Genotype {
     }
 
     public double getAttributeAsDouble(String s) {
-        return vcfGenotype.getAttributeAsDouble(s, Double.NaN);
+        if (s == null) return 0;
+        double d = 0;
+        try {
+            d= vcfGenotype.getAttributeAsDouble(s, Double.NaN);
+        }
+        catch (Exception e) {
+            //Logger.getLogger(getClass()).info("Could not get double from "+s);
+        }
+        return d;
     }
 }

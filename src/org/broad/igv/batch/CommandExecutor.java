@@ -73,7 +73,7 @@ public class CommandExecutor {
         if (specialexecutor != null) {
             result = specialexecutor.execute(command);
             if (result == null || !result.equalsIgnoreCase(CommandExecutorIF.NOTHANDLED)) {
-                log.info("Command was handled with " + specialexecutor.getClass().getName());
+               // log.info("Command was handled with " + specialexecutor.getClass().getName());
                 return result;
             }
         }

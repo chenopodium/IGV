@@ -43,7 +43,7 @@ public class IonTorrentCommandExecutor implements CommandExecutorIF{
 
     public String execute(String command) {
         
-        log.info("Execute on "+command);
+        //log.info("Executing "+command);
         List<String> args = getArgs(StringUtils.breakQuotedString(command, ' ').toArray(new String[]{}));
 
 
@@ -117,7 +117,7 @@ public class IonTorrentCommandExecutor implements CommandExecutorIF{
                                 IGV.getInstance().doShowAttributeDisplay(value.equalsIgnoreCase("true"));
                             }
                         }
-                        // log.info("Set: putTemp ("+key+ ","+value+")");
+                        log.info("Set: putTemp ("+key+ ","+value+")");
                         prefs.putTemp(key, value);
                         result = value;
                     } else {

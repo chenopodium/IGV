@@ -37,8 +37,8 @@ import java.util.Hashtable;
 import java.util.List;
 import java.util.Set;
 import net.sf.samtools.SAMFileReader;
-import net.sf.samtools.seekablestream.SeekableBufferedStream;
-import net.sf.samtools.seekablestream.SeekableStream;
+import net.sf.samtools.util.SeekableBufferedStream;
+import net.sf.samtools.util.SeekableStream;
 
 /**
  * Created by IntelliJ IDEA.

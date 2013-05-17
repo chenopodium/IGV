@@ -10,8 +10,10 @@ import com.iontorrent.karyo.data.Chromosome;
 import com.iontorrent.karyo.data.FakeIndelTrack;
 import com.iontorrent.karyo.data.KaryoTrack;
 import com.iontorrent.karyo.data.FakeCnvTrack;
+import com.iontorrent.karyo.data.FeatureTree;
 import com.iontorrent.karyo.data.IgvAdapter;
 import com.iontorrent.karyo.data.KaryoTrackComparator;
+import com.iontorrent.karyo.drawables.GuiChromosome;
 import com.iontorrent.karyo.drawables.GuiFeatureTree;
 import com.iontorrent.karyo.renderer.RenderManager;
 import com.iontorrent.threads.Task;
@@ -27,6 +29,7 @@ import org.broad.igv.feature.Cytoband;
 import org.broad.igv.feature.genome.Genome;
 import org.broad.igv.track.FeatureTrack;
 import org.broad.igv.ui.IGV;
+import org.broad.igv.ui.util.MessageUtils;
 import org.broad.tribble.Feature;
 
 /**
@@ -109,49 +112,81 @@ public class KaryoManager {
         p("loadTracks: Got " + tracks.size() + " tracks to load ");
         this.karyotracks = new ArrayList<KaryoTrack>();
         
+        boolean takeslong = false;
+        int nr = tracks.size();
+        int time = 4*nr;
+        for (KaryoTrack kt: tracks) {
+            String disp = kt.getTrackDisplayName().toLowerCase();
+            if (disp.startsWith("mother") || disp.startsWith("father") || disp.startsWith("self")) {
+                time = nr*30;//takes a long time!
+            }
+            takeslong = true;
+        }
         try {
             if (tracks.size() < 1 && this.addFakeTracks()) {
                 p("Adding a few fake tracks");
                 tracks.add(new KaryoTrack(new FakeCnvTrack(), 1));
                 tracks.add(new KaryoTrack(new FakeIndelTrack(), 2));
-            } else if (tracks.size() > 2) {
-                int nr = tracks.size();
-                GuiUtils.showNonModelMsg("Loading", "Loading "+nr+" karyo tracks...", true, 2*nr);
-                IGV.getInstance().setStatusBarMessage("Loading  karyo track data...");
+            } else if (tracks.size() > 2 || takeslong) {
+               if (time > 10) {
+                   MessageUtils.confirm("Loading "+nr+" karyo tracks... some tracks are large, and it can take quite a long time to load");
+                    //GuiUtils.showNonModelMsg("Loading", "Loading "+nr+" karyo tracks... some tracks are lager, and it can take quite a long time!", true, time);
+               }
+               else GuiUtils.showNonModelMsg("Loading", "Loading "+nr+" karyo tracks...", true, time);
+               IGV.getInstance().setStatusBarMessage("Loading  karyo track data...");
             }
-            int nr = 1;
+            nr = 1;
             for (KaryoTrack track : tracks) {
                 getKaryotracks().add(track);
                 nr++;
             }
         } catch (Exception e) {
-            p("Got an error when adding/loading tracks: " + ErrorHandler.getString(e));
+            p("loadTracks: Got an error when adding/loading tracks: " + ErrorHandler.getString(e));
         }
         GuiProperties gui = RenderManager.getGuiProperties();
         for (KaryoTrack track : this.getKaryoTracks()) {
             // set order
             int order = gui.getTrackOrder(track.getSample(), track.getTrackName(), track.getFileExt());
             if (order != 0) {
-                p("Got order " + order + " for track " + track.getSample() + "_" + track.getTrackName());
+                p("loadTracks: Got order " + order + " for track " + track.getSample() + "_" + track.getTrackName());
                 track.setOrder(order);
             } else {
                 track.setOrder(10);
             }
         }
         Collections.sort(this.getKaryoTracks(), new KaryoTrackComparator());
-        int nr = 1;
+        nr = 1;
         for (KaryoTrack track : this.getKaryoTracks()) {
             // set nr
             track.setShortname(""+nr);           
             nr++;
         }
-        p("== loadTracks: Sorted by order. Got " + this.getKaryoTracks().size() + " karyotracks now");
+         for (int c = 0; c < this.chromosomes.size(); c++) {
+            int trees = 0;
+            int trackx;
+            int totaltrees = karyotracks.size();
+            for (KaryoTrack kt : karyotracks) {
+                if (!kt.isVisible()) {
+                    continue;
+                }
+                // p("Adding track " + kt + " to chr " + c);
+                Chromosome chr = chromosomes.get(c);
+                FeatureTree tree = chr.getTree(kt);
+                if (tree == null) {
+                    p("---> loadTracks:Creating tree, loading all features");
+                    tree = igvadapter.createTree(kt, chr);
+                    chr.addTree(kt, tree);
+                }
+            }
+         }
+        p("== loadTracks done: Sorted by order. Got " + this.getKaryoTracks().size() + " karyotracks now");
         tracksLoaded = true;
         IGV.getInstance().setStatusBarMessage("");
     }
     
     public void loadTracks(TaskListener list) {
         LoadTracksTaks t = new LoadTracksTaks(list);
+        
         t.run();
     }
     
@@ -292,8 +327,9 @@ public class KaryoManager {
         this.frame = frame;
     }
     
-    public KaryoOverviewPanel createOverView() {
+    public KaryoOverviewPanel createOverView(String msg) {
         KaryoOverviewPanel pan = new KaryoOverviewPanel(this);
+        pan.setMsg(msg);
         pan.createView();
         return pan;
     }

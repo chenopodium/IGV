@@ -8,6 +8,7 @@ import com.iontorrent.karyo.filter.FilterController;
 import java.awt.BorderLayout;
 import java.awt.Frame;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import org.broad.igv.ui.IGV;
 
@@ -21,7 +22,7 @@ public class KaryoControlPanel extends javax.swing.JPanel {
     private Frame frame;
     private KaryoOverviewPanel view;
     private JFrame kframe;
-
+    private JLabel messagelabel ;
     private static KaryoControlPanel control;
     
     public KaryoManager getManager() {
@@ -70,11 +71,22 @@ public class KaryoControlPanel extends javax.swing.JPanel {
     public void recreateView(boolean loadData) {
         p("=============== recreating view, loadData="+loadData+" ==============");
         if (view != null) {
+            if (messagelabel != null) this.remove(messagelabel);
             this.remove(view);
         }
-        view = manager.createOverView();
+        String msg=null;
+        if (loadData) {
+             msg="<html><h2>Loading tracks... you can still click on a chromosome to see details, but the data may not show for a while for large tracks...</h2></html>";             
+        }
+        view = manager.createOverView(msg);
         add("Center", view);
         if (loadData) {
+            p("load Data is true");
+            messagelabel = new JLabel();
+            messagelabel.setText(msg);
+            add("South", messagelabel);
+            this.invalidate();
+            this.revalidate();
             view.loadTracks();
         }
         else {

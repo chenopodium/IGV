@@ -36,7 +36,7 @@ public class FeatureTree extends FeatureTreeNode {
         return track.getTrack();
     }
     public void loadFeatures() {
-      //  p("========= loading ALL features for " + track.getTrackDisplayName() + ", " + track.getTrack().toString() + ", " + track.getTrack().getAttributeValue("DATA_FILE"));
+        p("========= loading ALL features for " + track.getTrackDisplayName() + ", " + track.getTrack().toString() + ", " + track.getTrack().getAttributeValue("DATA_FILE"));
 
         this.totalNrChildren = 0;
         if (!chr.startsWith("chr")) {

@@ -30,6 +30,7 @@ import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSplitPane;
 import org.broad.igv.ui.IGV;
@@ -52,7 +53,8 @@ public class KaryoOverviewPanel extends JPanel {
     private int current_location;
     private GuiChromosome current_chromosome;
     private int detailzoom = 100;
-
+    private String msg;
+    
     private static final int TRACKDX = 20;
     public KaryoOverviewPanel(KaryoManager man) {
         this.man = man;
@@ -66,6 +68,7 @@ public class KaryoOverviewPanel extends JPanel {
         mainview.setSliderValuePercent(v);
         mainview.repaint(); 
     }
+    
     public void createView() {
         if (split != null) {
             remove(split);
@@ -91,7 +94,26 @@ public class KaryoOverviewPanel extends JPanel {
             //detailview.setSliderValuePercent(100);
         }
         p("Main View created with bands without tracks");
+        if (msg != null) {
+            // got a message
+           JLabel  messagelabel = new JLabel();
+            messagelabel.setText(msg);
+            add("South", messagelabel);
+        }
+    }
 
+    /**
+     * @return the msg
+     */
+    public String getMsg() {
+        return msg;
+    }
+
+    /**
+     * @param msg the msg to set
+     */
+    public void setMsg(String msg) {
+        this.msg = msg;
     }
 
     private class TaskLoader implements Runnable {
@@ -108,6 +130,7 @@ public class KaryoOverviewPanel extends JPanel {
                     man.getControl().recreateView(false);
                 }
             });
+            // we need to show some message in the meantime in the control panel!
         }
     }
 

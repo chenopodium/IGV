@@ -101,8 +101,8 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
     /**
      * Current coloring option
      */
-    //private ColorMode coloring = ColorMode.GENOTYPE;
-    private ColorMode coloring = ColorMode.TRACK;
+    private ColorMode coloring = ColorMode.GENOTYPE;
+    //private ColorMode coloring = ColorMode.TRACK;
     /**
      * When true, variants that are marked filtering are not drawn.
      */
@@ -1109,7 +1109,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         toolTip = toolTip.append("<br><b>Sample Information</b>");
 
         Genotype genotype = variant.getGenotype(sample);
-        if (genotype != null) {
+        if (genotype != null && genotype.getAttributes() != null) {
             Set<String> keys = genotype.getAttributes().keySet();
             if (keys.size() > 0) {
                 for (String key : keys) {

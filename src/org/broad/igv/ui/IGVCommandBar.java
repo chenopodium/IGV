@@ -59,6 +59,8 @@ import java.io.IOException;
 import java.net.NoRouteToHostException;
 import java.util.*;
 import java.util.List;
+import org.broad.igv.Handlers;
+import org.broad.igv.ui.action.SearchCommandHandler;
 
 /**
  * @author jrobinso
@@ -345,6 +347,7 @@ public class IGVCommandBar extends javax.swing.JPanel {
                 if (chromosomeComboBox.getSelectedItem() != null) {
                     if (!chromosomeComboBox.getSelectedItem().equals(chrName)) {
                         chromosomeComboBox.setSelectedItem(chrName);
+                        //(new SearchCommand(getDefaultReferenceFrame(), chrName)).execute();
                     }
                 }
                 if (chrName.equals(Globals.CHR_ALL)) {
@@ -864,8 +867,10 @@ public class IGVCommandBar extends javax.swing.JPanel {
         JComboBox combobox = (JComboBox) evt.getSource();
         final String chrName = (String) combobox.getSelectedItem();
         if (chrName != null) {
-
+            
             if (!chrName.equals(getDefaultReferenceFrame().getChrName())) {
+                log.info("Calling SearchCommand.execute from chromosomeComboBoxActionPerformed");
+            (new SearchCommand(getDefaultReferenceFrame(), chrName)).execute();
                 NamedRunnable runnable = new NamedRunnable() {
                     public void run() {
                         log.info("Going to chromosome " + chrName);
@@ -900,6 +905,7 @@ public class IGVCommandBar extends javax.swing.JPanel {
 
         if ((searchText != null) && (searchText.length() > 0)) {
             searchTextField.setText(searchText);
+            log.info("Calling SearchCommand.exe from  searchByLocus");
             (new SearchCommand(getDefaultReferenceFrame(), searchText)).execute();
             chromosomeComboBox.setSelectedItem(getDefaultReferenceFrame().getChrName());
         }

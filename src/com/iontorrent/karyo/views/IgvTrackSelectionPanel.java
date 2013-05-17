@@ -8,6 +8,7 @@ import com.iontorrent.karyo.data.KaryoTrack;
 import com.iontorrent.karyo.renderer.RenderManager;
 import com.iontorrent.prefs.IonTorrentPreferencesManager;
 import com.iontorrent.utils.ErrorHandler;
+import freemarker.log.Logger;
 import java.awt.BorderLayout;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
@@ -101,7 +102,7 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
                     if (ktrack.getTrack().getResourceLocator() != null) {
                         file = ktrack.getTrack().getResourceLocator().getFileName();
                     }
-                    p("got track anme "+ktrack.getTrackDisplayName()+" -> "+ktrack.getRenderType().getKaryoDisplayName());
+                    p("got track name "+ktrack.getTrackDisplayName()+" -> "+ktrack.getRenderType().getKaryoDisplayName());
                     String trackname = ktrack.getRenderType().getKaryoDisplayName();
                     if (trackname != null) {
                         // also get sample
@@ -113,6 +114,8 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
                         }
                         ktrack.setTrackDisplayName(trackname);
                     }
+                    String displayname =ktrack.getTrackDisplayName();
+                    p("Got displyaname: "+displayname);
                     SingleTrackPanel cb = null;
                     if (atrack instanceof DataSourceTrack) {
                         p("It is a datasource track");
@@ -146,10 +149,14 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
                         }
 
                     } else if (atrack instanceof FeatureTrack) {
-                        p(n + "/" + type + "/" + file + " is a feature track");
+                        p("displayname="+ displayname+", n="+n + "/" + type + "/" + file + " is a feature track");
+                        String disp = displayname.toLowerCase();
                         if (n.startsWith("RefSeq") || n.indexOf("Ensemble") > -1) {
                             // ignore
                             p("Ignoring RefSeq and Ensemble genes");
+                        }
+                        else if (!allowbam && (disp.startsWith("mother") || disp.startsWith("father"))) {
+                            p("Ignoring mother and father for now as it was not tested and take too long!"); 
                         } else {
 
                             if (type == TrackType.GENE || type == TrackType.CHIP || type == TrackType.EXPR) {
@@ -228,6 +235,7 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
 
     private void p(String msg) {
         System.out.println("IgvTrackSelectionPanel: " + msg);
+        Logger.getLogger("\"IgvTrackSelectionPanel:").info(msg);
     }
 
     public ArrayList<KaryoTrack> getSelectedTracks() {

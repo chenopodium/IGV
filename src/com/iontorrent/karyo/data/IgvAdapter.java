@@ -49,7 +49,7 @@ public class IgvAdapter {
              p("Got no variant track or no IGV running");
              return null;
         }
-    //    p("IGVAdapter: CreateTree and load data called");
+        p("IGVAdapter: CreateTree and load data called");
         AbstractTrack track = ktrack.getTrack();
       //  p("Got track with name: "+track.getName());
         FeatureTree tree = new FeatureTree(ktrack, ktrack.getTrack(), chr);        
@@ -59,6 +59,7 @@ public class IgvAdapter {
         pos = n.indexOf(".");
         if (pos >0) n = n.substring(0, pos);
         tree.setName(n);
+        // can take a long times
         tree.loadFeatures();
 //        ArrayList<KaryoFilter> filters = ktrack.getPossibleFilters();
 //        if (filters != null) {

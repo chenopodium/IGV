@@ -263,8 +263,10 @@ public class Main {
                     for (String arg : nonOptionArgs) {
                         if (arg != null) {
                             if (!arg.startsWith("http") && arg.length()< 50) {
-                                log.info("parseArgs: Got locus string: "+arg);
-                                locusString = arg;
+                                if (!arg.contains("=") &&locusString == null || locusString.length()<1 ) {
+                                    log.info("parseArgs: Got locus string: "+arg);
+                                    locusString = arg;
+                                }
                             }
                         }
                     }

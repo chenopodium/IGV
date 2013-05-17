@@ -279,6 +279,9 @@ public class PreferenceManager implements PropertyManager {
         return get(key, defaultValues.get(key));
     }
     
+    public Map<String, String> getTemplValues() {
+        return temporaryValues;
+    }
     public String getTemp(String key) {
         return temporaryValues.get(key);
     }
