@@ -35,6 +35,7 @@ import java.util.List;
 public class SamAlignment extends AbstractAlignment implements Alignment {
 
     private static Logger log = Logger.getLogger(SamAlignment.class);
+    static final boolean DEBUG = true;
     public static final char DELETE_CHAR = '-';
     public static final char SKIP_CHAR = '=';
     public static final char MATCH = 'M';
@@ -50,6 +51,7 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
     private static final String FLOW_SIGNAL_TAG = "ZF";
     private int start;  // <= Might differ from alignment start if soft clipping is considered
     private int end;    // ditto
+    private int softClippedBaseCount;
     private int alignmentStart;
     private int alignmentEnd;
     private int readLength;
@@ -185,10 +187,18 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
         }
     }      // End constructor
 
-    public String getFlowOrder() {
+    public String getFlowOrderWithKey() {
         return flowOrder;
     }
-
+    public String getFlowOrderNoKey() {
+         // something fisy here... get rid of key
+            String order = flowOrder;
+            while (order.length()< this.getReadSequence().length()+this.getKeySequence().length()) {
+                order = order + flowOrder;
+            }
+            order = order.substring(this.getFlowSignalsStart());
+            return order;
+    }
     public float[] getRawFlowSignals() {
         return rawflowSignals;
     }
@@ -311,6 +321,9 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
         createAlignmentBlocks(show, cigarString, seqWithKey, readBases, readBaseQualities, null, null, null, -1);
     }
 
+    public int getSoftClippedBaseCount() {
+        return softClippedBaseCount;
+    }
     /**
      * Create the alignment blocks from the read bases and alignment information
      * in the CIGAR string. The CIGAR string encodes insertions, deletions,
@@ -329,7 +342,16 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
             float[] flowSignals, String flowOrder, int flowOrderStart) {
 
 
-
+//        if (DEBUG) {
+//            p("Getting alignment blocks:");
+//            p("cigar: "+cigarString);
+//            p("seqWithKey: "+seqWithKey+", "+seqWithKey.length());
+//            p("read bases: "+Arrays.toString(readBases)+", "+readBases.length);
+//            p("flowSignals: "+Arrays.toString(flowSignals)+", "+flowSignals.length);
+//            p("flowOrder: "+flowOrder+", "+flowOrder.length());
+//            p("flowOrderStart: "+flowOrderStart);
+//            
+//        }
 
         boolean showSoftClipped = PreferenceManager.getInstance().getAsBoolean(PreferenceManager.SAM_SHOW_SOFT_CLIPPED);
 
@@ -348,7 +370,7 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
 
         // Create list of cigar operators
         boolean firstOperator = true;
-        int softClippedBaseCount = 0;
+        softClippedBaseCount = 0;
         int nGaps = 0;
         char prevOp = 0;
         for (int i = 0; i < cigarString.length(); i++) {
@@ -408,7 +430,7 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
         if (null != flowSignals) {
             if (0 < readBases.length) {
 
-                fBlockBuilder = new FlowSignalContextBuilder(show, null, this.oldSignals, flowSignals, flowOrder, flowOrderStart, readBases, fromIdx, this.readNegativeStrandFlag);
+                fBlockBuilder = new FlowSignalContextBuilder(this, DEBUG && this.getReadName().equalsIgnoreCase("JB78A:01154:02506"));
                 
             }
         }
@@ -811,6 +833,9 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
     }
 
     public boolean hasComputedConfidence() {
+        return getFlowseq() != null && flowseq.hasPredictedValues();
+    }
+    public boolean hasFlowSeq() {
         return getFlowseq() != null;
     }
 
@@ -851,7 +876,7 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
      */
     public int getFlowSignalsStart() {
         Object attribute = record.getAttribute(FLOW_SIGNAL_TAG); // NB: from a TMAP optional tag
-        //   p("FlowSignalStart "+FLOW_SIGNAL_TAG+":"+attribute);
+      //  if (DEBUG)   p("FlowSignalStart "+FLOW_SIGNAL_TAG+":"+attribute);
         int toRet = -1;
         if (attribute != null && attribute instanceof Integer) {
             toRet = (Integer) attribute;

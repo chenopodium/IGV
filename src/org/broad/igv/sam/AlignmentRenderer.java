@@ -773,7 +773,11 @@ public class AlignmentRenderer implements FeatureRenderer {
                                 log.info("need to compute conf");
                                 ConfidenceDistribution.computeConfidence(sam);                                
                             }
-                            int conf = (int)Math.abs(sam.getFlowseq().getFlow(fvBlock.getFlowPosition()).getConfidence()-100);
+                            FlowSeq flowseq = sam.getFlowseq();
+                            if (!flowseq.hasPredictedValues()) {
+                                FlowSignalContextBuilder.computeFlowSeqWithPrediction(flowseq, sam);
+                            }
+                            int conf = (int)Math.abs(flowseq.getFlow(fvBlock.getFlowPosition()).getConfidence()-100);
                             
                             int minQ = prefs.getAsInt(PreferenceManager.SAM_BASE_QUALITY_MIN);
                             int maxQ = prefs.getAsInt(PreferenceManager.SAM_BASE_QUALITY_MAX);

@@ -240,7 +240,9 @@ public class HttpUtils {
     }
 
     public String getHeaderField(URL url, String key) throws IOException {
+        
         HttpURLConnection conn = openConnection(url, null, "HEAD");
+        log.info("Getting header field:"+key);
         return conn.getHeaderField(key);
     }
 
@@ -544,7 +546,11 @@ public class HttpUtils {
 
         HttpURLConnection conn;
 
-        //   log.info(" ==== OPEN CONNECTION " + url);
+//        if (method.equalsIgnoreCase("HEAD")) {
+//            log.info(ErrorHandler.getString(new Exception("Got HEAD as method")));
+//            method = "GET";
+//        }
+//        log.info(" ==== OPEN CONNECTION "+method+" TO " + url);
 
         if (useProxy) {
             Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxySettings.proxyHost, proxySettings.proxyPort));
@@ -602,9 +608,11 @@ public class HttpUtils {
         if (method.equals("PUT")) {
             return conn;
         } else {
+            log.info("Getting response for method "+method);
             int code = conn.getResponseCode();
             // Redirects.  These can occur even if followRedirects == true if there is a change in protocol,
             // for example http -> https.
+            log.info("Code: "+code);
             if (code >= 300 && code < 400) {
                 if (redirectCount > MAX_REDIRECTS) {
                     throw new IOException("Too many redirects");

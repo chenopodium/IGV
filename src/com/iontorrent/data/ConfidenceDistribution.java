@@ -64,17 +64,17 @@ public class ConfidenceDistribution {
         p("---- computeConfidence for alignment " + sam.getReadName() + " -----");
         FlowSeq flowseq = null;
         if (!sam.hasComputedConfidence()) {
-            exp.setFlowOrder(sam.getFlowOrder());
+            exp.setFlowOrder(sam.getFlowOrderNoKey());
             exp.setNrFlows(sam.getRawFlowSignals().length);
             exp.setModelParameters(sam.getCF(), sam.getIE(), sam.getDR());
-            String key = sam.getKeySequence();
+           // String key = sam.getKeySequence();
             String seq = sam.getReadSequence();
             if (sam.isNegativeStrand()) {
                 DNASequence dna = new DNASequence(seq);
                 DNASequence rev = dna.reverse().complement();
                 seq = rev.toSequenceString();
             }
-            flowseq = exp.computePredictedSignal(key + seq);
+            flowseq = exp.computePredictedSignal( seq);
             sam.setFlowseq(flowseq);
 
             float[] signals = sam.getRawFlowSignals();
@@ -87,6 +87,9 @@ public class ConfidenceDistribution {
             exp.computeConfidence(flowseq.getFlowValues());
         } else {
             flowseq = sam.getFlowseq();
+            if (!flowseq.hasPredictedValues()) {
+                FlowSignalContextBuilder.computeFlowSeqWithPrediction(flowseq, sam);
+            }
         }
         AlignmentBlock[] blocks = sam.getAlignmentBlocks();
         for (int b = 0; b < blocks.length; b++) {
@@ -177,10 +180,10 @@ public class ConfidenceDistribution {
                 FlowSeq flowseq = null;
                 if (!sam.hasComputedConfidence()) {
 
-                    exp.setFlowOrder(sam.getFlowOrder());
+                    exp.setFlowOrder(sam.getFlowOrderNoKey());
                     exp.setNrFlows(sam.getRawFlowSignals().length);
                     exp.setModelParameters(sam.getCF(), sam.getIE(), sam.getDR());
-                    String key = sam.getKeySequence();
+                   // String key = sam.getKeySequence();
                     String seq = sam.getReadSequence();
                     if (sam.isNegativeStrand()) {
                         DNASequence dna = new DNASequence(seq);
@@ -188,7 +191,7 @@ public class ConfidenceDistribution {
                         seq = rev.toSequenceString();
                     }
 
-                    flowseq = exp.computePredictedSignal(key + seq);
+                    flowseq = exp.computePredictedSignal(seq);
                     sam.setFlowseq(flowseq);
 
                     float[] signals = sam.getRawFlowSignals();
@@ -200,7 +203,7 @@ public class ConfidenceDistribution {
                             p("flow nr out of order:" + f + "/" + flow);
                         }
                         int pos = flow - sam.getFlowSignalsStart();
-                        if (pos <signals.length) {
+                        if (pos < signals.length) {
                             fv.setRawFlowvalue((int) signals[pos]);
                         }
                     }
@@ -222,10 +225,10 @@ public class ConfidenceDistribution {
                             continue;
                         }
 
-                        int flownr = block.getFlowSignalSubContext(posinblock).getFlowOrderIndex();
+                        int flownr = block.getFlowSignalSubContext(posinblock).getCurrentValue().getFlowPosition();
                         nrflows++;
-                       FlowSignalSubContext sub= block.getFlowSignalSubContext(posinblock);
-                       if (sub != null && sub.hasFlowValues()) {
+                        FlowSignalSubContext sub = block.getFlowSignalSubContext(posinblock);
+                        if (sub != null && sub.hasFlowValues()) {
                             FlowValue fvBlock = sub.getCurrentValue();
                             short rawflowSignal = (short) fvBlock.getRawFlowvalue();
 
@@ -264,11 +267,11 @@ public class ConfidenceDistribution {
                             ReadInfo readinfo = new ReadInfo(alignment.getReadName(), fv);
                             readinfos.add(readinfo);
                             flowlist.add(fv);
-                       }
-                       else p("Got no subcontext for block "+block+ " at posinblock="+posinblock+":"+sub);
-                    }
-                    else {
-                        p("Found no flow signals for block: "+block);
+                        } else {
+                            p("Got no subcontext for block " + block + " at posinblock=" + posinblock + ":" + sub);
+                        }
+                    } else {
+                        p("Found no flow signals for block: " + block);
                     }
                 }
             }

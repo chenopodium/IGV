@@ -5,12 +5,16 @@
 package com.iontorrent.handlers;
 
 import java.awt.Frame;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.log4j.Logger;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.batch.CommandExecutorIF;
+import org.broad.igv.sam.AlignmentTrack;
+import org.broad.igv.track.Track;
 import org.broad.igv.ui.IGV;
+import org.broad.igv.ui.panel.FrameManager;
 import org.broad.igv.ui.util.MessageUtils;
 import org.broad.igv.util.RuntimeUtils;
 import org.broad.igv.util.StringUtils;
@@ -25,6 +29,7 @@ public class IonTorrentCommandExecutor implements CommandExecutorIF{
     private static Logger log = Logger.getLogger(IonTorrentCommandExecutor.class);
     private static PreferenceManager prefs = PreferenceManager.getInstance();
     private IGV igv;
+    private File snapshotDirectory;
     private int sleepInterval = 100;
 
     public IonTorrentCommandExecutor() {
@@ -136,6 +141,17 @@ public class IonTorrentCommandExecutor implements CommandExecutorIF{
                     }
                 } else if (cmd.equalsIgnoreCase("goto")) {
                     result = goto1(args);
+                } else if (cmd.equalsIgnoreCase("snapshotdirectory")) {
+                    result = setSnapshotDirectory(param1);
+                } else if (cmd.equalsIgnoreCase("snapshot_fs")) {
+                    log.info("Goto " + args);
+                    result = goto1(args);
+                    boolean close = false;
+                    if (param3 != null) {
+                        close = param3.equalsIgnoreCase("TRUE");
+                    }
+                    result = createErrorSnapshot(param2, close);
+                    // 
                 } else if (cmd.equalsIgnoreCase("gototrack")) {
                     boolean res = IGV.getInstance().scrollToTrack(param1);
                     result = res ? "OK" : String.format("Error: Track %s not found", param1);
@@ -203,7 +219,34 @@ public class IonTorrentCommandExecutor implements CommandExecutorIF{
             return "ERROR - sleep interval value ('" + param1 + ".) must be an integer number";
         }
     }
+/**
+     * Set a directory to deposit image snapshots
+     *
+     * @param param1
+     * @return
+     */
+    String setSnapshotDirectory(String param1) {
+        if (param1 == null) {
+            return "ERROR: missing directory parameter";
+        }
 
+        String result;
+        File parentDir = new File(param1);
+        if (parentDir.exists()) {
+            snapshotDirectory = parentDir;
+            result = "OK";
+        } else {
+            parentDir.mkdir();
+            if (parentDir.exists()) {
+                snapshotDirectory = parentDir;
+                result = "OK";
+            } else {
+
+                result = "ERROR: directory: " + param1 + " does not exist";
+            }
+        }
+        return result;
+    }
     private String goto1(List<String> args) {
         if (args == null || args.size() < 2) {
             return "ERROR: missing locus parameter";
@@ -214,5 +257,44 @@ public class IonTorrentCommandExecutor implements CommandExecutorIF{
         }
         igv.goToLocus(locus);
         return "OK";
+    }
+    
+     private String createErrorSnapshot(String filename, boolean closeAfter) {
+        if (filename == null) {
+            String locus = FrameManager.getDefaultFrame().getFormattedLocusString();
+            filename = locus.replaceAll(":", "_").replace("-", "_").replace(",", "_") + "_fs";
+        }
+
+        File file = snapshotDirectory == null ? new File(filename) : new File(snapshotDirectory, filename);
+        log.info("createErrorSnapshot: " + file.getAbsolutePath());
+        boolean ok = false;
+        try {
+            // List<TrackPanel> panels = IGV.getInstance().getTrackPanels();
+            // for (TrackPanel tp: panels) {
+            List<Track> tracks = IGV.getInstance().getAllTracks();
+            log.info("Trying to find alignment track");
+            for (Track track : tracks) {
+                log.info("Got track: " + track.getName());
+                if (track instanceof AlignmentTrack) {
+                    AlignmentTrack atrack = (AlignmentTrack) track;
+                    log.info("Found alingment track, exporting image to " + filename);
+                    IonTorrentAlignmentTrackHandler handler = new IonTorrentAlignmentTrackHandler();
+                    handler.createDistScreenShot(atrack, true, false, filename + "f", closeAfter);
+                    handler.createDistScreenShot(atrack, false, true, filename + "r", closeAfter);
+                    ok = true;
+                }
+            }
+            // }
+
+        } catch (Exception e) {
+            log.error(e);
+            return e.getMessage();
+        }
+
+        if (ok) {
+            return "OK";
+        } else {
+            return "NOT OK";
+        }
     }
 }

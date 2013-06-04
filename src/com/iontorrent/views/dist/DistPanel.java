@@ -535,7 +535,7 @@ public class DistPanel extends javax.swing.JPanel {
         XYSeries xy = new XYSeries(dist.getName());
         for (int b = 0; b < bins.length; b++) {
             xy.add(b * binsize + minx, bins[b]);
-            p("adding "+(b * binsize + minx)+"/"+bins[b]);
+           // p("adding "+(b * binsize + minx)+"/"+bins[b]);
         }
         return xy;
     }

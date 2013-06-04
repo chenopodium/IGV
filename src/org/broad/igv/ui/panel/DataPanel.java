@@ -39,6 +39,7 @@ import java.awt.event.MouseEvent;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.List;
+import org.broad.igv.sam.AlignmentTrack;
 
 /**
  * The batch panel for displaying tracks and data.  A DataPanel is always associated with a ReferenceFrame.  Normally
@@ -633,6 +634,7 @@ public class DataPanel extends JComponent implements Paintable {
         @Override
         public void mouseClicked(final MouseEvent e) {
 
+            Logger.getLogger("DataPanel").info("MouseClicked: "+e.getClickCount());
             // ctrl-mouse down is the mac popup trigger, but you will also get a clck even.  Ignore the click.
             if (Globals.IS_MAC && e.isControlDown()) {
                 return;
@@ -671,7 +673,12 @@ public class DataPanel extends JComponent implements Paintable {
                     if (e.getClickCount() > 1) {
                         clickScheduler.cancelClickTask();
                         final double locationClicked = frame.getChromosomePosition(e.getX());
-                        frame.zoomBy(1, locationClicked);
+                        
+                        if (track instanceof AlignmentTrack) {
+                             TrackClickEvent te = new TrackClickEvent(e, frame);    
+                             track.handleDataClick(te);
+                        }
+                        else frame.zoomBy(1, locationClicked);
 
                     } else {
 

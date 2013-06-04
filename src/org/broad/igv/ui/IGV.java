@@ -22,6 +22,8 @@ package org.broad.igv.ui;
 import apple.dts.samplecode.osxadapter.OSXAdapter;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.iontorrent.utils.ErrorHandler;
+import com.iontorrent.utils.StringTools;
 import com.jidesoft.swing.JideSplitPane;
 import org.apache.log4j.Logger;
 import org.broad.igv.DirectoryManager;
@@ -72,6 +74,8 @@ import java.util.*;
 import java.util.List;
 import java.util.concurrent.Future;
 import java.util.prefs.Preferences;
+import org.broad.igv.Handlers;
+import org.broad.igv.session.SessionHandler;
 
 import static org.broad.igv.ui.WaitCursorManager.CursorToken;
 
@@ -85,54 +89,40 @@ public class IGV {
     private static Logger log = Logger.getLogger(IGV.class);
     private static IGV theInstance;
     public static boolean DEBUG = false;
-
     // Window components
     private Frame mainFrame;
     private JRootPane rootPane;
     private IGVContentPane contentPane;
     private IGVMenuBar menuBar;
-
     private StatusWindow statusWindow;
-
     // Glass panes
     Component glassPane;
     GhostGlassPane dNdGlassPane;
-
     // Cursors
     public static Cursor fistCursor;
     public static Cursor zoomInCursor;
     public static Cursor zoomOutCursor;
     public static Cursor dragNDropCursor;
-
     //Session session;
     Session session;
-
     private GenomeManager genomeManager;
-
     /**
-     * Attribute used to group tracks.  Normally "null".  Set from the "Tracks" menu.
+     * Attribute used to group tracks. Normally "null". Set from the "Tracks"
+     * menu.
      */
     private String groupByAttribute = null;
-
-
     private Map<String, List<Track>> overlayTracksMap = new HashMap();
     private Set<Track> overlaidTracks = new HashSet();
-
     public static final String DATA_PANEL_NAME = "DataPanel";
     public static final String FEATURE_PANEL_NAME = "FeaturePanel";
-
-
     // Misc state
     private LinkedList<String> recentSessionList = new LinkedList<String>();
     private boolean isExportingSnapshot = false;
-
     // Listeners
     Collection<SoftReference<TrackGroupEventListener>> groupListeners =
             Collections.synchronizedCollection(new ArrayList<SoftReference<TrackGroupEventListener>>());
-
     Collection<SoftReference<AlignmentTrackEventListener>> alignmentTrackListeners =
             Collections.synchronizedCollection(new ArrayList<SoftReference<AlignmentTrackEventListener>>());
-
 
     public static IGV createInstance(Frame frame) {
         if (theInstance != null) {
@@ -165,7 +155,6 @@ public class IGV {
     public static Frame getMainFrame() {
         return getInstance().mainFrame;
     }
-
 
     /**
      * Creates new form IGV
@@ -200,7 +189,6 @@ public class IGV {
                 IGVPopupMenu.closeAll();
             }
 
-
             @Override
             public void windowDeactivated(WindowEvent windowEvent) {
                 // Start & stop tooltip manager to force any tooltip windows to close.
@@ -211,12 +199,10 @@ public class IGV {
 
             @Override
             public void windowActivated(WindowEvent windowEvent) {
-
             }
 
             @Override
             public void windowGainedFocus(WindowEvent windowEvent) {
-
             }
         });
 
@@ -257,8 +243,8 @@ public class IGV {
         Rectangle applicationBounds = PreferenceManager.getInstance().getApplicationFrameBounds();
         int state = PreferenceManager.getInstance().getAsInt(PreferenceManager.FRAME_STATE_KEY);
 
-        if (applicationBounds == null || applicationBounds.getMaxX() > screenBounds.getWidth() ||
-                applicationBounds.getMaxY() > screenBounds.getHeight()) {
+        if (applicationBounds == null || applicationBounds.getMaxX() > screenBounds.getWidth()
+                || applicationBounds.getMaxY() > screenBounds.getHeight()) {
             int width = Math.min(1150, (int) screenBounds.getWidth());
             int height = Math.min(800, (int) screenBounds.getHeight());
             applicationBounds = new Rectangle(0, 0, width, height);
@@ -282,7 +268,6 @@ public class IGV {
         mainFrame.repaint();
     }
 
-
     public GhostGlassPane getDnDGlassPane() {
         return dNdGlassPane;
     }
@@ -300,7 +285,6 @@ public class IGV {
     public Dimension getPreferredSize() {
         return UIConstants.preferredSize;
     }
-
 
     public void addRegionOfInterest(RegionOfInterest roi) {
         session.addRegionOfInterestWithNoListeners(roi);
@@ -332,7 +316,6 @@ public class IGV {
 
     }
 
-
     public void chromosomeChangeEvent(String chrName) {
         chromosomeChangeEvent(chrName, true);
     }
@@ -349,9 +332,8 @@ public class IGV {
     }
 
     /**
-     * Repaints dataAndHeaderPanels as well as
-     * zoom controls IFF IGV has instance && not headless.
-     * Mostly use for testing
+     * Repaints dataAndHeaderPanels as well as zoom controls IFF IGV has
+     * instance && not headless. Mostly use for testing
      */
     public static void repaintPanelsHeadlessSafe() {
         if (IGV.hasInstance() && !Globals.isHeadless()) {
@@ -375,9 +357,10 @@ public class IGV {
     /**
      * Repaint the header and data panels.
      * <p/>
-     * Note:  If running in Batch mode we force synchronous painting.  This is necessary as the
-     * paint() command triggers loading of data.  If allowed to proceed asynchronously the "snapshot" batch command
-     * might execute before the data from a previous command has loaded.
+     * Note: If running in Batch mode we force synchronous painting. This is
+     * necessary as the paint() command triggers loading of data. If allowed to
+     * proceed asynchronously the "snapshot" batch command might execute before
+     * the data from a previous command has loaded.
      *
      * @param updateCommandBar
      */
@@ -427,7 +410,6 @@ public class IGV {
         return contentPane.getCommandBar().getSelectableGenomeIDs();
     }
 
-
     public void doDefineGenome(ProgressMonitor monitor) {
 
         ProgressBar bar = null;
@@ -476,8 +458,8 @@ public class IGV {
 
             log.error("Failed to define genome: " + genomePath, e);
 
-            JOptionPane.showMessageDialog(mainFrame, "Failed to define the current genome " +
-                    genomePath + "\n" + e.getMessage());
+            JOptionPane.showMessageDialog(mainFrame, "Failed to define the current genome "
+                    + genomePath + "\n" + e.getMessage());
         } catch (GenomeException e) {
             log.error("Failed to define genome.", e);
             MessageUtils.showMessage(e.getMessage());
@@ -511,12 +493,11 @@ public class IGV {
     }
 
     /**
-     * Load a .genome file directly.  This method really belongs in IGVMenuBar.
+     * Load a .genome file directly. This method really belongs in IGVMenuBar.
      *
      * @param monitor
      * @return
      */
-
     public void doLoadGenome(ProgressMonitor monitor) {
 
         ProgressBar bar = null;
@@ -534,7 +515,7 @@ public class IGV {
             // If a file selection was made
             if (file != null) {
                 if (monitor != null) {
-                    
+
                     bar = ProgressBar.showProgressDialog(mainFrame, "Loading Genome...", monitor, false);
                 }
                 log.info("IGV.doLoadGenome");
@@ -566,10 +547,12 @@ public class IGV {
         }
 
         resetSession(null);
-        log.info("IGV.loadGenome: "+path);
+        log.info("IGV.loadGenome: " + path);
         Genome genome = getGenomeManager().loadGenome(path, monitor);
         //If genome loading cancelled
-        if (genome == null) return;
+        if (genome == null) {
+            return;
+        }
 
         final String name = genome.getDisplayName();
         final String id = genome.getId();
@@ -583,7 +566,6 @@ public class IGV {
         cmdBar.updateChromosFromGenome(genome);
     }
 
-
     public void enableExtrasMenu() {
 
         menuBar.enableExtrasMenu();
@@ -592,7 +574,8 @@ public class IGV {
     /**
      * Load a collection of tracks in a background thread.
      * <p/>
-     * Note: Most of the code here is to adjust the scrollbars and split pane after loading
+     * Note: Most of the code here is to adjust the scrollbars and split pane
+     * after loading
      *
      * @param locators
      */
@@ -636,8 +619,9 @@ public class IGV {
                             }
                         }
                         // Give a maximum "weight" of 300 pixels to each panel.  If there are no tracks, give zero
-                        if (sp.getTrackPanel().getTracks().size() > 0)
+                        if (sp.getTrackPanel().getTracks().size() > 0) {
                             totalHeight += Math.min(300, sp.getTrackPanel().getPreferredPanelHeight());
+                        }
                     }
 
                     // Adjust dividers for data panel.  The data panel divider can be
@@ -681,7 +665,6 @@ public class IGV {
         log.debug("Finish loadTracks");
 
     }
-
 
     public void setGeneList(String listID) {
         setGeneList(listID, true);
@@ -752,7 +735,6 @@ public class IGV {
     final public void doViewPreferences(final String tabToSelect) {
 
         UIUtilities.invokeOnEventThread(new Runnable() {
-
             public void run() {
 
                 boolean originalSingleTrackValue =
@@ -805,8 +787,8 @@ public class IGV {
             }
 
             String recentSessions = "";
-            for (int i = 0; i <
-                    size; i++) {
+            for (int i = 0; i
+                    < size; i++) {
                 recentSessions += getRecentSessionList().get(i);
 
                 if (i < (size - 1)) {
@@ -842,9 +824,8 @@ public class IGV {
 
     }
 
-
     final public void doRefresh() {
-       // p("DoRefresh");
+        // p("DoRefresh");
         contentPane.getMainPanel().revalidate();
         mainFrame.repaint();
         //getContentPane().repaint();
@@ -856,11 +837,8 @@ public class IGV {
         contentPane.getCommandBar().updateCurrentCoordinates();
     }
 
-
 // TODO -- move all of this attribute stuf out of IGV,  perhaps to
-
     // some Attribute helper class.
-
     final public void doSelectDisplayableAttribute() {
 
         List<String> allAttributes = AttributeManager.getInstance().getAttributeNames();
@@ -873,7 +851,6 @@ public class IGV {
             doRefresh();
         }
     }
-
 
     final public void saveImage(Component target) {
         saveImage(target, "igv_snapshot");
@@ -906,12 +883,13 @@ public class IGV {
             MessageUtils.showMessage(("Error creating the image file: " + defaultFile + "<br> "
                     + e.getMessage()));
         } finally {
-            if (token != null) WaitCursorManager.removeWaitCursor(token);
+            if (token != null) {
+                WaitCursorManager.removeWaitCursor(token);
+            }
             resetStatusMessage();
         }
 
     }
-
 
     public void createSnapshotNonInteractive(File file) throws IOException {
         createSnapshotNonInteractive(contentPane.getMainPanel(), file);
@@ -937,7 +915,9 @@ public class IGV {
                 setExportingSnapshot(false);
             }
             log.debug("Finished creating snapshot: " + file.getName());
-            if (exc != null) throw exc;
+            if (exc != null) {
+                throw exc;
+            }
         } else {
             log.error("Unknown file extension " + extension);
         }
@@ -963,7 +943,6 @@ public class IGV {
         return file;
     }
 
-
     private void createZoomCursors() throws HeadlessException, IndexOutOfBoundsException {
         if (zoomInCursor == null || zoomOutCursor == null) {
             final Image zoomInImage = IconFactory.getInstance().getIcon(IconFactory.IconID.ZOOM_IN).getImage();
@@ -978,19 +957,19 @@ public class IGV {
 
     private void createHandCursor() throws HeadlessException, IndexOutOfBoundsException {
         /*if (handCursor == null) {
-            BufferedImage handImage = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+         BufferedImage handImage = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
 
-            // Make backgroun transparent
-            Graphics2D g = handImage.createGraphics();
-            g.setComposite(AlphaComposite.getInstance(AlphaComposite.CLEAR, 0.0f));
-            Rectangle2D.Double rect = new Rectangle2D.Double(0, 0, 32, 32);
-            g.fill(rect);
+         // Make backgroun transparent
+         Graphics2D g = handImage.createGraphics();
+         g.setComposite(AlphaComposite.getInstance(AlphaComposite.CLEAR, 0.0f));
+         Rectangle2D.Double rect = new Rectangle2D.Double(0, 0, 32, 32);
+         g.fill(rect);
 
-            // Draw hand image in middle
-            g = handImage.createGraphics();
-            g.drawImage(IconFactory.getInstance().getIcon(IconFactory.IconID.OPEN_HAND).getImage(), 0, 0, null);
-            handCursor = getToolkit().createCustomCursor(handImage, new Point(8, 6), "Move");
-        }*/
+         // Draw hand image in middle
+         g = handImage.createGraphics();
+         g.drawImage(IconFactory.getInstance().getIcon(IconFactory.IconID.OPEN_HAND).getImage(), 0, 0, null);
+         handCursor = getToolkit().createCustomCursor(handImage, new Point(8, 6), "Move");
+         }*/
 
         if (fistCursor == null) {
             BufferedImage handImage = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
@@ -1016,7 +995,7 @@ public class IGV {
         if (dragNDropCursor == null) {
             ImageIcon icon =
                     IconFactory.getInstance().getIcon(
-                            IconFactory.IconID.DRAG_AND_DROP);
+                    IconFactory.IconID.DRAG_AND_DROP);
 
             int width = icon.getIconWidth();
             int height = icon.getIconHeight();
@@ -1038,7 +1017,7 @@ public class IGV {
             g.drawImage(image, 0, 0, null);
             dragNDropCursor =
                     mainFrame.getToolkit().createCustomCursor(
-                            dragNDropImage, new Point(0, 0), "Drag and Drop");
+                    dragNDropImage, new Point(0, 0), "Drag and Drop");
         }
 
     }
@@ -1075,8 +1054,8 @@ public class IGV {
     }
 
     /**
-     * Set the status bar message.  If the message equals "Done." intercept
-     * and reset to the default "quite" message,  currently the number of tracks
+     * Set the status bar message. If the message equals "Done." intercept and
+     * reset to the default "quite" message, currently the number of tracks
      * loaded.
      *
      * @param message
@@ -1089,8 +1068,8 @@ public class IGV {
     }
 
     /**
-     * Set the status bar message.  If the message equals "Done." intercept
-     * and reset to the default "quite" message,  currently the number of tracks
+     * Set the status bar message. If the message equals "Done." intercept and
+     * reset to the default "quite" message, currently the number of tracks
      * loaded.
      *
      * @param message
@@ -1100,8 +1079,8 @@ public class IGV {
     }
 
     /**
-     * Resets factory settings. this is not the same as reset user defaults
-     * DO NOT DELETE used when debugging
+     * Resets factory settings. this is not the same as reset user defaults DO
+     * NOT DELETE used when debugging
      */
     public void resetToFactorySettings() {
 
@@ -1145,10 +1124,9 @@ public class IGV {
         return contentPane.getMainPanel().addDataPanel(name);
     }
 
-
     /**
-     * Return the panel with the given name.  This is called infrequently, and doesn't need to be fast (linear
-     * search is fine).
+     * Return the panel with the given name. This is called infrequently, and
+     * doesn't need to be fast (linear search is fine).
      *
      * @param name
      * @return
@@ -1165,15 +1143,13 @@ public class IGV {
         return sp.getTrackPanel();
     }
 
-
     /**
-     * Return an ordered list of track panels.  This method is provided primarily for storing sessions, where
-     * the track panels need to be stored in order.
+     * Return an ordered list of track panels. This method is provided primarily
+     * for storing sessions, where the track panels need to be stored in order.
      */
     public List<TrackPanel> getTrackPanels() {
         return contentPane.getMainPanel().getTrackPanels();
     }
-
 
     public boolean scrollToTrack(String trackName) {
         for (TrackPanel tp : getTrackPanels()) {
@@ -1184,13 +1160,13 @@ public class IGV {
         return false;
     }
 
-
     public Session getSession() {
         return session;
     }
 
     /**
-     * Restore a session file, and optionally go to a locus.  Called upon startup and from user action.
+     * Restore a session file, and optionally go to a locus. Called upon startup
+     * and from user action.
      *
      * @param sessionFile
      * @param locus
@@ -1210,15 +1186,16 @@ public class IGV {
     }
 
     /**
-     * Load a session file, possibly asynchronously (if on the event dispatch thread).
+     * Load a session file, possibly asynchronously (if on the event dispatch
+     * thread).
      *
      * @param sessionPath
      * @param locus
      * @param merge
      */
     public void doRestoreSession(final String sessionPath,
-                                 final String locus,
-                                 final boolean merge) {
+            final String locus,
+            final boolean merge) {
 
         Runnable runnable = new Runnable() {
             public void run() {
@@ -1229,7 +1206,8 @@ public class IGV {
     }
 
     /**
-     * Load a session file in the current thread.  This should not be called from the event dispatch thread.
+     * Load a session file in the current thread. This should not be called from
+     * the event dispatch thread.
      *
      * @param merge
      * @param sessionPath
@@ -1243,25 +1221,42 @@ public class IGV {
                 // Do this first, it closes all open SeekableFileStreams.
                 resetSession(sessionPath);
             }
-
-            setStatusBarMessage("Opening session...");
-            inputStream = new BufferedInputStream(ParsingUtils.openInputStreamGZ(new ResourceLocator(sessionPath)));
-
+            
             boolean isUCSC = sessionPath.endsWith(".session");
-            final SessionReader sessionReader = isUCSC ?
-                    new UCSCSessionReader(this) :
-                    new IGVSessionReader(this);
-
-            sessionReader.loadSession(inputStream, session, sessionPath);
-
+            SessionReader sessionReader = null;
+            // check for alternative handlers
+            SessionHandler otherhandler = Handlers.getSessionHandler();
+            if (otherhandler != null) {
+                sessionReader = otherhandler.getSessionReader(this);
+                p("Created sessionReader "+sessionReader);
+            }
+            else p("Using the default session reader");
+            if (sessionReader == null) {
+                sessionReader = isUCSC
+                        ? new UCSCSessionReader(this)
+                        : new IGVSessionReader(this);
+            }
+            
+            setStatusBarMessage("Opening session...");
+            int tries = 0;
+            try {
+                sessionReader.loadSession(session, sessionPath, tries);
+            }
+            catch (Exception e) {
+                tries++;
+                log.error("Got an error from readin the session, will try a second time: "+ErrorHandler.getString(e));
+                sessionReader.loadSession(session, sessionPath, tries);
+            }
+            
+                        
             p("========== Loading session done==========");
             String searchText = locus == null ? session.getLocus() : locus;
 
             // NOTE: Nothing to do if chr == all
-            if (!FrameManager.isGeneListMode() && searchText != null &&
-                    !searchText.equals(Globals.CHR_ALL) && searchText.trim().length() > 0) {
+            if (!FrameManager.isGeneListMode() && searchText != null
+                    && !searchText.equals(Globals.CHR_ALL) && searchText.trim().length() > 0) {
                 if (!searchText.contains("=")) {
-                    p("Going to locus: "+searchText);
+                    p("Going to locus: " + searchText);
                     goToLocus(searchText);
                 }
             }
@@ -1289,8 +1284,15 @@ public class IGV {
 
         } catch (Exception e) {
             log.error("Error loading ", e);
-            String message = "I was not able to read the session :   <br>" + sessionPath + "<br>" +
-                    e.getMessage();
+            String msg = e.getMessage();
+            msg = msg.replace("\n", "<br>");
+            msg = msg.replace("java.lang.Exception:", "");
+            String path = sessionPath;
+            if (path.length() > 120) {
+                path = StringTools.addNL(path, "<br>", 120);
+            }
+            String message = "I couldn't read the session file because:<br><br>"+msg+
+                    "<br><br><font color='777777'>The session url was:<br>"+path+"</font>";                    
             MessageUtils.showMessage(message);
             return false;
 
@@ -1306,13 +1308,12 @@ public class IGV {
         }
     }
 
-
     /**
      * Reset the default status message, which is the number of tracks loaded.
      */
     public void resetStatusMessage() {
-        contentPane.getStatusBar().setMessage("" +
-                getVisibleTrackCount() + " tracks loaded");
+        contentPane.getStatusBar().setMessage(""
+                + getVisibleTrackCount() + " tracks loaded");
 
     }
 
@@ -1324,8 +1325,8 @@ public class IGV {
     public void showLoadedTrackCount() {
 
         final int visibleTrackCount = getVisibleTrackCount();
-        contentPane.getStatusBar().setMessage("" +
-                visibleTrackCount + (visibleTrackCount == 1 ? " track" : " tracks"));
+        contentPane.getStatusBar().setMessage(""
+                + visibleTrackCount + (visibleTrackCount == 1 ? " track" : " tracks"));
     }
 
     private void closeWindow(final ProgressBar progressBar) {
@@ -1337,7 +1338,8 @@ public class IGV {
     }
 
     /**
-     * Method provided to jump to a locus synchronously.  Used for port command options
+     * Method provided to jump to a locus synchronously. Used for port command
+     * options
      *
      * @param locus
      */
@@ -1346,8 +1348,9 @@ public class IGV {
     }
 
     /**
-     * To to multiple loci,  creating a new gene list if required.  This method is provided to support control of
-     * multiple panels from a command or external program.
+     * To to multiple loci, creating a new gene list if required. This method is
+     * provided to support control of multiple panels from a command or external
+     * program.
      *
      * @param loci
      */
@@ -1407,7 +1410,6 @@ public class IGV {
     public GenomeManager getGenomeManager() {
         return genomeManager;
     }
-
     JCheckBoxMenuItem showPeakMenuItem;
     PeakCommandBar peakCommandBar;
 
@@ -1453,7 +1455,6 @@ public class IGV {
         }
     }
 
-
     public void loadResources(Collection<ResourceLocator> locators) {
 
         //Set<TrackPanel> changedPanels = new HashSet();
@@ -1471,12 +1472,10 @@ public class IGV {
             if (locator.isLocal()) {
                 File trackSetFile = new File(locator.getPath());
                 if (!trackSetFile.exists()) {
-                    if (locator.getPath().indexOf("=")<0)  {
+                    if (locator.getPath().indexOf("=") < 0) {
                         messages.append("loadResources: File not found: " + locator.getPath() + "\n");
-                    }
-                    else {
+                    } else {
                         // should be parameter=value
-                        
                     }
                     continue;
                 }
@@ -1490,34 +1489,37 @@ public class IGV {
                         if (tracks.size() > 0) {
                             String path = locator.getPath();
 
-                            
+
                             // Get an appropriate panel.  If its a VCF file create a new panel if the number of genotypes
                             // is greater than 10
-                          
+
                             TrackPanel panel = getPanelFor(locator);
-                            if (path.endsWith(".vcf") || path.endsWith(".vcf.gz") ||
-                                    path.endsWith(".vcf4") || path.endsWith(".vcf4.gz")) {
+                            if (path.endsWith(".vcf") || path.endsWith(".vcf.gz")
+                                    || path.endsWith(".vcf4") || path.endsWith(".vcf4.gz")) {
                                 Track t = tracks.get(0);
                                 if (t instanceof VariantTrack && ((VariantTrack) t).getAllSamples().size() > 10) {
                                     String newPanelName = "Panel" + System.currentTimeMillis();
                                     panel = addDataPanel(newPanelName).getTrackPanel();
                                 }
                             }
-                            
+
                             if (locator.getParams() != null) {
-                                p("++++Locator has parameters: "+locator.getPath());
-                                for (Track t: tracks) {
-                                  //  p("Customizing track :"+t.getName());
+                                p("++++Locator has parameters: " + locator.getPath());
+                                for (Track t : tracks) {
+                                    //  p("Customizing track :"+t.getName());
                                     String m = locator.getParameter("displayMode");
                                     if (m != null) {
-                                        if (m.equalsIgnoreCase("collapsed")) t.setDisplayMode(Track.DisplayMode.COLLAPSED);
-                                        else if (m.equalsIgnoreCase("expanded")) t.setDisplayMode(Track.DisplayMode.EXPANDED);
-                                    }                                   
+                                        if (m.equalsIgnoreCase("collapsed")) {
+                                            t.setDisplayMode(Track.DisplayMode.COLLAPSED);
+                                        } else if (m.equalsIgnoreCase("expanded")) {
+                                            t.setDisplayMode(Track.DisplayMode.EXPANDED);
+                                        }
+                                    }
                                 }
                             }
                             panel.addTracks(tracks);
                         }
-                         log.info("Loading done for " + locator.getPath());
+                        log.info("Loading done for " + locator.getPath());
                     } catch (Exception e) {
                         log.error("Error loading tracks", e);
                         messages.append("Error loading " + locator + ": " + e.getMessage());
@@ -1548,16 +1550,14 @@ public class IGV {
             }
         }
     }
-    
+
     private void p(String s) {
         log.info(s);
     }
 
-
     /**
      * Load a resource (track or sample attribute file)
      */
-
     public List<Track> load(ResourceLocator locator) {
 
         TrackLoader loader = new TrackLoader();
@@ -1585,9 +1585,8 @@ public class IGV {
         return newTracks;
     }
 
-
     /**
-     * Load the data file into the specified panel.   Triggered via drag and drop.
+     * Load the data file into the specified panel. Triggered via drag and drop.
      */
     public void load(ResourceLocator locator, TrackPanel panel) {
         // If this is a session  TODO -- need better "is a session?" test
@@ -1625,18 +1624,17 @@ public class IGV {
             return getVcfBamPanel();
         } else if (PreferenceManager.getInstance().getAsBoolean(PreferenceManager.SHOW_SINGLE_TRACK_PANE_KEY)) {
             return getTrackPanel(DATA_PANEL_NAME);
-        } else if (path.endsWith(".sam") || path.endsWith(".bam") ||
-                path.endsWith(".sam.list") || path.endsWith(".bam.list") ||
-                path.endsWith(".aligned") || path.endsWith(".sorted.txt")) {
+        } else if (path.endsWith(".sam") || path.endsWith(".bam")
+                || path.endsWith(".sam.list") || path.endsWith(".bam.list")
+                || path.endsWith(".aligned") || path.endsWith(".sorted.txt")) {
 
             String m = null;//locator.getParameter("mergeTrack");
-            if (m != null && m.equalsIgnoreCase("true")) {           
-                log.info("mergetrack is true, returning trackpanel "+DATA_PANEL_NAME);
+            if (m != null && m.equalsIgnoreCase("true")) {
+                log.info("mergetrack is true, returning trackpanel " + DATA_PANEL_NAME);
                 return getTrackPanel(DATA_PANEL_NAME);
-            }
-            else {
+            } else {
                 String newPanelName = "Panel" + System.currentTimeMillis();
-                log.info("getPanelFor "+locator.getPath()+": Adding new panel: "+newPanelName);
+                log.info("getPanelFor " + locator.getPath() + ": Adding new panel: " + newPanelName);
                 return addDataPanel(newPanelName).getTrackPanel();
             }
             //} else if (path.endsWith(".vcf") || path.endsWith(".vcf.gz") ||
@@ -1663,7 +1661,6 @@ public class IGV {
         }
     }
 
-
     private TrackPanel getDefaultPanel(ResourceLocator locator) {
 
         if (locator.getType() != null && locator.getType().equalsIgnoreCase("das")) {
@@ -1678,14 +1675,14 @@ public class IGV {
         }
 
 
-        if (filename.contains("refflat") || filename.contains("ucscgene") ||
-                filename.contains("genepred") || filename.contains("ensgene") ||
-                filename.contains("refgene") ||
-                filename.endsWith("gff") || filename.endsWith("gtf") ||
-                filename.endsWith("gff3") || filename.endsWith("embl") ||
-                filename.endsWith("bed") || filename.endsWith("gistic") ||
-                filename.endsWith("bedz") || filename.endsWith("repmask") ||
-                filename.contains("dranger")) {
+        if (filename.contains("refflat") || filename.contains("ucscgene")
+                || filename.contains("genepred") || filename.contains("ensgene")
+                || filename.contains("refgene")
+                || filename.endsWith("gff") || filename.endsWith("gtf")
+                || filename.endsWith("gff3") || filename.endsWith("embl")
+                || filename.endsWith("bed") || filename.endsWith("gistic")
+                || filename.endsWith("bedz") || filename.endsWith("repmask")
+                || filename.contains("dranger")) {
             return getTrackPanel(FEATURE_PANEL_NAME);
         } else {
             return getTrackPanel(DATA_PANEL_NAME);
@@ -1702,7 +1699,6 @@ public class IGV {
         }
         groupListeners.clear();
     }
-
 
     public void sortAlignmentTracks(AlignmentTrack.SortOption option, String tag) {
         sortAlignmentTracks(option, null, tag);
@@ -1746,7 +1742,6 @@ public class IGV {
         }
     }
 
-
     public void expandTracks() {
         for (Track t : getAllTracks()) {
             t.setDisplayMode(Track.DisplayMode.EXPANDED);
@@ -1761,7 +1756,6 @@ public class IGV {
         }
     }
 
-
     public void expandTrack(String trackName) {
         for (Track t : getAllTracks()) {
             if (t.getName().equals(trackName)) {
@@ -1770,11 +1764,10 @@ public class IGV {
         }
     }
 
-
     /**
-     * Reset the overlay tracks collection.  Currently the only overlayable track
-     * type is Mutation.  This method finds all mutation tracks and builds a map
-     * of key -> mutation track,  where the key is the specified attribute value
+     * Reset the overlay tracks collection. Currently the only overlayable track
+     * type is Mutation. This method finds all mutation tracks and builds a map
+     * of key -> mutation track, where the key is the specified attribute value
      * for linking tracks for overlay.
      */
     public void resetOverlayTracks() {
@@ -1810,7 +1803,9 @@ public class IGV {
                     String sample = track.getSample();
                     if (sample != null) {
                         List<Track> trackList = overlayTracksMap.get(sample);
-                        if (trackList != null) overlaidTracks.addAll(trackList);
+                        if (trackList != null) {
+                            overlaidTracks.addAll(trackList);
+                        }
                     }
                 }
             }
@@ -1826,10 +1821,9 @@ public class IGV {
         }
     }
 
-
     /**
-     * Return tracks overlaid on "track"
-     * // TODO -- why aren't overlaid tracks stored in a track member?  This seems unnecessarily complex
+     * Return tracks overlaid on "track" // TODO -- why aren't overlaid tracks
+     * stored in a track member? This seems unnecessarily complex
      *
      * @param track
      * @return
@@ -1860,7 +1854,7 @@ public class IGV {
         List<Track> allTracks = new ArrayList<Track>();
         for (TrackPanel tp : getTrackPanels()) {
             allTracks.addAll(tp.getTracks());
-            
+
         }
         return allTracks;
     }
@@ -1873,8 +1867,9 @@ public class IGV {
 
     public void clearSelections() {
         for (Track t : getAllTracks()) {
-            if (t != null)
+            if (t != null) {
                 t.setSelected(false);
+            }
 
         }
 
@@ -1943,14 +1938,12 @@ public class IGV {
 
     }
 
-
     public void setAllTrackHeights(int newHeight) {
         for (Track track : getAllTracks()) {
             track.setHeight(newHeight);
         }
 
     }
-
 
     public void removeTracks(Collection<Track> tracksToRemove) {
 
@@ -1978,15 +1971,15 @@ public class IGV {
     }
 
     /**
-     * Add gene and sequence tracks.  This is called upon switching genomes.
+     * Add gene and sequence tracks. This is called upon switching genomes.
      *
      * @param newGeneTrack
      * @param
      */
     public void setGenomeTracks(FeatureTrack newGeneTrack) {
 
-        TrackPanel panel = PreferenceManager.getInstance().getAsBoolean(PreferenceManager.SHOW_SINGLE_TRACK_PANE_KEY) ?
-                getTrackPanel(DATA_PANEL_NAME) : getTrackPanel(FEATURE_PANEL_NAME);
+        TrackPanel panel = PreferenceManager.getInstance().getAsBoolean(PreferenceManager.SHOW_SINGLE_TRACK_PANE_KEY)
+                ? getTrackPanel(DATA_PANEL_NAME) : getTrackPanel(FEATURE_PANEL_NAME);
         SequenceTrack newSeqTrack = new SequenceTrack("Reference sequence");
 
 
@@ -1997,13 +1990,10 @@ public class IGV {
 
     }
 
-
     /////////////////////////////////////////////////////////////////////////////////////////
     // Sorting
-
-
     /**
-     * Sort all groups (data and feature) by attribute value(s).  Tracks are
+     * Sort all groups (data and feature) by attribute value(s). Tracks are
      * sorted within groups.
      *
      * @param attributeNames
@@ -2017,19 +2007,18 @@ public class IGV {
         }
     }
 
-
     /**
-     * Sort all groups (data and feature) by a computed score over a region.  The
-     * sort is done twice (1) groups are sorted with the featureGroup, and (2) the
-     * groups themselves are sorted.
+     * Sort all groups (data and feature) by a computed score over a region. The
+     * sort is done twice (1) groups are sorted with the featureGroup, and (2)
+     * the groups themselves are sorted.
      *
      * @param region
      * @param type
      * @param frame
      */
     public void sortByRegionScore(RegionOfInterest region,
-                                  final RegionScoreType type,
-                                  final ReferenceFrame frame) {
+            final RegionScoreType type,
+            final ReferenceFrame frame) {
 
         final RegionOfInterest r = region == null ? new RegionOfInterest(frame.getChrName(), (int) frame.getOrigin(),
                 (int) frame.getEnd() + 1, frame.getName()) : region;
@@ -2043,7 +2032,6 @@ public class IGV {
         repaintDataPanels();
     }
 
-
     /**
      * Sort a collection of tracks by a score over a region.
      *
@@ -2052,8 +2040,8 @@ public class IGV {
      * @param frame
      */
     private List<String> sortSamplesByRegionScore(final RegionOfInterest region,
-                                                  final RegionScoreType type,
-                                                  final ReferenceFrame frame) {
+            final RegionScoreType type,
+            final ReferenceFrame frame) {
 
         // Get the sortable tracks for this score (data) type
         final List<Track> allTracks = getAllTracks();
@@ -2081,9 +2069,9 @@ public class IGV {
     }
 
     static void sortByRegionScore(List<Track> tracks,
-                                  final RegionOfInterest region,
-                                  final RegionScoreType type,
-                                  ReferenceFrame frame) {
+            final RegionOfInterest region,
+            final RegionScoreType type,
+            ReferenceFrame frame) {
         if ((tracks != null) && (region != null) && !tracks.isEmpty()) {
             final String frameName = frame != null ? frame.getName() : null;
             int tmpzoom = frame != null ? frame.getZoom() : 0;
@@ -2093,12 +2081,17 @@ public class IGV {
             final int end = region.getEnd();
 
             Comparator<Track> c = new Comparator<Track>() {
-
                 public int compare(Track t1, Track t2) {
                     try {
-                        if (t1 == null && t2 == null) return 0;
-                        if (t1 == null) return 1;
-                        if (t2 == null) return -1;
+                        if (t1 == null && t2 == null) {
+                            return 0;
+                        }
+                        if (t1 == null) {
+                            return 1;
+                        }
+                        if (t2 == null) {
+                            return -1;
+                        }
 
 
                         float s1 = t1.getRegionScore(chr, start, end, zoom, type, frameName);
@@ -2123,14 +2116,11 @@ public class IGV {
         }
     }
 
-
     ////////////////////////////////////////////////////////////////////////////////////////
     // Groups
-
     public String getGroupByAttribute() {
         return groupByAttribute;
     }
-
 
     public void setGroupByAttribute(String attributeName) {
         groupByAttribute = attributeName;
@@ -2138,7 +2128,6 @@ public class IGV {
         // Some tracks need to respond to changes in grouping, fire notification event
         notifyGroupEvent();
     }
-
 
     private void resetGroups() {
         for (TrackPanel trackPanel : getTrackPanels()) {
@@ -2148,14 +2137,13 @@ public class IGV {
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Events
-
     public synchronized void addGroupEventListener(TrackGroupEventListener l) {
         groupListeners.add(new SoftReference<TrackGroupEventListener>(l));
     }
 
     public synchronized void removeGroupEventListener(TrackGroupEventListener l) {
 
-        for (Iterator<SoftReference<TrackGroupEventListener>> it = groupListeners.iterator(); it.hasNext(); ) {
+        for (Iterator<SoftReference<TrackGroupEventListener>> it = groupListeners.iterator(); it.hasNext();) {
             TrackGroupEventListener listener = it.next().get();
             if (listener != null && listener == l) {
                 it.remove();
@@ -2177,7 +2165,7 @@ public class IGV {
     }
 
     public synchronized void removeAlignmentTrackEvent(AlignmentTrackEventListener l) {
-        for (Iterator<SoftReference<AlignmentTrackEventListener>> it = alignmentTrackListeners.iterator(); it.hasNext(); ) {
+        for (Iterator<SoftReference<AlignmentTrackEventListener>> it = alignmentTrackListeners.iterator(); it.hasNext();) {
             AlignmentTrackEventListener listener = it.next().get();
             if (listener != null && listener == l) {
                 it.remove();
@@ -2194,11 +2182,8 @@ public class IGV {
         }
     }
 
-
     //////////////////////////////////////////////////////////////////////////////////////////
     // Startup
-
-
     public Future startUp(Main.IGVArgs igvArgs) {
 
         if (log.isDebugEnabled()) {
@@ -2212,6 +2197,7 @@ public class IGV {
      * Swing worker class to startup IGV
      */
     public class StartupRunnable implements Runnable {
+
         Main.IGVArgs igvArgs;
 
         StartupRunnable(Main.IGVArgs args) {
@@ -2244,20 +2230,20 @@ public class IGV {
                 closeWindow(progressBar);
                 GenomeManager.getInstance().setCurrentGenome(new AffectiveGenome());
             } else {
-            try {
-                contentPane.getCommandBar().initializeGenomeList(monitor);
-            } catch (FileNotFoundException ex) {
-                JOptionPane.showMessageDialog(mainFrame, "Error initializing genome list: " + ex.getMessage());
-                log.error("Error initializing genome list: ", ex);
-            } catch (NoRouteToHostException ex) {
-                JOptionPane.showMessageDialog(mainFrame, "Network error initializing genome list: " + ex.getMessage());
-                log.error("Network error initializing genome list: ", ex);
-            } finally {
-                monitor.fireProgressChange(50);
-                closeWindow(progressBar);
-            }
+                try {
+                    contentPane.getCommandBar().initializeGenomeList(monitor);
+                } catch (FileNotFoundException ex) {
+                    JOptionPane.showMessageDialog(mainFrame, "Error initializing genome list: " + ex.getMessage());
+                    log.error("Error initializing genome list: ", ex);
+                } catch (NoRouteToHostException ex) {
+                    JOptionPane.showMessageDialog(mainFrame, "Network error initializing genome list: " + ex.getMessage());
+                    log.error("Network error initializing genome list: ", ex);
+                } finally {
+                    monitor.fireProgressChange(50);
+                    closeWindow(progressBar);
+                }
 
-            if (igvArgs.getGenomeId() != null) {
+                if (igvArgs.getGenomeId() != null) {
                     if (ParsingUtils.pathExists(igvArgs.getGenomeId())) {
                         try {
                             IGV.getInstance().loadGenome(igvArgs.getGenomeId(), null);
@@ -2265,17 +2251,17 @@ public class IGV {
                             log.error("Error loading genome file: " + igvArgs.getGenomeId());
                         }
                     } else {
-                contentPane.getCommandBar().selectGenome(igvArgs.getGenomeId());
+                        contentPane.getCommandBar().selectGenome(igvArgs.getGenomeId());
                     }
-            } else if (igvArgs.getSessionFile() == null) {
-                String genomeId = preferenceManager.getDefaultGenome();
-                // Chantal Roth: XXX: turned off automatic loading of genome if nothing has been specified via session or similar                
-                //if (PreferenceManager.getInstance().getAsBoolean(PreferenceManager.STARTUP_AUTOLOAD_GENOME)) {
+                } else if (igvArgs.getSessionFile() == null) {
+                    String genomeId = preferenceManager.getDefaultGenome();
+                    // Chantal Roth: XXX: turned off automatic loading of genome if nothing has been specified via session or similar                
+                    //if (PreferenceManager.getInstance().getAsBoolean(PreferenceManager.STARTUP_AUTOLOAD_GENOME)) {
                     contentPane.getCommandBar().selectGenome(genomeId);
-                //}
-               // else log.info("turned off automatic loading of genome "+genomeId+", see preferenes");
-               // 
-            }
+                    //}
+                    // else log.info("turned off automatic loading of genome "+genomeId+", see preferenes");
+                    // 
+                }
             }
 
             //If there is an argument assume it is a session file or url
@@ -2379,7 +2365,7 @@ public class IGV {
             } catch (Exception e) {
                 //ain't no thang
                 log.error("Error setting apple dock icon", e);
-    }
+            }
         }
 
         private Image getIconImage() {
@@ -2388,9 +2374,7 @@ public class IGV {
             Image image = new ImageIcon(url).getImage();
             return image;
         }
-
     }
-
 
     public static void copySequenceToClipboard(Genome genome, String chr, int start, int end) {
         try {
@@ -2415,12 +2399,12 @@ public class IGV {
         }
     }
 
-
     /**
      * Wrapper for igv.wait(timeout)
      *
      * @param timeout
-     * @return True if method completed before interruption (not necessarily before timeout), otherwise false
+     * @return True if method completed before interruption (not necessarily
+     * before timeout), otherwise false
      */
     public boolean waitForNotify(long timeout) {
         boolean completed = false;
@@ -2430,13 +2414,10 @@ public class IGV {
                     this.wait(timeout);
                     completed = true;
                 } catch (InterruptedException e) {
-
                 }
                 break;
             }
         }
         return completed;
     }
-
-
 }

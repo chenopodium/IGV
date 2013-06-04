@@ -39,6 +39,7 @@ public class IonogramAlignment {
     private int nrrelativelocations;
     private int chromosome_center_location;
     private boolean flowBased;
+    private AbstractAlignment justforalignment;
     /**
      * each row is a ionogram, each column is a slot, which may or may not map
      * to a flow value
@@ -61,16 +62,19 @@ public class IonogramAlignment {
         emptyBasesInfo = new String[nrslots];
         slotmatrix = new FlowValue[nrionograms][nrslots];
         computeSlotsForGivenAlignment();
-        flowBased = false;
+        flowBased = true;
         //  recomputeAlignment();
     }
+    public AbstractAlignment getJustThisAlignment() {
+        return this.justforalignment;
+    }
     
-    public static IonogramAlignment extractIonogramAlignment(AlignmentDataManager dataManager, ReferenceFrame frame, int center_location, int nrbases_left_right, boolean forward) {
+    public static IonogramAlignment extractIonogramAlignment(AlignmentDataManager dataManager, ReferenceFrame frame, int center_location, int nrbases_left_right, boolean forward, AbstractAlignment justforalignment) {
          boolean reverse = !forward;
         int alignmentwidth = nrbases_left_right * 2 + 1;
         PreferenceManager prefs = PreferenceManager.getInstance();
         float maxNrReads = prefs.getAsFloat(IonTorrentPreferencesManager.IONTORRENT_MAXNREADS_IONOGRAM_ALIGN);
-
+        
 
         ArrayList<Ionogram> ionograms = new ArrayList<Ionogram>();
         String locus = Locus.getFormattedLocusString(frame.getChrName(), (int) center_location, (int) center_location);
@@ -91,6 +95,9 @@ public class IonogramAlignment {
             Iterator<Alignment> alignmentIterator = interval.getAlignmentIterator();
             while (alignmentIterator.hasNext()) {
                 Alignment alignment = alignmentIterator.next();
+                if (justforalignment != null && alignment != justforalignment) {
+                    continue;
+                }
                 if ((alignment.isNegativeStrand() && !reverse) || (!alignment.isNegativeStrand() && !forward)) {
                     continue;
                 }
@@ -101,6 +108,8 @@ public class IonogramAlignment {
                     break;
                 }
 
+                
+                
                 Ionogram iono = new Ionogram(alignment.getReadName(), center_location, !forward);
                 iono.setLocusinfo(locus);
                 iono.setChromosome(alignment.getChromosome());
@@ -125,10 +134,10 @@ public class IonogramAlignment {
                         if (subcontext == null || subcontext.getFlowValues() == null) {
                             continue;
                         }
-                        int flownr = subcontext.getFlowOrderIndex();
+                        int flownr = subcontext.getCurrentValue().getFlowPosition();
                         if (alignment instanceof SamAlignment) {
                             SamAlignment sam = (SamAlignment) alignment;
-                            String order = sam.getFlowOrder();
+                            String order = sam.getFlowOrderNoKey();
                             if (!forward) {
                                 // for reverse alignments, we should use the reverse or at least the complement because we are displaying
                                 // everything in the forward strand
@@ -196,6 +205,9 @@ public class IonogramAlignment {
         }
         // now we can start to creat the alignment slots as we know the max number of empties per location
         IonogramAlignment ionoalign = new IonogramAlignment(frame.getChrName(), new String(consensus), ionograms, maxemptyperlocation, nrbases_left_right, center_location);
+        if (justforalignment != null ) {
+            ionoalign.justforalignment = justforalignment;
+        }
         return ionoalign;
     }
     public ConfidenceDistribution[] getDistribution(String locus, int slot) {

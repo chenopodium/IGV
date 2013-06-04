@@ -1,9 +1,13 @@
 package org.broad.igv.sam;
 
+import com.iontorrent.expmodel.ExperimentContext;
 import com.iontorrent.expmodel.FlowSeq;
 import com.iontorrent.rawdataaccess.FlowValue;
+import com.iontorrent.utils.ErrorHandler;
+import java.util.ArrayList;
 import java.util.Arrays;
 import org.apache.log4j.Logger;
+import org.iontorrent.seq.DNASequence;
 
 /**
  * Builds a flow context in an alignment block. Added to support IonTorrent
@@ -15,288 +19,236 @@ import org.apache.log4j.Logger;
 public class FlowSignalContextBuilder {
 
     private boolean show;
-    private float[] flowSignals = null;
-    /**
-     * obsolete, will be removed soon
-     */
-    private float[] oldSignals = null;
-    private int[] hplengths = null;
-    private String flowOrder = null;
-    private int flowStartAfterKeyOrBarcode = -1;
-    private int flowOrderIndex = -1;
-    private int prevFlowSignalsStart = -1;
-    private int prevFlowSignalsEnd = -1;
-    private int flowOrderStart = -1;
-    private boolean readNegativeStrandFlag;
-    private boolean[] incorporations = null; // required for the reverse strand
     public static final int PREV = 0;
     public static final int CURR = 1;
     public static final int NEXT = 2;
-    //  private FlowSeq flowseq;
-    static int NRMESS = 0;
+    private FlowSeq flowseq;
+    private SamAlignment sam;
+    // private int flowstart;
+    private String revseq;
 
-    public FlowSignalContextBuilder(boolean show, FlowSeq flowseq, float[] oldSignals, float[] flowSignals, String flowOrder, int flowOrderStart,
-            byte[] readBases, int fromIdx, boolean readNegativeStrandFlag) {
-        if (null == flowSignals || null == flowOrder || flowOrderStart < 0) {
-            return;
-        }
+    public FlowSignalContextBuilder(SamAlignment sam, boolean show) {
+        this.sam = sam;
         this.show = show;
-        // this.flowseq = flowseq;
+        if (sam.isNegativeStrand()) {
+            DNASequence dna = new DNASequence(sam.getReadSequence());
+            DNASequence rev = dna.reverse().complement();
+            revseq = rev.toSequenceString();
 
-        this.flowSignals = flowSignals;
-        /**
-         * obsolete, will be removed soon
-         */
-        this.oldSignals = oldSignals;
-        this.flowOrder = flowOrder;
-        this.hplengths = new int[flowSignals.length];
-        this.flowOrderIndex = this.flowOrderStart = flowOrderStart;
-        this.flowStartAfterKeyOrBarcode = 0; // NB: the key sequence/barcode sequence should have been removed for the signals already
-        this.readNegativeStrandFlag = readNegativeStrandFlag;
-
-
-        if (NRMESS < 10 && readNegativeStrandFlag || show) {
-            p("nr bases=" + readBases.length + ",  flowsignals.length=" + flowSignals.length + ", softclippedbasecount (fromIndx)=" + fromIdx + ", flowOrderStart=" + flowOrderStart);
-            NRMESS++;
         }
-        // init
-        if (this.readNegativeStrandFlag) {
-            int i;
-          //  p("Finding incorp in NEG. flowSignal.length="+flowSignals.length);
-            this.incorporations = new boolean[this.flowSignals.length];
-            // go to the end of the signals to find the first sequenced base
-            for (i = readBases.length - 1; 0 <= i; i--) {
-                char baseinread = SamAlignment.NT2COMP[readBases[i]];
-                while (flowStartAfterKeyOrBarcode < flowSignals.length && this.flowOrder.charAt(this.flowOrderIndex) != baseinread) {
-                    // p("     No inc at "+flowStartAfterKeyOrBarcode+" because baseinread "+baseinread+"<>"+this.flowOrder.charAt(this.flowOrderIndex));                                                
-                    this.flowOrderIndex++;                   
-                    if (this.flowOrder.length() <= this.flowOrderIndex) {
-                        this.flowOrderIndex = 0;
-                    }
-                    this.flowStartAfterKeyOrBarcode++;
-                }
-                if (flowStartAfterKeyOrBarcode < flowSignals.length) {
-                    this.incorporations[this.flowStartAfterKeyOrBarcode] = true;
-                    //p("     Inc at "+flowStartAfterKeyOrBarcode);
-                    
-                }
-              //  else p("        flowStartAfterKeyOrBarcode "+flowStartAfterKeyOrBarcode+">= "+flowSignals.length+", not setting to true for inc");
 
-            }
-            this.prevFlowSignalsStart = this.flowStartAfterKeyOrBarcode + 1;
-            this.prevFlowSignalsEnd = this.flowSignals.length - 1;
-        } else {
-            this.prevFlowSignalsStart = this.prevFlowSignalsEnd = 0;
-            while (this.flowOrder.charAt(this.flowOrderIndex) != readBases[0]) {
-                this.flowOrderIndex++;
-                this.flowStartAfterKeyOrBarcode++;
-                if (this.flowOrder.length() <= this.flowOrderIndex) {
-                    this.flowOrderIndex = 0;
-                }
-            }
-
-            this.prevFlowSignalsEnd = this.flowStartAfterKeyOrBarcode - 1;
-        }
-        if (0 < fromIdx) { // skip over leading bases (ex. soft clipped bases)
-            p("Need to skip over " + fromIdx + " soft clipped bases! flowStartAfterKeyOrBarcode=" + flowStartAfterKeyOrBarcode);
-            p("Flow signals: " + Arrays.toString(flowSignals));
-            int nrSkipped = 0;
-            while (0 <= this.flowStartAfterKeyOrBarcode && this.flowStartAfterKeyOrBarcode < this.flowSignals.length && nrSkipped < fromIdx) {
-                float s = this.flowSignals[this.flowStartAfterKeyOrBarcode];
-                int nextFlowSignalsStart = -1, nextFlowSignalsEnd = -1;
-                int posAfterSkipped = nrSkipped + 1;
-                char baseafter = SamAlignment.NT2COMP[readBases[posAfterSkipped]];
-                if (posAfterSkipped < readBases.length) {
-                    if (this.readNegativeStrandFlag) {
-                        
-                     //   p("         skipping clipped bases in reverse flow. posAfterSkipped="+posAfterSkipped+", base(posAfterSkipped)="+baseafter);
-                        nextFlowSignalsEnd = this.flowStartAfterKeyOrBarcode - 1;
-                        // NB: loop condition is not symmetric to the forward, as we must respect the directionality of sequencing.
-                        // For example, if our flow order is TACAG, and our read bases are TAG, then the flow signal vector is 
-                        // approximately 100,100,0,0,100.  Since we move in the reverse direction with respect to the flow signal 
-                        // vector we must pre-compute where the flows incorporations are expected to occur, instead of just looking 
-                        // for the next flow that matches our next read base (we would place the A incorporation flow in the fourth flow,
-                        // which is wrong).
-                        while (flowStartAfterKeyOrBarcode > 0 && !this.incorporations[this.flowStartAfterKeyOrBarcode]
-                                || this.flowOrder.charAt(this.flowOrderIndex) != baseafter) { // NB: malicious input can cause infinite loops here
-                            this.flowOrderIndex--;
-                            this.flowStartAfterKeyOrBarcode--;
-                     //       p("                flowStartAfterKeyOrBarcode (rev)="+flowStartAfterKeyOrBarcode+", baseafter="+baseafter+", flowbase @ floworder "+flowOrderIndex+"="+ this.flowOrder.charAt(this.flowOrderIndex)+", inc?"+ this.incorporations[this.flowStartAfterKeyOrBarcode]);
-                            if (this.flowOrderIndex < 0) {
-                                this.flowOrderIndex = this.flowOrder.length() - 1;
-                            }
-                        }
-                        nextFlowSignalsStart = this.flowStartAfterKeyOrBarcode + 1;
-                    } else {
-                        nextFlowSignalsStart = this.flowStartAfterKeyOrBarcode + 1;
-                        while (this.flowOrder.charAt(this.flowOrderIndex) != baseafter) { // NB: malicious input can cause infinite loops here
-                            this.flowOrderIndex++;
-                            this.flowStartAfterKeyOrBarcode++;
-                        //    p("                flowStartAfterKeyOrBarcode="+flowStartAfterKeyOrBarcode+", baseafter="+baseafter+", flowchar="+flowOrder.charAt(this.flowOrderIndex));
-                            if (this.flowOrder.length() <= this.flowOrderIndex) {
-                                this.flowOrderIndex = 0;
-                            }
-                        }
-                        nextFlowSignalsEnd = this.flowStartAfterKeyOrBarcode - 1;
-                    }
-                }
-                // update for the next iteration
-                this.prevFlowSignalsStart = nextFlowSignalsStart;
-                this.prevFlowSignalsEnd = nextFlowSignalsEnd;
-                nrSkipped++; // next base
-            }
-        }
     }
 
+    public static void computeFlowSeqWithPrediction(FlowSeq flowseq, SamAlignment sam) {
+        ExperimentContext exp = new ExperimentContext();
+        //   p("---- computeConfidence for alignment " + sam.getReadName() + " -----");
+        flowseq = sam.getFlowseq();
+        if (flowseq == null) {
+            computeFlowSeqNoPred(flowseq, sam);
+        }
+        if (!flowseq.hasPredictedValues()) {
+            int flowstart = sam.getFlowSignalsStart();
+            exp.setFlowOrder(sam.getFlowOrderNoKey());
+            exp.setNrFlows(sam.getRawFlowSignals().length);
+            exp.setModelParameters(sam.getCF(), sam.getIE(), sam.getDR());
+            //  String key = sam.getKeySequence();
+            String seq = sam.getReadSequence();
+            if (sam.isNegativeStrand()) {
+                DNASequence dna = new DNASequence(seq);
+                DNASequence rev = dna.reverse().complement();
+                seq = rev.toSequenceString();
+            }
+            exp.computePredictedSignal(flowseq, seq);
+
+            float[] signals = sam.getRawFlowSignals();
+            // the flow order is the whole thing
+            // the sequence is without key
+            // the raw data is from the read sequence
+            // flow start says which flow the first raw signal matches to
+            for (int f = sam.getFlowSignalsStart(); f < flowseq.getLength(); f++) {
+                FlowValue fv = flowseq.getFlow(f);
+                int flow = fv.getFlowPosition();
+                if (flow - flowstart < signals.length) {
+                    fv.setRawFlowvalue((int) signals[flow - flowstart]);
+                }
+            }
+            exp.computeConfidence(flowseq.getFlowValues());
+        }
+
+    }
+
+    public static FlowSeq computeFlowSeqNoPred(FlowSeq flowseq, SamAlignment sam) {
+
+        if (flowseq == null) {
+
+            String seq = sam.getReadSequence();
+            if (sam.isNegativeStrand()) {
+                DNASequence dna = new DNASequence(sam.getReadSequence());
+                DNASequence rev = dna.reverse().complement();
+                seq = rev.toSequenceString();
+            }
+            // something fisy here... get rid of key
+            String order = sam.getFlowOrderNoKey();
+
+            flowseq = new FlowSeq(seq, order);
+            sam.setFlowseq(flowseq); // NO KEY
+
+            float[] signals = sam.getRawFlowSignals();
+            // the flow order is the whole thing
+            // the sequence is without key
+            // the raw data is from the read sequence
+            // flow start says which flow the first raw signal matches to
+
+            for (int f = 0; f < flowseq.getLength(); f++) {
+                FlowValue fv = flowseq.getFlow(f);
+                int flow = fv.getFlowPosition();
+                if (flow >= 0 && flow < signals.length) {
+                    fv.setRawFlowvalue((int) signals[flow]);
+                }
+            }
+        }
+        return flowseq;
+    }
     // TODO:
     // - support IUPAC bases
     // - support lower/upper cases (is this necessary)?
-    public FlowSignalContext getFlowSignalContext( byte[] readBases, int startBasePosition, int nrBasesInBlock) {
-        int currentBasePosition, flow;
+
+    public FlowSignalContext getFlowSignalContext(byte[] readBases, int startBasePosition, int nrBasesInBlock) {
+
+
+        if (flowseq == null) {
+            flowseq = computeFlowSeqNoPred(flowseq, sam);
+        }
         FlowValue[][][] blockFlowValues = null;
 
-        if (null == this.flowSignals) {
+        if (null == flowseq) {
             Logger.getLogger("FlowSignalContextBuilder").info("getFlowSignalContext: Got no flow signals");
             return null;
         }
 
+
         blockFlowValues = new FlowValue[nrBasesInBlock][][];
+        //  int keylen = sam.getKeySequence().length();
+        //  int keyendpos = flowseq.getFlowPosForBasePos(keylen);
+//        if (keyendpos != sam.getFlowSignalsStart()) {
+//            p("keyendpos " + keyendpos + "<>" + sam.getFlowSignalsStart());
+//            p("Clipped? "+sam.getSoftClippedBaseCount());
+//           // show = true;
+//        }
 
-        // NB: should be at the first base of a HP
-        // Go through the bases
-        currentBasePosition = startBasePosition;
-        flow = 0;
+//        if (show) {
+//            p("====== PROCESSING " + sam.getReadName());
+//            p("Seq no key: " + sam.getReadSequence());
+//            p("Floworder no key: " + sam.getFlowOrderNoKey());
+//            //   p("keysequence: " + sam.getKeySequence());
+//        }
 
-        int[] flowOrderIndices = new int[nrBasesInBlock];
 
-        
-        while (flowStartAfterKeyOrBarcode >= 0 && flowStartAfterKeyOrBarcode < this.flowSignals.length && currentBasePosition < startBasePosition + nrBasesInBlock) {
-            float curvalue = this.flowSignals[flowStartAfterKeyOrBarcode];
-            float oldcurvalue = 0;
-            int curflow = flowStartAfterKeyOrBarcode + this.flowOrderStart;
-            if (this.oldSignals != null) {
-                oldcurvalue = oldSignals[flowStartAfterKeyOrBarcode];
+        for (int posinseq = startBasePosition; posinseq < startBasePosition + nrBasesInBlock; posinseq++) {
+            int blockpos = posinseq - startBasePosition;
+            int baseposinflowseq = posinseq;
+
+            if (sam.isNegativeStrand()) {
+                baseposinflowseq = revseq.length() - posinseq-1;
             }
-            char curbase = this.flowOrder.charAt((flowStartAfterKeyOrBarcode + this.flowOrderStart) % this.flowOrder.length());
-            flowOrderIndices[flow] = flowStartAfterKeyOrBarcode + flowOrderStart;
-            int nextFlowSignalsStart = -1, nextFlowSignalsEnd = -1;
-            int basepos = currentBasePosition + 1;
-            
-            if (basepos < readBases.length) {
-                char baseatcurpos = SamAlignment.NT2COMP[readBases[basepos]];
-                if (this.readNegativeStrandFlag) {
-                    nextFlowSignalsEnd = flowStartAfterKeyOrBarcode - 1;
-                    // NB: loop condition is not symmetric to the forward, as we must respect the directionality of sequencing.
-                    // Since we move in the reverse direction we must pre-compute where the flows incorporations are expected to occur, instead of just looking 
-                    // for the next flow that matches our next read base (we would place the A incorporation flow in the fourth flow,
-                    // which is wrong).
-                    while (flowStartAfterKeyOrBarcode >= 0 && !this.incorporations[this.flowStartAfterKeyOrBarcode]
-                            || this.flowOrder.charAt(this.flowOrderIndex) != baseatcurpos) { // NB: malicious input can cause infinite loops here
-                        this.flowOrderIndex--;
-                        this.flowStartAfterKeyOrBarcode--;
-                        if (this.flowOrderIndex < 0) {
-                            this.flowOrderIndex = this.flowOrder.length() - 1;
-                        }
-                    }
-                    nextFlowSignalsStart = this.flowStartAfterKeyOrBarcode + 1;
-                } else {
-                    nextFlowSignalsStart = this.flowStartAfterKeyOrBarcode + 1;
-                    while (this.flowOrder.charAt(this.flowOrderIndex) != baseatcurpos) { // NB: malicious input can cause infinite loops here
-                        this.flowOrderIndex++;
-                        this.flowStartAfterKeyOrBarcode++;
-                        if (this.flowOrder.length() <= this.flowOrderIndex) {
-                            this.flowOrderIndex = 0;
-                        }
-                    }
-                    nextFlowSignalsEnd = this.flowStartAfterKeyOrBarcode - 1;
-                }
-            }
-            // set-up block
-            blockFlowValues[flow] = new FlowValue[3][];
-            // now we are at the beginning of a HP, and the flow number is flowOrderIndex
-            // this.previous context
-            boolean showflow =false;// show && (startBasePosition > 1);
-            
-            if (0 <= this.prevFlowSignalsStart && this.prevFlowSignalsStart <= this.prevFlowSignalsEnd && this.prevFlowSignalsEnd < this.flowSignals.length) {
-                blockFlowValues[flow][PREV] = new FlowValue[this.prevFlowSignalsEnd - this.prevFlowSignalsStart + 1];
+
+            char base = (char) readBases[posinseq];
+
+            int flow = -1;
+            try {
+                flow = flowseq.getFlowPosForBasePos(baseposinflowseq);
+            } catch (Exception e) {
                 
-                if (this.readNegativeStrandFlag) {
-                    for (int flowpos = this.prevFlowSignalsEnd; this.prevFlowSignalsStart <= flowpos; flowpos--) {
-                        char c = this.flowOrder.charAt((flowpos + this.flowOrderStart) % this.flowOrder.length());
-                        FlowValue fv = new FlowValue(0, flowpos + this.flowOrderStart, this.flowSignals[flowpos], c);
-                        if (oldSignals != null) {
-                            fv.setOldvalue(oldSignals[flowpos]);
-                        }
-                        blockFlowValues[flow][PREV][this.prevFlowSignalsEnd - flowpos] = fv;
-                        if (showflow) p("blockFlow["+flow+", "+PREV+", this.prevFlowSignalsEnd - flowpos]="+fv);
-
+              //  err("baseposinflowseq too large: " + baseposinflowseq+":"+ErrorHandler.getString(e));
+                if (sam.isNegativeStrand()) {
+                    // need to reverse position 
+                    // readsq= ....GGGATCCCCC.... <-
+                    // from flow: ->  aaaGGGGGATCCC
+                    // reveread = GGGGGATCCC
+                    // flowseq.indexof(reverad) = 3;
+                    StringBuffer revread = new StringBuffer();
+                    for (int i = readBases.length-1; i >= 0; i--) {
+                        revread = revread.append(SamAlignment.NT2COMP[readBases[i]]);
                     }
-                } else {
-                    for (int flowpos = this.prevFlowSignalsStart; flowpos <= this.prevFlowSignalsEnd; flowpos++) {
-                        char c = this.flowOrder.charAt((flowpos + this.flowOrderStart) % this.flowOrder.length());
-                        FlowValue fv = new FlowValue(0, flowpos + this.flowOrderStart, this.flowSignals[flowpos], c);
-                        if (oldSignals != null) {
-                            fv.setOldvalue(oldSignals[flowpos]);
-                        }
-                        blockFlowValues[flow][PREV][flowpos - this.prevFlowSignalsStart] = fv;
-                        if (showflow) p("blockFlow["+flow+", "+PREV+", flowpos - this.prevFlowSignalsStart]="+fv);
+
+                    int pos = revseq.indexOf(revread.toString());
+//                    err("======= Got negative strand:========= ");
+//                    err("revseq= " + revseq);
+//                    err("revread= " + revread);
+//                    err("baseposinflowseq= " + pos);
+
+                }
+               // err("Flowseq=" + this.flowseq);
+               
+            }
+            if (flow>=0) {
+                FlowValue curflow = flowseq.getFlow(flow);
+                if (curflow.isEmpty()) {
+                    err("Current flow is empty!: " + curflow + "\nflowseq=" + flowseq.toString() + "\n flow=" + flow + "\nbasepos in read=" + posinseq + ", pos in seq+key=" + baseposinflowseq + ", seq=" + sam.getReadSequence());
+                } else if (!sam.isNegativeStrand() && curflow.getBase() != base) {
+                    err("Current base wrong! base=" + base + " @ posinseq=" + posinseq + (char) readBases[posinseq] + ", flowbase=" + curflow.getBase() + ",  " + curflow + "\nflowseq=" + flowseq.toString() + "\n flow=" + flow + "\nbasepos in read=" + posinseq + ", pos in seq+key=" + baseposinflowseq + ", seq=" + sam.getReadSequence());
+                    err("Clipped? " + sam.getSoftClippedBaseCount());
+
+                    //err("Keyseq= "+sam.getKeySequence());
+                    // err("Keyseq len = "+keylen);
+                   // err("flow start = " + sam.getFlowSignalsStart());
+                  //  err("Flows from " + (sam.getFlowSignalsStart() - 2) + "-" + (flow + 2));
+                    for (int i = sam.getFlowSignalsStart() - 2; i < flow + 2; i++) {
+                        FlowValue fv = flowseq.getFlow(i);
+                        err(fv.toString());
+                    }
+                  //  System.exit(0);
+                }
+                ArrayList<FlowValue> before = flowseq.getEmptyFlowsBefore(flow);
+                ArrayList<FlowValue> after = flowseq.getEmptyFlowsAfter(flow);
+
+//                if (show) {
+//                    p("====== Base =" + curflow.getBase() + ", baseposinflowseq=" + baseposinflowseq + ", flow=" + flow + ":" + curflow.toString() + ", base in read=" + posinseq + "=" + sam.getReadSequence().charAt(posinseq));
+//
+//                }
+
+                blockFlowValues[blockpos] = new FlowValue[3][];
+                if (before != null) {
+                    FlowValue fv = flowseq.getFlowForBasePos(baseposinflowseq - 1);
+                    if (fv != null) {
+                        before.add(0, fv);
+                    }
+                    blockFlowValues[blockpos][PREV] = new FlowValue[before.size()];
+                    for (int i = 0; i < before.size(); i++) {
+                        blockFlowValues[blockpos][PREV][i] = before.get(i);                        
+                    }
+                } 
+
+                blockFlowValues[blockpos][CURR] = new FlowValue[1];
+//                if (show) {
+//                    p("Got fv: " + curflow);
+//                }
+                blockFlowValues[blockpos][CURR][0] = curflow;
+                if (after != null) {
+                    FlowValue fv = flowseq.getFlowForBasePos(baseposinflowseq + curflow.getHpLen());
+                    if (fv != null) {
+                        after.add(fv);
+                    }
+                    blockFlowValues[blockpos][NEXT] = new FlowValue[after.size()];
+                    for (int i = 0; i < after.size(); i++) {
+                        blockFlowValues[blockpos][NEXT][i] = after.get(i);                        
                     }
                 }
-            } else {
-                blockFlowValues[flow][PREV] = null;
+
             }
-            // current context
-            blockFlowValues[flow][CURR] = new FlowValue[1];
-
-
-            FlowValue fv = new FlowValue((int) (curvalue + 50) / 100, curflow, curvalue, curbase);
-            if (oldSignals != null && oldcurvalue > 0) {
-                fv.setOldvalue(oldcurvalue);
-            }
-            blockFlowValues[flow][CURR][0] = fv;
-            if (showflow) p("blockFlow["+flow+", "+CURR+", 0]="+fv);
-            // next context
-            if (0 <= nextFlowSignalsStart && nextFlowSignalsStart <= nextFlowSignalsEnd && nextFlowSignalsEnd < this.flowSignals.length) {
-
-                blockFlowValues[flow][NEXT] = new FlowValue[nextFlowSignalsEnd - nextFlowSignalsStart + 1];
-
-                if (this.readNegativeStrandFlag) {
-                    for (int flowpos = nextFlowSignalsEnd; nextFlowSignalsStart <= flowpos; flowpos--) {
-                        char c = this.flowOrder.charAt((flowpos + this.flowOrderStart) % this.flowOrder.length());
-
-                        fv = new FlowValue(0, flowpos + this.flowOrderStart, this.flowSignals[flowpos], c);
-
-                        if (oldSignals != null) {
-                            fv.setOldvalue(oldSignals[flowpos]);
-                        }
-                        blockFlowValues[flow][NEXT][nextFlowSignalsEnd - flowpos] = fv;
-                        if (showflow) p("blockFlow["+flow+", "+NEXT+", "+(nextFlowSignalsEnd - flowpos)+"]="+fv);
-                    }
-                } else {
-                    for (int flowpos = nextFlowSignalsStart; flowpos <= nextFlowSignalsEnd; flowpos++) {
-                        char c = this.flowOrder.charAt((flowpos + this.flowOrderStart) % this.flowOrder.length());
-                        fv = new FlowValue(0, flowpos + this.flowOrderStart, this.flowSignals[flowpos], c);
-                        if (oldSignals != null) {
-                            fv.setOldvalue(oldSignals[flowpos]);
-                        }
-                        blockFlowValues[flow][NEXT][flowpos - nextFlowSignalsStart] = fv;
-                        if (showflow) p("blockFlow["+flow+", "+NEXT+", "+(flowpos - nextFlowSignalsStart)+"]="+fv);
-                    }
-                }
-            } else {
-                blockFlowValues[flow][NEXT] = null;
-            }
-            // update for the next iteration
-            this.prevFlowSignalsStart = nextFlowSignalsStart;
-            this.prevFlowSignalsEnd = nextFlowSignalsEnd;
-            currentBasePosition++; // next base
-            flow++; // next base
         }
 
-        return new FlowSignalContext(blockFlowValues, flowOrderIndices);
+        return new FlowSignalContext(blockFlowValues);
     }
 
     private void p(String s) {
-        if (show) System.out.println("FlowSignalContextBuilder: " + s);
+        if (show) {
+            System.out.println("FlowSignalContextBuilder: " + s);
+        }
+    }
+
+    private void err(String s) {
+        System.err.println("FlowSignalContextBuilder: " + s);
+        show = true;
     }
 }

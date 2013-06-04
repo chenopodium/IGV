@@ -95,15 +95,7 @@ public class CommandExecutor {
                     return gotoImmediate(args);
                 } else if (cmd.equalsIgnoreCase("goto")) {
                     result = goto1(args);
-                } else if (cmd.equalsIgnoreCase("snapshot_fs")) {
-                    log.info("Goto " + args);
-                    result = goto1(args);
-                    boolean close = false;
-                    if (param3 != null) {
-                        close = param3.equalsIgnoreCase("TRUE");
-                    }
-                    result = createErrorSnapshot(param2, close);
-                    // 
+                
                 } else if (cmd.equalsIgnoreCase("gototrack")) {
                     boolean res = IGV.getInstance().scrollToTrack(param1);
                     result = res ? "OK" : String.format("Error: Track %s not found", param1);
@@ -224,45 +216,7 @@ public class CommandExecutor {
         }
         return "OK";
     }
-
-    private String createErrorSnapshot(String filename, boolean closeAfter) {
-        if (filename == null) {
-            String locus = FrameManager.getDefaultFrame().getFormattedLocusString();
-            filename = locus.replaceAll(":", "_").replace("-", "_").replace(",", "_") + "_fs";
-        }
-
-        File file = snapshotDirectory == null ? new File(filename) : new File(snapshotDirectory, filename);
-        log.info("createErrorSnapshot: " + file.getAbsolutePath());
-        boolean ok = false;
-        try {
-            // List<TrackPanel> panels = IGV.getInstance().getTrackPanels();
-            // for (TrackPanel tp: panels) {
-            List<Track> tracks = IGV.getInstance().getAllTracks();
-            log.info("Trying to find alignment track");
-            for (Track track : tracks) {
-                log.info("Got track: " + track.getName());
-                if (track instanceof AlignmentTrack) {
-                    AlignmentTrack atrack = (AlignmentTrack) track;
-                    log.info("Found alingment track, exporting image to " + filename);
-                    atrack.createDistScreenShot(true, false, filename + "f", closeAfter);
-                    atrack.createDistScreenShot(false, true, filename + "r", closeAfter);
-                    ok = true;
-                }
-            }
-            // }
-
-        } catch (Exception e) {
-            log.error(e);
-            return e.getMessage();
-        }
-
-        if (ok) {
-            return "OK";
-        } else {
-            return "NOT OK";
-        }
-    }
-
+   
     private String setViewAsPairs(String vAPString, String trackName) {
         List<Track> tracks = igv.getAllTracks();
         boolean vAP = "false".equalsIgnoreCase(vAPString) ? false : true;
@@ -583,7 +537,7 @@ public class CommandExecutor {
         mainFrame.setAlwaysOnTop(false);
         return "OK";
     }
-
+   
     /**
      * Set a directory to deposit image snapshots
      *

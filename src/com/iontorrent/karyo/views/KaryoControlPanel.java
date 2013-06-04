@@ -4,6 +4,7 @@
  */
 package com.iontorrent.karyo.views;
 
+import com.iontorrent.cnv.CnvPanel;
 import com.iontorrent.karyo.filter.FilterController;
 import java.awt.BorderLayout;
 import java.awt.Frame;
@@ -63,6 +64,21 @@ public class KaryoControlPanel extends javax.swing.JPanel {
         kframe.toFront();
         // view.test1();
         view.repaint();
+        
+        // also show CNV Panel
+        
+//        JFrame f = new JFrame("CNV Whole Genome Plot");
+//         f.setSize(1200, 800);
+//          if (frame.getIconImage() != null) {
+//            f.setIconImage(frame.getIconImage());
+//        }
+//         CnvPanel cnv = new CnvPanel(manager);
+//         f.getContentPane().add(cnv);
+//         f.setVisible(true);
+//        f.toFront();
+//        // view.test1();
+//        f.repaint();
+         
     }
 
     public void recreateView() {

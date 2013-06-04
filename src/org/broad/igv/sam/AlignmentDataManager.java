@@ -267,6 +267,11 @@ public class AlignmentDataManager {
                                      AlignmentTrack.RenderOptions renderOptions,
                                      boolean expandEnds) {
 
+         boolean ignore = PreferenceManager.getInstance().getTempAsBoolean("IGNORE_BAM_TRACKS");
+        if (ignore) {
+            Logger.getLogger("AlignmentDataManager").info("preload: Not loading bam yet");
+            return;
+        }
         final String chr = context.getChr();
         final int start = (int) context.getOrigin();
         final int end = (int) context.getEndLocation();
@@ -357,6 +362,11 @@ public class AlignmentDataManager {
                                             final RenderContext context) {
 
         if (isLoading || chr.equals(Globals.CHR_ALL)) {
+            return;
+        }
+        boolean ignore = PreferenceManager.getInstance().getTempAsBoolean("IGNORE_BAM_TRACKS");
+        if (ignore) {
+            Logger.getLogger("AlignmentDataManager").info("Not loading bam yet");
             return;
         }
 

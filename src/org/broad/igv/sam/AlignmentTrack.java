@@ -35,6 +35,7 @@ import javax.swing.*;
 
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
+import org.broad.igv.Handlers;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.data.CoverageDataSource;
 import org.broad.igv.data.DataSource;
@@ -205,7 +206,10 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         }
 
     }
-
+    public AlignmentDataManager getDataManager() {
+        return this.dataManager;        
+    }
+    
     @Override
     public void updateGenome(Genome genome) {
         dataManager.updateGenome(genome);
@@ -296,7 +300,15 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         // Top gap.
         rect.y += DS_MARGIN_0;
 
-        if (context.getScale() > minVisibleScale) {
+        /// IGNORE_BAM_TRACKS
+        boolean ignore = PreferenceManager.getInstance().getTempAsBoolean("IGNORE_BAM_TRACKS");
+        if (ignore) {
+            Rectangle visibleRect = context.getVisibleRect().intersection(rect);
+            Graphics2D g = context.getGraphic2DForColor(Color.gray);
+            g.setColor(Color.blue.darker());
+            GraphicUtils.drawCenteredText("Double click to load alignments.", visibleRect, g);
+            return;
+        } else if (context.getScale() > minVisibleScale) {
             Rectangle visibleRect = context.getVisibleRect().intersection(rect);
             Graphics2D g = context.getGraphic2DForColor(Color.gray);
             GraphicUtils.drawCenteredText("Zoom in to see alignments.", visibleRect, g);
@@ -469,37 +481,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
     }
 
     /**
-     * Copy the contents of the popup text to the system clipboard.
-     */
-    public void copyDistribution(final TrackClickEvent e, int location) {
-        ArrayList<ConfidenceDistribution> dists = getDistribution(e.getFrame(), location);
-        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-        String json = "";
-        for (ConfidenceDistribution dist : dists) {
-            json += dist.toJson() + "\n";
-        }
-        clipboard.setContents(new StringSelection(json), null);
-    }
-
-    /**
-     * by default, returns both for forward and backward strand
-     */
-    private ArrayList<ConfidenceDistribution> getDistribution(ReferenceFrame frame, int location) {
-        return getDistribution(frame, location, true, true);
-    }
-
-    private ArrayList<ConfidenceDistribution> getDistribution(ReferenceFrame frame, int location, boolean forward, boolean reverse) {
-
-        return ConfidenceDistribution.extractDistributions(dataManager, frame, location, forward, reverse);
-    }
-
-    private IonogramAlignment getIonogramAlignment(ReferenceFrame frame, int center_location, int nrbases_left_right, boolean forward) {
-
-        IonogramAlignment ionoalign = IonogramAlignment.extractIonogramAlignment(dataManager, frame, center_location, nrbases_left_right, forward);
-        return ionoalign;
-    }
-
-    /**
      * Jump to the mate region
      */
     public void gotoMate(final TrackClickEvent te, Alignment alignment) {
@@ -623,7 +604,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         }
     }
 
-    private Alignment getAlignmentAt(double position, int y, ReferenceFrame frame) {
+    public Alignment getAlignmentAt(double position, int y, ReferenceFrame frame) {
 
         if (alignmentsRect == null) {
             return null;   // <= not loaded yet
@@ -695,6 +676,9 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
     @Override
     public boolean handleDataClick(TrackClickEvent te) {
         MouseEvent e = te.getMouseEvent();
+
+        Logger.getLogger("AlignmentTrack").info("Handling doubel click for alignment track");
+
         if (Globals.IS_MAC && e.isMetaDown() || (!Globals.IS_MAC && e.isControlDown())) {
             // Selection
             final ReferenceFrame frame = te.getFrame();
@@ -705,6 +689,17 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 }
                 return true;
             }
+
+        } else if (e.getClickCount() > 1) {
+            Logger.getLogger("AlignmentTrack").info("checking if bam files were on ignore");
+            boolean ignore = PreferenceManager.getInstance().getTempAsBoolean("IGNORE_BAM_TRACKS");
+            Logger.getLogger("AlignmentTrack").info("IGNORE_BAM_TRACKS was " + ignore);
+            if (ignore) {
+                PreferenceManager.getInstance().putTemp("IGNORE_BAM_TRACKS", "false");
+                Logger.getLogger("AlignmentTrack").info("IGNORE_BAM_TRACKS was true, repaitning, setting it it to false");
+                IGV.repaintPanelsHeadlessSafe();
+            }
+
 
         }
         if (IGV.getInstance().isShowDetailsOnClick()) {
@@ -1098,11 +1093,12 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             add(TrackMenuUtils.getTrackRenameItem(tracks));
             addCopyToClipboardItem(e);
 
-            if (ionTorrent) {
-                addCopyDistributionToClipboardItem(e);
-                addIonTorrentAuxiliaryViews(e);
+            AlignmentTrackHandler specialhandler = Handlers.getAlignmentTrackHandler();
+            if (specialhandler != null) {
+                log.info("Adding custom menus and actions via handler "+specialhandler.getClass().getName());
+                specialhandler.addCustomMenusAndActions(AlignmentTrack.this, this, e);
             }
-
+            
             addSeparator();
             addGroupMenuItem();
             addSortMenuItem();
@@ -1423,41 +1419,6 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             add(item);
         }
 
-        public void addGetRawTraceItem(final TrackClickEvent te) {
-            final MouseEvent me = te.getMouseEvent();
-            JMenuItem item = new JMenuItem("Get raw data for this base and read");
-
-            final ReferenceFrame frame = te.getFrame();
-            if (frame == null) {
-                item.setEnabled(false);
-            } else {
-                final double location = frame.getChromosomePosition(me.getX());
-                final AbstractAlignment alignment = (AbstractAlignment) getAlignmentAt(location, me.getY(), frame);
-                if (alignment == null) {
-                    item.setEnabled(false);
-                } else {
-                    final FlowValue fv = alignment.getFlowValue(location);
-                    if (fv == null) {
-                        item.setEnabled(false);
-                    } else {
-                        item.setText("<html>Get raw data for <b>" + alignment.getReadName() + "</b>, base " + fv.getBase() + " and flow <b>" + fv.getFlowPosition() + "</b></html>");
-
-                        // Change track height by attribute
-                        item.addActionListener(new ActionListener() {
-                            public void actionPerformed(ActionEvent aEvt) {
-
-                                showIonogramAlignment((int) location, frame, fv);
-
-                            }
-                        });
-
-                    }
-                }
-            }
-
-            add(item);
-        }
-
         public void addCopyToClipboardItem(final TrackClickEvent te) {
 
             final MouseEvent me = te.getMouseEvent();
@@ -1484,25 +1445,25 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
             add(item);
         }
-
-        public void addCopyDistributionToClipboardItem(final TrackClickEvent te) {
-            final MouseEvent me = te.getMouseEvent();
-            JMenuItem item = new JMenuItem("Copy the confidence distribution for this base to the clipboard");
-            final ReferenceFrame frame = te.getFrame();
-            if (frame == null) {
-                item.setEnabled(false);
-            } else {
-                final int location = (int) (frame.getChromosomePosition(me.getX()));
-
-                // Change track height by attribute
-                item.addActionListener(new ActionListener() {
-                    public void actionPerformed(ActionEvent aEvt) {
-                        copyDistribution(te, location);
-                    }
-                });
-            }
-            add(item);
-        }
+//
+//        public void addCopyDistributionToClipboardItem(final TrackClickEvent te) {
+//            final MouseEvent me = te.getMouseEvent();
+//            JMenuItem item = new JMenuItem("Copy the confidence distribution for this base to the clipboard");
+//            final ReferenceFrame frame = te.getFrame();
+//            if (frame == null) {
+//                item.setEnabled(false);
+//            } else {
+//                final int location = (int) (frame.getChromosomePosition(me.getX()));
+//
+//                // Change track height by attribute
+//                item.addActionListener(new ActionListener() {
+//                    public void actionPerformed(ActionEvent aEvt) {
+//                        copyDistribution(te, location);
+//                    }
+//                });
+//            }
+//            add(item);
+//        }
 
         public void addViewPairedArcsMenuItem() {
             final JMenuItem item = new JCheckBoxMenuItem("View paired arcs");
@@ -1676,6 +1637,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             add(item);
         }
 
+        
         public void addShadeBaseByMenuItem() {
 
             if (ionTorrent) {
@@ -1819,249 +1781,5 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             });
             add(item);
         }
-
-        private void addIonTorrentAuxiliaryViews(final TrackClickEvent e) {
-
-
-            final ReferenceFrame frame = e.getFrame();
-            if (frame == null) {
-                return;
-
-            } else {
-
-
-                final int location = (int) (frame.getChromosomePosition(e.getMouseEvent().getX()));
-                
-                final JMenuItem itemIonoAlignment = new JCheckBoxMenuItem("<html>View <b>ionogram</b> alignment</html>");
-                itemIonoAlignment.addActionListener(new ActionListener() {
-                    public void actionPerformed(ActionEvent aEvt) {
-                        showIonogramAlignment(location, e.getFrame(), null);
-                    }
-                });
-                JMenu groupMenu = createDistributionContextMenuItems(location, e);
-                add(groupMenu);
-                add(itemIonoAlignment);
-                this.addGetRawTraceItem(e);
-                IGVMenuBar bar = IGV.getInstance().getMenuBar();
-                if (!bar.hasMenu("IonTorrent")) {
-                    JMenu ionmenu = new JMenu("IonTorrent");
-                    bar.add(ionmenu);
-                    MenuAction menuAction =
-                            new MenuAction("<html>View <b>ionogram</b> alignment</html>", null, KeyEvent.VK_K) {
-                                @Override
-                                public void actionPerformed(ActionEvent e) {
-                                    showIonogramAlignment(location, frame, null);
-                                }
-                            };
-                    ionmenu.add(MenuAndToolbarUtils.createMenuItem(menuAction));
-                    groupMenu = createDistributionContextMenuItems(location, e);
-                    ionmenu.add(groupMenu);
-                }
-            }
-        }
-
-        private JMenu createDistributionContextMenuItems(final int location, final TrackClickEvent e) {
-            JMenu groupMenu = new JMenu("<html>View flow confidence distribution for");
-            ButtonGroup group = new ButtonGroup();
-            JCheckBoxMenuItem itemb = new JCheckBoxMenuItem("<html><b>forward and reverse (2 data series)</b></html>");
-            groupMenu.add(itemb);
-            group.add(itemb);
-            itemb.setSelected(true);
-            itemb.setFont(itemb.getFont().deriveFont(Font.BOLD));
-            JCheckBoxMenuItem item = new JCheckBoxMenuItem("both strands combined");
-            groupMenu.add(item);
-            group.add(item);
-            JCheckBoxMenuItem itemf = new JCheckBoxMenuItem("forward strand only");
-            groupMenu.add(itemf);
-            group.add(itemf);
-            JCheckBoxMenuItem itemr = new JCheckBoxMenuItem("reverse strand only");
-            groupMenu.add(itemr);
-            group.add(itemr);
-            // Change track height by attribute
-            item.addActionListener(new ActionListener() {
-                public void actionPerformed(ActionEvent aEvt) {
-                    showDistribution(location, e.getFrame(), true, true);
-                }
-            });
-            itemf.addActionListener(new ActionListener() {
-                public void actionPerformed(ActionEvent aEvt) {
-                    showDistribution(location, e.getFrame(), true, false);
-                }
-            });
-            itemr.addActionListener(new ActionListener() {
-                public void actionPerformed(ActionEvent aEvt) {
-                    showDistribution(location, e.getFrame(), false, true);
-                }
-            });
-            itemb.addActionListener(new ActionListener() {
-                public void actionPerformed(ActionEvent aEvt) {
-                    showDistribution(location, e.getFrame(), false, false);
-                }
-            });
-            return groupMenu;
-        }
-    }
-
-    /*
-     * Open a seperate window that shows the alignment of ionograms - including
-     * empty flows (might be difficult to show in a track due to those
-     * empties....)
-     */
-    private void showIonogramAlignment(final int center_location, final ReferenceFrame frame, FlowValue fv) {
-        // first get parameters from preferences such as how many bases to the left/right we want to consider
-        PreferenceManager prefs = PreferenceManager.getInstance();
-        int nrbases_left_right = prefs.getAsInt(IonTorrentPreferencesManager.IONTORRENT_NRBASES_IONOGRAM_ALIGN);
-        nrbases_left_right = Math.max(2, nrbases_left_right);
-        nrbases_left_right = Math.min(20, nrbases_left_right);
-        final int bases = nrbases_left_right;
-        // now we get the flow values for each read at each location 
-        final IonogramAlignment forward_align = getIonogramAlignment(frame, center_location, nrbases_left_right, true);
-        final IonogramAlignment reverse_align = getIonogramAlignment(frame, center_location, nrbases_left_right, false);
-        if (fv != null) {
-            log.info("Got flow value to load raw data for: " + fv);
-        }
-        final AlignmentControlPanel forpanel = AlignmentControlPanel.getForPanel(center_location, forward_align, fv);
-        final AlignmentControlPanel revpanel = AlignmentControlPanel.getRevPanel(center_location, reverse_align, fv);
-
-        String locus = Locus.getFormattedLocusString(frame.getChrName(), (int) center_location, (int) center_location);
-        LocationListener listener = new LocationListener() {
-            @Override
-            public void locationChanged(int newLocation) {
-                log.info("Got new location from panel: " + newLocation);
-                String locus = Locus.getFormattedLocusString(frame.getChrName(), (int) newLocation, (int) newLocation);
-                if (forward_align != null) {
-                    IonogramAlignment forward = getIonogramAlignment(frame, newLocation, bases, true);
-                    forpanel.setAlignment(forward, newLocation);
-                    forward.setTitle("Ionogram Alignment (forward) at " + locus);
-                }
-                if (reverse_align != null) {
-                    IonogramAlignment reverse = getIonogramAlignment(frame, newLocation, bases, false);
-                    reverse.setTitle("Ionogram Alignment (reverse) at " + locus);
-                    revpanel.setAlignment(reverse, newLocation);
-                }
-                frame.centerOnLocation(newLocation + 1);
-                IGV.getInstance().repaintDataAndHeaderPanels();
-                IGV.getInstance().repaintStatusAndZoomSlider();
-            }
-        };
-        if (forward_align != null) {
-            forpanel.setListener(listener);
-        }
-
-        // now create two panels, one for forward, and one for the reverse strand
-        if (reverse_align != null) {
-            revpanel.setListener(listener);
-        }
-        ImageIcon image = new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/msa.gif"));
-        if (forpanel.hasAlignment()) {
-            AlignmentControlPanel.showForwardPanel(forpanel, locus, image);
-        } else {
-            GuiUtils.showNonModalMsg("Found no data for the forward alignment");
-        }
-        if (revpanel.hasAlignment()) {
-            AlignmentControlPanel.showReversePanel(revpanel, locus, image);        
-        } else {
-            GuiUtils.showNonModalMsg("Found no data for the reverse alignment");
-        }
-    }
-
-    /**
-     * if neither forward nor reverse, create 2 charts in one
-     */
-    private void showDistribution(final int location, final ReferenceFrame frame, final boolean forward, final boolean reverse) {
-        ConfidenceDistribution[] distributions = getDistributions(forward, reverse, frame, location);
-
-        if (distributions == null || distributions.length < 1) {
-            MessageUtils.showMessage("I found no flow signal distributions at this location " + location);
-            return;
-        }
-
-        ImageIcon image = new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/chip_16.png"));
-
-        Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
-
-        int x = (int) Math.max(100, screen.getWidth() / 2 - 400);
-        int y = (int) 200;
-
-        final ArrayList<DistPanel> panels = DistPanel.createPanels(distributions, 2);
-        for (final DistPanel panel : panels) {
-            LocationListener listener = new LocationListener() {
-                @Override
-                public void locationChanged(int newLocation) {
-                    log.info("Got new location from panel: " + newLocation + ", (old location was: " + location + ")");
-                    ConfidenceDistribution[] newdist = getDistributions(forward, reverse, frame, newLocation);
-                    panel.setDistributions(newdist);
-                    // xxx compute new maxy
-                    panel.recreateChart();
-                    //frame.jumpTo(frame.getChrName(), location, location);
-
-                    frame.centerOnLocation(newLocation + 1);
-                    IGV.getInstance().repaintDataAndHeaderPanels();
-                    IGV.getInstance().repaintStatusAndZoomSlider();
-                }
-            };
-            panel.setListener(listener);
-            SimpleDialog dia = new SimpleDialog("Model Data Confidence Distribution " + panel.getBase(), panel, 800, 500, x, y, image.getImage());
-            y += 500;
-            if (y > 1000) {
-                y = 200;
-                x += 500;
-            }
-        }
-
-    }
-
-    public void createDistScreenShot(boolean forward, boolean reverse, String filename, boolean closeAfter) {
-        ReferenceFrame frame = FrameManager.getDefaultFrame();
-        int location = (int) (frame.getOrigin() + frame.getEnd()) / 2;
-        log.info("Frame center=" + frame.getCenter());
-        log.info("Got location " + location);
-        ConfidenceDistribution[] distributions = getDistributions(forward, reverse, frame, location);
-
-
-        final ArrayList<DistPanel> panels = DistPanel.createPanels(distributions, 2);
-        int count = 0;
-        for (DistPanel pan : panels) {
-
-            JFrame f = new JFrame();
-            f.getContentPane().add(pan);
-            f.setSize(800, 600);
-            f.setVisible(true);
-            try {
-                String file = filename + count + ".png";
-                count++;
-                log.info("createDistScreenShot: Trying to write image to " + file);
-                IGV.getInstance().createSnapshotNonInteractive(pan.getCenter(), new File(file));
-            } catch (Exception ex) {
-                log.error(ex);
-            }
-            if (closeAfter) {
-                f.dispose();
-            }
-        }
-
-    }
-
-    private ConfidenceDistribution[] getDistributions(boolean forward, boolean reverse, ReferenceFrame frame, int location) {
-        ConfidenceDistribution distributions[] = null;
-        if (forward || reverse) {
-            ArrayList<ConfidenceDistribution> dists = getDistribution(frame, location, forward, reverse);
-            distributions = new ConfidenceDistribution[dists.size()];
-            for (int i = 0; i < dists.size(); i++) {
-                distributions[i] = dists.get(i);
-            }
-        } else {
-            ArrayList<ConfidenceDistribution> distsf = getDistribution(frame, location, true, false);
-            ArrayList<ConfidenceDistribution> distsr = getDistribution(frame, location, false, true);
-            distributions = new ConfidenceDistribution[distsf.size() + distsr.size()];
-            for (int i = 0; i < distsf.size(); i++) {
-                distributions[i] = distsf.get(i);
-            }
-            for (int i = 0; i < distsr.size(); i++) {
-                distributions[i + distsf.size()] = distsr.get(i);
-            }
-
-        }
-        return distributions;
     }
 }

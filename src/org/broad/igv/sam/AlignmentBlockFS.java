@@ -23,7 +23,7 @@ public class AlignmentBlockFS extends AlignmentBlock {
 
     @Override
     public FlowSignalSubContext getFlowSignalSubContext(int offset) {
-        return new FlowSignalSubContext(this.fContext.getValuesForOffset(offset),  this.fContext.getFlowOrderIndexForOffset(offset));
+        return new FlowSignalSubContext(this.fContext.getValuesForOffset(offset));
     }
 
 

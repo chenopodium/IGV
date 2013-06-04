@@ -11,6 +11,7 @@
 
 package org.broad.igv.session;
 
+import java.io.BufferedInputStream;
 import org.apache.log4j.Logger;
 import org.broad.igv.track.Track;
 import org.broad.igv.track.TrackProperties;
@@ -43,8 +44,13 @@ public class UCSCSessionReader implements SessionReader {
 
     public UCSCSessionReader(IGV igv) {
         this.igv = igv;
-    }
+    } 
 
+     @Override
+    public boolean loadSession(Session session, String sessionPath, int tries) throws IOException {
+            InputStream inputStream = new BufferedInputStream(ParsingUtils.openInputStreamGZ(new ResourceLocator(sessionPath)));
+            return loadSession(inputStream, session, sessionPath);
+    }
     /**
      * Load a UCSC session from the given stream.
      *
@@ -53,7 +59,7 @@ public class UCSCSessionReader implements SessionReader {
      * @param sessionName
      * @throws IOException
      */
-    public void loadSession(InputStream inputStream, Session session, String sessionName) throws IOException {
+    public boolean loadSession(InputStream inputStream, Session session, String sessionName) throws IOException {
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
 
@@ -107,6 +113,7 @@ public class UCSCSessionReader implements SessionReader {
         if (errors.size() > 0) {
             displayErrors(errors);
         }
+        return true;
 
     }
 

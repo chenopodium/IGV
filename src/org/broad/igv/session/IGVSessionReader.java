@@ -51,6 +51,7 @@ import org.broad.igv.util.Utilities;
 import org.w3c.dom.*;
 
 import java.awt.*;
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
@@ -74,7 +75,7 @@ public class IGVSessionReader implements SessionReader {
     private boolean panelElementPresent = false;
     private int version;
 
-    private IGV igv;
+    protected IGV igv;
 
 
     /**
@@ -99,7 +100,7 @@ public class IGVSessionReader implements SessionReader {
         attributeSynonymMap.put("TRACK NAME", "NAME");
     }
 
-    /**
+      /**
      * Session Element types
      */
     public static enum SessionElement {
@@ -253,6 +254,12 @@ public class IGVSessionReader implements SessionReader {
     }
 
 
+    @Override
+    public boolean loadSession(Session session, String sessionPath, int tries) throws IOException {
+            InputStream inputStream = new BufferedInputStream(ParsingUtils.openInputStreamGZ(new ResourceLocator(sessionPath)));
+            if (inputStream == null) return false;
+            return loadSession(inputStream, session, sessionPath, tries);
+    }
     /**
      * @param inputStream
      * @param session
@@ -260,31 +267,17 @@ public class IGVSessionReader implements SessionReader {
      * @throws RuntimeException
      */
 
-    public void loadSession(InputStream inputStream, Session session, String sessionPath) {
+   
+    public boolean loadSession(InputStream inputStream, Session session, String sessionPath, int tries) {
 
-
+        if (inputStream == null) return false;
         log.info("Load session");
-
-
-        Document document = null;
-        try {
-            document = Utilities.createDOMDocumentFromXmlStream(inputStream);
-        } catch (Exception e) {
-            log.error("Load session error (will try to show content)", e);
-            // also try to read from input stream to see WHERE the error happened!
-            String result ="I was able to read anything from the input stream\n";
-            try {
-                result = "IGV got this from the server:\n"+FileTools.getIsAsString(inputStream);
-                log.error(result);
-            } catch (Exception e1) {
-                     log.error("Could not read input stream:"+ ErrorHandler.getString(e1));            
-            }
-            Exception usererror = new Exception(result+e.getMessage());
-            usererror.setStackTrace(e.getStackTrace());
-            
-            throw new RuntimeException(usererror);
+        Document document = loadDocument(inputStream);
+        if (document == null) {
+            log.info("loadSession: Got no document back from input stream");
+            return false;
         }
-
+        
         NodeList tracks = document.getElementsByTagName("Track");
         hasTrackElments = tracks.getLength() > 0;
 
@@ -311,11 +304,33 @@ public class IGVSessionReader implements SessionReader {
         }
 
         igv.resetOverlayTracks();
-
+        return true;
     }
 
+    
+     protected Document loadDocument(InputStream inputStream) throws RuntimeException {
+        Document document = null;
+        try {
+            document = Utilities.createDOMDocumentFromXmlStream(inputStream);
+        } catch (Exception e) {
+            log.error("Load session error (will try to show content)", e);
+            // also try to read from input stream to see WHERE the error happened!
+            String result ="I was unable to read anything from the input stream\n";
+            try {
+                result = "IGV got this from the server:\n"+FileTools.getIsAsString(inputStream);
+                log.error(result);
+            } catch (Exception e1) {
+                     log.error("Could not read input stream:"+ ErrorHandler.getString(e1));            
+            }
+            Exception usererror = new Exception(result+e.getMessage());
+            usererror.setStackTrace(e.getStackTrace());
+            
+            throw new RuntimeException(usererror);
+        }
+        return document;
+    }
 
-    private void processRootNode(Session session, Node node, HashMap additionalInformation, String rootPath) {
+        private  void processRootNode(Session session, Node node, HashMap additionalInformation, String rootPath) {
 
         if ((node == null) || (session == null)) {
             MessageUtils.showMessage("Invalid session file: root node not found");

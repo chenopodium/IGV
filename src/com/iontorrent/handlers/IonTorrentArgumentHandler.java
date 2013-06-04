@@ -4,6 +4,8 @@
  */
 package com.iontorrent.handlers;
 
+import com.iontorrent.utils.Encryptor;
+import com.iontorrent.utils.ErrorHandler;
 import jargs.gnu.CmdLineParser;
 import org.apache.log4j.Logger;
 import org.broad.igv.PreferenceManager;
@@ -30,7 +32,7 @@ public class IonTorrentArgumentHandler implements ArgumentHandler {
                 String firstArg = StringUtils.decodeURL(nonOptionArgs[0]);
                 firstArg = checkEqualsAndExtractParamter(firstArg);
                 if (firstArg != null && !firstArg.equals("ignore")) {
-                    log.info("Attemptying to load this: " + firstArg);
+                    log.info("session file is: " + firstArg);
                     
                     if (firstArg.endsWith(".xml") || firstArg.endsWith(".php") || firstArg.endsWith(".php3")
                             || firstArg.endsWith(".session")) {
@@ -101,6 +103,16 @@ public class IonTorrentArgumentHandler implements ArgumentHandler {
                         prefs.put(key, val);
                         log.info("Got general preference setting: " + key + "=" + val);
                     }
+                    else log.info("Got temp preference setting: " + key + "=" + val);
+                    if (key.equalsIgnoreCase("header_value")) {
+                        String algo = Encryptor.getDefaultAlgorithm();                   
+                        try {
+                            String token = Encryptor.decrypt(algo, val, "IGVKEY123");
+                            log.info("Got token from args: "+token);
+                        } catch (Throwable e) {
+                            log.info("ArgumentHandler: Could not decrypt: " + ErrorHandler.getString(e));                            
+                        }                            
+                     }
                     PreferenceManager.getInstance().putTemp(key, val);                   
                     return null;                             
                 }

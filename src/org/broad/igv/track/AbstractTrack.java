@@ -195,7 +195,7 @@ public abstract class AbstractTrack implements Track {
         if (this.getResourceLocator() != null) {
             String sample = this.getResourceLocator().getSampleId();
             if (sample == null) sample = this.getSample();
-            log.info("getDisplayName: name is "+disp+", sample="+sample);
+         //   log.info("getDisplayName: name is "+disp+", sample="+sample);
             if (sample != null) {
                 if (!disp.toUpperCase().startsWith(sample.toUpperCase())) {
                     sample = Character.toUpperCase(sample.charAt(0)) + sample.substring(1);

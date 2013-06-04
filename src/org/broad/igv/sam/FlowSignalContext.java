@@ -11,11 +11,11 @@ import com.iontorrent.rawdataaccess.FlowValue;
  */
 public class FlowSignalContext {
      FlowValue[][][] flowvalues;
-    private int[] flowOrderIndices;
+    //private int[] flowOrderIndices;
 
-    public FlowSignalContext(FlowValue[][][] flowvalues, int[] flowOrderIndices) {
+    public FlowSignalContext(FlowValue[][][] flowvalues) {
         this.flowvalues = flowvalues;
-        this.flowOrderIndices = flowOrderIndices;
+        //this.flowOrderIndices = flowOrderIndices;
     }
     public FlowValue[][][]  getFlowvalues() {
         return flowvalues;
@@ -30,8 +30,8 @@ public class FlowSignalContext {
         return flowvalues[offset];
     }
     
-    public int getFlowOrderIndexForOffset(int offset) {
-        return flowOrderIndices[offset];
-    }
+//    public int getFlowOrderIndexForOffset(int offset) {
+//        return flowOrderIndices[offset];
+//    }
    
 }

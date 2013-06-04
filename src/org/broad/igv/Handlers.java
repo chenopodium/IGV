@@ -16,6 +16,8 @@ import java.util.*;
 import org.apache.log4j.Logger;
 import org.broad.igv.batch.CommandExecutorIF;
 import org.broad.igv.batch.CommandListenerIF;
+import org.broad.igv.sam.AlignmentTrackHandler;
+import org.broad.igv.session.SessionHandler;
 import org.broad.igv.ui.ArgumentHandler;
 import org.broad.igv.ui.action.SearchCommandHandler;
 import org.broad.igv.util.HttpHandler;
@@ -32,6 +34,8 @@ public class Handlers {
     public static String COMMANDLISTENER;
     public static String SEARCHCOMMANDHANDLER;
     public static String ARGUMENTHANDLER;
+    public static String SESSIONHANDLER;
+    public static String ALIGNMENTTRACKHANDLER;
 
     static {
         Properties handlerproperties = new Properties();
@@ -45,6 +49,8 @@ public class Handlers {
         COMMANDLISTENER = handlerproperties.getProperty("commandlistener", null);
         SEARCHCOMMANDHANDLER = handlerproperties.getProperty("searchcommandhandler", null);
         ARGUMENTHANDLER = handlerproperties.getProperty("argumenthandler", null);
+        SESSIONHANDLER = handlerproperties.getProperty("sessionhandler", null);
+        ALIGNMENTTRACKHANDLER = handlerproperties.getProperty("alignmenttrackhandler", null);
     }
 
     /**
@@ -138,6 +144,38 @@ public class Handlers {
             return handler;
         } catch (Exception e) {
             log.error("Was unable to create ArgumentHandler from " + ARGUMENTHANDLER + ", check the resources/handler.properties file for errors:" + ErrorHandler.getString(e));
+        }
+        return null;
+    }
+     
+       /**
+      * When reading a session from a remote server, there could be problems that are not dealt with IGV.
+      * 
+      * @return 
+      */
+     public static SessionHandler getSessionHandler() {
+        if (SESSIONHANDLER == null) {
+            return null;
+        }
+        try {
+            SessionHandler handler = (SessionHandler) Class.forName(SESSIONHANDLER).newInstance();
+            return handler;
+        } catch (Exception e) {
+            log.error("Was unable to create a SessionHandler from " + SESSIONHANDLER + ", check the resources/handler.properties file for errors:" + ErrorHandler.getString(e));
+        }
+        return null;
+    }
+     
+     /** adds custom menus and actions to alignment track */
+      public static AlignmentTrackHandler getAlignmentTrackHandler() {
+        if (ALIGNMENTTRACKHANDLER == null) {
+            return null;
+        }
+        try {
+            AlignmentTrackHandler handler = (AlignmentTrackHandler) Class.forName(ALIGNMENTTRACKHANDLER).newInstance();
+            return handler;
+        } catch (Exception e) {
+            log.error("Was unable to create an AlignmentTrackHandler from " + ALIGNMENTTRACKHANDLER + ", check the resources/handler.properties file for errors:" + ErrorHandler.getString(e));
         }
         return null;
     }
