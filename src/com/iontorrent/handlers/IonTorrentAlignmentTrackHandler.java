@@ -110,31 +110,65 @@ public class IonTorrentAlignmentTrackHandler implements AlignmentTrackHandler {
 
         } else {
 
-
             final int location = (int) (frame.getChromosomePosition(e.getMouseEvent().getX()));
-
-            final JMenuItem itemIonoAlignment = new JCheckBoxMenuItem("<html>View <b>ionogram</b> multiple alignment</html>");
-            itemIonoAlignment.addActionListener(new ActionListener() {
-                public void actionPerformed(ActionEvent aEvt) {
-                    showIonogramAlignment(location, e.getFrame(), null, null);
-                }
-            });
             JMenu groupMenu = createDistributionContextMenuItems(location, e);
             add(groupMenu);
-            add(itemIonoAlignment);
+
+            
+            final AbstractAlignment alignment = (AbstractAlignment) track.getAlignmentAt(location, e.getMouseEvent().getY(), frame);
+            if (alignment != null) {
+                final JMenuItem itemIonoAlignment = new JCheckBoxMenuItem("<html>View ionogram for <b>this</b> read <b>"+alignment.getReadName()+"</b></html>");
+                itemIonoAlignment.addActionListener(new ActionListener() {
+                    public void actionPerformed(ActionEvent aEvt) {
+                        showIonogramAlignment(!alignment.isNegativeStrand(), location, e.getFrame(), null, alignment, false);
+                    }
+                });
+                add(itemIonoAlignment);
+            }
+
+
+
+            final JMenuItem itemIonoMultiAlignment = new JCheckBoxMenuItem("<html>View <b>forward</b> ionogram <b>multiple</b> alignment </html>");
+            itemIonoMultiAlignment.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent aEvt) {
+                    showIonogramAlignment(true, location, e.getFrame(), null, alignment, true);
+                }
+            });
+
+            add(itemIonoMultiAlignment);
+            
+            final JMenuItem itemIonoMultiAlignmentrev = new JCheckBoxMenuItem("<html>View <b>reverse</b> ionogram <b>multiple</b> alignment </html>");
+            itemIonoMultiAlignmentrev.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent aEvt) {
+                    showIonogramAlignment(false, location, e.getFrame(), null, alignment, true);
+                }
+            });
+
+            add(itemIonoMultiAlignmentrev);
+            
             this.addGetRawTraceItem(e);
+            
             IGVMenuBar bar = IGV.getInstance().getMenuBar();
             if (!bar.hasMenu("IonTorrent")) {
                 JMenu ionmenu = new JMenu("IonTorrent");
                 bar.add(ionmenu);
                 MenuAction menuAction =
-                        new MenuAction("<html>View <b>ionogram</b> multiple alignment</html>", null, KeyEvent.VK_K) {
+                        new MenuAction("<html>View <b>forward ionogram</b> multiple alignment</html>", null, KeyEvent.VK_K) {
                             @Override
                             public void actionPerformed(ActionEvent e) {
-                                showIonogramAlignment(location, frame, null, null);
+                                showIonogramAlignment(true, location, frame, null, alignment, true);
                             }
                         };
                 ionmenu.add(MenuAndToolbarUtils.createMenuItem(menuAction));
+                
+                MenuAction menuActionrev =
+                        new MenuAction("<html>View <b>reverse ionogram</b> multiple alignment</html>", null, KeyEvent.VK_K) {
+                            @Override
+                            public void actionPerformed(ActionEvent e) {
+                                showIonogramAlignment(false, location, frame, null, alignment, true);
+                            }
+                        };
+                ionmenu.add(MenuAndToolbarUtils.createMenuItem(menuActionrev));
                 groupMenu = createDistributionContextMenuItems(location, e);
                 ionmenu.add(groupMenu);
             }
@@ -164,7 +198,7 @@ public class IonTorrentAlignmentTrackHandler implements AlignmentTrackHandler {
                     item.addActionListener(new ActionListener() {
                         public void actionPerformed(ActionEvent aEvt) {
 
-                            showIonogramAlignment((int) location, frame, fv, alignment);
+                            showIonogramAlignment(!alignment.isNegativeStrand(), (int) location, frame, fv, alignment, false);
 
                         }
                     });
@@ -235,16 +269,24 @@ public class IonTorrentAlignmentTrackHandler implements AlignmentTrackHandler {
      * empty flows (might be difficult to show in a track due to those
      * empties....)
      */
-    private void showIonogramAlignment(final int center_location, final ReferenceFrame frame, FlowValue fv, AbstractAlignment alignment) {
+    private void showIonogramAlignment(boolean forwardOnly, final int center_location, final ReferenceFrame frame, FlowValue fv, AbstractAlignment alignment, final boolean multiAlignment) {
         // first get parameters from preferences such as how many bases to the left/right we want to consider
         PreferenceManager prefs = PreferenceManager.getInstance();
         int nrbases_left_right = prefs.getAsInt(IonTorrentPreferencesManager.IONTORRENT_NRBASES_IONOGRAM_ALIGN);
+        
         nrbases_left_right = Math.max(2, nrbases_left_right);
         nrbases_left_right = Math.min(20, nrbases_left_right);
+        log.info("Got nr nrbases_left_right:"+nrbases_left_right);
         final int bases = nrbases_left_right;
         // now we get the flow values for each read at each location 
-        final IonogramAlignment forward_align = getIonogramAlignment(frame, center_location, nrbases_left_right, true, alignment);
-        final IonogramAlignment reverse_align = getIonogramAlignment(frame, center_location, nrbases_left_right, false, alignment);
+        final IonogramAlignment forward_align;
+        if (forwardOnly) forward_align = getIonogramAlignment(frame, center_location, nrbases_left_right, true, alignment,multiAlignment);
+        else forward_align = null;
+        
+        final IonogramAlignment reverse_align;
+        if (!forwardOnly) reverse_align = getIonogramAlignment(frame, center_location, nrbases_left_right, false, alignment,multiAlignment);
+        else reverse_align = null;
+        
         if (fv != null) {
             log.info("Got flow value to load raw data for: " + fv);
         }
@@ -258,12 +300,12 @@ public class IonTorrentAlignmentTrackHandler implements AlignmentTrackHandler {
                 log.info("Got new location from panel: " + newLocation);
                 String locus = Locus.getFormattedLocusString(frame.getChrName(), (int) newLocation, (int) newLocation);
                 if (forward_align != null) {
-                    IonogramAlignment forward = getIonogramAlignment(frame, newLocation, bases, true, forward_align.getJustThisAlignment());
+                    IonogramAlignment forward = getIonogramAlignment(frame, newLocation, bases, true, forward_align.getSelectedAlignment(),multiAlignment);
                     forpanel.setAlignment(forward, newLocation);
                     forward.setTitle("Ionogram Alignment (forward) at " + locus);
                 }
                 if (reverse_align != null) {
-                    IonogramAlignment reverse = getIonogramAlignment(frame, newLocation, bases, false, reverse_align.getJustThisAlignment());
+                    IonogramAlignment reverse = getIonogramAlignment(frame, newLocation, bases, false, reverse_align.getSelectedAlignment(),multiAlignment);
                     reverse.setTitle("Ionogram Alignment (reverse) at " + locus);
                     revpanel.setAlignment(reverse, newLocation);
                 }
@@ -281,16 +323,17 @@ public class IonTorrentAlignmentTrackHandler implements AlignmentTrackHandler {
             revpanel.setListener(listener);
         }
         ImageIcon image = new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/msa.gif"));
-        if (forpanel.hasAlignment()) {
-            AlignmentControlPanel.showForwardPanel(forpanel, locus, image);
-        } else {
-            GuiUtils.showNonModalMsg("Found no data for the forward alignment");
-        }
-        if (revpanel.hasAlignment()) {
-            AlignmentControlPanel.showReversePanel(revpanel, locus, image);
-        } else {
-            GuiUtils.showNonModalMsg("Found no data for the reverse alignment");
-        }
+        AlignmentControlPanel.showModalDialog(forpanel, revpanel, locus, image);
+//        if (forpanel.hasAlignment()) {
+//            AlignmentControlPanel.showForwardPanel(forpanel, locus, image);
+//        } else {
+//            GuiUtils.showNonModalMsg("Found no data for the forward alignment");
+//        }
+//        if (revpanel.hasAlignment()) {
+//            AlignmentControlPanel.showReversePanel(revpanel, locus, image);
+//        } else {
+//            GuiUtils.showNonModalMsg("Found no data for the reverse alignment");
+//        }
     }
 
     /**
@@ -329,7 +372,7 @@ public class IonTorrentAlignmentTrackHandler implements AlignmentTrackHandler {
                 }
             };
             panel.setListener(listener);
-            SimpleDialog dia = new SimpleDialog("Model Data Confidence Distribution " + panel.getBase(), panel, 800, 500, x, y, image.getImage());
+            SimpleDialog dia = new SimpleDialog("Model Data Confidence Distribution " + panel.getBase(), panel, 800, 500, x, y, image.getImage(), false);
             y += 500;
             if (y > 1000) {
                 y = 200;
@@ -407,9 +450,9 @@ public class IonTorrentAlignmentTrackHandler implements AlignmentTrackHandler {
         return ConfidenceDistribution.extractDistributions(dataManager, frame, location, forward, reverse);
     }
 
-    private IonogramAlignment getIonogramAlignment(ReferenceFrame frame, int center_location, int nrbases_left_right, boolean forward, AbstractAlignment alignment) {
+    private IonogramAlignment getIonogramAlignment(ReferenceFrame frame, int center_location, int nrbases_left_right, boolean forward, AbstractAlignment alignment, boolean multi) {
 
-        IonogramAlignment ionoalign = IonogramAlignment.extractIonogramAlignment(dataManager, frame, center_location, nrbases_left_right, forward, alignment);
+        IonogramAlignment ionoalign = IonogramAlignment.extractIonogramAlignment(dataManager, frame, center_location, nrbases_left_right, forward, alignment, multi);
         return ionoalign;
     }
 }

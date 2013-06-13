@@ -103,6 +103,7 @@ public class PreferenceManager implements PropertyManager {
     public static final String SAM_COUNT_DELETED_BASES_COVERED = "SAM.COUNT_DELETED_BASES_COVERED";
 
 
+    public static final String AUTOLOAD_BAM_TRACKS = "AUTO_LOAD_BAM_TRACKS";
     public static final String EXPAND_FEAUTRE_TRACKS = "EXPAND_FEATURE_TRACKS";
     public static final String PORT_ENABLED = "PORT_ENABLED";
     public static final String PORT_NUMBER = "PORT_NUMBER";
@@ -285,6 +286,9 @@ public class PreferenceManager implements PropertyManager {
     public String getTemp(String key) {
         return temporaryValues.get(key);
     }
+    public boolean hasTemp(String key) {
+        return temporaryValues != null && temporaryValues.containsKey(key);
+    }
     public boolean getTempAsBoolean(String key) {
         String s= getTemp(key);
         if (s == null) return false;
@@ -321,6 +325,17 @@ public class PreferenceManager implements PropertyManager {
             booleanCache.put(key, boolValue);
         }
         return boolValue.booleanValue();
+    }
+    
+    public boolean isAutoLoadBamTracks() {
+        /// IGNORE_BAM_TRACKS
+        boolean autoload = false;
+        if (hasTemp("IGNORE_BAM_TRACKS"))  {
+            autoload = !getTempAsBoolean("IGNORE_BAM_TRACKS");
+            log.info("Found IGNORE_BAM_TRACKS in temp properties");
+        }
+        else autoload = getAsBoolean(PreferenceManager.AUTOLOAD_BAM_TRACKS);
+        return autoload;
     }
 
     /**
@@ -987,6 +1002,7 @@ public class PreferenceManager implements PropertyManager {
         defaultValues.put(SHOW_SINGLE_TRACK_PANE_KEY, "false");
         defaultValues.put(PORT_ENABLED, "true");
         defaultValues.put(EXPAND_FEAUTRE_TRACKS, "false");
+        defaultValues.put(AUTOLOAD_BAM_TRACKS, "false");
         defaultValues.put(SHOW_ATTRIBUTE_VIEWS_KEY, "true");
         defaultValues.put(SHOW_MISSING_DATA_KEY, "false");
         defaultValues.put(SHOW_SINGLE_TRACK_PANE_KEY, "false");
@@ -1117,8 +1133,8 @@ public class PreferenceManager implements PropertyManager {
         defaultValues.put(CBIO_EXPRESSION_UP_THRESHOLD, "1.0");
         defaultValues.put(CBIO_EXPRESSION_DOWN_THRESHOLD, "1.0");
 
-        defaultValues.put(TOOLTIP_INITIAL_DELAY, "50");
-        defaultValues.put(TOOLTIP_RESHOW_DELAY, "50");
+        defaultValues.put(TOOLTIP_INITIAL_DELAY, "200");
+        defaultValues.put(TOOLTIP_RESHOW_DELAY, "200");
         defaultValues.put(TOOLTIP_DISMISS_DELAY, "60000");
         defaultValues.put(DETAILS_BEHAVIOR_KEY, IGVCommandBar.SHOW_DETAILS_BEHAVIOR.HOVER.name());
     }

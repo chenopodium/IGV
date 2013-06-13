@@ -22,22 +22,26 @@ public class SimpleDialog extends JDialog {
      
     
     
-    public SimpleDialog(String title, JPanel mainpanel, int width, int height, int x, int y, Image image) {
+    public SimpleDialog(String title, JPanel mainpanel, int width, int height, int x, int y, Image image, boolean modal) {
         setLocationRelativeTo(null);
         this.setUndecorated(false);
         if (image != null) this.setIconImage(image);
         JPanel main = new JPanel(new BorderLayout());
         super.setTitle(title);
         this.add(main);
+        this.setModal(modal);
         main.add(mainpanel, BorderLayout.CENTER);
         Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
         
         if (x <= 0) x = (int) Math.max(100, screen.getWidth() / 2 - 400);
         if (y <= 0) y = (int) Math.max(100, screen.getHeight() / 2 - 200);
         this.setLocation(x, y);
-        this.setVisible(true);
+        
+        width = (int) Math.min(screen.getWidth(), width-200);
+        height = (int) Math.min(screen.getHeight()-200, height);
         this.setSize(width, height);
         this.toFront();       
+        this.setVisible(true);
     }
      private void p(String msg) {
         log.info(msg);

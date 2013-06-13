@@ -39,7 +39,8 @@ public class IonogramAlignment {
     private int nrrelativelocations;
     private int chromosome_center_location;
     private boolean flowBased;
-    private AbstractAlignment justforalignment;
+    private AbstractAlignment selectedalignment;
+    private static char[] nucleotides = {'a', 'c', 'g', 't', 'n'};
     /**
      * each row is a ionogram, each column is a slot, which may or may not map
      * to a flow value
@@ -47,34 +48,74 @@ public class IonogramAlignment {
     private FlowValue[][] slotmatrix;
     private String emptyBasesInfo[];
     private String consensus;
+    private String reference;
     private String chromosome;
-   
-    public IonogramAlignment(String chromosome,String consensus, ArrayList<Ionogram> ionograms, int maxemptyperlocation[], int nrbases_left_right, int chromosome_center_location) {
+    private int nrbases_left_right;
+    public IonogramAlignment(String chromosome,String reference,  String consensus, ArrayList<Ionogram> ionograms, int maxemptyperlocation[], int nrbases_left_right, int chromosome_center_location) {
         this.ionograms = ionograms;
         this.chromosome = chromosome;
         this.consensus = consensus;
+        this.reference = reference;
         this.chromosome_center_location = chromosome_center_location;
         nrionograms = ionograms.size();
+        this.nrbases_left_right = nrbases_left_right;
         this.maxemptyperlocation = maxemptyperlocation;
         this.nrrelativelocations = nrbases_left_right * 2 + 1;
         this.relativecenter = nrbases_left_right;
         nrslots = computeSlots();
-        emptyBasesInfo = new String[nrslots];
-        slotmatrix = new FlowValue[nrionograms][nrslots];
+        emptyBasesInfo = new String[nrslots+1];
+        slotmatrix = new FlowValue[nrionograms][nrslots+1];
         computeSlotsForGivenAlignment();
         flowBased = true;
-        //  recomputeAlignment();
+         removeEmptySlots();
     }
-    public AbstractAlignment getJustThisAlignment() {
-        return this.justforalignment;
+    public int getNrbases_left_right(){
+        return nrbases_left_right;
     }
-    
-    public static IonogramAlignment extractIonogramAlignment(AlignmentDataManager dataManager, ReferenceFrame frame, int center_location, int nrbases_left_right, boolean forward, AbstractAlignment justforalignment) {
-         boolean reverse = !forward;
+    private void removeEmptySlots() {
+        p("======== removing empty slots==== ");
+        int emtpies = 0;
+        boolean hasempties = true;
+        for (int times = 0; hasempties && times < 5; times++) {
+            hasempties= false;
+            for (int s = 0; s < this.nrslots; s++) {
+                boolean empty = true;
+                
+                for (int i = 0; i < nrionograms && empty; i++) {
+                    if (slotmatrix[i][s]!=null) {
+                        empty = false;                    
+                    }
+                }
+                if (empty) {
+                    hasempties = true;
+                 //   p("Slot "+s+" looks empty, shifting all to the left");
+                    int centerslot = slotperlocation[this.getRelativecenter()];
+                    if (s <= centerslot) {
+                        slotperlocation[this.getRelativecenter()]--;
+                   //     p("relative center (center slot) ="+slotperlocation[this.getRelativecenter()]);
+                    }
+                    for (int ss = s+1; ss < nrslots; ss++){
+                        for (int i = 0; i < nrionograms && empty; i++) {
+                           slotmatrix[i][ss-1] = slotmatrix[i][ss];
+                        }           
+                    }
+                    //s--;
+                    emtpies++;
+                }     
+            }
+        }
+        this.nrslots = nrslots - emtpies;
+    }
+    public AbstractAlignment getSelectedAlignment() {
+        return this.selectedalignment;
+    }
+
+    public static IonogramAlignment extractIonogramAlignment(AlignmentDataManager dataManager, ReferenceFrame frame, int center_location, int nrbases_left_right, boolean forward, AbstractAlignment selectedalignment, boolean multiAlignment) {
+        boolean reverse = !forward;
         int alignmentwidth = nrbases_left_right * 2 + 1;
         PreferenceManager prefs = PreferenceManager.getInstance();
         float maxNrReads = prefs.getAsFloat(IonTorrentPreferencesManager.IONTORRENT_MAXNREADS_IONOGRAM_ALIGN);
-        
+
 
         ArrayList<Ionogram> ionograms = new ArrayList<Ionogram>();
         String locus = Locus.getFormattedLocusString(frame.getChrName(), (int) center_location, (int) center_location);
@@ -84,18 +125,22 @@ public class IonogramAlignment {
 
         int nrionograms = 0;
         char[] consensus = new char[alignmentwidth + 1];
+        char[] reference = new char[alignmentwidth + 1];
         for (AlignmentInterval interval : dataManager.getLoadedIntervals()) {
             for (int loc = center_location - nrbases_left_right; loc <= center_location + nrbases_left_right + 1; loc++) {
+                 int relativelocation = loc - center_location + nrbases_left_right;
                 BaseAlignmentCounts ac = (BaseAlignmentCounts) interval.getAlignmentCounts(loc);
                 if (ac != null) {
                     char bestbase = ac.getBestBaseAt(loc);
-                    consensus[loc - center_location + nrbases_left_right] = bestbase;
+                    consensus[relativelocation] = bestbase;
                 }
+                reference[relativelocation] = (char)interval.getReference(loc);
             }
             Iterator<Alignment> alignmentIterator = interval.getAlignmentIterator();
+            boolean first = true;
             while (alignmentIterator.hasNext()) {
                 Alignment alignment = alignmentIterator.next();
-                if (justforalignment != null && alignment != justforalignment) {
+                if (selectedalignment != null && alignment != selectedalignment && !multiAlignment) {
                     continue;
                 }
                 if ((alignment.isNegativeStrand() && !reverse) || (!alignment.isNegativeStrand() && !forward)) {
@@ -107,24 +152,40 @@ public class IonogramAlignment {
                 if (nrionograms > maxNrReads) {
                     break;
                 }
+                if (!(alignment instanceof SamAlignment)) {
+                    continue;
+                }
 
-                
-                
+                SamAlignment sam = (SamAlignment) alignment;
+                FlowSeq flowseq = sam.getFlowseq();
+
                 Ionogram iono = new Ionogram(alignment.getReadName(), center_location, !forward);
+                
+                String order = sam.getFlowOrderNoKey();
+                if (!forward) {
+                    // for reverse alignments, we should use the reverse or at least the complement because we are displaying
+                    // everything in the forward strand
+                    order = AlignUtil.complement(order);
+                }
+                iono.setFloworder(order);
                 iono.setLocusinfo(locus);
+                if (selectedalignment != null && alignment == selectedalignment) {
+                    iono.setIonoIsSelected(true);
+                }
                 iono.setChromosome(alignment.getChromosome());
+
+                boolean debug = true;
+                alignment.getReadName().endsWith("02796");
 
                 nrionograms++;
                 AlignmentBlock[] blocks = alignment.getAlignmentBlocks();
                 for (int i = 0; i < blocks.length; i++) {
                     // only for matches/mismatches, there is no block for deletions
                     AlignmentBlock block = blocks[i];
+                    FlowValue firstInc = null;
+                    FlowValue lastInc = null;;
                     for (int loc = center_location - nrbases_left_right; loc <= center_location + nrbases_left_right; loc++) {
-                        // now add flow values from a few bases to the left and right - including empties!
-                        int relativelocation = loc - center_location + nrbases_left_right;
-                        //  char alignmentbase = (char)alignment.getBase(loc);
-                        char bestbase = consensus[relativelocation];
-
+                        // now add flow values from a few bases to the left and right - including empties!                        
                         int posinblock = (int) loc - block.getStart();
                         if (!block.contains((int) loc) || !block.hasFlowSignals()) {
                             continue;
@@ -134,86 +195,89 @@ public class IonogramAlignment {
                         if (subcontext == null || subcontext.getFlowValues() == null) {
                             continue;
                         }
-                        int flownr = subcontext.getCurrentValue().getFlowPosition();
-                        if (alignment instanceof SamAlignment) {
-                            SamAlignment sam = (SamAlignment) alignment;
-                            String order = sam.getFlowOrderNoKey();
-                            if (!forward) {
-                                // for reverse alignments, we should use the reverse or at least the complement because we are displaying
-                                // everything in the forward strand
-                                order = AlignUtil.complement(order);
-                            }
-                            iono.setFloworder(order);
+
+                        int relativelocation = loc - center_location + nrbases_left_right;
+                        //  char alignmentbase = (char)alignment.getBase(loc);
+                        char bestbase = consensus[relativelocation];
+
+                        FlowValue curFV = subcontext.getCurrentValue();
+                        curFV.setBasecall_location(relativelocation);
+                        
+                        //curFV.setBase(bestbase);
+                        if (firstInc == null) {
+                            firstInc = curFV;
+                        }
+                        lastInc = curFV;
+                       
+                    }
+                   
+                    if (firstInc != null && lastInc != null) {
+                        if (debug) {
+                            log.info("Creating iono flow singals from flow " + firstInc.getFlowPosition() + "=" + firstInc + " to " + lastInc.getFlowPosition() + "=" + lastInc);
                         }
 
-                        FlowValue fblock = subcontext.getCurrentValue();
-                        short rawflowSignal = (short) fblock.getRawFlowvalue();
-                        // that base is always the FORWARD base, so the complement in a reverse sequence
-                        char base = (char) block.getBase(posinblock);
-                        // now we also have to get the EMTPIES after this flow!
-                        boolean isempty = false;
-                        // skip if this flow values is the same as the one before
-                        FlowValue flowvalue = new FlowValue(fblock.getHpLen(), rawflowSignal, flownr, base, relativelocation, isempty, bestbase);
-                        flowvalue.setPredictedValue(fblock.getPredictedValue());
-                        flowvalue.setNext(fblock.getNext());
-                        flowvalue.setConfidence(fblock.getConfidence());
-                        flowvalue.setPrev(fblock.getPrev());
-                        //if (!iono.isSameAsPrev(flowvalue)) {
-                        iono.addFlowValue(flowvalue); 
-                        FlowValue nextempties[]= subcontext.getNextValues();
-                        if (nextempties != null) {
-                            // add the emtpies
-                            int nrempties = nextempties.length;
-                            int curmax = maxemptyperlocation[relativelocation];
-                            if (nrempties > curmax) {
-                                maxemptyperlocation[relativelocation] = nrempties;
-                            }
-
-                            isempty = true;
-                            for (int e = 0; e < nrempties; e++) {
-                                int curflowpos = 0;
-                                if (!alignment.isNegativeStrand()) {
-                                    curflowpos = flownr + e + 1;
-                                } else {
-                                    curflowpos = flownr - e - 1;
-                                }
-                                FlowValue fv = nextempties[e];
-                                if (fv != null) {
-                                    short emptysignal =(short) fv.getRawFlowvalue() ;
-                                    char emptybase = subcontext.getBaseForNextEmpty(e);
-                                    // if reverse, use complement!
-                                    if (!forward) {
-                                        emptybase = AlignUtil.getComplement(emptybase);
-                                    }
-                                    FlowValue emptyvalue = new FlowValue(0, emptysignal, curflowpos, emptybase, relativelocation, isempty, ' ');
-                                    // if (!iono.isSameAsPrev(emptyvalue)) {
-                                    iono.addFlowValue(emptyvalue);
-                                }
-                                // }
-                            }
+                        int start = firstInc.getFlowPosition();
+                        int end = lastInc.getFlowPosition();
+                        int inc = 1;
+                        if (start < end) {
+                            sp("FORWARD");
                         }
-                        // }
-
+                        else {
+                            sp("REVERSE");
+                            inc = -1;
+                        }
+                        int nrempties = 0;
+                        int relativelocation = 0;
+                        for (int f = start; f*inc <= inc*end; f+=inc) {
+                            FlowValue origfv = flowseq.getFlow(f);
+                            FlowValue fv = origfv.copy();
+                           // sp("Processing flow "+fv);
+                            if (!fv.isEmpty()) {
+                                relativelocation = fv.getBasecall_location();
+                                //int relativelocation = (int) (loc - center_location + nrbases_left_right);
+                                int curmax = maxemptyperlocation[relativelocation];
+                                if (nrempties > curmax) {
+                                    if (relativelocation>0) maxemptyperlocation[relativelocation-1] = nrempties;
+                                }
+                             //   sp("Adding INC flow " + f + ":" +fv+",  PREV empties "+ nrempties);
+                                nrempties = 0;
+                            } else {
+                                nrempties++;
+                                fv.setBasecall_location(relativelocation);
+                            //    sp("Adding EMPTY flow " + f + ":" +fv);
+                            }
+                            
+                            iono.addFlowValue(fv);
+                        }
+                        
                     }
                 }
                 ionograms.add(iono);
+                first = false;
             }
         }
         if (nrionograms == 0) {
-           // p("Got no reads in that direction: forward=" + forward);
+            // p("Got no reads in that direction: forward=" + forward);
             return null;
         }
         // now we can start to creat the alignment slots as we know the max number of empties per location
-        IonogramAlignment ionoalign = new IonogramAlignment(frame.getChrName(), new String(consensus), ionograms, maxemptyperlocation, nrbases_left_right, center_location);
-        if (justforalignment != null ) {
-            ionoalign.justforalignment = justforalignment;
+        IonogramAlignment ionoalign = new IonogramAlignment(frame.getChrName(), new String(reference), new String(consensus), ionograms, maxemptyperlocation, nrbases_left_right, center_location);
+        if (selectedalignment != null) {
+            ionoalign.selectedalignment = selectedalignment;
         }
         return ionoalign;
     }
+
+    private static void sp(String s) {
+        log.info("IonogramAlignment: " + s);
+    }
+
     public ConfidenceDistribution[] getDistribution(String locus, int slot) {
         // one for each base!
-        if (ionograms == null || ionograms.isEmpty()) return null;
-        ArrayList<ArrayList<FlowValue> > alleletrees = new ArrayList<ArrayList<FlowValue> >();
+        if (ionograms == null || ionograms.isEmpty()) {
+            return null;
+        }
+        ArrayList<ArrayList<FlowValue>> alleletrees = new ArrayList<ArrayList<FlowValue>>();
 
         int nrflows = 0;
         ArrayList<ConfidenceDistribution> alleledist = new ArrayList<ConfidenceDistribution>();
@@ -229,7 +293,7 @@ public class IonogramAlignment {
             reverse = !forward;
 
             FlowValue fv = this.slotmatrix[i][slot];
-            
+
             if (fv != null) {
                 curloc = fv.getBasecall_location();
                 // also throw away positions near the end if we have the same base until the end if the user preference is set that way
@@ -248,7 +312,7 @@ public class IonogramAlignment {
                 int whichbase = bases.indexOf(base);
                 if (whichbase < 0) {
                     bases += base;
-                    allelelists = new ArrayList<FlowValue>() ;
+                    allelelists = new ArrayList<FlowValue>();
                     alleletrees.add(allelelists);
                     readinfos = new ArrayList<ReadInfo>();
                     allelereadinfos.add(readinfos);
@@ -256,7 +320,7 @@ public class IonogramAlignment {
                     allelelists = alleletrees.get(whichbase);
                     readinfos = allelereadinfos.get(whichbase);
                 }
-                
+
                 ReadInfo readinfo = new ReadInfo(iono.getReadname(), fv);
                 readinfos.add(readinfo);
                 if (allelelists.add(fv));
@@ -265,7 +329,7 @@ public class IonogramAlignment {
 
 
         int which = 0;
-        for ( ArrayList<FlowValue> allelelist : alleletrees) {
+        for (ArrayList<FlowValue> allelelist : alleletrees) {
             String name = "";
             if (forward && reverse) {
                 name += "both strand";
@@ -275,21 +339,21 @@ public class IonogramAlignment {
                 name += "reverse strand";
             }
             char base = bases.charAt(which);
-            name += ", " + base + ", " + nrflows + " flows, slot "+slot;
+            name += ", " + base + ", " + nrflows + " flows, slot " + slot;
             String info = locus + ", " + bases;
-            
+
             ConfidenceDistribution dist = new ConfidenceDistribution(slot, nrflows, allelelist, name, base, forward, reverse, info);
             dist.setChromosome(chromosome);
             dist.setReadInfos(allelereadinfos.get(which));
             alleledist.add(dist);
             which++;
         }
-        
-         ConfidenceDistribution distributions[] = null;
-         distributions = new ConfidenceDistribution[alleledist.size()];
-            for (int i = 0; i < alleledist.size(); i++) {
-                distributions[i] = alleledist.get(i);
-            }
+
+        ConfidenceDistribution distributions[] = null;
+        distributions = new ConfidenceDistribution[alleledist.size()];
+        for (int i = 0; i < alleledist.size(); i++) {
+            distributions[i] = alleledist.get(i);
+        }
         return distributions;
     }
 
@@ -300,13 +364,13 @@ public class IonogramAlignment {
         computeMaxEmpties(aligns);
         nrslots = computeSlots();
         emptyBasesInfo = new String[nrslots];
-        
+
         slotmatrix = new FlowValue[nrionograms][nrslots];
         computeSlotsWithFlowAlignment(aligns);
-//         pp("maxemptyperlocation");
-//         for (int pos = 0; pos < getNrrelativelocations(); pos++) {
-//             pp("pos="+ pos+"="+maxemptyperlocation[pos]+", slot="+this.slotperlocation[pos]);
-//         }
+         pp("maxemptyperlocation");
+         for (int pos = 0; pos < getNrrelativelocations(); pos++) {
+             pp("pos="+ pos+"="+maxemptyperlocation[pos]+", slot="+this.slotperlocation[pos]);
+         }
     }
 
     private ArrayList<com.iontorrent.sam2flowgram.flowalign.IonogramAlignment> recomputeAlignmentUsingFlowSpace() {
@@ -324,40 +388,44 @@ public class IonogramAlignment {
                 r++;
             }
         }
-        
+
         FlowOrder tseqFlowOrder = new FlowOrder(tseq, true);
         // compute new center location
         int newcenter = 0;
         char prev = ' ';
         for (int p = 0; p < this.relativecenter; p++) {
             char base = consensus.charAt(p);
-            if (prev !=  base) newcenter++;
+            if (prev != base) {
+                newcenter++;
+            }
             prev = base;
         }
-        p("Old center inc base call from left (base based): "+this.relativecenter+",  new center base call from left (flow based): "+newcenter);
+        p("Old center inc base call from left (base based): " + this.relativecenter + ",  new center base call from left (flow based): " + newcenter);
         // for this.reverseCompliment().
         int targetlen = tseqFlowOrder.getLength();
         this.relativecenter = newcenter;
-      //  this.nrrelativelocations = targetlen;
+        //  this.nrrelativelocations = targetlen;
         // get flow value of previous center
-                
+
         p("REFERENCE: " + consensus + "=" + Arrays.toString(tseq));
         for (int i = 0; i < ionograms.size(); i++) {
             // remove duplicate flows 
             Ionogram iono = ionograms.get(i);
-            ArrayList<FlowValue> flows = iono.getFlowvalues();           
+            ArrayList<FlowValue> flows = iono.getFlowvalues();
             iono.clear();
-            for (FlowValue fv: flows) {
-                if (!iono.isSameAsPrev(fv)) iono.addFlowValue(fv);
+            for (FlowValue fv : flows) {
+                if (!iono.isSameAsPrev(fv)) {
+                    iono.addFlowValue(fv);
+                }
             }
-            
+
             int len = iono.getFlowvalues().size();
             byte[] qorder = new byte[len];
             for (int f = 0; f < len; f++) {
                 FlowValue fv = iono.getFlowvalues().get(f);
                 qorder[f] = (byte) AlignUtil.baseCharToInt(fv.getBase());
             }
-            
+
             FlowSeq flowQseq = new FlowSeq(iono.getFlowvalues());
             FlowOrder qseqFlowOrder = new FlowOrder(qorder);
             //p("ref: "+Arrays.toString(tseq)+"", order="+Arrays.toString(qorder)+" :"+qseqFlowOrder.toString());
@@ -384,7 +452,7 @@ public class IonogramAlignment {
         // for each actual incorporation, get the maximum number of empties.
         // the sum of each incorporation plus empties is the nr of slots
         // before we can creat an array, we use an array lost for each incorporation event
-    //    p("Computing alignment: got " + this.nrslots + " slots and " + this.nrionograms + " ionograms");
+         p("Computing alignment: got " + this.nrslots + " slots and " + this.nrionograms + " ionograms");
         for (int i = 0; i < getNrionograms(); i++) {
             //  Ionogram iono = ionograms.get(i);
             com.iontorrent.sam2flowgram.flowalign.IonogramAlignment align = aligns.get(i);
@@ -392,8 +460,8 @@ public class IonogramAlignment {
             int nrempty = 0;
             if (align != null) {
                 int lastincalignpos = 0;
-          //      pp(iono.getReadname() + ":" + "\n" + align.getAlignmentString(true));
-          //      pp(align.showHelperArrays());
+                //      pp(iono.getReadname() + ":" + "\n" + align.getAlignmentString(true));
+                //      pp(align.showHelperArrays());
                 for (int qpos = 0; qpos < iono.getFlowvalues().size(); qpos++) {
                     int alignpos = align.getAlignPosForQpos(qpos);
                     int tflowpos = align.getTargetFlowposForAlignPos(alignpos);
@@ -403,8 +471,8 @@ public class IonogramAlignment {
                     //int relative = getRelativeLocation(loc);
                     int startslot = slotperlocation[tbasepos];
                     FlowValue fv = align.getQueryFlow(qpos);
-                   
-                   // FlowValue tv = align.getTargetFlow(tflowpos);
+
+                    // FlowValue tv = align.getTargetFlow(tflowpos);
 
                     if (fv.isEmpty()) {
                         // nrempty++;
@@ -416,7 +484,7 @@ public class IonogramAlignment {
                     }
                     int slot = startslot + nrempty;
 
-                //    pp("q " + qpos + " " + fv.getBase() + " " + (fv.isEmpty() ? "e" : "i") + " -> a " + alignpos + " -> t " + tflowpos + tv.getBase() + "-> tpos " + tbasepos + consensus.charAt(tbasepos) + "-> slot " + slot);
+                    //    pp("q " + qpos + " " + fv.getBase() + " " + (fv.isEmpty() ? "e" : "i") + " -> a " + alignpos + " -> t " + tflowpos + tv.getBase() + "-> tpos " + tbasepos + consensus.charAt(tbasepos) + "-> slot " + slot);
 
                     if (slot < slotmatrix[i].length) {
                         slotmatrix[i][slot] = fv;
@@ -456,22 +524,25 @@ public class IonogramAlignment {
                     }
                 }
             }
-         //   p("Max empty for targetbase pos  " + pos + " = " + consensus.charAt(pos) + "=" + maxempty);
+               p("Max empty for targetbase pos  " + pos + " = " + consensus.charAt(pos) + "=" + maxempty);
             maxemptyperlocation[pos] = maxempty;
         }
-       
+
 
     }
 
     private int computeSlots() {
         int slots = 0;
+        p("============= compute total nr Slots =======");
         slotperlocation = new int[maxemptyperlocation.length];
+        p("nr of inc slots: "+maxemptyperlocation.length);
         for (int relativeloc = 0; relativeloc < getNrrelativelocations(); relativeloc++) {
             // plus one as we also have to count the actual incorporation :-)
             slotperlocation[relativeloc] = slots;
+        //    p("Slot for relative INC pos "+relativeloc+" is "+slots+", nremtpies after="+maxemptyperlocation[relativeloc]);
             slots += maxemptyperlocation[relativeloc] + 1;
         }
-        p("Computing slots: " + slots);
+    //    p("Computing slots, with empties: " + slots);
         return slots;
     }
 
@@ -486,26 +557,136 @@ public class IonogramAlignment {
     public int getCenterSlot() {
         return slotperlocation[this.getRelativecenter()];
     }
-
-    public String getAlignmentBase(int slot) {
-        char base= ' ';
-        int count = 0;
-        double value = 0;
+    public boolean isDifferent(int slot, FlowValue fv) {
+       FlowValue v = getHeaderFlowValue(slot);
+       if (v == null) return false;
+       
+        if ((!fv.isEmpty() && fv.getHpLen() != v.getHpLen()) || 
+                (Character.toUpperCase(fv.getBase()) != Character.toUpperCase(v.getBase()))) {
+           // log.info("Different fv: "+fv+" vs "+v);
+            return true;
+        }
+        return false;
+    }
+    public FlowValue getHeaderFlowValue(int slot) {
+        
+        ArrayList<FlowValue> flows = new ArrayList<FlowValue>();
+        
+        int ecounts[] = new int[100];
+        int icounts[] = new int[100];
+        int nrempty=0;
+        int nrinc=0;
+        int nrnone = 0;
+        
         for (int i = 0; i < this.nrionograms; i++) {
-            FlowValue v = slotmatrix[i][slot];
-            if (v != null && v.getAlignmentBase() != ' ' && v.getBase() == v.getAlignmentBase()) {                
-                base= v.getAlignmentBase();
-                count++;
-                value += v.getRawFlowvalue();
+            FlowValue v = slotmatrix[i][slot];           
+            if (v == null ) {
+                nrnone++;
+                continue;
+            }            
+            if (v.getBase() == v.getAlignmentBase()) {
+                flows.add(v);       
+                
+                int hplen = v.getHpLen();
+                if (hplen < 100) {
+                    if (v.isEmpty()) {
+                        nrempty++;
+                        ecounts[hplen]++;
+                    }
+                    else {
+                        nrinc++;
+                        icounts[hplen]++;
+                    }
+                    
+                }
             }
         }
-        int nrbases = (int) Math.max(1, Math.round(value/(double)count/100.0));
-        String res = "";
-        if (!flowBased) nrbases = 1;
-        for (int i = 0; i < nrbases; i++) {
-            res += base;
+        if (flows.size() <1) return null;
+        if (nrnone > nrempty && nrnone > nrinc) return null;
+        int max = 0;
+        int mostlen = 0;
+        boolean moreinc = nrinc >=nrempty;
+        p("Got nr inc: "+nrinc+", nrempty+:"+nrempty);
+        
+        for (int i = 0; i < ecounts.length; i++) {
+            if (!moreinc) {
+                if (ecounts[i] > max) {
+                    max = ecounts[i];
+                    mostlen = i;
+                }
+            }
+            else {
+              if (icounts[i] > max) {
+                    max = icounts[i];
+                    mostlen = i;
+                }  
+            }
         }
-        return res;
+        for (FlowValue fv: flows) {
+             if (moreinc && !fv.isEmpty() ||
+                 !moreinc && fv.isEmpty()) {
+                 
+                if (fv.getHpLen() == mostlen) {
+                        computeBasePercentages(fv, slot);
+                        return fv;
+                     } 
+                }  
+            
+        }
+        // should never get here
+        log.error("getHeaderFlowValue: Should not get here");
+        return null;
+
+    }
+    private void computeBasePercentages(FlowValue headerfv, int slot) {
+       FlowValue.BasePer[] baseper= headerfv.getSortedNucPercentages();
+        if ( baseper != null && baseper[0].getPercent()>0) return;
+        
+        int tot = 0;
+        ArrayList<String> done = new ArrayList<String>();
+        for (int r = 0; r < this.nrionograms; r++) {
+            FlowValue refv = slotmatrix[r][slot];
+            if (refv != null && !refv.isEmpty()) {
+               
+                String refbases = this.getBasesString(""+refv.getBase(), refv.getHpLen());
+                if (!done.contains(refbases)) {
+                    int count = 0;
+                    for (int i = 0; i < this.nrionograms; i++) {
+                        FlowValue v = slotmatrix[i][slot];
+                        if (v != null) {
+                            String bases = this.getBasesString(""+v.getBase(), v.getHpLen());
+                            if (bases.equalsIgnoreCase(refbases)) {
+                                count++;  
+                                tot++;
+                            }
+                        }                
+                    }
+                    if (count > 0) {
+                       p("Got "+count+" bases for "+refbases);
+                       headerfv.addNucCount(""+refbases, count);                      
+                    }
+                    done.add(refbases);
+                }
+                
+            }
+        }
+        headerfv.setTotalBaseCount(tot);
+     //   p("Got total base count "+tot);
+    }
+    
+    public String getReference(int basecall_loc) {
+        char c = reference.charAt(basecall_loc);
+         String res = "";
+          p("Getting reference at "+basecall_loc+", ref is: "+reference);
+        for (int i = basecall_loc-1; i >0 && c == reference.charAt(i); i--)  {
+            res += c;
+            p("res is: "+res);
+        }
+        for (int i = basecall_loc; i < reference.length() && c == reference.charAt(i); i++)  {
+            res += c;
+            p("res is: "+res);
+        }
+        return getBasesString(res);        
     }
 
     public String getEmptyBasesInfo(int slot) {
@@ -604,19 +785,21 @@ public class IonogramAlignment {
     }
 
     private void computeSlotsForGivenAlignment() {
+        p("=============== computeSlotsForGivenAlignment =========");
         // compute nr of slots:
         // for each actual incorporation, get the maximum number of empties.
         // the sum of each incorporation plus empties is the nr of slots
         // before we can creat an array, we use an array lost for each incorporation event
-       // p("Computing alignment: got " + this.nrslots + " slots and " + this.nrionograms + " ionograms");
+         p("Computing alignment: got " + this.nrslots + " slots and " + this.nrionograms + " ionograms");
         for (int i = 0; i < getNrionograms(); i++) {
             Ionogram iono = ionograms.get(i);
             int nrempty = 0;
+         //   p("Processing ionogram "+iono.getFlowvalues());
             for (FlowValue fv : iono.getFlowvalues()) {
                 int relative = fv.getBasecall_location();
                 //int relative = getRelativeLocation(loc);
                 int startslot = slotperlocation[relative];
-
+              //  p("Procesing  fv: "+fv+", "+this.maxemptyperlocation[relative]+" emtpies after that");
                 if (fv.isEmpty()) {
                     nrempty++;
                 } else {
@@ -624,7 +807,7 @@ public class IonogramAlignment {
                     nrempty = 0;
                 }
                 int slot = startslot + nrempty;
-                slotmatrix[i][slot] = fv;
+                if (slot < slotmatrix[0].length) slotmatrix[i][slot] = fv;
             }
             iono.setSlotrow(slotmatrix[i]);
 
@@ -686,7 +869,7 @@ public class IonogramAlignment {
                 max = v;
             }
         }
-        return (int)max;
+        return (int) max;
     }
 
     /**
@@ -705,5 +888,29 @@ public class IonogramAlignment {
 
     public String getChromosome() {
         return chromosome;
+    }
+
+     private String getBasesString(String base, int nrbases) {
+        
+        if (nrbases < 4) {
+            String b = "";
+            for (int i = 0; i < nrbases; i++) {
+                b += base;
+            }
+            return b;
+        }
+        else {
+            return ""+nrbases+base;
+        }
+    }
+     
+    private String getBasesString(String bases) {
+        int nrbases = bases.length();
+        if (nrbases < 5) {
+            return bases;
+        }
+        else {
+            return ""+nrbases+bases.charAt(0);
+        }
     }
 }

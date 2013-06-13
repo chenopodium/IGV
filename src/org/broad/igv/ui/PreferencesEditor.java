@@ -154,6 +154,13 @@ public class PreferencesEditor extends javax.swing.JDialog {
         // TODO add your code here
     }
 
+    private void autoloadBamFilesActionPerformed(ActionEvent e) {
+        
+         updatedPreferenceMap.put(
+                PreferenceManager.AUTOLOAD_BAM_TRACKS,
+                String.valueOf(this.autoloadBamFiles.isSelected()));
+    }
+
     public PreferencesEditor(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
@@ -220,6 +227,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
         normalizeCoverageCB = new JCheckBox();
         missingDataExplanation8 = new JLabel();
         expandIconCB = new JCheckBox();
+        autoloadBamFiles = new JCheckBox();
         overlaysPanel = new JPanel();
         jPanel5 = new JPanel();
         jLabel3 = new JLabel();
@@ -591,7 +599,6 @@ public class PreferencesEditor extends javax.swing.JDialog {
             }
             tabbedPane.addTab("General", generalPanel);
 
-
             //======== tracksPanel ========
             {
                 tracksPanel.setLayout(null);
@@ -699,7 +706,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
                         }
                     });
                     jPanel6.add(expandCB);
-                    expandCB.setBounds(new Rectangle(new Point(6, 272), expandCB.getPreferredSize()));
+                    expandCB.setBounds(new Rectangle(new Point(6, 274), expandCB.getPreferredSize()));
 
                     //---- normalizeCoverageCB ----
                     normalizeCoverageCB.setText("Normalize Coverage Data");
@@ -735,7 +742,25 @@ public class PreferencesEditor extends javax.swing.JDialog {
                         }
                     });
                     jPanel6.add(expandIconCB);
-                    expandIconCB.setBounds(new Rectangle(new Point(6, 318), expandIconCB.getPreferredSize()));
+                    expandIconCB.setBounds(new Rectangle(new Point(6, 323), expandIconCB.getPreferredSize()));
+
+                    //---- autoloadBamFiles ----
+                    autoloadBamFiles.setText("Automatically load BAM tracks (might cause startup to be slow for remote and large BAM files)");
+                    autoloadBamFiles.addActionListener(new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            normalizeCoverageCBActionPerformed(e);
+                            autoloadBamFilesActionPerformed(e);
+                        }
+                    });
+                    autoloadBamFiles.addFocusListener(new FocusAdapter() {
+                        @Override
+                        public void focusLost(FocusEvent e) {
+                            normalizeCoverageCBFocusLost(e);
+                        }
+                    });
+                    jPanel6.add(autoloadBamFiles);
+                    autoloadBamFiles.setBounds(6, 225, 495, 23);
 
                     { // compute preferred size
                         Dimension preferredSize = new Dimension();
@@ -769,7 +794,6 @@ public class PreferencesEditor extends javax.swing.JDialog {
                 }
             }
             tabbedPane.addTab("Tracks", tracksPanel);
-
 
             //======== overlaysPanel ========
             {
@@ -903,7 +927,6 @@ public class PreferencesEditor extends javax.swing.JDialog {
                 }
             }
             tabbedPane.addTab("Mutations", overlaysPanel);
-
 
             //======== chartPanel ========
             {
@@ -1075,7 +1098,6 @@ public class PreferencesEditor extends javax.swing.JDialog {
                 }
             }
             tabbedPane.addTab("Charts", chartPanel);
-
 
             //======== alignmentPanel ========
             {
@@ -1687,7 +1709,6 @@ public class PreferencesEditor extends javax.swing.JDialog {
             }
             tabbedPane.addTab("Alignments", alignmentPanel);
 
-
             //======== expressionPane ========
             {
                 expressionPane.setLayout(null);
@@ -1804,7 +1825,6 @@ public class PreferencesEditor extends javax.swing.JDialog {
                 }
             }
             tabbedPane.addTab("Probes", expressionPane);
-
 
             //======== proxyPanel ========
             {
@@ -2092,7 +2112,6 @@ public class PreferencesEditor extends javax.swing.JDialog {
             }
             tabbedPane.addTab("Proxy", proxyPanel);
 
-
             //======== dbPanel ========
             {
                 dbPanel.setLayout(null);
@@ -2181,7 +2200,6 @@ public class PreferencesEditor extends javax.swing.JDialog {
                 }
             }
             tabbedPane.addTab("Database", dbPanel);
-
 
             //======== advancedPanel ========
             {
@@ -2442,11 +2460,8 @@ public class PreferencesEditor extends javax.swing.JDialog {
                 }
             }
             tabbedPane.addTab("Advanced", advancedPanel);
-
             tabbedPane.addTab("IonTorrent", ionTorrentTab);
-
             tabbedPane.addTab("Karyo View", karyoPreferencesTab1);
-
         }
         contentPane.add(tabbedPane, BorderLayout.CENTER);
 
@@ -3659,6 +3674,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
 
         normalizeCoverageCB.setSelected(prefMgr.getAsBoolean(PreferenceManager.NORMALIZE_COVERAGE));
 
+        this.autoloadBamFiles.setSelected(prefMgr.getAsBoolean(PreferenceManager.AUTOLOAD_BAM_TRACKS));
 
         expandIconCB.setSelected(prefMgr.getAsBoolean(PreferenceManager.SHOW_EXPAND_ICON));
 
@@ -3834,6 +3850,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
     private JCheckBox normalizeCoverageCB;
     private JLabel missingDataExplanation8;
     private JCheckBox expandIconCB;
+    private JCheckBox autoloadBamFiles;
     private JPanel overlaysPanel;
     private JPanel jPanel5;
     private JLabel jLabel3;

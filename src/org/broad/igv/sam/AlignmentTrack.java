@@ -301,12 +301,16 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         rect.y += DS_MARGIN_0;
 
         /// IGNORE_BAM_TRACKS
-        boolean ignore = PreferenceManager.getInstance().getTempAsBoolean("IGNORE_BAM_TRACKS");
+        boolean ignore = !PreferenceManager.getInstance().isAutoLoadBamTracks();
+        
         if (ignore) {
             Rectangle visibleRect = context.getVisibleRect().intersection(rect);
             Graphics2D g = context.getGraphic2DForColor(Color.gray);
             g.setColor(Color.blue.darker());
+            Font f = g.getFont();
+            g.setFont(f.deriveFont(Font.BOLD, 14));
             GraphicUtils.drawCenteredText("Double click to load alignments.", visibleRect, g);
+            g.setFont(f);
             return;
         } else if (context.getScale() > minVisibleScale) {
             Rectangle visibleRect = context.getVisibleRect().intersection(rect);
@@ -692,11 +696,12 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
         } else if (e.getClickCount() > 1) {
             Logger.getLogger("AlignmentTrack").info("checking if bam files were on ignore");
-            boolean ignore = PreferenceManager.getInstance().getTempAsBoolean("IGNORE_BAM_TRACKS");
+            boolean ignore = !PreferenceManager.getInstance().isAutoLoadBamTracks();
             Logger.getLogger("AlignmentTrack").info("IGNORE_BAM_TRACKS was " + ignore);
             if (ignore) {
                 PreferenceManager.getInstance().putTemp("IGNORE_BAM_TRACKS", "false");
-                Logger.getLogger("AlignmentTrack").info("IGNORE_BAM_TRACKS was true, repaitning, setting it it to false");
+                PreferenceManager.getInstance().put(PreferenceManager.AUTOLOAD_BAM_TRACKS, "true");
+                //Logger.getLogger("AlignmentTrack").info("IGNORE_BAM_TRACKS was true, repaitning, setting it it to false");
                 IGV.repaintPanelsHeadlessSafe();
             }
 

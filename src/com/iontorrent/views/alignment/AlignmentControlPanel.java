@@ -35,6 +35,8 @@ import javax.imageio.ImageIO;
 import javax.swing.*;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.ui.IGV;
+import org.netbeans.lib.awtextra.AbsoluteConstraints;
+import org.netbeans.lib.awtextra.AbsoluteLayout;
 
 /**
  *
@@ -91,22 +93,68 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
         flowBased = false;
 
         setAlignment(alignment, location);
+        if(alignment != null) {
+            this.setSize(new Dimension(1200, this.getPreferredHeight()));
+            this.setPreferredSize(new Dimension(1200, this.getPreferredHeight()));
+        }
+        
         add("Center", main);
 
     }
+    private int getPreferredHeight() {
+       return  this.iono_height*alignment.getNrionograms()+300;
+    }
+    public static void showModalDialog(AlignmentControlPanel forpanel,  String locus, ImageIcon image) {
+        JOptionPane.showMessageDialog(IGV.getMainFrame(), forpanel);
+    }
+    public static void showModalDialog(AlignmentControlPanel forpanel, AlignmentControlPanel revpanel, String locus, ImageIcon image) {
+        if (forpanel == null || !forpanel.hasAlignment()) {
+            if (revpanel != null && revpanel.hasAlignment()) {
+                log.info("Showing revpanel");
+                AlignmentControlPanel.showReversePanel(revpanel, locus, image);
+            }
+            else {
+                com.iontorrent.guiutils.GuiUtils.showNonModalMsg("Found NO ionogram information to show");
+            }
+            return;
+        }
+        // we have forpanel
+        else if (revpanel == null ||  !revpanel.hasAlignment()) {
+            log.info("Showing forpanel");
+            AlignmentControlPanel.showForwardPanel(forpanel, locus, image);
+            return;
+        }
+        
+        log.info("Showing BOTH panels");
+        JPanel pan = new JPanel();
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+        split.setDividerLocation(0.5);
+        pan.setLayout(new BorderLayout());
+        pan.add("Center", split);
+        pan.add(forpanel);
+        pan.add(revpanel);
+        
+        SimpleDialog dialog = new SimpleDialog("Forward and reverse ionoagrams at " + locus, pan, 1200, Math.min(800,forpanel.getPreferredHeight() +revpanel.getPreferredHeight())
+                , 200, 100, image.getImage(), true);
+        forpanel.scrollToCenter();
+        revpanel.scrollToCenter();
+        dialog.setLocation(200, 100);
+        // JOptionPane.showMessageDialog(IGV.getMainFrame(), new JScrollPane(pan));
+    }
     public static void showForwardPanel(AlignmentControlPanel forpanel, String locus, ImageIcon image) {
         
-        fordia = new SimpleDialog("Ionogram Alignment (forward) at " + locus, forpanel, 1200, 600, 200, 100, image.getImage());
+        fordia = new SimpleDialog("Ionogram Alignment (forward) at " + locus, forpanel, 1200, Math.min(800,forpanel.getPreferredHeight()), 200, 100, image.getImage(), true);
         forpanel.scrollToCenter();
         fordia.setLocation(200, 100);
     }
      public static void showReversePanel(AlignmentControlPanel forpanel, String locus, ImageIcon image) {
         
-        revdia = new SimpleDialog("Ionogram Alignment (reverse) at " + locus, forpanel, 1200, 600, 400, 600, image.getImage());
+        revdia = new SimpleDialog("Ionogram Alignment (reverse) at " + locus, forpanel, 1200,  Math.min(800,forpanel.getPreferredHeight()), 400, 600, image.getImage(), true);
         revpanel.scrollToCenter();
         revdia.setLocation(200, 100);
     }
     public static AlignmentControlPanel getForPanel(int location, IonogramAlignment alignment, FlowValue curFlowValue) {
+        if (alignment == null) return null;
         if (forpanel == null) forpanel = new AlignmentControlPanel(location, alignment, curFlowValue);
         else {
             forpanel.setCurFlowValue(curFlowValue);
@@ -115,6 +163,7 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
         return forpanel;
     }
      public static AlignmentControlPanel getRevPanel(int location, IonogramAlignment alignment, FlowValue curFlowValue) {
+         if (alignment == null) return null;
         if (revpanel == null) revpanel = new AlignmentControlPanel(location, alignment, curFlowValue);
         else {
             revpanel.setCurFlowValue(curFlowValue);
@@ -140,7 +189,7 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
         location = chromosomepos;
         if (alignment == null) {
             p("Got no alignment");
-            JOptionPane.showMessageDialog(this, "I got no ionogram alignment to display");
+          //  JOptionPane.showMessageDialog(this, "I got no ionogram alignment to display");
             return;
         }
         this.ionograms = alignment.getIonograms();
@@ -174,11 +223,11 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
 
         center.setLayout(new GridLayout(nrionograms, 1));
         labels.setLayout(new GridLayout(nrionograms, 1));
-        p("Slots: " + alignment.getNrslots());
+      //  p("Slots: " + alignment.getNrslots());
         // first one just shows bases
         AlignmentPanel header = new AlignmentPanel(ionograms.get(0), alignment, true);
 
-
+        p("Created header panel");
         int slotheight = prefs.getAsInt(IonTorrentPreferencesManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN) + AlignmentPanel.TOP;
         int slotwidth = prefs.getAsInt(IonTorrentPreferencesManager.IONTORRENT_HEIGHT_IONOGRAM_ALIGN) + AlignmentPanel.BORDER;
         int lblwidth = 40;
@@ -220,14 +269,20 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
             ionopanel.addMouseListener(new SlotPopupListener(ionopanel));
             //ionopanel.setToolTipText(iono.getFloworder());
             center.add(ionopanel);
-            JLabel lbl = new JLabel(iono.getReadname());
-            lbl.setBackground(Color.white);
+            String name = iono.getReadname();
+            Color bg = Color.white;
+            if (iono.isIonoSelected()) {
+                name = "<html><b>"+name+"</b></html>";
+                bg = AlignmentPanel.selected_background;
+            }
+            JLabel lbl = new JLabel(name);
+            lbl.setBackground(bg);
             lbl.setToolTipText("<html>" + iono.toHtml() + "</html>");
             //  p("Got floworder: " + iono.getFloworder());
-            lbl.setSize(lblwidth, slotheight);
-            lbl.setMinimumSize(new Dimension(30, slotheight));
-            lbl.setMaximumSize(new Dimension(lblwidth, slotheight));
-            lbl.setPreferredSize(new Dimension(lblwidth, slotheight));
+            lbl.setSize(lblwidth, slotheight-2);
+            lbl.setMinimumSize(new Dimension(30, slotheight-2));
+            lbl.setMaximumSize(new Dimension(lblwidth, slotheight-2));
+            lbl.setPreferredSize(new Dimension(lblwidth, slotheight-2));
             labels.add(lbl);
 
             if (this.curFlowValue != null) {
@@ -250,42 +305,71 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
             }
         }
        
-        int totwidth = slotwidth * alignment.getNrslots() + AlignmentPanel.BORDER;
-        int totheight = (nrionograms + 1) * slotheight;
+        int totwidth = slotwidth * alignment.getNrslots() + AlignmentPanel.BORDER+30;
+        int totheight = (nrionograms ) * slotheight+30;
         center.setSize(totwidth, totheight);
         labels.setSize(lblwidth, totheight);
         labels.setMaximumSize(new Dimension(lblwidth, totheight));
         labels.setPreferredSize(new Dimension(lblwidth, totheight));
 
         center.setMinimumSize(new Dimension(totwidth, totheight));
-        p("Setting size of center: " + totwidth + "/" + totheight + ", single height=" + slotheight);
+     //   p("Setting size of center: " + totwidth + "/" + totheight + ", single height=" + slotheight);
 
         slabels = new JScrollPane(labels, JScrollPane.VERTICAL_SCROLLBAR_NEVER, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scenter = new JScrollPane(center);
         this.scrollToCenter();
         sheader = new JScrollPane(header, JScrollPane.VERTICAL_SCROLLBAR_NEVER, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-
+      //  sheader.getv
         slabels.getVerticalScrollBar().setModel(scenter.getVerticalScrollBar().getModel());
         sheader.getHorizontalScrollBar().setModel(scenter.getHorizontalScrollBar().getModel());
 
 
-        corner = new JLabel("<html><b>Base</b> alignment from BAM file at <br>" + alignment.getLocus() + "</html>");
-        if (flowBased) {
-            corner.setText("<html><b>Flow space</b> alignment at <br>" + alignment.getLocus() + "</html>");
-        }
+        corner = new JLabel("<html><h3>Reference:<br><br>"+
+                "Inc. flows:</h3><font color='aaaaaa'>empty flows</font></html>");
+        corner.setOpaque(true);
+        corner.setBorder(BorderFactory.createLineBorder(Color.black));
+        corner.setVerticalTextPosition(JLabel.TOP);
+        corner.setVerticalAlignment(JLabel.TOP);
+//        if (flowBased) {
+//            corner.setText("<html><b>Flow space</b> alignment at <br>" + alignment.getLocus() + "</html>");
+//        }
+        int headerheight = 120;
         corner.setBackground(Color.white);
-        corner.setSize(lblwidth, slotheight);
-        corner.setMaximumSize(new Dimension(lblwidth, slotheight));
-        corner.setPreferredSize(new Dimension(lblwidth, slotheight));
-        int weigth = 15;
-        main.place(0, 0, 1, 1, corner);
-        main.place(1, 0, weigth, 1, weigth, 1, sheader);
-        main.place(0, 1, 1, weigth, 1, weigth, slabels);
-        main.place(1, 1, weigth, weigth, weigth, weigth, scenter);
+        corner.setSize(lblwidth, headerheight);
+        corner.setMaximumSize(new Dimension(lblwidth, headerheight));
+        corner.setPreferredSize(new Dimension(lblwidth, headerheight));
+        
+        sheader.setMinimumSize(new Dimension(200,headerheight));
+        sheader.setSize(new Dimension(1200,  headerheight));
+        sheader.setPreferredSize(new Dimension(1200,  headerheight));
+        sheader.setMaximumSize(new Dimension(1200,  headerheight));        
+      //  sheader.setBorder(null);
+        
+        int centerheight =alignment.getNrionograms()*slotheight+50;
+               
+        int ws = 2*slotwidth;
+        int wx = 1200;
+        int wh = headerheight;
+        int wc = centerheight;
+        
+        int delta = 2;
+       // main.setLayout(new AbsoluteLayout());
+//        main.add(corner, new AbsoluteConstraints(0, 0, 2*slotwidth, headerheight));
+//        main.add(sheader, new AbsoluteConstraints(2*slotwidth+delta, 0, 1200, headerheight));
+//        main.add(slabels, new AbsoluteConstraints(0, headerheight+delta, 2*slotwidth+delta, centerheight));
+//        main.add(scenter, new AbsoluteConstraints(2*slotwidth+delta, headerheight+delta, 1200, centerheight));
+//        scenter.setHorizontalScrollBarPolicy(scenter.HORIZONTAL_SCROLLBAR_ALWAYS);
+//        scenter.setVerticalScrollBarPolicy(scenter.VERTICAL_SCROLLBAR_ALWAYS);
+        
+        
+        main.place(0, 0, 1, 1 ,ws, 0, corner);
+        main.place(1, 0, 1, 1, wx, 0, sheader);
+        main.place(0, 1, 1, 1, ws, wc,slabels);
+        main.place(1, 1, 1, 1, wx, wc,scenter);
 
         this.repaint();
-        main.invalidate();
-        main.revalidate();
+       // main.invalidate();
+       // main.revalidate();
 
         Container parent = this;
         while (parent.getParent() != null) {
@@ -308,7 +392,7 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
     public void scrollToCenter() {
         int w = center.getWidth();
         int vw = (int) scenter.getViewport().getVisibleRect().getWidth();
-        p("scrollToCenter:  w=" + w + ", vw=" + vw);
+     //   p("scrollToCenter:  w=" + w + ", vw=" + vw);
         scenter.getViewport().setViewPosition(new Point(w / 3, 0));
         // scenter.getViewport().scrollRectToVisible(new Rectangle(center.getWidth()/2, center.getHeight()/2, 10,10));
     }
@@ -551,6 +635,7 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
         btnSave = new javax.swing.JButton();
         btnLink = new javax.swing.JButton();
         btnRefresh = new javax.swing.JButton();
+        btnHelp = new javax.swing.JButton();
         leftbar = new javax.swing.JToolBar();
         zoomIn = new javax.swing.JButton();
         zoomOut = new javax.swing.JButton();
@@ -668,6 +753,18 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
             }
         });
         topbar.add(btnRefresh);
+
+        btnHelp.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/icons/help-3.png"))); // NOI18N
+        btnHelp.setToolTipText("Help on ionogram view");
+        btnHelp.setFocusable(false);
+        btnHelp.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        btnHelp.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        btnHelp.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnHelpActionPerformed(evt);
+            }
+        });
+        topbar.add(btnHelp);
 
         add(topbar, java.awt.BorderLayout.PAGE_START);
 
@@ -803,7 +900,7 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
 
     private void loadRaw(AlignmentPanel pan, int slot) {
         if (pan == null) {
-            p("Got no panel");
+            p("loadRaw: Got no panel");
             return;
         }
         Ionogram iono = pan.getIonogram();
@@ -894,6 +991,12 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
         LinkUtils.linkToTSL(readnames, chr, loc);
     }//GEN-LAST:event_btnLinkActionPerformed
 
+    private void btnHelpActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnHelpActionPerformed
+       // show Help window
+       IonogramHelpPanel help = new IonogramHelpPanel();
+       JOptionPane.showMessageDialog(this, help);
+    }//GEN-LAST:event_btnHelpActionPerformed
+
     private void showDistForSlot(int slot) {
 
         if (ionograms == null || ionograms.isEmpty()) {
@@ -916,7 +1019,7 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
             pan.setListener(listener);
             // listen to left/right mouse clicks from panel and navigate accordingly
             ImageIcon image = new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/chip_16.png"));
-            SimpleDialog dia = new SimpleDialog("Model-Data Confidence", pan, 800, 500, 200, 200, image.getImage());
+            SimpleDialog dia = new SimpleDialog("Model-Data Confidence", pan, 800, 500, 200, 200, image.getImage(), false);
         }
 
 
@@ -986,6 +1089,7 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnConfigure;
     private javax.swing.JButton btnDist;
+    private javax.swing.JButton btnHelp;
     private javax.swing.JButton btnLeft;
     private javax.swing.JButton btnLink;
     private javax.swing.JButton btnRaw;

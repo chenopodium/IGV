@@ -267,7 +267,7 @@ public class AlignmentDataManager {
                                      AlignmentTrack.RenderOptions renderOptions,
                                      boolean expandEnds) {
 
-         boolean ignore = PreferenceManager.getInstance().getTempAsBoolean("IGNORE_BAM_TRACKS");
+         boolean ignore = !PreferenceManager.getInstance().isAutoLoadBamTracks();
         if (ignore) {
             Logger.getLogger("AlignmentDataManager").info("preload: Not loading bam yet");
             return;

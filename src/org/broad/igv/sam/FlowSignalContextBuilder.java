@@ -61,23 +61,27 @@ public class FlowSignalContextBuilder {
             exp.computePredictedSignal(flowseq, seq);
 
             float[] signals = sam.getRawFlowSignals();
-            // the flow order is the whole thing
-            // the sequence is without key
-            // the raw data is from the read sequence
-            // flow start says which flow the first raw signal matches to
+            // NO KEY
             for (int f = sam.getFlowSignalsStart(); f < flowseq.getLength(); f++) {
                 FlowValue fv = flowseq.getFlow(f);
                 int flow = fv.getFlowPosition();
-                if (flow - flowstart < signals.length) {
-                    fv.setRawFlowvalue((int) signals[flow - flowstart]);
+                if (flow < signals.length) {
+                    fv.setRawFlowvalue((int) signals[flow]);
                 }
             }
             exp.computeConfidence(flowseq.getFlowValues());
         }
 
     }
+    private static void p(String msg) {
+        System.out.println("FlowSignalContextBuilder: " + msg);
+        //log.info(msg);
+    }
 
     public static FlowSeq computeFlowSeqNoPred(FlowSeq flowseq, SamAlignment sam) {
+        return computeFlowSeqNoPred(flowseq, sam, false);
+    }
+    public static FlowSeq computeFlowSeqNoPred(FlowSeq flowseq, SamAlignment sam, boolean debug) {
 
         if (flowseq == null) {
 
@@ -86,6 +90,7 @@ public class FlowSignalContextBuilder {
                 DNASequence dna = new DNASequence(sam.getReadSequence());
                 DNASequence rev = dna.reverse().complement();
                 seq = rev.toSequenceString();
+                if (debug) p("rev seq:"+seq);
             }
             // something fisy here... get rid of key
             String order = sam.getFlowOrderNoKey();
@@ -102,13 +107,19 @@ public class FlowSignalContextBuilder {
             for (int f = 0; f < flowseq.getLength(); f++) {
                 FlowValue fv = flowseq.getFlow(f);
                 int flow = fv.getFlowPosition();
-                if (flow >= 0 && flow < signals.length) {
-                    fv.setRawFlowvalue((int) signals[flow]);
+                if (flow != f) {
+                   if (debug) p("Flow < f: f="+f+", flow="+flow);
+                   
+                }
+                if (f >= 0 && f < signals.length) {
+                    fv.setRawFlowvalue((int) signals[f]);
+                    if (debug) p("Flow "+f+": setting raw value "+signals[f]+" to "+fv);
                 }
             }
         }
         return flowseq;
     }
+    
     // TODO:
     // - support IUPAC bases
     // - support lower/upper cases (is this necessary)?
@@ -241,10 +252,10 @@ public class FlowSignalContextBuilder {
         return new FlowSignalContext(blockFlowValues);
     }
 
-    private void p(String s) {
-        if (show) {
-            System.out.println("FlowSignalContextBuilder: " + s);
-        }
+    private void sp(String s) {
+//        if (show) {
+//            System.out.println("FlowSignalContextBuilder: " + s);
+//        }
     }
 
     private void err(String s) {

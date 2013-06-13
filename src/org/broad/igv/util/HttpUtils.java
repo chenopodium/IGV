@@ -242,7 +242,7 @@ public class HttpUtils {
     public String getHeaderField(URL url, String key) throws IOException {
         
         HttpURLConnection conn = openConnection(url, null, "HEAD");
-        log.info("Getting header field:"+key);
+      //  log.info("Getting header field:"+key);
         return conn.getHeaderField(key);
     }
 
@@ -608,11 +608,11 @@ public class HttpUtils {
         if (method.equals("PUT")) {
             return conn;
         } else {
-            log.info("Getting response for method "+method);
+     //       log.info("Getting response for method "+method);
             int code = conn.getResponseCode();
             // Redirects.  These can occur even if followRedirects == true if there is a change in protocol,
             // for example http -> https.
-            log.info("Code: "+code);
+       //     log.info("Code: "+code);
             if (code >= 300 && code < 400) {
                 if (redirectCount > MAX_REDIRECTS) {
                     throw new IOException("Too many redirects");

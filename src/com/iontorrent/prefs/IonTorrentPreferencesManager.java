@@ -28,7 +28,7 @@ public class IonTorrentPreferencesManager {
     public static final String IONTORRENT_MAXNREADS_IONOGRAM_ALIGN= "IONTORRENT.MAXNRREADS_IONOGRAM_ALIGN";
     public static final String IONTORRENT_IONOGRAM_ALIGN_DRAWTYPE= "IONTORRENT.ONOGRAM_ALIGN_DRAWTYPE";
     public static final String IONTORRENT_BAM_HAS_FLOWVALUES= "IONTORRENT.BAM_HAS_FLOWVALUES";
-    
+    public static final String IONTORRENT_LOAD_BAM= "IONTORRENT.LOAD_BAM";
     
     /** Added by Chantal Roth for whole genome Karyo views */ 
     public static final String KARYO_ALLOW_BAMFILES= "KARYO.ALLOW_BAMFILES";
@@ -46,7 +46,7 @@ public class IonTorrentPreferencesManager {
         defaultValues.put(IONTORRENT_FLOWDIST_CHARTTYPE, "LINE");
         defaultValues.put(IONTORRENT_SERVER, "ioneast.ite");
         defaultValues.put(IONTORRENT_RESULTS, "/results/analysis/output/Home/");
-        defaultValues.put(IONTORRENT_NRBASES_IONOGRAM_ALIGN, "5");
+        defaultValues.put(IONTORRENT_NRBASES_IONOGRAM_ALIGN, "10");
         defaultValues.put(IONTORRENT_HEIGHT_IONOGRAM_ALIGN, "50");
         defaultValues.put(IONTORRENT_MAXNREADS_IONOGRAM_ALIGN, "100");
         defaultValues.put(KARYO_ALLOW_BAMFILES, "false");

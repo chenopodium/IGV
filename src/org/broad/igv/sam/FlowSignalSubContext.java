@@ -2,6 +2,7 @@ package org.broad.igv.sam;
 
 import com.iontorrent.expmodel.FlowSeq;
 import com.iontorrent.rawdataaccess.FlowValue;
+import com.iontorrent.utils.AlignUtil;
 import java.util.Arrays;
 import org.apache.log4j.Logger;
 
@@ -54,7 +55,8 @@ public class FlowSignalSubContext {
                
             }
             int flow = fv.getFlowPosition();
-            int delta = 5;
+            int pos = fv.getBasecall_location();
+            int delta = 7;
           //  if (DEBUG) {
                 buf.append("Flow sequence around this flow=");
                 for (int f = Math.max(0, flow-delta); f< flow+delta; f++) {
@@ -81,13 +83,47 @@ public class FlowSignalSubContext {
                     }
                 }
                 buf.append("<br>");
+                buf.append("Base calls around this position=");
+                String seq = sam.getReadSequence();
+                if (sam.isNegativeStrand()) {
+                     String rev = new StringBuilder(sam.getReadSequence()).reverse().toString();
+                     seq = AlignUtil.complement(rev);
+                }
+                for (int f = Math.max(0, pos-delta); f< pos+delta; f++) {                    
+                    if (f < seq.length()) {
+                        char c = seq.charAt(f);
+                        if (f == pos)buf.append("<b>"+c+"</b>");
+                        else  buf.append(c);
+                    }
+                }
+                buf.append("<br>");
                 buf.append("FlowStart="+sam.getFlowSignalsStart());
                 buf.append("<br>");
                 if (sam.getSoftClippedBaseCount()>0) {
                     buf.append("getSoftClippedBaseCount="+sam.getSoftClippedBaseCount());
                     buf.append("<br>");                
                 }
-              //  Logger.getLogger(getClass()).info(buf.toString().replace("<br>", "\n"));
+//                if (sam.getReadName().endsWith("02796")) {
+//                    int maxpos = 30;
+//                    int maxflow = 51;
+//                    Logger.getLogger(getClass()).info(buf.toString().replace("<br>", "\n"));
+//                    
+//                    String s = "read: "+sam.getReadName();
+//                    s += "\nflow order (no key): "+sam.getFlowOrderNoKey();
+//                    s += "\nZM(no key): "+Arrays.toString(sam.getRawFlowSignals());
+//                    s += "\ncigar: "+sam.getCigarString();
+//                    s += "\nread: "+sam.getReadSequence();
+//                    String rev = new StringBuilder(sam.getReadSequence()).reverse().toString();
+//                    s += "\ncomplement reverse: "+AlignUtil.complement(rev).substring(0, maxpos);
+//                    s += "\nclip: "+sam.getSoftClippedBaseCount();
+//                    s += "\nflow seq: "+sam.getFlowseq().toString();
+//                    for (int f = 0; f < maxflow; f++) {
+//                        fv = sam.getFlowseq().getFlow(f);
+//                        s += "\n"+fv.getFlowPosition()+" -> "+fv.getBasecall_location()+":"+fv.toString();
+//                    }
+//                                        
+//                     Logger.getLogger(getClass()).info(s);
+//                }
                 
           //  }
         }
@@ -165,3 +201,4 @@ public class FlowSignalSubContext {
         return flowvalues;
     }
 }
+

@@ -13,8 +13,8 @@ import java.util.ArrayList;
  * The inogram of a part of an alignment, including the empties
  * @author Chantal Roth
  */
-public class Ionogram {
-    
+public class Ionogram { 
+    private boolean ionoisselected;
     private String readname;
     private boolean reverse;
     
@@ -31,6 +31,7 @@ public class Ionogram {
     
     private FlowValue[] slotrow;
     private boolean selected[];
+    
     public Ionogram(String readname, int chromosome_center_location, boolean reverse) {
         this.readname = readname;
         this.chromosome_center_location = chromosome_center_location;        
@@ -185,7 +186,7 @@ public class Ionogram {
     public FlowValue[] getSlotrow() {
         return slotrow;
     }
-
+ 
     /**
      * @param slotrow the slotrow to set
      */
@@ -223,6 +224,20 @@ public class Ionogram {
      */
     public String getChromosome() {
         return chromosome;
+    }
+
+    /**
+     * @return the selected
+     */
+    public boolean isIonoSelected() {
+        return ionoisselected;
+    }
+
+    /**
+     * @param selected the selected to set
+     */
+    public void setIonoIsSelected(boolean selected) {
+        this.ionoisselected = selected;
     }
     
     
