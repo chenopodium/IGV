@@ -512,8 +512,21 @@ public class HttpUtils {
                 inputStream.close();
             }
         }
+    }
+    private String readInputStream(HttpURLConnection connection) throws IOException {
+        InputStream inputStream = null;
 
-
+        try {
+            inputStream = connection.getInputStream();
+            if (inputStream == null) {
+                return null;
+            }
+            return readContents(inputStream);
+        } finally {
+            if (inputStream != null) {
+                inputStream.close();
+            }
+        }
     }
 
     private HttpURLConnection openConnection(URL url, Map<String, String> requestProperties) throws IOException {
@@ -610,9 +623,18 @@ public class HttpUtils {
         } else {
      //       log.info("Getting response for method "+method);
             int code = conn.getResponseCode();
+            String message = conn.getResponseMessage();
             // Redirects.  These can occur even if followRedirects == true if there is a change in protocol,
             // for example http -> https.
-       //     log.info("Code: "+code);
+           // log.info("Code: "+code+":"+message);
+            if (code == 201) { // weird created msg
+                
+                String details = readInputStream(conn);
+                IOException exc = new IOException(details);
+                log.info("input stream: " + details);
+                throw exc;
+                
+            }
             if (code >= 300 && code < 400) {
                 if (redirectCount > MAX_REDIRECTS) {
                     throw new IOException("Too many redirects");
@@ -623,7 +645,7 @@ public class HttpUtils {
                 return openConnection(new URL(newLocation), requestProperties, method, redirectCount++);
             } // TODO -- handle other response codes.
             else if (code >= 400) {
-                String message;
+              
                 if (code == 404) {
                     message = "File/URL not found (404): " + url.toString();
                     throw new FileNotFoundException(message);
@@ -638,11 +660,13 @@ public class HttpUtils {
 
                     HttpResponseException exc = new HttpResponseException(code);
                     String details = readErrorStream(conn);
-                    log.debug("error stream: " + details);
-                    log.debug(message);
+                    log.info("error stream: " + details);
+                    details = this.readInputStream(conn);
+                    log.info("input stream: " + details);
+                    log.info(message);
                     if (code == 403 || code == 401 || code == 500) {
-                        log.info(" ======== DEBUGGING ERROR " + code + " =================");
-
+                        log.info(" ======== DEBUGGING ERROR " + code + ", url: "+url);
+                        
                         if (this.defaultPassword != null || this.defaultUserName != null) {
                             MessageUtils.showMessage(exc.getMessage() + "<br>I will clear the credentials and try again");
                             log.info("Clearing credentials");
@@ -659,6 +683,9 @@ public class HttpUtils {
 
                                 return openConnection(url, requestProperties, method, redirectCount, false);
                             }
+                        }
+                        else {
+                            log.info(ErrorHandler.getString(exc));
                         }
                     }
 

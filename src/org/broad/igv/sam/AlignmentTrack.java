@@ -306,16 +306,23 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         if (ignore) {
             Rectangle visibleRect = context.getVisibleRect().intersection(rect);
             Graphics2D g = context.getGraphic2DForColor(Color.gray);
+            g.setColor(Color.lightGray);
+            Font f = g.getFont();            
+            visibleRect.y-=f.getSize()*0.5;
+            GraphicUtils.drawCenteredText("BAM data not loaded yet to save time (see track preferences)", visibleRect, g);
+            visibleRect.y+=1.5*f.getSize();
             g.setColor(Color.blue.darker());
-            Font f = g.getFont();
             g.setFont(f.deriveFont(Font.BOLD, 14));
-            GraphicUtils.drawCenteredText("Double click to load alignments.", visibleRect, g);
+            GraphicUtils.drawCenteredText("Please double click to load alignments.", visibleRect, g);
             g.setFont(f);
             return;
         } else if (context.getScale() > minVisibleScale) {
             Rectangle visibleRect = context.getVisibleRect().intersection(rect);
-            Graphics2D g = context.getGraphic2DForColor(Color.gray);
-            GraphicUtils.drawCenteredText("Zoom in to see alignments.", visibleRect, g);
+            Graphics2D g = context.getGraphic2DForColor(Color.gray.darker());
+            Font f = g.getFont();   
+            g.setFont(f.deriveFont(Font.BOLD, 12));
+            GraphicUtils.drawCenteredText("Please zoom in to see the alignments.", visibleRect, g);
+            g.setFont(f);
             return;
         }
 
@@ -472,7 +479,10 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
         if (alignment != null) {
             StringBuffer buf = new StringBuffer();
-            buf.append(alignment.getValueString(location, null).replace("<br>", "\n"));
+            String v = alignment.getValueString(location, null).replace("<br>", "\n");
+            v = v.replace("<b>", "");
+            v = v.replace("</b>", "");
+            buf.append(v);
             buf.append("\n");
             buf.append("Alignment start position = " + alignment.getChr() + ":" + (alignment.getAlignmentStart() + 1));
             buf.append("\n");
@@ -695,12 +705,9 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             }
 
         } else if (e.getClickCount() > 1) {
-            Logger.getLogger("AlignmentTrack").info("checking if bam files were on ignore");
-            boolean ignore = !PreferenceManager.getInstance().isAutoLoadBamTracks();
-            Logger.getLogger("AlignmentTrack").info("IGNORE_BAM_TRACKS was " + ignore);
+            boolean ignore = !PreferenceManager.getInstance().isAutoLoadBamTracks();          
             if (ignore) {
-                PreferenceManager.getInstance().putTemp("IGNORE_BAM_TRACKS", "false");
-                PreferenceManager.getInstance().put(PreferenceManager.AUTOLOAD_BAM_TRACKS, "true");
+                PreferenceManager.getInstance().putTemp("IGNORE_BAM_TRACKS", "false");                
                 //Logger.getLogger("AlignmentTrack").info("IGNORE_BAM_TRACKS was true, repaitning, setting it it to false");
                 IGV.repaintPanelsHeadlessSafe();
             }

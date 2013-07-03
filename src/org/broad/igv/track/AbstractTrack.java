@@ -11,7 +11,6 @@
 package org.broad.igv.track;
 
 //~--- non-JDK imports --------------------------------------------------------
-
 import com.iontorrent.utils.ErrorHandler;
 import com.iontorrent.utils.StringTools;
 import org.apache.log4j.Logger;
@@ -45,7 +44,6 @@ import org.jfree.util.Log;
 public abstract class AbstractTrack implements Track {
 
     private static Logger log = Logger.getLogger(AbstractTrack.class);
-
     /**
      * Set default renderer classes by track type.
      */
@@ -63,53 +61,41 @@ public abstract class AbstractTrack implements Track {
         defaultRendererMap.put(TrackType.OTHER, BarChartRenderer.class);
         defaultRendererMap.put(TrackType.CHIP_CHIP, HeatmapRenderer.class);
     }
-
-
     private String id;
     private String name;
     private String url;
     private boolean itemRGB = true;
-
     private boolean useScore;
     private double cutoffScore;
+    private String customProperties;
+    private String linkedTrack;
     private int trackorder;
     private float viewLimitMin = Float.NaN;     // From UCSC track line
     private float viewLimitMax = Float.NaN;  // From UCSC track line
-
-
     protected int fontSize = PreferenceManager.getInstance().getAsInt(PreferenceManager.DEFAULT_FONT_SIZE);
     private boolean showDataRange = true;
     private String sampleId;
     private ResourceLocator resourceLocator;
-
     private int top;
     protected int minimumHeight = -1;
     protected int maximumHeight = 1000;
-
     private TrackType trackType = TrackType.OTHER;
-
     private boolean selected = false;
     private boolean visible = true;
     private boolean sortable = true;
     boolean overlaid;
-
     boolean drawYLine = false;
     float yLine = 0;
-
     // Map to store attributes specific to this track.  Attributes shared by multiple
     private Map<String, String> attributes = new HashMap();
-
     // Scale for heatmaps
     private ContinuousColorScale colorScale;
-
     //Not applicable to all tracks.
     protected boolean autoScale;
-
     // reall use the same for all???
-    private Color posColor = Color.blue; //java.awt.Color[r=0,g=0,b=178];
-    private Color altColor = Color.blue;
-    private Color midColor = Color.blue;
-    
+    private Color posColor;
+    private Color altColor;
+    private Color midColor;
     private DataRange dataRange;
     protected int visibilityWindow = -1;
     private DisplayMode displayMode = DisplayMode.COLLAPSED;
@@ -123,6 +109,9 @@ public abstract class AbstractTrack implements Track {
         this.resourceLocator = dataResourceLocator;
         this.id = id;
         this.name = name;
+        posColor = Color.blue; //java.awt.Color[r=0,g=0,b=178];
+        altColor = Color.blue;
+        midColor = Color.blue;
         init();
         prefMgr = PreferenceManager.getInstance();
     }
@@ -138,7 +127,6 @@ public abstract class AbstractTrack implements Track {
     public AbstractTrack(String id) {
         this(null, id, id);
     }
-
 
     public AbstractTrack(String id, String name) {
         this(null, id, name);
@@ -171,9 +159,8 @@ public abstract class AbstractTrack implements Track {
         return id;
     }
 
-
     public void setName(String name) {
-        this.name = name;        
+        this.name = name;
     }
 
     public String getName() {
@@ -191,32 +178,32 @@ public abstract class AbstractTrack implements Track {
             }
         }
         String disp = getName();
-        
+
         if (this.getResourceLocator() != null) {
             String sample = this.getResourceLocator().getSampleId();
-            if (sample == null) sample = this.getSample();
-         //   log.info("getDisplayName: name is "+disp+", sample="+sample);
+            if (sample == null) {
+                sample = this.getSample();
+            }
+            //   log.info("getDisplayName: name is "+disp+", sample="+sample);
             if (sample != null) {
                 if (!disp.toUpperCase().startsWith(sample.toUpperCase())) {
                     sample = Character.toUpperCase(sample.charAt(0)) + sample.substring(1);
-                    disp = sample+" "+disp;
-                }            
+                    disp = sample + " " + disp;
+                }
             }
-       
-        }
-        else if (this.getSample() != null) {
-            String sample= this.getSample();
+
+        } else if (this.getSample() != null) {
+            String sample = this.getSample();
             if (!disp.toUpperCase().startsWith(sample.toUpperCase())) {
-                    sample = Character.toUpperCase(sample.charAt(0)) + sample.substring(1);
-                    disp = sample+" "+disp;
-                } 
+                sample = Character.toUpperCase(sample.charAt(0)) + sample.substring(1);
+                disp = sample + " " + disp;
+            }
         }
         disp = disp.replace("_", " ");
         disp = disp.replace("-", " ");
         ///disp = disp.replace(".", " ");
         return disp;
     }
-
 
     public void setSampleId(String sampleId) {
         this.sampleId = sampleId;
@@ -250,9 +237,8 @@ public abstract class AbstractTrack implements Track {
         }
     }
 
-
     public void renderAttributes(Graphics2D graphics, Rectangle trackRectangle, Rectangle visibleRect,
-                                 List<String> names, List<MouseableRegion> mouseRegions) {
+            List<String> names, List<MouseableRegion> mouseRegions) {
 
         int x = trackRectangle.x;
 
@@ -277,7 +263,6 @@ public abstract class AbstractTrack implements Track {
         }
     }
 
-
     private Rectangle getDisplayableRect(Rectangle trackRectangle, Rectangle visibleRect) {
         Rectangle rect = null;
         if (visibleRect != null) {
@@ -292,7 +277,6 @@ public abstract class AbstractTrack implements Track {
 
     }
 
-
     /**
      * Called to overlay a track on another, presumably previously rendered,
      * track. The default behavior is to do nothing.
@@ -303,20 +287,26 @@ public abstract class AbstractTrack implements Track {
     public void overlay(RenderContext context, Rectangle rect) {
     }
 
-
     public Color getColor() {
-        if (posColor == null) posColor = Color.BLUE;
+        if (posColor == null) {
+            posColor = Color.BLUE;
+        }
         return posColor;
-        
+
     }
 
     public Color getAltColor() {
-        if (altColor == null) altColor = Color.BLUE;
+        if (altColor == null) {
+            altColor = Color.BLUE;
+        }
         return altColor;
 
     }
+
     public Color getMidColor() {
-        if (midColor == null) midColor = Color.GRAY;
+        if (midColor == null) {
+            midColor = Color.GRAY;
+        }
         return midColor;
 
     }
@@ -326,9 +316,10 @@ public abstract class AbstractTrack implements Track {
     }
 
     /**
-     * Add an attribute to this track and register the key with the attribute panel.
+     * Add an attribute to this track and register the key with the attribute
+     * panel.
      * <p/>
-     * Note:  Attribute keys are case insensitive.  Currently this is implemented
+     * Note: Attribute keys are case insensitive. Currently this is implemented
      * by forcing all keys to upper case
      *
      * @param name
@@ -339,7 +330,6 @@ public abstract class AbstractTrack implements Track {
         attributes.put(key, value);
         AttributeManager.getInstance().addAttribute(getSample(), name, value);
     }
-
 
     public String getAttributeValue(String attributeName) {
         String key = attributeName.toUpperCase();
@@ -352,7 +342,7 @@ public abstract class AbstractTrack implements Track {
 
     public String getSample() {
 
-        if (sampleId != null && sampleId.length()>0) {
+        if (sampleId != null && sampleId.length() > 0) {
             return sampleId;
         }
 //        String sample = AttributeManager.getInstance().getSampleFor(getName());
@@ -363,10 +353,9 @@ public abstract class AbstractTrack implements Track {
 
     }
 
-
     /**
      * Returns the default height based on the default renderer for the data
-     * type, as opposed to the actual renderer in use.  This is done to prevent
+     * type, as opposed to the actual renderer in use. This is done to prevent
      * the track size from changing if renderer is changed.
      *
      * @return
@@ -379,10 +368,9 @@ public abstract class AbstractTrack implements Track {
         }
     }
 
-
     /**
-     * Returns the default minimum height based on the actual renderer for this track.  Heatmaps default
-     * to 1,  all other renderers to 5.
+     * Returns the default minimum height based on the actual renderer for this
+     * track. Heatmaps default to 1, all other renderers to 5.
      *
      * @return
      */
@@ -395,7 +383,6 @@ public abstract class AbstractTrack implements Track {
         }
     }
 
-
     public void setMinimumHeight(int minimumHeight) {
         this.minimumHeight = minimumHeight;
     }
@@ -404,9 +391,9 @@ public abstract class AbstractTrack implements Track {
         this.maximumHeight = maximumHeight;
     }
 
-
     /**
-     * Return the actual minimum height if one has been set, otherwise get the default for the current renderer.
+     * Return the actual minimum height if one has been set, otherwise get the
+     * default for the current renderer.
      *
      * @return
      */
@@ -421,7 +408,6 @@ public abstract class AbstractTrack implements Track {
     public void setTrackType(TrackType type) {
         this.trackType = type;
     }
-
 
     public TrackType getTrackType() {
         return trackType;
@@ -448,34 +434,29 @@ public abstract class AbstractTrack implements Track {
         this.posColor = color;
     }
 
-
     public void setAltColor(Color color) {
         altColor = color;
     }
+
     public void setMidColor(Color color) {
         midColor = color;
     }
-
 
     public void setVisible(boolean isVisible) {
         this.visible = isVisible;
     }
 
-
     public void setOverlayed(boolean bool) {
         this.overlaid = bool;
     }
-
 
     public void setSelected(boolean selected) {
         this.selected = selected;
     }
 
-
     public boolean isSelected() {
         return selected;
     }
-
 
     public void setHeight(int height) {
 
@@ -488,8 +469,7 @@ public abstract class AbstractTrack implements Track {
         this.height = Math.min(Math.max(getMinimumHeight(), height), getMaximumHeight());
     }
 
-
-     public int getHeight() {
+    public int getHeight() {
         return (height < 0) ? getDefaultHeight() : height;
     }
 
@@ -505,16 +485,90 @@ public abstract class AbstractTrack implements Track {
             float baseline = (float) (colorScale == null ? 0 : (colorScale.getNegStart() + colorScale.getPosStart()) / 2);
 
             setDataRange(new DataRange(min, baseline, max));
+            linkDataRange();
         }
         return dataRange;
     }
 
-
-    public void setDataRange(DataRange axisDefinition) {
-       // log.info("DataRange is "+axisDefinition+" for "+this.getName());
-        this.dataRange = axisDefinition;
+    public void linkDataRange_r(ArrayList<DataRange> ranges, ArrayList<AbstractTrack> done) {
+        done.add(this);
+        if (this.getLinkedTrack() != null && this.getLinkedTrack().trim().length() > 0) {
+            log.info("========= checking for linked data track for  ========");
+            String other = this.getLinkedTrack().trim().toLowerCase();
+            log.info("Got linked track " + other + ". Will try to find it, and use a common data range");
+            
+            for (Track track : IGV.getInstance().getAllTracks()) {
+                String tracklink = track.getLinkedTrack();
+                boolean found = false;
+                if ((track.getName() != null && track.getName().equalsIgnoreCase(other))
+                        || (track.getId() != null && track.getId().equalsIgnoreCase(other))
+                        || (track.getResourceLocator() != null && track.getResourceLocator().getPath() != null && track.getResourceLocator().getPath().equalsIgnoreCase(other))) {
+                        if (track != this) {
+                            found = true;
+                            log.info("Found track link :"+other+"-> "+track.getId());
+                        }
+                        
+                }
+                else if (tracklink != null) {
+                    tracklink = tracklink.trim().toLowerCase();
+                     if ((getName() != null && getName().equalsIgnoreCase(tracklink))
+                        || (getId() != null && getId().equalsIgnoreCase(tracklink))
+                        || (getResourceLocator() != null && getResourceLocator().getPath() != null && track.getResourceLocator().getPath().equalsIgnoreCase(tracklink))) {
+                        if (track != this) {
+                            found = true;
+                            log.info("Found reverse track link :"+track.getId()+"-> "+tracklink);
+                        }                        
+                    }
+                }
+                if (found) {                       
+                    if (!done.contains(track)) {
+                        log.info("track not done "+track.getId());
+                        DataRange odr = track.getDataRange();
+                        if (odr != null && track instanceof AbstractTrack) {
+                            ranges.add(odr);
+                            AbstractTrack at = (AbstractTrack)track;
+                            at.linkDataRange_r(ranges, done);
+                        }
+                       
+                    }
+                }
+            }
+        }
     }
 
+    public void linkDataRange() {
+        DataRange dr = this.getDataRange();
+        float min = dr.getMinimum();
+        float max = dr.getMaximum();
+        float baseline = dr.getBaseline();
+        ArrayList<DataRange> ranges = new ArrayList<DataRange>();
+        
+        ArrayList<AbstractTrack> done = new ArrayList<AbstractTrack>();
+
+        linkDataRange_r(ranges, done);
+
+        if (ranges != null && ranges.size() > 0) {
+            int nr = ranges.size();
+            log.info("Found other data ranges: " + ranges.size() + "! Computing mean");
+            for (DataRange r : ranges) {
+                min = Math.min(min, r.getMinimum());
+                max = Math.max(max, r.getMaximum());
+                baseline = (baseline + r.getBaseline());
+            }
+            baseline = baseline /(nr+1);
+            dr = new DataRange(min, baseline, max);
+            setDataRange(dr);
+            log.info("Got new data range: "+min+"-"+max+", base="+baseline);
+        } else {
+            log.info("no linked data range");
+        }
+
+    }
+
+    public void setDataRange(DataRange axisDefinition) {
+        // log.info("DataRange is "+axisDefinition+" for "+this.getName()+"/"+this.getId());
+        this.dataRange = axisDefinition;
+    }
 
     protected Class getDefaultRendererClass() {
         Class def = defaultRendererMap.get(getTrackType());
@@ -566,9 +620,9 @@ public abstract class AbstractTrack implements Track {
         this.autoScale = autoScale;
     }
 
-
     /**
-     * Set some properties of this track,  usually from a "track line" specification.
+     * Set some properties of this track, usually from a "track line"
+     * specification.
      * <p/>
      * TODO -- keep the properties object, rather than copy all the values.
      *
@@ -591,12 +645,20 @@ public abstract class AbstractTrack implements Track {
             this.setAutoScale(properties.isAutoScale());
         }
 
-        if (properties.getCutoffScore()!= 0) {
-            log.info("setProperties: Got cutoffscore "+properties.getCutoffScore()+" for "+this.getName());
+        if (properties.getLinkedTrack() != null) {
+            log.info("setProperties: Got linkedTrack " + properties.getLinkedTrack() + " for " + this.getName());
+            this.setLinkedTrack(properties.getLinkedTrack());
+        }
+        if (properties.getCustomProperties() != null) {
+            log.info("setProperties: Got custom properties  " + properties.getCustomProperties() + " for " + this.getName());
+            this.setCustomProperties(properties.getCustomProperties());
+        }
+        if (properties.getCutoffScore() != 0) {
+            //  log.info("setProperties: Got cutoffscore "+properties.getCutoffScore()+" for "+this.getName());
             this.setCutoffScore(properties.getCutoffScore());
         }
-         if (properties.getTrackorder()!= 0) {
-            log.info("setProperties: Got getTrackorder "+properties.getTrackorder()+" for "+this.getName());
+        if (properties.getTrackorder() != 0) {
+            //  log.info("setProperties: Got getTrackorder "+properties.getTrackorder()+" for "+this.getName());
             this.setTrackorder(properties.getTrackorder());
         }
         // Color scale properties
@@ -625,7 +687,7 @@ public abstract class AbstractTrack implements Track {
             // If the user has explicity set a data range and colors apply to heatmap as well
             Color maxColor = properties.getColor();
             Color minColor = properties.getAltColor();
-            
+
             if (maxColor != null && minColor != null) {
 
                 float tmp = properties.getNeutralFromValue();
@@ -680,6 +742,7 @@ public abstract class AbstractTrack implements Track {
                 this.setAttributeValue(entry.getKey(), entry.getValue());
             }
         }
+        linkDataRange();
 
     }
 
@@ -702,8 +765,9 @@ public abstract class AbstractTrack implements Track {
     }
 
     /**
-     * Return the color scale for this track.  If a specific scale exists for this data type
-     * use that.  Otherwise create one using the track color and data range.
+     * Return the color scale for this track. If a specific scale exists for
+     * this data type use that. Otherwise create one using the track color and
+     * data range.
      *
      * @return
      */
@@ -720,7 +784,9 @@ public abstract class AbstractTrack implements Track {
             double min = dataRange == null ? 0 : dataRange.getMinimum();
             double max = dataRange == null ? 10 : dataRange.getMaximum();
             Color c = getColor();
-            if (c == null) c = Color.blue;
+            if (c == null) {
+                c = Color.blue;
+            }
             Color minColor = Color.white;
             if (min < 0) {
                 minColor = altColor == null ? oppositeColor(minColor) : altColor;
@@ -743,13 +809,14 @@ public abstract class AbstractTrack implements Track {
     }
 
     /**
-     * Return the current state of this object as map of key-value pairs.  Used to store session state.
+     * Return the current state of this object as map of key-value pairs. Used
+     * to store session state.
      * <p/>
-     * // TODO -- this whole scheme could probably be more elegantly handled with annotations.
+     * // TODO -- this whole scheme could probably be more elegantly handled
+     * with annotations.
      *
      * @return
      */
-
     public Map<String, String> getPersistentState() {
 
         LinkedHashMap<String, String> attributes = new LinkedHashMap();
@@ -798,7 +865,7 @@ public abstract class AbstractTrack implements Track {
             stringBuffer.append(altColor.getBlue());
             attributes.put(IGVSessionReader.SessionAttribute.ALT_COLOR.getText(), stringBuffer.toString());
         }
-         if (midColor != null) {
+        if (midColor != null) {
             StringBuffer stringBuffer = new StringBuffer();
             stringBuffer.append(midColor.getRed());
             stringBuffer.append(",");
@@ -833,7 +900,6 @@ public abstract class AbstractTrack implements Track {
         return attributes;
     }
 
-
     public void restorePersistentState(Map<String, String> attributes) {
 
         String displayName = attributes.get(IGVSessionReader.SessionAttribute.DISPLAY_NAME.getText());
@@ -858,7 +924,7 @@ public abstract class AbstractTrack implements Track {
             }
         }
 
-        
+
         if (name != null && name.length() > 0) {
             setName(name);
         } else if (displayName != null && displayName.length() > 0) {
@@ -952,10 +1018,9 @@ public abstract class AbstractTrack implements Track {
                 log.error("Error restoring featureVisibilityWindow: " + fvw);
             }
         }
-
+        linkDataRange();
 
     }
-
 
     public boolean isItemRGB() {
         return itemRGB;
@@ -989,7 +1054,6 @@ public abstract class AbstractTrack implements Track {
         this.showDataRange = showDataRange;
     }
 
-
     /**
      * Overriden by subclasses
      *
@@ -1019,10 +1083,10 @@ public abstract class AbstractTrack implements Track {
 
         // Special case for copy # -- centers data around 2 copies (1 for allele
         // specific) and log normalizes
-        if (((getTrackType() == TrackType.COPY_NUMBER) ||
-                (getTrackType() == TrackType.ALLELE_SPECIFIC_COPY_NUMBER) ||
-                (getTrackType() == TrackType.CNV)) &&
-                !isLogNormalized()) {
+        if (((getTrackType() == TrackType.COPY_NUMBER)
+                || (getTrackType() == TrackType.ALLELE_SPECIFIC_COPY_NUMBER)
+                || (getTrackType() == TrackType.CNV))
+                && !isLogNormalized()) {
             double centerValue = (getTrackType() == TrackType.ALLELE_SPECIFIC_COPY_NUMBER)
                     ? 1.0 : 2.0;
 
@@ -1034,14 +1098,14 @@ public abstract class AbstractTrack implements Track {
     }
 
     public boolean isRegionScoreType(RegionScoreType type) {
-        return (getTrackType() == TrackType.GENE_EXPRESSION && type == RegionScoreType.EXPRESSION) ||
-                ((getTrackType() == TrackType.COPY_NUMBER || getTrackType() == TrackType.CNV ||
-                        getTrackType() == TrackType.ALLELE_SPECIFIC_COPY_NUMBER) &&
-                        (type == RegionScoreType.AMPLIFICATION ||
-                                type == RegionScoreType.DELETION ||
-                                type == RegionScoreType.FLUX)) ||
-                (type == RegionScoreType.MUTATION_COUNT) ||
-                (type == RegionScoreType.SCORE);
+        return (getTrackType() == TrackType.GENE_EXPRESSION && type == RegionScoreType.EXPRESSION)
+                || ((getTrackType() == TrackType.COPY_NUMBER || getTrackType() == TrackType.CNV
+                || getTrackType() == TrackType.ALLELE_SPECIFIC_COPY_NUMBER)
+                && (type == RegionScoreType.AMPLIFICATION
+                || type == RegionScoreType.DELETION
+                || type == RegionScoreType.FLUX))
+                || (type == RegionScoreType.MUTATION_COUNT)
+                || (type == RegionScoreType.SCORE);
     }
 
     @Override
@@ -1070,14 +1134,13 @@ public abstract class AbstractTrack implements Track {
         this.displayMode = mode;
     }
 
-
     public String getNameValueString(int y) {
         return getName();
     }
 
     /**
-     * Return a value string for the tooltip window at the given location, or null to signal there is no value
-     * at that location
+     * Return a value string for the tooltip window at the given location, or
+     * null to signal there is no value at that location
      *
      * @param chr
      * @param position
@@ -1088,7 +1151,6 @@ public abstract class AbstractTrack implements Track {
     public String getValueStringAt(String chr, double position, int y, ReferenceFrame frame) {
         return null;
     }
-
 
     public void setWindowFunction(WindowFunction type) {
         // Required method for track interface, ignore
@@ -1104,7 +1166,6 @@ public abstract class AbstractTrack implements Track {
         return getRegionScore(chr, start, end, zoom, type, frameName, null);
     }
 
-
     /**
      * @param chr
      * @param start
@@ -1119,7 +1180,6 @@ public abstract class AbstractTrack implements Track {
         // Required method for track interface, ignore
         return 0;
     }
-
 
     public boolean isLogNormalized() {
         // Required method for track interface, ignore
@@ -1151,65 +1211,69 @@ public abstract class AbstractTrack implements Track {
     public Renderer getRenderer() {
         return null;
     }
-        public Color getColor(String s) {
-		Color c = null;
-		if (s == null) {
-			return null;
-		}
-		s = s.toUpperCase().trim();
-		if (s.indexOf(",") > 0) {
-			// n,n,n
-			ArrayList<Integer> nrs = StringTools.parseListtoInt(s, ",");
-			c = new Color(nrs.get(0), nrs.get(1), nrs.get(2));
-		} else if (s.indexOf("x") > 0) {
-			// 0x
-			c = Color.decode(s);
-		} else {
-			if (s.equalsIgnoreCase("RED")) {
-				c = Color.red;
-			} else if (s.equalsIgnoreCase("BLUE")) {
-				c = Color.blue;
-			} else if (s.equalsIgnoreCase("WHITE")) {
-				c = Color.white;
-			} else if (s.equalsIgnoreCase("ORANGE")) {
-				c = Color.orange;
-			} else if (s.equalsIgnoreCase("YELLOW")) {
-				c = Color.YELLOW;
-			} else if (s.equalsIgnoreCase("MAGENTA")) {
-				c = Color.MAGENTA;
-			} else if (s.equalsIgnoreCase("BROWN")) {
-				c = Color.orange.darker();
-			} else if (s.equalsIgnoreCase("CYAN")) {
-				c = Color.CYAN;
-			} else if (s.equalsIgnoreCase("GRAY")) {
-				c = Color.GRAY;
-			} else if (s.equalsIgnoreCase("LIGHTGRAY")) {
-				c = Color.LIGHT_GRAY;
-			} else if (s.equalsIgnoreCase("LIGHT_GRAY")) {
-				c = Color.LIGHT_GRAY;
-			} else if (s.equalsIgnoreCase("DARK_GRAY")) {
-				c = Color.DARK_GRAY;
-			} else if (s.equalsIgnoreCase("DARKGRAY")) {
-				c = Color.DARK_GRAY;
-			} else if (s.equalsIgnoreCase("PINK")) {
-				c = Color.PINK;
-			} else if (s.equalsIgnoreCase("GREEN")) {
-				c = Color.GREEN;
-			} else if (s.equalsIgnoreCase("LIGHT_GREEN")) {
-				c = Color.GREEN.brighter();
-			} else if (s.equalsIgnoreCase("LIGHT_RED")) {
-				c = Color.RED.brighter();
-			} else if (s.equalsIgnoreCase("LIGHT_BLUE")) {
-				c = Color.BLUE.brighter();
-			}                        
-		}
-		
-		return c;
-	}
+
+    public Color getColor(String s) {
+        Color c = null;
+        if (s == null) {
+            return null;
+        }
+        s = s.toUpperCase().trim();
+        if (s.indexOf(",") > 0) {
+            // n,n,n
+            ArrayList<Integer> nrs = StringTools.parseListtoInt(s, ",");
+            c = new Color(nrs.get(0), nrs.get(1), nrs.get(2));
+        } else if (s.indexOf("x") > 0) {
+            // 0x
+            c = Color.decode(s);
+        } else {
+            if (s.equalsIgnoreCase("RED")) {
+                c = Color.red;
+            } else if (s.equalsIgnoreCase("BLUE")) {
+                c = Color.blue;
+            } else if (s.equalsIgnoreCase("WHITE")) {
+                c = Color.white;
+            } else if (s.equalsIgnoreCase("ORANGE")) {
+                c = Color.orange;
+            } else if (s.equalsIgnoreCase("YELLOW")) {
+                c = Color.YELLOW;
+            } else if (s.equalsIgnoreCase("MAGENTA")) {
+                c = Color.MAGENTA;
+            } else if (s.equalsIgnoreCase("BROWN")) {
+                c = Color.orange.darker();
+            } else if (s.equalsIgnoreCase("CYAN")) {
+                c = Color.CYAN;
+            } else if (s.equalsIgnoreCase("GRAY")) {
+                c = Color.GRAY;
+            } else if (s.equalsIgnoreCase("LIGHTGRAY")) {
+                c = Color.LIGHT_GRAY;
+            } else if (s.equalsIgnoreCase("LIGHT_GRAY")) {
+                c = Color.LIGHT_GRAY;
+            } else if (s.equalsIgnoreCase("DARK_GRAY")) {
+                c = Color.DARK_GRAY;
+            } else if (s.equalsIgnoreCase("DARKGRAY")) {
+                c = Color.DARK_GRAY;
+            } else if (s.equalsIgnoreCase("PINK")) {
+                c = Color.PINK;
+            } else if (s.equalsIgnoreCase("GREEN")) {
+                c = Color.GREEN;
+            } else if (s.equalsIgnoreCase("LIGHT_GREEN")) {
+                c = Color.GREEN.brighter();
+            } else if (s.equalsIgnoreCase("LIGHT_RED")) {
+                c = Color.RED.brighter();
+            } else if (s.equalsIgnoreCase("LIGHT_BLUE")) {
+                c = Color.BLUE.brighter();
+            }
+        }
+
+        return c;
+    }
+
     public void setColor(String colorString) {
         // Set color
-        posColor= getColor(colorString);
-        if (posColor != null) return;
+        posColor = getColor(colorString);
+        if (posColor != null) {
+            return;
+        }
         if (colorString != null) {
             try {
                 String[] rgb = colorString.split(",");
@@ -1224,8 +1288,10 @@ public abstract class AbstractTrack implements Track {
     }
 
     public void setAltColor(String altColorString) {
-         altColor= getColor(altColorString);
-        if (altColor != null) return;
+        altColor = getColor(altColorString);
+        if (altColor != null) {
+            return;
+        }
         if (altColorString != null) {
             try {
                 String[] rgb = altColorString.split(",");
@@ -1238,9 +1304,12 @@ public abstract class AbstractTrack implements Track {
             }
         }
     }
+
     public void setMidColor(String midColorString) {
-          midColor= getColor(midColorString);
-        if (midColor != null) return;
+        midColor = getColor(midColorString);
+        if (midColor != null) {
+            return;
+        }
         if (midColorString != null) {
             try {
                 String[] rgb = midColorString.split(",");
@@ -1262,16 +1331,18 @@ public abstract class AbstractTrack implements Track {
                 setRendererClass(rendererClass);
             }
         }
-    } 
+    }
 
     @Override
     public int getTrackorder() {
         return trackorder;
     }
+
     @Override
-    public void setTrackorder(int order ){
-        this.trackorder = trackorder;
+    public void setTrackorder(int order) {
+        this.trackorder = order;
     }
+
     /**
      * @return the cutoffScore
      */
@@ -1285,8 +1356,35 @@ public abstract class AbstractTrack implements Track {
      */
     @Override
     public void setCutoffScore(double cutoffScore) {
-            this.cutoffScore = cutoffScore;
-        
+        this.cutoffScore = cutoffScore;
+
     }
 
+    /**
+     * @return the customProperties
+     */
+    public String getCustomProperties() {
+        return customProperties;
+    }
+
+    /**
+     * @param customProperties the customProperties to set
+     */
+    public void setCustomProperties(String customProperties) {
+        this.customProperties = customProperties;
+    }
+
+    /**
+     * @return the linkedTrack
+     */
+    public String getLinkedTrack() {
+        return linkedTrack;
+    }
+
+    /**
+     * @param linkedTrack the linkedTrack to set
+     */
+    public void setLinkedTrack(String linkedTrack) {
+        this.linkedTrack = linkedTrack;
+    }
 }

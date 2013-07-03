@@ -9,14 +9,16 @@ package com.iontorrent.cnv;
  * @author Chantal
  */
 public class CnvDataPoint {
-    double pos;
+    long pos;
     double ratio;
     String clone;
+    long end;
     int chr;
 
-    CnvDataPoint(int chr, double pos, double ratio, String clone) {
+    CnvDataPoint(int chr, long pos, long end, double ratio, String clone) {
         this.chr = chr;
         this.pos = pos;
+        this.end = Math.max(pos+1, end);
         this.ratio = ratio;
         this.clone = clone;
     }

@@ -294,16 +294,17 @@ public class AttributeManager {
 
         return true;
     }
-
+ 
     /**
      * Load attributes from an ascii file in "Sample Info" format.
      */
-    public void loadSampleInfo(ResourceLocator locator) {
+    public boolean loadSampleInfo(ResourceLocator locator) {
         AsciiLineReader reader = null;
+        boolean ok = false;
         try {
             reader = ParsingUtils.openAsciiReader(locator);
 
-            loadSampleTable(reader, locator.getPath());
+            ok = loadSampleTable(reader, locator.getPath());
 
             loadedResources.add(locator);
 
@@ -322,6 +323,7 @@ public class AttributeManager {
             }
             firePropertyChange(this, ATTRIBUTES_LOADED_PROPERTY, null, null);
         }
+        return ok;
     }
 
 
@@ -348,7 +350,7 @@ public class AttributeManager {
      * #samplemappint (track id -> sample mapping table)
      * #colors (color table)
      */
-    private void loadSampleTable(AsciiLineReader reader, String path) throws IOException {
+    private boolean loadSampleTable(AsciiLineReader reader, String path) throws IOException {
 
         String[] colHeadings = null;
 
@@ -386,6 +388,7 @@ public class AttributeManager {
                             String attributeName = colHeadings[i].trim();
                             String attributeValue = (i < tokens.length ? tokens[i].trim() : "");
                             addAttribute(sampleName, attributeName, attributeValue);
+                          //log.info("Found att "+sampleName+", "+attributeName+"="+attributeValue);
                             foundAttributes = true;
                         }
                     }
@@ -404,9 +407,11 @@ public class AttributeManager {
             }
         }
         if (!foundAttributes) {
-            throw new DataLoadException("Could not determine file type.  Does file have proper extension? ", path);
+            //throw new DataLoadException("Could not determine file type.  Does file have proper extension? ", path);
+            return false;
         }
-
+        else return true;
+        
 
     }
 

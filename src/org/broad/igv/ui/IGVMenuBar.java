@@ -702,6 +702,18 @@ public class IGVMenuBar extends JMenuBar {
         menuItems.add(MenuAndToolbarUtils.createMenuItem(menuAction));
         
         
+        menuAction =
+                new MenuAction("View custom CNV data", null, KeyEvent.VK_K) {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        KaryoControlPanel karyo = KaryoControlPanel.getPanel(IGV.getMainFrame());
+                        karyo.showPanel(1500, 1000);
+                        karyo.loadCnv();
+                    }
+                };
+
+        menuItems.add(MenuAndToolbarUtils.createMenuItem(menuAction));
+        
 
         // Add to IGVPanel menu
         MenuAction dataMenuAction = new MenuAction("View", null, KeyEvent.VK_V);

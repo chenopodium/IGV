@@ -9,6 +9,7 @@ import com.iontorrent.utils.io.FileTools;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 import org.apache.log4j.Logger;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.session.IGVSessionReader;
@@ -35,22 +36,28 @@ public class IonTorrentSessionReader extends IGVSessionReader {
     @Override
     public boolean loadSession(Session session, String sessionPath, int tries) throws IOException {
         this.path = sessionPath;
+        log.info("loadSession, try: "+tries);
         InputStream inputStream = null;
         
-        if (tries > 0) {
-//            PreferenceManager pref = PreferenceManager.getInstance();
-//            log.info("===== loadSession: More than one try. Will check token and use a default IGV token if there was one");
-//             
-//            String header_value = pref.getTemp("header_value");
-//            
-//            if (header_value != null) {
-//                header_value = "__IGV__";
-//                pref.putTemp("header_value", header_value);
-//                pref.putTemp("header_encrypt", "false");
-//                // turn off encryption
-//                log.info("There is a token. Setting it to default "+pref.getTemp("header_value")+", encrypt is now "+pref.getTempAsBoolean("header_encrypt"));
-//                
-//            }
+        if (tries > 2) {
+             log.info("===== loadSession: Too many tries, failed");
+             return false;
+           
+        }
+        if (tries > 1) {
+            PreferenceManager pref = PreferenceManager.getInstance();
+            log.info("===== loadSession: More than one try. Will check token and use a default IGV token if there was one");
+             
+            String header_value = pref.getTemp("header_value");
+            
+            if (header_value != null) {
+                header_value = "__IGV__";
+                pref.putTemp("header_value", header_value);
+                pref.putTemp("header_encrypt", "false");
+                // turn off encryption
+                log.info("There is a token. Setting it to default "+pref.getTemp("header_value")+", encrypt is now "+pref.getTempAsBoolean("header_encrypt"));
+                
+            }
         }
         try {
             inputStream = new BufferedInputStream(ParsingUtils.openInputStreamGZ(new ResourceLocator(sessionPath)));
@@ -86,10 +93,23 @@ public class IonTorrentSessionReader extends IGVSessionReader {
             }
         }
 
-        return loadSession(inputStream, session, sessionPath, tries);
+        return loadSession(inputStream, session, sessionPath, tries++);
 
     }
-
+    @Override
+    protected boolean handleError(Exception e, String path, List<String> errors) {
+        String reason = getMessageForContent(e.getMessage(), path);
+        log.info("Handling error: "+e.getMessage()+" -> reason="+reason);
+        if (!errors.contains(reason)) errors.add(reason);
+        if (reason.indexOf("token")>-1) {
+            Exception usererror = new Exception(reason);
+                usererror.setStackTrace(e.getStackTrace());
+            throw new RuntimeException(usererror);
+            
+        }
+        return true;
+    }
+    
     @Override
     protected Document loadDocument(InputStream inputStream) throws RuntimeException {
         Document document = null;

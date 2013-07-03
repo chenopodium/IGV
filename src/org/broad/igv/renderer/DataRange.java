@@ -85,6 +85,14 @@ public class DataRange implements Persistable {
         this.type = type;
     }
     
+    @Override
+    public String toString() {
+        return "["+minimum+", "+baseline+", "+maximum+"]";
+    }
+    public void setBaseline(float base) {
+        this.baseline = base;
+    }
+               
     public Type getType() {
         return type;
     }

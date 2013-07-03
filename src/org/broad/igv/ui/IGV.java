@@ -1064,6 +1064,7 @@ public class IGV {
         if (message.equals("Done.")) {
             resetStatusMessage();
         }
+        p(message);
         contentPane.getStatusBar().setMessage(message);
     }
 
@@ -1237,7 +1238,9 @@ public class IGV {
                         : new IGVSessionReader(this);
             }
             
+            p("Opening session");
             setStatusBarMessage("Opening session...");
+            
             int tries = 0;
             try {
                 sessionReader.loadSession(session, sessionPath, tries);

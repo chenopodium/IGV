@@ -67,6 +67,9 @@ public abstract class DataRenderer implements Renderer<LocusScore> {
                 renderAxis(track, context, rect);
             }
         }
+        else {
+           
+        }
         renderBorder(track, context, rect);
 
     }

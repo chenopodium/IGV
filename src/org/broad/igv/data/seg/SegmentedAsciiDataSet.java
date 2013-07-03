@@ -101,7 +101,7 @@ public class SegmentedAsciiDataSet implements SegmentedDataSet {
             segmentList = new ArrayList<LocusScore>();
             chrSegments.put(chr, segmentList);
         }
-        segmentList.add(new Segment(start, start, end, end, value, desc));
+        segmentList.add(new Segment(chr, start, start, end, end, value, desc));
         dataMax = Math.max(dataMax, value);
         dataMin = Math.min(dataMin, value);
         if (value < 0) {
@@ -206,7 +206,7 @@ public class SegmentedAsciiDataSet implements SegmentedDataSet {
                         int gStart = genome.getGenomeCoordinate(chr, seg.getStart());
                         int gEnd = genome.getGenomeCoordinate(chr, seg.getEnd());
                          if ((gEnd - gStart) > minFeatureSize) {
-                            wholeGenomeScores.add(new Segment(gStart, gStart, gEnd,
+                            wholeGenomeScores.add(new Segment(chr, gStart, gStart, gEnd,
                                     gEnd, seg.getScore(), seg.getDescription()));
                         }
                     }

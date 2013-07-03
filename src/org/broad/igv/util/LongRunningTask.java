@@ -62,7 +62,7 @@ public class LongRunningTask implements Callable {
         } finally {
             //log.info("Removing wait cursor " + runnable.getName());
             WaitCursorManager.removeWaitCursor(token);
-
+            IGV.getInstance().resetStatusMessage();
             synchronized (IGV.getInstance()) {
                 IGV.getInstance().notifyAll();
             }

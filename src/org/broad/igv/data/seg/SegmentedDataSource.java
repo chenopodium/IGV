@@ -32,6 +32,7 @@ import org.broad.igv.track.WindowFunction;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import org.apache.log4j.Logger;
 
 /**
  *
@@ -93,6 +94,7 @@ public class SegmentedDataSource implements DataSource {
     }
 
 
+    @Override
     public List<LocusScore> getSummaryScoresForRange(String chr, int startLocation,
                                                      int endLocation, int zoom) {
         if (chr.equals(Globals.CHR_ALL)) {
@@ -103,6 +105,7 @@ public class SegmentedDataSource implements DataSource {
 
 
     public List<LocusScore> getWholeGenomeScores() {
+       // Logger.getLogger(getClass()).info("Getting whole genome scores");
         return dataset.getWholeGenomeScores(trackIdentifier);
     }
 

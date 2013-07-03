@@ -74,7 +74,7 @@ public class AlignmentReaderFactory {
             } else if (HttpUtils.isRemoteURL(locator.getPath().toLowerCase())) {
                 try {
                     reader = new BAMHttpReader(locator, requireIndex);
-                } catch (MalformedURLException e) {
+                } catch (Exception e) {
                     log.error("", e);
                     throw new DataLoadException("Error loading BAM file: " + e.toString(), locator.getPath());
                 }

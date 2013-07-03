@@ -149,6 +149,7 @@ public class SearchCommand implements Command {
         searchString = searchString.replace("\"", "");
 
         Set<ResultType> wholeStringType = checkTokenType(searchString);
+        
         if (wholeStringType.contains(ResultType.LOCUS)) {
             results.add(calcChromoLocus(searchString));
             return results;
@@ -487,7 +488,9 @@ public class SearchCommand implements Command {
         }
 
         //startEnd will have coordinates if found.
+        log.info("calcChromoLocus: chr is: "+chr);
         chr = genome.getChromosomeAlias(chr);
+        log.info("calcChromoLocus: alias is: "+chr);
         Chromosome chromosome = genome.getChromosome(chr);
         //If we couldn't find chromosome, check
         //whole string
@@ -500,7 +503,8 @@ public class SearchCommand implements Command {
             }
         }
 
-        if (chromosome != null && !searchString.equals(Globals.CHR_ALL)) {
+        if (chromosome != null && !searchString.equalsIgnoreCase(Globals.CHR_ALL)) {
+            log.info("Chromsome is NOT all: "+searchString+", and chr is: "+chromosome);
             if (startEnd != null) {
                 return new SearchResult(ResultType.LOCUS, chr, startEnd[0], startEnd[1]);
             }

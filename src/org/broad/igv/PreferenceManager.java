@@ -1002,7 +1002,7 @@ public class PreferenceManager implements PropertyManager {
         defaultValues.put(SHOW_SINGLE_TRACK_PANE_KEY, "false");
         defaultValues.put(PORT_ENABLED, "true");
         defaultValues.put(EXPAND_FEAUTRE_TRACKS, "false");
-        defaultValues.put(AUTOLOAD_BAM_TRACKS, "false");
+        defaultValues.put(AUTOLOAD_BAM_TRACKS, "true");
         defaultValues.put(SHOW_ATTRIBUTE_VIEWS_KEY, "true");
         defaultValues.put(SHOW_MISSING_DATA_KEY, "false");
         defaultValues.put(SHOW_SINGLE_TRACK_PANE_KEY, "false");

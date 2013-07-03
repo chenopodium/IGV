@@ -4,6 +4,8 @@
  */
 package com.iontorrent.karyo.views;
 
+import com.iontorrent.cnv.CnvController;
+import com.iontorrent.cnv.CnvData;
 import com.iontorrent.cnv.CnvPanel;
 import com.iontorrent.karyo.filter.FilterController;
 import java.awt.BorderLayout;
@@ -67,17 +69,7 @@ public class KaryoControlPanel extends javax.swing.JPanel {
         
         // also show CNV Panel
         
-//        JFrame f = new JFrame("CNV Whole Genome Plot");
-//         f.setSize(1200, 800);
-//          if (frame.getIconImage() != null) {
-//            f.setIconImage(frame.getIconImage());
-//        }
-//         CnvPanel cnv = new CnvPanel(manager);
-//         f.getContentPane().add(cnv);
-//         f.setVisible(true);
-//        f.toFront();
-//        // view.test1();
-//        f.repaint();
+//       
          
     }
 
@@ -137,6 +129,19 @@ public class KaryoControlPanel extends javax.swing.JPanel {
         
     }
 
+    private void showCnvPanel(CnvData data) {
+         JFrame f = new JFrame("CNV Whole Genome Plot");
+         f.setSize(1200, 800);
+          if (frame.getIconImage() != null) {
+            f.setIconImage(frame.getIconImage());
+        }
+         CnvPanel cnv = new CnvPanel(manager, data);
+         f.getContentPane().add(cnv);
+         f.setVisible(true);
+        f.toFront();
+        // view.test1();
+        f.repaint();
+    }
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -151,6 +156,7 @@ public class KaryoControlPanel extends javax.swing.JPanel {
         btnFilter = new javax.swing.JButton();
         btnExport = new javax.swing.JButton();
         btnReload = new javax.swing.JButton();
+        btnCnv = new javax.swing.JButton();
         panSouth = new javax.swing.JPanel();
         panWest = new javax.swing.JPanel();
 
@@ -190,6 +196,11 @@ public class KaryoControlPanel extends javax.swing.JPanel {
         btnExport.setFocusable(false);
         btnExport.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnExport.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        btnExport.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnExportActionPerformed(evt);
+            }
+        });
         jToolBar1.add(btnExport);
 
         btnReload.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/iontorrent/views/icons/database-refresh.png"))); // NOI18N
@@ -204,6 +215,17 @@ public class KaryoControlPanel extends javax.swing.JPanel {
             }
         });
         jToolBar1.add(btnReload);
+
+        btnCnv.setText(org.openide.util.NbBundle.getMessage(KaryoControlPanel.class, "KaryoControlPanel.btnCnv.text")); // NOI18N
+        btnCnv.setFocusable(false);
+        btnCnv.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        btnCnv.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        btnCnv.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnCnvActionPerformed(evt);
+            }
+        });
+        jToolBar1.add(btnCnv);
 
         add(jToolBar1, java.awt.BorderLayout.PAGE_START);
         add(panSouth, java.awt.BorderLayout.PAGE_END);
@@ -234,7 +256,17 @@ public class KaryoControlPanel extends javax.swing.JPanel {
         view.showLocation( view.getCurrent_chromosome(), view.getCurrent_location());
     }//GEN-LAST:event_btnIgvActionPerformed
 
+    private void btnCnvActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCnvActionPerformed
+        loadCnv();
+    }//GEN-LAST:event_btnCnvActionPerformed
+
+    private void btnExportActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnExportActionPerformed
+       IGV igv = IGV.getInstance();
+        igv.saveImage(view);
+    }//GEN-LAST:event_btnExportActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton btnCnv;
     private javax.swing.JButton btnExport;
     private javax.swing.JButton btnFilter;
     private javax.swing.JButton btnIgv;
@@ -247,5 +279,14 @@ public class KaryoControlPanel extends javax.swing.JPanel {
     private void p(String msg) {
         // Logger.getLogger("KaryoControlPanel").info(msg);
         System.out.println("KaryoControlPanel: " + msg);
+    }
+
+    public void loadCnv() {
+        CnvController cont = new CnvController(null);
+        if (!cont.gatherParameters()) return;
+        CnvData data = cont.readData();
+        if (data != null) {
+           showCnvPanel(data);
+        }
     }
 }

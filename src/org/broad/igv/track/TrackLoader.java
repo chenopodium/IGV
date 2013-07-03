@@ -80,6 +80,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.logging.Log;
+import org.broad.igv.Handlers;
 import org.broad.igv.session.RendererFactory;
 import org.broad.tribble.AsciiFeatureCodec;
 import org.broad.tribble.TabixFeatureReader;
@@ -171,10 +172,20 @@ public class TrackLoader {
                         + " load the associated gzipped file, which should have an extension of '.gz'");
             }
 
-      //      p("load: type String is " + typeString);
+            p("load: type String is " + typeString);
             //This list will hold all new tracks created for this locator
             List<Track> newTracks = new ArrayList<Track>();
 
+
+            // Track line
+            TrackProperties tp = null;
+            String trackLine = locator.getTrackLine();
+            if (trackLine != null) {
+                tp = new TrackProperties();
+                ParsingUtils.parseTrackLine(trackLine, tp);
+                p("Got trackline: " + trackLine);
+            }
+            //else p("Got no trackline");
             String serverURL = locator.getServerURL();
             if (serverURL != null && serverURL.startsWith("jdbc:")) {
                 this.loadFromDatabase(locator, newTracks, genome);
@@ -185,7 +196,7 @@ public class TrackLoader {
             } else if (typeString.equals("das")) {
                 loadDASResource(locator, newTracks);
             } else if (isIndexed(path, genome)) {
-     //           p(path + " is indexed");
+                p(path + " is indexed");
                 loadIndexed(locator, newTracks, genome);
             } else if (typeString.endsWith(".vcf.list")) {
                 loadVCFListFile(locator, newTracks, genome);
@@ -211,7 +222,7 @@ public class TrackLoader {
                     || typeString.endsWith(".seg.data.txt")
                     || typeString.endsWith("glad") || typeString.endsWith("birdseye_canary_calls")
                     || typeString.endsWith(".seg.zip")) {
-       //         p("load: loadSegFile for " + path);
+                //         p("load: loadSegFile for " + path);
                 loadSegFile(locator, newTracks, genome);
             } else if (typeString.endsWith(".gistic")) {
                 loadGisticFile(locator, newTracks);
@@ -222,7 +233,7 @@ public class TrackLoader {
             } else if (typeString.endsWith(".hp")) {
                 loadRNAiHPScoreFile(locator);
             } else if (typeString.endsWith("gene")) {
-       //         p("load: loadGeneFile for " + path);
+                //         p("load: loadGeneFile for " + path);
                 loadGeneFile(locator, newTracks, genome);
             } else if (typeString.contains(".tabblastn") || typeString.endsWith(".orthologs")) {
                 loadSyntentyMapping(locator, newTracks);
@@ -231,7 +242,7 @@ public class TrackLoader {
                     || typeString.endsWith("_sorted.txt")
                     || typeString.endsWith(".aligned") || typeString.endsWith(".sai")
                     || typeString.endsWith(".bai") || typeString.equals("alist")) {
-       //         p("load: loadAlignmentsTrack for " + path);
+                p("load: loadAlignmentsTrack for " + path);
                 loadAlignmentsTrack(locator, newTracks, genome);
             } else if (typeString.endsWith(".wig") || (typeString.endsWith(".bedgraph"))
                     || typeString.endsWith("cpg.txt") || typeString.endsWith(".expr")) {
@@ -248,6 +259,7 @@ public class TrackLoader {
             } else if (typeString.endsWith(".counts")) {
                 loadGobyCountsArchive(locator, newTracks, genome);
             } else if (GFFFeatureSource.isGFF(locator.getPath())) {
+                p("Got got gff file");
                 loadGFFfile(locator, newTracks, genome);
             } else if (AbstractFeatureParser.canParse(locator.getPath())) {
                 p("load: loadFeatureFile for " + path);
@@ -255,6 +267,7 @@ public class TrackLoader {
             } else if (typeString.endsWith(".mut")) { //  MutationParser.isMutationAnnotationFile(locator)) {
                 this.loadMutFile(locator, newTracks, genome);
             } else if (WiggleParser.isWiggle(locator)) {
+                p("Got got wig file");
                 loadWigFile(locator, newTracks, genome);
             } else if (typeString.endsWith(".maf") || typeString.endsWith(".maf.annotated")) {
                 if (MutationTrackLoader.isMutationAnnotationFile(locator)) {
@@ -270,10 +283,10 @@ public class TrackLoader {
                 locator.setDescription("MAGE_TAB");
                 loadGctFile(locator, newTracks, genome);
             } else if (GWASParser.isGWASFile(typeString)) {
-       //         p("load: loadGWASFile for " + path);
+                p("load: loadGWASFile for " + path);
                 loadGWASFile(locator, newTracks, genome);
             } else if (GobyAlignmentQueryReader.supportsFileType(path)) {
-           //     p("load: GobyAlignmentQueryReader, loadAlignmentsTrack for " + path);
+                p("load: GobyAlignmentQueryReader, loadAlignmentsTrack for " + path);
                 loadAlignmentsTrack(locator, newTracks, genome);
             } else if (typeString.endsWith(".list")) {
                 // This should be deprecated
@@ -282,19 +295,29 @@ public class TrackLoader {
                 loadAffectiveAnnotationTrack(locator, newTracks, genome);
             } else if (AttributeManager.isSampleInfoFile(locator)) {
                 // This might be a sample information file.
-       //         p("load: loadSampleInfo for " + path);
-                AttributeManager.getInstance().loadSampleInfo(locator);
+                p("load: loadSampleInfo for " + path);
+                boolean ok = AttributeManager.getInstance().loadSampleInfo(locator);
+
+                TrackHandler customhandler = Handlers.getTrackHandler();
+                if (customhandler != null) {
+                    log.info("Loading track with custom track handler: " + customhandler.getClass().getName());
+                    customhandler.loadCustomFile(locator, newTracks, genome);
+                } else if (!ok) {
+                    throw new DataLoadException("Could not determine file type.  Does file have proper extension? ", locator.getPath());
+                }
+
+
             } else {
+                // try custom handler
+                TrackHandler customhandler = Handlers.getTrackHandler();
+                if (customhandler != null) {
+                    log.info("Loading track with custom track handler: " + customhandler.getClass().getName());
+                    customhandler.loadCustomFile(locator, newTracks, genome);
+                }
                 MessageUtils.showMessage("<html>Unknown file type: " + path + "<br>Check file extenstion");
             }
 
-            // Track line
-            TrackProperties tp = null;
-            String trackLine = locator.getTrackLine();
-            if (trackLine != null) {
-                tp = new TrackProperties();
-                ParsingUtils.parseTrackLine(trackLine, tp);
-            }
+
 
             for (Track track : newTracks) {
 
@@ -473,22 +496,23 @@ public class TrackLoader {
     }
 
     /**
-     * factory for unknown file type,  could be ascii, binary, or could be tabix, or something else.
+     * factory for unknown file type, could be ascii, binary, or could be tabix,
+     * or something else.
      *
      * @param featureResource the feature file to create from
-     * @param codec           the codec to read features with
+     * @param codec the codec to read features with
      */
     public static final AbstractFeatureReader getFeatureReader(String featureResource, FeatureCodec codec, boolean requireIndex) throws TribbleException {
 
         try {
             // Test for tabix index
-            if (featureResource.endsWith(".gz") &&
-                    org.broad.tribble.util.ParsingUtils.resourceExists(featureResource + ".tbi")) {
-                if ( ! (codec instanceof AsciiFeatureCodec) )
+            if (featureResource.endsWith(".gz")
+                    && org.broad.tribble.util.ParsingUtils.resourceExists(featureResource + ".tbi")) {
+                if (!(codec instanceof AsciiFeatureCodec)) {
                     throw new TribbleException("Tabix indexed files only work with ASCII codecs, but received non-Ascii codec " + codec.getClass().getSimpleName());
-                return new TabixFeatureReader(featureResource, (AsciiFeatureCodec)codec);
-            }
-            // Not tabix => tribble index file (might be gzipped, but not block gzipped)
+                }
+                return new TabixFeatureReader(featureResource, (AsciiFeatureCodec) codec);
+            } // Not tabix => tribble index file (might be gzipped, but not block gzipped)
             else {
                 return new TribbleIndexedFeatureReaderToken(featureResource, codec, requireIndex);
             }
@@ -499,6 +523,7 @@ public class TrackLoader {
             throw e;
         }
     }
+
     /**
      * Load the input file as a feature, mutation, or maf (multiple alignment)
      * file.
@@ -520,9 +545,9 @@ public class TrackLoader {
         if (codec != null) {
             p("Got codec: " + codec.getClass().getName());
             AbstractFeatureReader<Feature> bfs = getFeatureReader(locator.getPath(), codec, false);
-            p("Got reader: "+bfs.getClass().getName());
+            p("Got reader: " + bfs.getClass().getName());
             Iterable<Feature> iter = bfs.iterator();
-            p("Got iterator: "+iter.getClass().getName());
+            p("Got iterator: " + iter.getClass().getName());
             Object header = bfs.getHeader();
             TrackProperties trackProperties = getTrackProperties(header);
             List<FeatureTrack> tracks = AbstractFeatureParser.loadTracks(iter, locator, genome, trackProperties);
@@ -1196,7 +1221,7 @@ public class TrackLoader {
 
         String path = locator.getPath();
 
-    //    p("LoadSegTrack: " + path);
+        //    p("LoadSegTrack: " + path);
         TrackProperties props = null;
         if (ds instanceof SegmentedAsciiDataSet) {
             props = ((SegmentedAsciiDataSet) ds).getTrackProperties();
@@ -1210,7 +1235,7 @@ public class TrackLoader {
             String freqTrackName = "CNV Summary";
             CNFreqTrack freqTrack = new CNFreqTrack(locator, freqTrackId, freqTrackName, fd);
             newTracks.add(freqTrack);
-         //   log.info("Added track: " + freqTrackName);
+            //   log.info("Added track: " + freqTrackName);
         }
 
         for (String trackName : ds.getSampleNames()) {
@@ -1221,11 +1246,11 @@ public class TrackLoader {
             // check properties!
 
             track.setTrackType(ds.getType());
-          //  customizeTrack(track);
+            //  customizeTrack(track);
             if (props != null) {
                 track.setProperties(props);
             }
-         //   log.info("Added track: " + track + ", id=" + trackId + ", name=" + trackName);
+            //   log.info("Added track: " + track + ", id=" + trackId + ", name=" + trackName);
             newTracks.add(track);
         }
     }
@@ -1237,7 +1262,6 @@ public class TrackLoader {
 //        }
 //        
 //    }
-
     private void loadDASResource(ResourceLocator locator, List<Track> currentTracks) {
 
         //TODO Connect and get all the attributes of the DAS server, and run the appropriate load statements

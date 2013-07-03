@@ -127,7 +127,7 @@ public class KaryoOverviewPanel extends JPanel {
                 public void taskDone(Task task) {
                     p("==================Loading tracks done, adding " + man.getSelectdKaryoTracks().size() + " tracks to overview");
                     addTracksToOverview();
-                    man.getControl().recreateView(false);
+                    if (man.getControl()!= null) man.getControl().recreateView(false);
                 }
             });
             // we need to show some message in the meantime in the control panel!

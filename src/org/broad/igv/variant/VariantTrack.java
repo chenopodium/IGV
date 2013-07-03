@@ -11,6 +11,7 @@
 //chr2:128,565,093-128,565,156 
 package org.broad.igv.variant;
 
+import com.iontorrent.utils.ErrorHandler;
 import org.apache.log4j.Logger;
 import org.broad.igv.feature.FeatureUtils;
 import org.broad.igv.feature.IGVFeature;
@@ -815,8 +816,11 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
      * @param frame
      * @return
      */
+    @Override
     public String getValueStringAt(String chr, double position, int y, ReferenceFrame frame) {
 
+        
+        if (chr.equalsIgnoreCase(Globals.CHR_ALL)) return null;
         try {
             double maxDistance = 10 * frame.getScale();
             Variant variant = getFeatureClosest(position, maxDistance, frame);

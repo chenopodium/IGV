@@ -25,12 +25,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import org.broad.igv.ui.IGV;
+import org.broad.igv.ui.panel.TrackPanel;
 
 
 /**
  * @author jrobinso
  */
-public class DataSourceTrack extends DataTrack {
+ public class DataSourceTrack extends DataTrack {
 
     private static Logger log = Logger.getLogger(DataSourceTrack.class);
 
@@ -57,8 +59,9 @@ public class DataSourceTrack extends DataTrack {
         for (LocusScore score : scores) {
             max = Math.max(max, score.getScore());
         }
-
-        setDataRange(new DataRange(min, baseline, max));
+        DataRange dr = new DataRange(min, baseline, max);
+        setDataRange(dr);
+        linkDataRange();
 
     }
 
@@ -116,4 +119,6 @@ public class DataSourceTrack extends DataTrack {
             }
         }
     }
+
+    
 }

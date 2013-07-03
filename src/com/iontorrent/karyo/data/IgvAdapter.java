@@ -4,8 +4,10 @@
  */
 package com.iontorrent.karyo.data;
 
+
 import com.iontorrent.karyo.views.KaryoControlPanel;
 import com.iontorrent.karyo.views.IgvTrackSelectionPanel;
+import com.iontorrent.utils.GuiUtils;
 import java.util.ArrayList;
 
 import java.util.logging.Logger;
@@ -29,9 +31,8 @@ public class IgvAdapter {
             igvselpanel = new IgvTrackSelectionPanel(null);
         //}
          if (igvselpanel.getNrListedTracks() <1) {
-             JOptionPane.showConfirmDialog(IGV.getMainFrame(), "There are no suitable tracks to show.\nTry a variant file (such as SNPs, CNVs etc)."
-                     + "\nI will just show the chromosome bands then.",
-                     "No suitable tracks for Karyo view", JOptionPane.OK_OPTION); 
+             GuiUtils.showNonModalMsg("There are no suitable tracks to show.\nTry a variant file (such as SNPs, CNVs etc)."
+                     + "\nI will just show the chromosome bands then.");
          }
          else JOptionPane.showConfirmDialog(IGV.getMainFrame(), igvselpanel,"Pick the tracks to view", JOptionPane.OK_OPTION); 
     }

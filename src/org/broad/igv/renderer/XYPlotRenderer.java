@@ -47,44 +47,60 @@ public abstract class XYPlotRenderer extends DataRenderer {
     protected void drawDataPoint(Color graphColor, int dx, int pX, int baseY, int pY,
             RenderContext context) {
         dx = Math.max(5, dx);
-       
+
         context.getGraphic2DForColor(graphColor).fillRect(pX, pY, dx, 4);
 
     }
+
     public Color getGradientColor(double MIN, double MAX, double score, Color chigh, Color clow, Color cmid, double middle) {
-              
-       
-       if (cmid == null) cmid = Color.darkGray; 
-        if (chigh == null) chigh = cmid;
-        if (clow == null) clow = cmid;
-        double rangedelta = MAX-MIN;
-       
-        if (middle == Integer.MIN_VALUE) middle = (MAX-MIN)/2;
+
+
+        if (cmid == null) {
+            cmid = Color.darkGray;
+        }
+        if (chigh == null) {
+            chigh = cmid;
+        }
+        if (clow == null) {
+            clow = cmid;
+        }
+        double rangedelta = MAX - MIN;
+
+        if (middle == Integer.MIN_VALUE) {
+            middle = (MAX - MIN) / 2;
+        }
         // check if we use the higher or lower scale
         double ds = score - MIN;
-                
+
         Color hi = cmid;
         Color lo = clow;
+
+        if (Math.abs(score - middle) < 0.00001) {
+            return cmid;
+        }
         
-        if ( Math.abs(score - middle)<0.00001) return cmid;
-      //  Logger.getLogger("XYPlot").info("Score: "+score+", low="+MIN+", mid=CUTOFF="+middle+", max="+MAX);
         if (score > middle) {
             lo = cmid;
             hi = chigh;
             ds = score - middle;
         }
-        
-        double dr = (hi.getRed()-lo.getRed()) / (rangedelta);
-        double dg = (hi.getGreen()-lo.getGreen()) / (rangedelta);
-        double db = (hi.getBlue()-lo.getBlue()) / (rangedelta);
-        
-       // p("Getting color for "+fieldname +"="+score+", min="+MIN+", max="+MAX);
-        int r = Math.min(255, Math.max(0,(int) (lo.getRed()+dr * ds)));
-        int g = Math.min(255, Math.max(0,(int) (lo.getGreen()+dg * ds)));
-        int b = Math.min(255, Math.max(0,(int) (lo.getBlue()+db * ds)));
+
+        double dr = (hi.getRed() - lo.getRed()) / (rangedelta*0.7);
+        double dg = (hi.getGreen() - lo.getGreen()) / (rangedelta*0.7);
+        double db = (hi.getBlue() - lo.getBlue()) / (rangedelta*0.7);
+
+        // p("Getting color for "+fieldname +"="+score+", min="+MIN+", max="+MAX);
+        int r = Math.min(255, Math.max(0, (int) (lo.getRed() + dr * ds)));
+        int g = Math.min(255, Math.max(0, (int) (lo.getGreen() + dg * ds)));
+        int b = Math.min(255, Math.max(0, (int) (lo.getBlue() + db * ds)));
         Color c = new Color(r, g, b);
+        
+        if (score > middle) {
+            //Logger.getLogger("XYPlot").info("Score > middle: "+score+", low="+MIN+", mid=CUTOFF="+middle+", max="+MAX+" => color="+c+", rangedelta="+rangedelta);
+            //c = chigh;
+        }
         return c;
-    
+
     }
 
     /**
@@ -110,6 +126,7 @@ public abstract class XYPlotRenderer extends DataRenderer {
         Color posColor = track.getColor();
         Color negColor = track.getAltColor();
         Color midColor = track.getMidColor();
+        //p(track.getName()+": high color: "+posColor+", midColor: "+midColor+", low color="+negColor);
         // Get the Y axis definition, consisting of minimum, maximum, and base value.  Often
         // the base value is == min value which is == 0.
 
@@ -117,19 +134,28 @@ public abstract class XYPlotRenderer extends DataRenderer {
         float maxValue = dataRange.getMaximum();
         float cutOff = (float) track.getCutoffScore();
         float baseValue = 0;
+        
+        p("Nr locus scores: "+locusScores.size());
+       
 //        if ( msgs <10) {
 //            Logger.getLogger("XYPlotRenderer").info("Got cutoffscore/basevalue : " + baseValue +" for "+track.getName());
 //        }
-        
+
         if (baseValue == 0) {
             baseValue = dataRange.getBaseline();
         }
         float minValue = dataRange.getMinimum();
+        
+        p(track.getName()+": high color: "+posColor+", midColor: "+midColor+", low color="+negColor+", min="+minValue+", max="+maxValue);
         boolean isLog = dataRange.isLog();
 
         if (isLog) {
             minValue = (float) (minValue == 0 ? 0 : Math.log10(minValue));
             maxValue = (float) Math.log10(maxValue);
+            try {
+                cutOff = (float) Math.log10(cutOff);
+            }
+            catch (Exception e){}
         }
 
 
@@ -147,39 +173,38 @@ public abstract class XYPlotRenderer extends DataRenderer {
             baseY = adjustedRect.y + adjustedRect.height;
         }
 
+        
+//        int midY = getY(isLog, cutOff, baseValue, baseY, yScaleFactor, adjustedRect);
+//        Graphics2D midG = context.getGraphic2DForColor(Color.lightGray);
+//        midG.drawLine(midY, midY, midY, midY);
+        
         int lastPx = 0;
         for (LocusScore score : locusScores) {
-
+            // p("Got score: "+score);
             // Note -- don't cast these to an int until the range is checked.
             // could get an overflow.
             double pX = ((score.getStart() - origin) / locScale);
             double dx = Math.ceil((Math.max(1, score.getEnd() - score.getStart())) / locScale) + 1;
-            
+
             if ((pX + dx < 0)) {
+                p("continue 1");
                 continue;
             } else if (pX > adjustedRect.getMaxX()) {
+                p("break 1");
                 break;
             }
 
             float dataY = score.getScore();
             if (isLog && dataY <= 0) {
+                p("continue 2");
                 continue;
             }
 
             if (!Float.isNaN(dataY)) {
-
-
-                // Compute the pixel y location.  Clip to bounds of rectangle.
-                double dy = isLog ? Math.log10(dataY) - baseValue : (dataY - baseValue);
-                int pY = baseY - (int) (dy * yScaleFactor);
-                if (pY < adjustedRect.y) {
-                    pY = adjustedRect.y;
-                } else if (pY > adjustedRect.y + adjustedRect.height) {
-                    pY = adjustedRect.y + adjustedRect.height;
-                }
+                int pY = getY(isLog, dataY, baseValue, baseY, yScaleFactor, adjustedRect);
 
                 if (msgs < 10 && baseValue != 0) {
-                    Logger.getLogger("XY: base="+baseValue+", data="+dataY);
+                    Logger.getLogger("XY: base=" + baseValue + ", data=" + dataY);
                     msgs++;
                 }
                 //Color color = (dataY >= baseValue) ? posColor : negColor;
@@ -188,10 +213,10 @@ public abstract class XYPlotRenderer extends DataRenderer {
 
             }
             if (showMissingData) {
-            if (msgs < 100) {
-            Logger.getLogger("XYPLot").info("Drawing missing data");
-            msgs++;
-        }
+                if (msgs < 100) {
+                    Logger.getLogger("XYPLot").info("Drawing missing data");
+                    msgs++;
+                }
                 // Draw from lastPx + 1  to pX - 1;
                 int w = (int) pX - lastPx - 4;
                 if (w > 0) {
@@ -211,6 +236,10 @@ public abstract class XYPlotRenderer extends DataRenderer {
             }
         }
 
+    }
+
+    private void p(String s) {
+       // System.out.println("XYRENDERER: " + s);
     }
     static DecimalFormat formatter = new DecimalFormat();
 
@@ -441,5 +470,17 @@ public abstract class XYPlotRenderer extends DataRenderer {
 
     public void setMarginFraction(double marginFraction) {
         this.marginFraction = marginFraction;
+    }
+
+    public int getY(boolean isLog, float dataY, float baseValue, int baseY, double yScaleFactor, Rectangle adjustedRect) {
+        // Compute the pixel y location.  Clip to bounds of rectangle.
+        double dy = isLog ? Math.log10(dataY) - baseValue : (dataY - baseValue);
+        int pY = baseY - (int) (dy * yScaleFactor);
+        if (pY < adjustedRect.y) {
+            pY = adjustedRect.y;
+        } else if (pY > adjustedRect.y + adjustedRect.height) {
+            pY = adjustedRect.y + adjustedRect.height;
+        }
+        return pY;
     }
 }

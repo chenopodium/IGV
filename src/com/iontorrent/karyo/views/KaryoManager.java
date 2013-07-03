@@ -127,9 +127,9 @@ public class KaryoManager {
                 p("Adding a few fake tracks");
                 tracks.add(new KaryoTrack(new FakeCnvTrack(), 1));
                 tracks.add(new KaryoTrack(new FakeIndelTrack(), 2));
-            } else if (tracks.size() > 2 || takeslong) {
-               if (time > 10) {
-                   MessageUtils.confirm("Loading "+nr+" karyo tracks... some tracks are large, and it can take quite a long time to load");
+            } else if (tracks.size() > 6 || takeslong) {
+               if (time >= 30) {
+                   MessageUtils.showMessage("Loading "+nr+" karyo tracks... some tracks are large, and it can take quite a long time to load");
                     //GuiUtils.showNonModelMsg("Loading", "Loading "+nr+" karyo tracks... some tracks are lager, and it can take quite a long time!", true, time);
                }
                else GuiUtils.showNonModelMsg("Loading", "Loading "+nr+" karyo tracks...", true, time);

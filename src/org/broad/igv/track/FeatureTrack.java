@@ -656,6 +656,7 @@ public class FeatureTrack extends AbstractTrack {
 
             // Keep text near the top of the track rectangle
             textRect.height = Math.min(inputRect.height, 20);
+            
             String message = context.getChr().equals(Globals.CHR_ALL) ? "Open the karyo view to see all features, or pick a chromosome to see them" :
                     "Zoom in to see features, or right-click to increase Feature Visibility Window.";
             GraphicUtils.drawCenteredText(message, textRect, g);
@@ -667,6 +668,7 @@ public class FeatureTrack extends AbstractTrack {
                 cs.setPosEnd(max);
             }
             setDataRange(new DataRange(0, 0, max));
+            linkDataRange();
             coverageRenderer.render(scores, context, inputRect, this);
         }
     }

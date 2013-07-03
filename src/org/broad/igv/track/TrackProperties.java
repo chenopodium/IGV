@@ -50,7 +50,7 @@ public class TrackProperties {
      * @param cutoffScore the cutoffScore to set
      */
     public void setCutoffScore(double cutoffScore) {
-        log.info("Gut cutoffscore "+cutoffScore);
+      //  log.info("Gut cutoffscore "+cutoffScore);
         this.cutoffScore = cutoffScore;
     }
 
@@ -60,6 +60,35 @@ public class TrackProperties {
     public void setTrackorder(int order) {
         this.trackorder = order;
         log.info("Got trackorder "+trackorder);
+    }
+
+    /**
+     * @return the customProperties
+     */
+    public String getCustomProperties() {
+        return customProperties;
+    }
+
+    /**
+     * @param customProperties the customProperties to set
+     */
+    public void setCustomProperties(String customProperties) {
+         log.info("Gut setCustomProperties "+customProperties);
+        this.customProperties = customProperties;
+    }
+
+    /**
+     * @return the linkedTrack
+     */
+    public String getLinkedTrack() {
+        return linkedTrack;
+    }
+
+    /**
+     * @param linkedTrack the linkedTrack to set
+     */
+    public void setLinkedTrack(String linkedTrack) {
+        this.linkedTrack = linkedTrack;
     }
     public enum BaseCoord {
         ZERO, ONE, UNSPECIFIED
@@ -78,6 +107,8 @@ public class TrackProperties {
      */
     private String name;
 
+    /** for linking say the data range of 2 or more tracks */
+    private String linkedTrack;
     /**
      * The track description.  The description, when supplied, will appear in popup text
      * when hovering over the track.  May optionally be displayed centered over the track
@@ -89,6 +120,8 @@ public class TrackProperties {
      * A url to an web page associated with this track.  This is currently not used.
      */
     private String url;
+    
+    private String customProperties;
 
     /**
      * The track height in pixels

@@ -114,7 +114,7 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
                 AlignmentControlPanel.showReversePanel(revpanel, locus, image);
             }
             else {
-                com.iontorrent.guiutils.GuiUtils.showNonModalMsg("Found NO ionogram information to show");
+               GuiUtils.showNonModalMsg("Found NO ionogram information to show");
             }
             return;
         }

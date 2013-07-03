@@ -18,6 +18,7 @@ import org.broad.igv.batch.CommandExecutorIF;
 import org.broad.igv.batch.CommandListenerIF;
 import org.broad.igv.sam.AlignmentTrackHandler;
 import org.broad.igv.session.SessionHandler;
+import org.broad.igv.track.TrackHandler;
 import org.broad.igv.ui.ArgumentHandler;
 import org.broad.igv.ui.action.SearchCommandHandler;
 import org.broad.igv.util.HttpHandler;
@@ -36,6 +37,7 @@ public class Handlers {
     public static String ARGUMENTHANDLER;
     public static String SESSIONHANDLER;
     public static String ALIGNMENTTRACKHANDLER;
+    public static String TRACKHANDLER;
 
     static {
         Properties handlerproperties = new Properties();
@@ -51,6 +53,7 @@ public class Handlers {
         ARGUMENTHANDLER = handlerproperties.getProperty("argumenthandler", null);
         SESSIONHANDLER = handlerproperties.getProperty("sessionhandler", null);
         ALIGNMENTTRACKHANDLER = handlerproperties.getProperty("alignmenttrackhandler", null);
+        TRACKHANDLER = handlerproperties.getProperty("trackhandler", null);
     }
 
     /**
@@ -176,6 +179,20 @@ public class Handlers {
             return handler;
         } catch (Exception e) {
             log.error("Was unable to create an AlignmentTrackHandler from " + ALIGNMENTTRACKHANDLER + ", check the resources/handler.properties file for errors:" + ErrorHandler.getString(e));
+        }
+        return null;
+    }
+      
+       /** adds custom menus and actions to alignment track */
+      public static TrackHandler getTrackHandler() {
+        if (TRACKHANDLER == null) {
+            return null;
+        }
+        try {
+            TrackHandler handler = (TrackHandler) Class.forName(TRACKHANDLER).newInstance();
+            return handler;
+        } catch (Exception e) {
+            log.error("Was unable to create a TrackHandler from " + TRACKHANDLER + ", check the resources/handler.properties file for errors:" + ErrorHandler.getString(e));
         }
         return null;
     }

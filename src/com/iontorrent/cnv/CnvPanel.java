@@ -34,16 +34,16 @@ public class CnvPanel extends JPanel{
      int MB = 1000000;
      double actualmax;
      
-    public CnvPanel(KaryoManager manager) {
+    public CnvPanel(KaryoManager manager, CnvData data) {
         this.manager = manager;
-        data = new CnvData();
+        this.data = data;
         
         actualmax = 0;
          for (CnvDataPoint point: data.getPoints()) {
              if (Math.abs(point.ratio) > actualmax) actualmax = Math.abs(point.ratio);
          }
        
-         p("Got actualmax: "+actualmax);
+      //   p("Got actualmax: "+actualmax);
         startposperchr = new int[manager.getChromosomes().size()+1];
         tot = 0;
         int nr = 0;
@@ -90,13 +90,13 @@ public class CnvPanel extends JPanel{
         int dline=10;
         actualmax = Math.max(actualmax, MAXY);
          double dy = (int)H/2.0/actualmax;
-        p("MY: "+MY+", dxperb="+dxperb+", dy="+dy);
+        //p("MY: "+MY+", dxperb="+dxperb+", dy="+dy);
          g.setStroke(new BasicStroke(1));
           
         for (Chromosome chr: manager.getChromosomes()) {
             int xa = BORDER+(int)(startposperchr[nr]*dxperb);
             int xb = (int) (xa+(double)(chr.getLength()/MB)*dxperb);
-            p("Chr "+chr.getName()+", x="+xa+"-"+xb+", size="+chr.getLength());
+           // p("Chr "+chr.getName()+", x="+xa+"-"+xb+", size="+chr.getLength());
             g.setColor(new Color(200,200,200));
             g.drawLine(xa, BORDER+1, xa, height-BORDER-2);
             int mx = (xa+xb)/2;
@@ -131,7 +131,7 @@ public class CnvPanel extends JPanel{
                 int y = MY - (int)(point.ratio*dy);
                 int x = startx+(int)(pos*dxperb);
                 if (count % 100 == 0) {
-                    p("DataPOint: chr="+chr+", x="+x+", ratio="+point.ratio+", y="+y+", pos="+pos);
+                    p("DataPoint: chr="+chr+", x="+x+", ratio="+point.ratio+", y="+y+", pos="+pos);
                 }
                 g.setColor(Color.blue.brighter());
                 g.fillOval(x, y, r, r);
@@ -143,6 +143,6 @@ public class CnvPanel extends JPanel{
         }
     }
     private void p(String s) {
-        System.out.println("CNV: "+s);
+        System.out.println("CnvPanel: "+s);
     }
 }

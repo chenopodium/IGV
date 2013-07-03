@@ -69,7 +69,7 @@ public class GuiUtils {
     }
 
     public static void showNonModalMsg(String msg, boolean lbl) {
-        showNonModelMsg("Information", msg, lbl, 3);
+        showNonModelMsg("Information", msg, lbl, 5);
     }
 
     public static void showNonModalMsg(String msg, boolean lbl, int secs) {

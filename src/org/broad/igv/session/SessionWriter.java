@@ -18,7 +18,6 @@
 package org.broad.igv.session;
 
 //~--- non-JDK imports --------------------------------------------------------
-
 import org.apache.log4j.Logger;
 import org.broad.igv.feature.RegionOfInterest;
 import org.broad.igv.feature.genome.GenomeManager;
@@ -55,7 +54,6 @@ import java.util.*;
 public class SessionWriter {
 
     static Logger log = Logger.getLogger(SessionWriter.class);
-
     Session session;
     private static int CURRENT_VERSION = 4;
 
@@ -92,7 +90,6 @@ public class SessionWriter {
             }
         }
     }
-
 
     public String createXmlFromSession(Session session, File outputFile) throws RuntimeException {
 
@@ -171,7 +168,6 @@ public class SessionWriter {
 
         return xmlString;
     }
-
 
     private void writeFilters(Session session, Element globalElement, Document document) {
         TrackFilter trackFilter = session.getFilter();
@@ -286,6 +282,8 @@ public class SessionWriter {
 
     private void writeResources(File outputFile, Element globalElement, Document document) throws IOException {
 
+        setResourceTrackLinesFromTracks();
+        
         Collection<ResourceLocator> resourceLocators = getResourceLocatorSet();
 
         if ((resourceLocators != null) && !resourceLocators.isEmpty()) {
@@ -334,6 +332,21 @@ public class SessionWriter {
         }
     }
 
+    private void setResourceTrackLinesFromTracks() {
+        for (TrackPanel trackPanel : IGV.getInstance().getTrackPanels()) {
+            List<Track> tracks = trackPanel.getTracks();
+            if ((tracks != null) && !tracks.isEmpty()) {
+                for (Track track : tracks) {
+                    String trackline = getTrackLine(track);
+                    if (trackline.length() > 0) {
+                        track.getResourceLocator().setTrackLine(trackline);
+                        log.info("got resource trackline: "+trackline+" for "+track.getResourceLocator().getPath());
+                    }
+                }
+            }
+        }
+    }
+
     private void writePanels(Element globalElement, Document document) throws DOMException {
 
         for (TrackPanel trackPanel : IGV.getInstance().getTrackPanels()) {
@@ -353,18 +366,12 @@ public class SessionWriter {
                     Element trackElement = document.createElement(SessionElement.TRACK.getText());
                     trackElement.setAttribute(IGVSessionReader.SessionAttribute.ID.getText(), track.getId());
                     trackElement.setAttribute(IGVSessionReader.SessionAttribute.NAME.getText(), track.getName());
-                    double cutoff = track.getCutoffScore();
-                    String trackline ="";
-                    if (cutoff != 0) {
-                       trackline += "cutoffscore="+cutoff+" ";
-                       
+                    String trackline = getTrackLine(track);
+                    if (trackline.length() > 0) {
+                        trackElement.setAttribute(IGVSessionReader.SessionAttribute.TRACK_LINE.getText(), trackline);
+                        track.getResourceLocator().setTrackLine(trackline);
                     }
-                     if (track.getTrackorder() != 0) {
-                       trackline += "trackorder="+track.getTrackorder()+" ";
-                       
-                    }
-                     if (trackline.length()>0) trackElement.setAttribute(IGVSessionReader.SessionAttribute.TRACK_LINE.getText(), trackline);
-                    if (track.getSample() != null && track.getSample().length()>0) {
+                    if (track.getSample() != null && track.getSample().length() > 0) {
                         trackElement.setAttribute(IGVSessionReader.SessionAttribute.SAMPLE_ID.getText(), track.getSample());
                     }
                     for (Map.Entry<String, String> attrValue : track.getPersistentState().entrySet()) {
@@ -417,12 +424,17 @@ public class SessionWriter {
 
         Collection<ResourceLocator> locators = new ArrayList();
 
+        ArrayList<String> done = new ArrayList<String>();
+        
         Collection<ResourceLocator> currentTrackFileLocators =
                 IGV.getInstance().getDataResourceLocators();
 
         if (currentTrackFileLocators != null) {
             for (ResourceLocator locator : currentTrackFileLocators) {
-                locators.add(locator);
+                if (!done.contains(locator.getPath())) {
+                    locators.add(locator);
+                    done.add(locator.getPath());
+                }
             }
         }
 
@@ -438,5 +450,25 @@ public class SessionWriter {
         return locators;
     }
 
-}
+    public String getTrackLine(Track track) {
+        double cutoff = track.getCutoffScore();
+        String trackline = "";
+        if (cutoff != 0) {
+            trackline += "cutoffscore=" + cutoff + " ";
 
+        }
+        if (track.getCustomProperties() != null) {
+            trackline += "customproperties=" + track.getCustomProperties() + " ";
+
+        }
+        if (track.getLinkedTrack() != null) {
+            trackline += "linkedtrack=" + track.getLinkedTrack() + " ";
+
+        }
+        if (track.getTrackorder() != 0) {
+            trackline += "trackorder=" + track.getTrackorder() + " ";
+
+        }
+        return trackline;
+    }
+}

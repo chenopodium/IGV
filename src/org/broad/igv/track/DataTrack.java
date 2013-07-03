@@ -61,10 +61,14 @@ public abstract class DataTrack extends AbstractTrack {
         autoScale = PreferenceManager.getInstance().getAsBoolean(PreferenceManager.CHART_AUTOSCALE);
 
     }
+    private void p(String s ){
+        System.out.println("Datatrack: "+s);
+    }
 
     public void render(RenderContext context, Rectangle rect) {
 
         if (featuresLoading) {
+            p("features still loading");
             return;
         }
 
@@ -73,16 +77,19 @@ public abstract class DataTrack extends AbstractTrack {
         int end = (int) context.getEndLocation() + 1;
         int zoom = context.getZoom();
 
+      //  p("Rendering: "+chr+", "+start+"-"+end);
         List<LocusScore> inViewScores = null;
 
         LoadedDataInterval interval = loadedIntervalCache.get(context.getReferenceFrame().getName());
         if (interval != null && interval.contains(chr, start, end, zoom)) {
             inViewScores = interval.getScores();
+            p("getting  scores from cache");
         } else {
             // Get a buffer +/- 50% of screen size
             int delta = (end - start) / 2;
             int adjustedStart = Math.max(0, start - delta);
             int adjustedEnd = end + delta;
+            p("Calling load scores");
             inViewScores = load(context, chr, adjustedStart, adjustedEnd, zoom);
         }
 
@@ -93,7 +100,7 @@ public abstract class DataTrack extends AbstractTrack {
         }
 
         if (autoScale && !FrameManager.isGeneListMode() && !FrameManager.isExomeMode()) {
-
+            p("mode 1");
             InViewInterval inter = computeScale(start, end, inViewScores);
             if (inter.endIdx > inter.startIdx) {
                 inViewScores = inViewScores.subList(inter.startIdx, inter.endIdx);
@@ -117,10 +124,14 @@ public abstract class DataTrack extends AbstractTrack {
                 DataRange newDR = new DataRange(min, base, max, dr.isDrawBaseline());
                 newDR.setType(dr.getType());
                 setDataRange(newDR);
+                linkDataRange();
             }
 
         }
-
+        if (inViewScores == null || inViewScores.size()<1) {
+         //    p("Got no scores");
+        }
+        p("Rendering "+inViewScores.size());
         getRenderer().render(inViewScores, context, rect, this);
     }
 
@@ -155,6 +166,7 @@ public abstract class DataTrack extends AbstractTrack {
                     DataRange newDR = new DataRange(min, base, max, dr.isDrawBaseline());
                     newDR.setType(dr.getType());
                     setDataRange(newDR);
+                    linkDataRange();
                 }
             }
 
@@ -225,7 +237,7 @@ public abstract class DataTrack extends AbstractTrack {
      * @return
      */
     public String getValueStringAt(String chr, double position, int y, ReferenceFrame frame) {
-        StringBuffer buf = new StringBuffer();
+        StringBuilder buf = new StringBuilder();
         LocusScore score = getLocusScoreAt(chr, position, frame);
         // If there is no value here, return null to signal no popup
         if (score == null) {
@@ -234,6 +246,12 @@ public abstract class DataTrack extends AbstractTrack {
         buf.append(getName() + "<br>");
         if ((getDataRange() != null) && (getRenderer() instanceof XYPlotRenderer)) {
             buf.append("Data scale: " + getDataRange().getMinimum() + " - " + getDataRange().getMaximum() + "<br>");
+        }
+        if (this.getLinkedTrack() != null) {
+            buf.append("<b>Data scale is linked to track: " + getLinkedTrack() + "</b><br>");
+        }
+        if (this.getCutoffScore() != 0 && this.getAltColor() != this.getColor()) {
+            buf.append("Value where color changes: " + this.getCutoffScore() + "<br>");
         }
 
         buf.append(score.getValueString(position, getWindowFunction()));
@@ -271,14 +289,12 @@ public abstract class DataTrack extends AbstractTrack {
         super.setAltColor(color);
 
     }
-    private void p(String s) {
-        Logger.getLogger("DataTrack: "+s);
-    }
+  
     private InViewInterval computeScale(double origin, double end, List<LocusScore> scores) {
 
         InViewInterval interval = new InViewInterval();
-        boolean show = scores.size()==2;
-        
+       // boolean show = scores.size()==2;
+          boolean show = true;
         if (scores.size() == 1) {
             interval.dataMax = Math.max(0, scores.get(0).getScore());
             interval.dataMin = Math.min(0, scores.get(0).getScore());
@@ -292,7 +308,7 @@ public abstract class DataTrack extends AbstractTrack {
                     break;
                 }
             }
-            if (show) p("interval: "+interval.toString());
+          //  if (show) p("interval: "+interval.toString());
             
             for (int i = interval.startIdx ; i < scores.size(); i++) {
                 LocusScore locusScore = scores.get(i);

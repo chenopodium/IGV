@@ -279,8 +279,15 @@ public class ParsingUtils {
                         }
                     } else if (key.equals("description")) {
                         trackProperties.setDescription(value);
-                    } else if (key.equalsIgnoreCase("cutoffscore")) {
+                     } else if (key.equalsIgnoreCase("linkedtrack")) {
+                        trackProperties.setLinkedTrack(value);
                         log.info("parseTrackLine: Got "+key+"="+value);
+                    } else if (key.equalsIgnoreCase("customproperties")) {
+                        trackProperties.setCustomProperties(value);
+                        log.info("parseTrackLine: Got "+key+"="+value);
+                        
+                    } else if (key.equalsIgnoreCase("cutoffscore")) {
+                       // log.info("parseTrackLine: Got "+key+"="+value);
                         double d = 0;
                         try {
                             d = Double.parseDouble(value);
@@ -290,7 +297,7 @@ public class ParsingUtils {
                         }
                         trackProperties.setCutoffScore(d);
                      } else if (key.equalsIgnoreCase("trackorder")) {
-                        log.info("parseTrackLine: Got "+key+"="+value);
+                       // log.info("parseTrackLine: Got "+key+"="+value);
                         int i = 0;
                         try {
                             i = Integer.parseInt(value);

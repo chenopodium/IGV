@@ -32,6 +32,7 @@ public class Segment implements LocusScore {
     private int start;
     private int end;
     private float score;
+    private String chr;
     private String description;
 
 
@@ -49,8 +50,9 @@ public class Segment implements LocusScore {
 
 
 
-    public Segment(int start, int origStart, int end, int origEnd, float value, String description) {
+    public Segment(String chr, int start, int origStart, int end, int origEnd, float value, String description) {
         this.start = start;
+        this.chr = chr;
         this.end = end;
         this.extendedStart = origStart;
         this.extendedEnd = origEnd;
@@ -59,13 +61,17 @@ public class Segment implements LocusScore {
     }
 
     public Segment copy() {
-        return new Segment(start, extendedStart, end, extendedEnd, score, description);
+        Segment seg = new  Segment(chr, start, extendedStart, end, extendedEnd, score, description);        
+        return seg;
+    }
+    public void setChr(String chr) {
+        this.chr = chr;
     }
 
     /** Added by CR */
     @Override
     public String getChr() {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+        return chr;  //To change body of implemented methods use File | Settings | File Templates.
     }
 /** Added by CR */
     @Override
@@ -96,9 +102,9 @@ public class Segment implements LocusScore {
 
     @Override
     public String getValueString(double position, WindowFunction ignored) {
-        String valueString = "Value: " + getScore();
+        String valueString = "Value at "+chr+":"+start+"-"+end+": <b>" + getScore()+"</b>";
         if (description != null) {
-            valueString += description;
+            valueString += "<br>"+description;
         }
         return valueString;
     }

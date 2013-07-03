@@ -68,43 +68,34 @@ public class IGVSessionReader implements SessionReader {
     private static Logger log = Logger.getLogger(IGVSessionReader.class);
     private static String INPUT_FILE_KEY = "INPUT_FILE_KEY";
     // Temporary values used in processing
-
     private Collection<ResourceLocator> dataFiles;
     private Collection<ResourceLocator> missingDataFiles;
     private static Map<String, String> attributeSynonymMap = new HashMap();
     private boolean panelElementPresent = false;
     private int version;
-
     protected IGV igv;
-
-
     /**
-     * Map of track id -> track.  It is important to maintin the order in which tracks are added, thus
-     * the use of LinkedHashMap.
+     * Map of track id -> track. It is important to maintin the order in which
+     * tracks are added, thus the use of LinkedHashMap.
      */
     Map<String, List<Track>> trackDictionary = Collections.synchronizedMap(new LinkedHashMap());
-
-
     /**
      * Map of full path -> relative path.
      */
     Map<String, String> fullToRelPathMap = new HashMap<String, String>();
-
     private Track geneTrack = null;
     private Track seqTrack = null;
     private boolean hasTrackElments;
-
 
     static {
         attributeSynonymMap.put("DATA FILE", "DATA SET");
         attributeSynonymMap.put("TRACK NAME", "NAME");
     }
 
-      /**
+    /**
      * Session Element types
      */
     public static enum SessionElement {
-
 
         PANEL("Panel"),
         PANEL_LAYOUT("PanelLayout"),
@@ -133,7 +124,6 @@ public class IGVSessionReader implements SessionReader {
         ATTRIBUTE("Attribute"),
         VISIBLE_ATTRIBUTE("VisibleAttribute"),
         FRAME("Frame");
-
         private String name;
 
         SessionElement(String name) {
@@ -201,7 +191,6 @@ public class IGVSessionReader implements SessionReader {
         FEATURE_WINDOW("featureVisibilityWindow"),
         DISPLAY_NAME("displayName"),
         COLOR_SCALE("colorScale"),
-
         //RESOURCE ATTRIBUTES
         PATH("path"),
         LABEL("label"),
@@ -214,23 +203,19 @@ public class IGVSessionReader implements SessionReader {
         TYPE("type"),
         COVERAGE("coverage"),
         TRACK_LINE("trackLine"),
-
         CHR("chr"),
         START("start"),
         END("end");
-
         //TODO Add the following into the Attributes
         /*
-        ShadeBasesOption shadeBases;
-        boolean shadeCenters;
-        boolean flagUnmappedPairs;
-        boolean showAllBases;
-        int insertSizeThreshold;
-        boolean colorByStrand;
-        boolean colorByAmpliconStrand;
+         ShadeBasesOption shadeBases;
+         boolean shadeCenters;
+         boolean flagUnmappedPairs;
+         boolean showAllBases;
+         int insertSizeThreshold;
+         boolean colorByStrand;
+         boolean colorByAmpliconStrand;
          */
-
-
         private String name;
 
         SessionAttribute(String name) {
@@ -245,39 +230,40 @@ public class IGVSessionReader implements SessionReader {
         public String toString() {
             return getText();
         }
-
     }
-
 
     public IGVSessionReader(IGV igv) {
         this.igv = igv;
     }
 
-
     @Override
     public boolean loadSession(Session session, String sessionPath, int tries) throws IOException {
-            InputStream inputStream = new BufferedInputStream(ParsingUtils.openInputStreamGZ(new ResourceLocator(sessionPath)));
-            if (inputStream == null) return false;
-            return loadSession(inputStream, session, sessionPath, tries);
+        InputStream inputStream = new BufferedInputStream(ParsingUtils.openInputStreamGZ(new ResourceLocator(sessionPath)));
+        if (inputStream == null) {
+            return false;
+        }
+        return loadSession(inputStream, session, sessionPath, tries);
     }
+
     /**
      * @param inputStream
      * @param session
-     * @param sessionPath @return
+     * @param sessionPath
+     * @return
      * @throws RuntimeException
      */
-
-   
     public boolean loadSession(InputStream inputStream, Session session, String sessionPath, int tries) {
 
-        if (inputStream == null) return false;
+        if (inputStream == null) {
+            return false;
+        }
         log.info("Load session");
         Document document = loadDocument(inputStream);
         if (document == null) {
             log.info("loadSession: Got no document back from input stream");
             return false;
         }
-        
+
         NodeList tracks = document.getElementsByTagName("Track");
         hasTrackElments = tracks.getLength() > 0;
 
@@ -307,30 +293,29 @@ public class IGVSessionReader implements SessionReader {
         return true;
     }
 
-    
-     protected Document loadDocument(InputStream inputStream) throws RuntimeException {
+    protected Document loadDocument(InputStream inputStream) throws RuntimeException {
         Document document = null;
         try {
             document = Utilities.createDOMDocumentFromXmlStream(inputStream);
         } catch (Exception e) {
             log.error("Load session error (will try to show content)", e);
             // also try to read from input stream to see WHERE the error happened!
-            String result ="I was unable to read anything from the input stream\n";
+            String result = "I was unable to read anything from the input stream\n";
             try {
-                result = "IGV got this from the server:\n"+FileTools.getIsAsString(inputStream);
+                result = "IGV got this from the server:\n" + FileTools.getIsAsString(inputStream);
                 log.error(result);
             } catch (Exception e1) {
-                     log.error("Could not read input stream:"+ ErrorHandler.getString(e1));            
+                log.error("Could not read input stream:" + ErrorHandler.getString(e1));
             }
-            Exception usererror = new Exception(result+e.getMessage());
+            Exception usererror = new Exception(result + e.getMessage());
             usererror.setStackTrace(e.getStackTrace());
-            
+
             throw new RuntimeException(usererror);
         }
         return document;
     }
 
-        private  void processRootNode(Session session, Node node, HashMap additionalInformation, String rootPath) {
+    private void processRootNode(Session session, Node node, HashMap additionalInformation, String rootPath) {
 
         if ((node == null) || (session == null)) {
             MessageUtils.showMessage("Invalid session file: root node not found");
@@ -366,11 +351,11 @@ public class IGVSessionReader implements SessionReader {
                     }
                     if (ParsingUtils.pathExists(genomePath)) {
                         try {
-                            log.info("processRootNode.loadGenome "+genomePath);
+                            log.info("processRootNode.loadGenome " + genomePath);
                             IGV.getInstance().loadGenome(genomePath, null);
                         } catch (IOException e) {
-                            log.info("Error loading genome: "+genomePath+":"+ErrorHandler.getString(e));
-                             MessageUtils.showMessage("Warning: Could not load genome: " + genomeId+": "+e.getMessage());
+                            log.info("Error loading genome: " + genomePath + ":" + ErrorHandler.getString(e));
+                            MessageUtils.showMessage("Warning: Could not load genome: " + genomeId + ": " + e.getMessage());
                         }
                     } else {
                         MessageUtils.showMessage("Warning: Could not locate genome: " + genomeId);
@@ -411,7 +396,6 @@ public class IGVSessionReader implements SessionReader {
 
     //TODO Check to make sure tracks are not being created twice
     //TODO -- DONT DO THIS FOR NEW SESSIONS
-
     private void addLeftoverTracks(Collection<List<Track>> tmp) {
         Map<String, TrackPanel> trackPanelCache = new HashMap();
         if (version < 3 || !panelElementPresent) {
@@ -432,7 +416,6 @@ public class IGVSessionReader implements SessionReader {
 
     }
 
-
     /**
      * Process a single session element node.
      *
@@ -447,12 +430,12 @@ public class IGVSessionReader implements SessionReader {
 
         String nodeName = element.getNodeName();
 
-  //     log.info("Loading session. SessionElement: "+nodeName);
-        if (nodeName.equalsIgnoreCase(SessionElement.RESOURCES.getText()) ||
-                nodeName.equalsIgnoreCase(SessionElement.FILES.getText())) {
+        //     log.info("Loading session. SessionElement: "+nodeName);
+        if (nodeName.equalsIgnoreCase(SessionElement.RESOURCES.getText())
+                || nodeName.equalsIgnoreCase(SessionElement.FILES.getText())) {
             processResources(session, (Element) element, additionalInformation, rootPath);
-        } else if (nodeName.equalsIgnoreCase(SessionElement.RESOURCE.getText()) ||
-                nodeName.equalsIgnoreCase(SessionElement.DATA_FILE.getText())) {
+        } else if (nodeName.equalsIgnoreCase(SessionElement.RESOURCE.getText())
+                || nodeName.equalsIgnoreCase(SessionElement.DATA_FILE.getText())) {
             processResource(session, (Element) element, additionalInformation, rootPath);
         } else if (nodeName.equalsIgnoreCase(SessionElement.REGIONS.getText())) {
             processRegions(session, (Element) element, additionalInformation, rootPath);
@@ -470,9 +453,9 @@ public class IGVSessionReader implements SessionReader {
             processColorScale(session, (Element) element, additionalInformation, rootPath);
         } else if (nodeName.equalsIgnoreCase(SessionElement.PREFERENCES.getText())) {
             processPreferences(session, (Element) element, additionalInformation);
-        } else if (nodeName.equalsIgnoreCase(SessionElement.DATA_TRACKS.getText()) ||
-                nodeName.equalsIgnoreCase(SessionElement.FEATURE_TRACKS.getText()) ||
-                nodeName.equalsIgnoreCase(SessionElement.PANEL.getText())) {
+        } else if (nodeName.equalsIgnoreCase(SessionElement.DATA_TRACKS.getText())
+                || nodeName.equalsIgnoreCase(SessionElement.FEATURE_TRACKS.getText())
+                || nodeName.equalsIgnoreCase(SessionElement.PANEL.getText())) {
             processPanel(session, (Element) element, additionalInformation, rootPath);
         } else if (nodeName.equalsIgnoreCase(SessionElement.PANEL_LAYOUT.getText())) {
             processPanelLayout(session, (Element) element, additionalInformation);
@@ -481,6 +464,8 @@ public class IGVSessionReader implements SessionReader {
         } else if (nodeName.equalsIgnoreCase(SessionElement.VISIBLE_ATTRIBUTES.getText())) {
             processVisibleAttributes(session, (Element) element, additionalInformation);
         }
+        
+        
 
     }
 
@@ -519,82 +504,54 @@ public class IGVSessionReader implements SessionReader {
             final List<String> errors = new ArrayList<String>();
 
             // Load files concurrently -- TODO, put a limit on # of threads?
-            List<Thread> threads = new ArrayList(dataFiles.size());
+            List<TrackThread> threads = new ArrayList(dataFiles.size());
             long t0 = System.currentTimeMillis();
             int i = 0;
-            List<Runnable> synchronousLoads = new ArrayList<Runnable>();
+            List<TrackLoadRunnable> synchronousLoads = new ArrayList<TrackLoadRunnable>();
+
             for (final ResourceLocator locator : dataFiles) {
 
                 final String suppliedPath = locator.getPath();
                 final String relPath = fullToRelPathMap.get(suppliedPath);
 
-                Runnable runnable = new Runnable() {
-                    public void run() {
-                        List<Track> tracks = null;
-                        try {
-                            tracks = igv.load(locator);
-                        //    log.info("Got tracks "+tracks+" for locator "+locator.getPath());
-                            for (Track track : tracks) {
-                                if (track == null) {
-                                    log.info("Null track for resource " + locator.getPath());
-                                    continue;
-                                }
+                TrackLoadRunnable runnable = new TrackLoadRunnable(locator, relPath, suppliedPath, errors);
+                   
+                boolean isAlignment = locator.getPath().endsWith(".bam") || locator.getPath().endsWith(".entries")
+                        || locator.getPath().endsWith(".sam");
 
-                                String id = track.getId();
-                                if (id == null) {
-                                    log.info("Null track id for resource " + locator.getPath());
-                                    continue;
-                                }
-
-                                if (relPath != null) {
-                                    id = id.replace(suppliedPath, relPath);
-                                }
-
-                                List<Track> trackList = trackDictionary.get(id);
-                                if (trackList == null) {
-                                    trackList = new ArrayList();
-                                   // log.info("Adding track id: "+id);
-                                    trackDictionary.put(id, trackList);
-                                    if (track.getName() != null) {
-                                        trackDictionary.put(track.getName(), trackList);
-                                    }
-                                }
-                                trackList.add(track);
-                            }
-                        } catch (Exception e) {
-                            log.error("Error loading resource " + locator.getPath(), e);
-                            String ms = "<br>Path: " + locator.getPath() + "<br>Message: <b>" + e.toString() + "</b><br>";
-                            errors.add(ms);
-                        }
-                    }
-                };
-
-                boolean isAlignment = locator.getPath().endsWith(".bam") || locator.getPath().endsWith(".entries") ||
-                        locator.getPath().endsWith(".sam");
-
+                 boolean isCustom = locator.getPath().endsWith(".txt") || locator.getPath().endsWith(".csv");                        
 
                 // Run synchronously if in batch mode or if there are no "track" elments, or if this is an alignment file
-                if (isAlignment || Globals.isBatch() || !hasTrackElments) {
+                if (isCustom || isAlignment || Globals.isBatch() || !hasTrackElments) {
+                    log.info("Loading "+ locator.getPath()+" synchronously");
                     synchronousLoads.add(runnable);
                 } else {
-                    Thread t = new Thread(runnable);
+                    TrackThread t = new TrackThread(runnable);
                     threads.add(t);
                     t.start();
                 }
                 i++;
             }
+            boolean abort = false;
             // Wait for all threads to complete
-            for (Thread t : threads) {
+            for (TrackThread t : threads) {
                 try {
                     t.join();
+                    if (!t.getRunnable().isOk()) {
+                        log.info("=========== Runnable was not ok, aborting");
+                        abort = true;
+                        break;
+                    }
                 } catch (InterruptedException ignore) {
                 }
             }
 
 
             // Now load data that must be loaded synchronously
-            for (Runnable runnable : synchronousLoads) {
-                runnable.run();
+            if (!abort) {
+                for (TrackLoadRunnable runnable : synchronousLoads) {
+                    runnable.loadTrack();
+                }
             }
 
             long dt = System.currentTimeMillis() - t0;
@@ -611,6 +568,96 @@ public class IGVSessionReader implements SessionReader {
 
         }
         dataFiles = null;
+    }
+
+    private class TrackThread extends Thread {
+        TrackLoadRunnable runnable;
+        public TrackThread (TrackLoadRunnable runnable) {
+            super(runnable);
+            this.runnable = runnable;
+        }
+        public TrackLoadRunnable getRunnable() {
+            return runnable;
+        }
+    }
+    private class TrackLoadRunnable implements Runnable {
+
+        ResourceLocator locator;
+        String relPath;
+        String suppliedPath;
+        List<String> errors;
+        boolean ok;
+
+        public TrackLoadRunnable(ResourceLocator locator, String relPath, String suppliedPath, List<String> errors) {
+            this.locator = locator;
+            this.relPath = relPath;
+            this.suppliedPath = suppliedPath;
+            this.errors = errors;
+        }
+
+        public boolean isOk() {
+            return ok;
+        }
+
+        public void run() {
+            loadTrack();
+            
+        }
+
+        public void loadTrack() {
+            List<Track> tracks = null;
+            boolean abort = false;
+            ok = true;
+            try {
+                log.info("LOADING TRACK "+locator.getPath());
+                tracks = igv.load(locator);
+                //    log.info("Got tracks "+tracks+" for locator "+locator.getPath());
+                for (Track track : tracks) {
+                    if (abort) {
+                        break;
+                    }
+                    if (track == null) {
+                        log.info("Null track for resource " + locator.getPath());
+                        continue;
+                    }
+
+                    String id = track.getId();
+                    if (id == null) {
+                        log.info("Null track id for resource " + locator.getPath());
+                        continue;
+                    }
+
+                    if (relPath != null) {
+                        id = id.replace(suppliedPath, relPath);
+                    }
+
+                    List<Track> trackList = trackDictionary.get(id);
+                    if (trackList == null) {
+                        trackList = new ArrayList();
+                        // log.info("Adding track id: "+id);
+                        trackDictionary.put(id, trackList);
+                        if (track.getName() != null) {
+                            trackDictionary.put(track.getName(), trackList);
+                        }
+                    }
+                    trackList.add(track);
+                }
+            } catch (Exception e) {
+                // deal with token error here
+                log.error("Error loading resource " + locator.getPath(), e);
+                if (!handleError(e, locator.getPath(), errors)) {
+                    abort = true;
+                    ok = false;
+                }
+
+            }
+        }
+    }
+
+    protected boolean handleError(Exception e, String path, List<String> errors) {
+        String ms = "<br>Path: " + path + "<br>Message: <b>" + e.toString() + "</b><br>";
+        errors.add(ms);
+        return true;
     }
 
     /**
@@ -634,7 +681,7 @@ public class IGVSessionReader implements SessionReader {
         String type = getAttribute(element, SessionAttribute.TYPE.getText());
         String coverage = getAttribute(element, SessionAttribute.COVERAGE.getText());
         String trackLine = getAttribute(element, SessionAttribute.TRACK_LINE.getText());
-        
+
         String colorString = getAttribute(element, SessionAttribute.COLOR.getText());
 
         String relPathValue = getAttribute(element, SessionAttribute.RELATIVE_PATH.getText());
@@ -644,7 +691,7 @@ public class IGVSessionReader implements SessionReader {
         // Older sessions used the "name" attribute for the path.
         String path = getAttribute(element, SessionAttribute.PATH.getText());
 
-        log.info("LoadSession.processResource: "+nodeName+", path="+path);
+        log.info("LoadSession.processResource: " + nodeName + ", path=" + path);
         if (oldSession && name != null) {
             path = name;
             int idx = name.lastIndexOf("/");
@@ -696,7 +743,9 @@ public class IGVSessionReader implements SessionReader {
             resourceLocator.setType(type);
         }
         resourceLocator.setCoverage(coverage);
-        if (trackLine != null) resourceLocator.setTrackLine(trackLine);
+        if (trackLine != null) {
+            resourceLocator.setTrackLine(trackLine);
+        }
 
         if (colorString != null) {
             try {
@@ -735,7 +784,6 @@ public class IGVSessionReader implements SessionReader {
         process(session, elements, additionalInformation, rootPath);
     }
 
-
     private void processHiddenAttributes(Session session, Element element, HashMap additionalInformation) {
 
 //        session.clearRegionsOfInterest();
@@ -751,7 +799,6 @@ public class IGVSessionReader implements SessionReader {
             session.setHiddenAttributes(attributes);
         }
     }
-
 
     /**
      * For backward compatibility
@@ -821,7 +868,7 @@ public class IGVSessionReader implements SessionReader {
                             int start = ParsingUtils.parseInt(startString);
                             int end = ParsingUtils.parseInt(endString);
                             org.broad.igv.feature.Locus locus = new Locus(chr, start, end);
-                           // f.setInterval(locus);
+                            // f.setInterval(locus);
                         } catch (NumberFormatException e) {
                             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
                         }
@@ -866,7 +913,7 @@ public class IGVSessionReader implements SessionReader {
     }
 
     private void processFilterElement(Session session, Element element,
-                                      HashMap additionalInformation, String rootPath) {
+            HashMap additionalInformation, String rootPath) {
 
         TrackFilter filter = (TrackFilter) additionalInformation.get(SessionElement.FILTER);
         String item = getAttribute(element, SessionAttribute.ITEM.getText());
@@ -882,14 +929,14 @@ public class IGVSessionReader implements SessionReader {
         NodeList elements = element.getChildNodes();
         process(session, elements, additionalInformation, rootPath);
     }
-
     /**
-     * A counter to generate unique panel names.  Needed for backward-compatibility of old session files.
+     * A counter to generate unique panel names. Needed for
+     * backward-compatibility of old session files.
      */
     private int panelCounter = 1;
 
     private void processPanel(Session session, Element element, HashMap additionalInformation, String rootPath) {
-     //   log.info("processPanel:"+element.getNodeName());
+        //   log.info("processPanel:"+element.getNodeName());
         panelElementPresent = true;
         String panelName = element.getAttribute("name");
         if (panelName == null) {
@@ -900,8 +947,8 @@ public class IGVSessionReader implements SessionReader {
         NodeList elements = element.getChildNodes();
         for (int i = 0; i < elements.getLength(); i++) {
             Node childNode = elements.item(i);
-            log.info("processPanel: child="+childNode.getNodeName());
-            if (childNode.getNodeName().equalsIgnoreCase(SessionElement.DATA_TRACK.getText()) ||  // Is this a track?
+            //log.info("processPanel: child=" + childNode.getNodeName());
+            if (childNode.getNodeName().equalsIgnoreCase(SessionElement.DATA_TRACK.getText()) || // Is this a track?
                     childNode.getNodeName().equalsIgnoreCase(SessionElement.TRACK.getText())) {
 
                 List<Track> tracks = processTrack(session, (Element) childNode, additionalInformation, rootPath);
@@ -914,10 +961,10 @@ public class IGVSessionReader implements SessionReader {
         }
 
         // now sort tracks by order
-        log.info("======== Sorting panel tracks by order");
+       // log.info("======== Sorting panel tracks by order");
         Collections.sort(panelTracks, new TrackOrderComparator());
-        for (Track t: panelTracks) {
-            log.info(t.getTrackorder()+":"+ t.getName());
+        for (Track t : panelTracks) {
+            log.info(t.getTrackorder() + ":" + t.getName());
         }
         TrackPanel panel = IGV.getInstance().getTrackPanel(panelName);
         panel.addTracks(panelTracks);
@@ -948,20 +995,19 @@ public class IGVSessionReader implements SessionReader {
         }
     }
 
-
     /**
-     * Process a track element.  This should return a single track, but could return multiple tracks since the
-     * uniqueness of the track id is not enforced.
+     * Process a track element. This should return a single track, but could
+     * return multiple tracks since the uniqueness of the track id is not
+     * enforced.
      *
      * @param session
      * @param element
      * @param additionalInformation
      * @return
      */
-
     private List<Track> processTrack(Session session, Element element, HashMap additionalInformation, String rootPath) {
 
-        log.info("=== processTrack "+element);    
+        log.info("=== processTrack " + element);
         String id = getAttribute(element, SessionAttribute.ID.getText());
 
         Map<String, String> tAttributes = Utilities.getAttributes(element);
@@ -969,9 +1015,9 @@ public class IGVSessionReader implements SessionReader {
         Map<String, String> drAttributes = null;
 
         String trackLine = getAttribute(element, SessionAttribute.TRACK_LINE.getText());
-       
-       // else log.info("Got nothing for "+SessionAttribute.TRACK_LINE.getText()+" in element "+element);
-        
+
+        if (trackLine != null) log.info("Got trackline "+trackLine+" for id "+id);
+
         if (element.hasChildNodes()) {
             Node childNode = element.getFirstChild();
             Node sibNode = childNode.getNextSibling();
@@ -986,8 +1032,8 @@ public class IGVSessionReader implements SessionReader {
 
         if (matchedTracks == null) {
             log.info("Warning.  No tracks were found with id: " + id + " in session file. Check spelling. Tracks are:");
-            for (Iterator it=trackDictionary.keySet().iterator(); it.hasNext();) {
-                log.info("              - "+it.next());
+            for (Iterator it = trackDictionary.keySet().iterator(); it.hasNext();) {
+                log.info("              - " + it.next());
             }
         } else {
             for (final Track track : matchedTracks) {
@@ -996,19 +1042,19 @@ public class IGVSessionReader implements SessionReader {
                 if (version >= 4 && track == geneTrack || track == seqTrack) {
                     igv.removeTracks(Arrays.asList(track));
                 }
-                
-                
+
+
                 track.restorePersistentState(tAttributes);
                 TrackProperties tp = null;
                 if (trackLine != null) {
-                     tp = new TrackProperties();  
-                     ParsingUtils.parseTrackLine(trackLine, tp);
-                     track.setProperties(tp);
-                     log.info("Processing trackLine "+trackLine+" for "+track.getDisplayName()+":"+tp.toString());
-                     log.info("cutoff of properties="+tp.getCutoffScore()+", trackorder of properties: "+tp.getTrackorder());                   
-                     log.info("Got cutoff: "+track.getCutoffScore());
-                     log.info("Got order: "+track.getTrackorder());
-                     
+                    tp = new TrackProperties();
+                    ParsingUtils.parseTrackLine(trackLine, tp);
+                    track.setProperties(tp);
+                    log.info("Processing trackLine " + trackLine + " for " + track.getDisplayName() + ":" + tp.toString());
+                    log.info("cutoff of properties=" + tp.getCutoffScore() + ", trackorder of properties: " + tp.getTrackorder());
+                    log.info("Got cutoff: " + track.getCutoffScore());
+                    log.info("Got order: " + track.getTrackorder());
+
                 }
                 if (drAttributes != null) {
                     DataRange dr = track.getDataRange();
@@ -1019,7 +1065,7 @@ public class IGVSessionReader implements SessionReader {
             trackDictionary.remove(id);
 
         }
-       
+
         NodeList elements = element.getChildNodes();
         process(session, elements, additionalInformation, rootPath);
 
@@ -1057,7 +1103,6 @@ public class IGVSessionReader implements SessionReader {
         }
     }
 
-
     /**
      * Process a list of session element nodes.
      *
@@ -1091,8 +1136,12 @@ public class IGVSessionReader implements SessionReader {
     private String getAttribute(Element element, String key) {
         String value = element.getAttribute(key);
         //log.info("finding "+key +" in "+ element.getNodeName());
-        if (value == null) value = element.getAttribute(key.toLowerCase());
-        if (value == null) value = element.getAttribute(key.toUpperCase());
+        if (value == null) {
+            value = element.getAttribute(key.toLowerCase());
+        }
+        if (value == null) {
+            value = element.getAttribute(key.toUpperCase());
+        }
         if (value != null) {
             if (value.trim().equals("")) {
                 value = null;
@@ -1100,6 +1149,4 @@ public class IGVSessionReader implements SessionReader {
         }
         return value;
     }
-
-
 }

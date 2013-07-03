@@ -268,6 +268,9 @@ public class TrackMenuUtils {
 
 
         menu.add(getDataRangeItem(tracks));
+        if (tracks.size() > 1) {
+            menu.add(getLinkTracksItem(tracks));
+        }
         menu.add(getHeatmapScaleItem(tracks));
 
         if (tracks.size() > 0) {
@@ -469,6 +472,30 @@ public class TrackMenuUtils {
         return item;
     }
 
+    public static JMenuItem getLinkTracksItem(final Collection<Track> selectedTracks) {
+        JMenuItem item = new JMenuItem("Link data ranges of tracks...");
+
+        item.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent evt) {
+                ArrayList<AbstractTrack> tracks = new ArrayList<AbstractTrack>();
+                 for (Track track : selectedTracks) {
+                      if (track instanceof DataTrack) tracks.add((DataTrack) track);
+                 }
+
+                for (int i = 0; i + 1 < tracks.size(); i++) {
+                    AbstractTrack a = tracks.get(i);
+                    AbstractTrack b = tracks.get(i + 1);
+                    if (a != b) a.setLinkedTrack(b.getId());                                        
+                }
+
+                for (AbstractTrack track : tracks) {                    
+                    track.linkDataRange();                    
+                }
+            }
+        });
+        return item;
+    }
+
     public static JMenuItem getDataRangeItem(final Collection<Track> selectedTracks) {
         JMenuItem item = new JMenuItem("Set Data Range...");
 
@@ -510,6 +537,9 @@ public class TrackMenuUtils {
 
                         for (Track track : selectedTracks) {
                             track.setDataRange(axisDefinition);
+                            if (track instanceof AbstractTrack) {
+                                ((AbstractTrack) track).linkDataRange();
+                            }
                         }
                         IGV.getInstance().repaint();
                     }
@@ -517,6 +547,8 @@ public class TrackMenuUtils {
                 }
             }
         });
+
+
         return item;
     }
 
