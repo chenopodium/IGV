@@ -23,6 +23,7 @@ public class AffectiveGenome implements Genome {
     private Map<String, Long> cumulativeOffsets = new HashMap();
 
 
+    
     public AffectiveGenome() {
         chromosomeMap = new TreeMap<Date, Chromosome>(new Comparator<Date>() {
             public int compare(Date date, Date date1) {
@@ -37,6 +38,15 @@ public class AffectiveGenome implements Genome {
         //addChromosome(new AffectiveChromosome("2011-04-06"));
     }
 
+    /** determine if this organism is female or not - currently just for humans :-) */
+    @Override
+    public boolean isFemale(List<Chromosome>  chromosomesWithData) {
+        // if the list does not contain y, then it is not a female
+        for (Chromosome chr: chromosomesWithData) {
+            if (chr.isY()) return false;
+        }
+        return true;
+    }
 
     /**
      * The "AffectiveGenome" represents the calendar, so any valid date string is a chromosome.  If its not
@@ -45,6 +55,7 @@ public class AffectiveGenome implements Genome {
      * @param chrName
      * @return
      */
+    @Override
     public Chromosome getChromosome(String chrName) {
 
         if (!chrDateMap.containsKey(chrName)) {

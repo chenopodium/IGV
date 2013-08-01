@@ -469,6 +469,12 @@ public class IGVSessionReader implements SessionReader {
 
     }
 
+    /** hook in to add code to check the validity of resources urls. For instance,
+     * to verify that the session.xlm file has not been tampered with, one could add a signature/hash code
+     * of those urls and check the hash code with the hash code of the computed urls  */
+    protected String  checkAccessToResources(Collection<ResourceLocator> dataFiles) {
+        return null;
+    }
     private void processResources(Session session, Element element, HashMap additionalInformation, String rootPath) {
         dataFiles = new ArrayList();
         missingDataFiles = new ArrayList();
@@ -499,8 +505,13 @@ public class IGVSessionReader implements SessionReader {
 
             MessageUtils.showMessage(message.toString());
         }
+        
         if (dataFiles.size() > 0) {
-
+            String message= checkAccessToResources(dataFiles) ;
+            if (message != null && message.length()>0) {               
+                MessageUtils.showMessage(message.toString());
+                return;
+            }
             final List<String> errors = new ArrayList<String>();
 
             // Load files concurrently -- TODO, put a limit on # of threads?

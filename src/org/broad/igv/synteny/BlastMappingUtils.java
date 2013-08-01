@@ -22,11 +22,9 @@ package org.broad.igv.synteny;
 
 import org.broad.igv.data.DataUtils;
 import org.broad.igv.data.WiggleDataset;
-import org.broad.igv.data.WiggleParser;
 import org.broad.igv.feature.FeatureUtils;
 import org.broad.igv.feature.LocusScore;
 import org.broad.igv.track.WindowFunction;
-import org.broad.igv.util.ResourceLocator;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -124,7 +122,7 @@ public class BlastMappingUtils {
 
     static class BasicScore implements LocusScore {
 
-        String chr;
+      String chr;
     int start;
     int end;
     float score;
@@ -136,6 +134,11 @@ public class BlastMappingUtils {
         this.score = score;
     }
 
+    
+     @Override
+    public String getName() {
+        return null;
+    }
     public BasicScore(BasicScore bs) {
         this.chr = bs.chr;
         this.start = bs.start;

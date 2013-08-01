@@ -48,6 +48,10 @@ public class Segment implements LocusScore {
         this.score = score;
     }
 
+    @Override
+    public String getName() {
+        return description;
+    }
 
 
     public Segment(String chr, int start, int origStart, int end, int origEnd, float value, String description) {

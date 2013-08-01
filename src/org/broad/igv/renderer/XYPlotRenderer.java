@@ -208,7 +208,11 @@ public abstract class XYPlotRenderer extends DataRenderer {
                     msgs++;
                 }
                 //Color color = (dataY >= baseValue) ? posColor : negColor;
-                Color color = getGradientColor(minValue, maxValue, dataY, posColor, negColor, midColor, cutOff);
+                // if sepecial segment?
+                Color color = Color.black;
+                if (score.getName() != null && score.getName().equalsIgnoreCase("RED"))color = Color.red;
+                
+                else  color = getGradientColor(minValue, maxValue, dataY, posColor, negColor, midColor, cutOff);
                 drawDataPoint(color, (int) dx, (int) pX, baseY, pY, context);
 
             }

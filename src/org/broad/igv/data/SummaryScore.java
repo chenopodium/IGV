@@ -40,6 +40,11 @@ public class SummaryScore implements LocusScore {
         this.value = value;
     }
 
+    
+     @Override
+    public String getName() {
+        return null;
+    }
     public SummaryScore(LocusScore anotherScore) {
         this.start = anotherScore.getStart();
         this.end = anotherScore.getEnd();

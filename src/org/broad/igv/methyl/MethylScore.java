@@ -84,4 +84,9 @@ public class MethylScore implements LocusScore {
                 (strand == Strand.POSITIVE ? " (+)" : (strand == Strand.NEGATIVE ? " (-)" : ""));
     }
 
+    @Override
+    public String getName() {
+        return percentMethylated+"% methylated";
+    }
+
 }

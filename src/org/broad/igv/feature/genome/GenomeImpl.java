@@ -8,18 +8,15 @@
  * This software is licensed under the terms of the GNU Lesser General Public License (LGPL),
  * Version 2.1 which is available at http://www.opensource.org/licenses/lgpl-2.1.php.
  */
-
-
 /*
-* Genome.java
-*
-* Created on November 9, 2007, 9:05 AM
-*
-* To change this template, choose Tools | Template Manager
-* and open the template in the editor.
-*/
+ * Genome.java
+ *
+ * Created on November 9, 2007, 9:05 AM
+ *
+ * To change this template, choose Tools | Template Manager
+ * and open the template in the editor.
+ */
 package org.broad.igv.feature.genome;
-
 
 import org.apache.log4j.Logger;
 import org.broad.igv.DirectoryManager;
@@ -37,14 +34,14 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * Simple model of a genome.  Keeps an ordered list of Chromosomes, an alias table, and genome position offsets
- * for each chromosome to support a whole-genome view.
+ * Simple model of a genome. Keeps an ordered list of Chromosomes, an alias
+ * table, and genome position offsets for each chromosome to support a
+ * whole-genome view.
  */
 public class GenomeImpl implements Genome {
 
     private static Logger log = Logger.getLogger(GenomeImpl.class);
     public static final int MAX_WHOLE_GENOME = 10000;
-
     private String id;
     private String displayName;
     private List<String> chromosomeNames;
@@ -92,6 +89,20 @@ public class GenomeImpl implements Genome {
         initializeChromosomeAliases();
     }
 
+    /**
+     * determine if this organism is female or not - currently just for humans
+     * :-)
+     */
+    @Override
+    public boolean isFemale(List<Chromosome> chromosomesWithData) {
+        // if the list does not contain y, then it is not a female
+        for (Chromosome chr : chromosomesWithData) {
+            if (chr.isY()) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     public String getChromosomeAlias(String str) {
         if (str == null) {
@@ -111,7 +122,9 @@ public class GenomeImpl implements Genome {
         File aliasFile = new File(DirectoryManager.getGenomeCacheDirectory(), id + "_alias.tab");
 
         if (aliasFile.exists()) {
-            if (chrAliasTable == null) chrAliasTable = new HashMap();
+            if (chrAliasTable == null) {
+                chrAliasTable = new HashMap();
+            }
 
             BufferedReader br = null;
 
@@ -120,9 +133,10 @@ public class GenomeImpl implements Genome {
                 addChrAliases(GenomeManager.loadChrAliases(br));
             } catch (IOException e) {
                 log.error("Error loading chr alias table", e);
-                if (!Globals.isHeadless())
-                    MessageUtils.showMessage("<html>Error loading chromosome alias table.  Aliases will not be avaliable<br>" +
-                            e.toString());
+                if (!Globals.isHeadless()) {
+                    MessageUtils.showMessage("<html>Error loading chromosome alias table.  Aliases will not be avaliable<br>"
+                            + e.toString());
+                }
             } finally {
                 if (br != null) {
                     try {
@@ -136,8 +150,9 @@ public class GenomeImpl implements Genome {
     }
 
     /**
-     * Pouplate the chr alias table.  The input is a collection of chromosome synonym lists.  The
-     * directionality is determined by the "true" chromosome names.
+     * Pouplate the chr alias table. The input is a collection of chromosome
+     * synonym lists. The directionality is determined by the "true" chromosome
+     * names.
      *
      * @param synonymsList
      */
@@ -169,7 +184,6 @@ public class GenomeImpl implements Genome {
         }
     }
 
-
     /**
      * Update the chromosome alias table with common variations
      */
@@ -196,21 +210,15 @@ public class GenomeImpl implements Genome {
 
 
             // These are legacy mappings,  these are now defined in the genomes alias file
-            if (id.startsWith("hg") || id.equalsIgnoreCase("1kg_ref"))
-
-            {
+            if (id.startsWith("hg") || id.equalsIgnoreCase("1kg_ref")) {
                 chrAliasTable.put("23", "chrX");
                 chrAliasTable.put("24", "chrY");
                 chrAliasTable.put("MT", "chrM");
-            } else if (id.startsWith("mm"))
-
-            {
+            } else if (id.startsWith("mm")) {
                 chrAliasTable.put("21", "chrX");
                 chrAliasTable.put("22", "chrY");
                 chrAliasTable.put("MT", "chrM");
-            } else if (id.equals("b37"))
-
-            {
+            } else if (id.equals("b37")) {
                 chrAliasTable.put("chrM", "MT");
                 chrAliasTable.put("chrX", "23");
                 chrAliasTable.put("chrY", "24");
@@ -235,15 +243,14 @@ public class GenomeImpl implements Genome {
     }
 
     /**
-     * Extract the user friendly name from an NCBI accession
-     * example: gi|125745044|ref|NC_002229.3|  =>  NC_002229.3
+     * Extract the user friendly name from an NCBI accession example:
+     * gi|125745044|ref|NC_002229.3| => NC_002229.3
      */
     public static String getNCBIName(String name) {
 
         String[] tokens = name.split("\\|");
         return tokens[tokens.length - 1];
     }
-
 
     public String getHomeChromosome() {
         if (getLongChromosomeNames().size() == 1 || chromosomeNames.size() > MAX_WHOLE_GENOME) {
@@ -253,21 +260,17 @@ public class GenomeImpl implements Genome {
         }
     }
 
-
     public Chromosome getChromosome(String chrName) {
         return chromosomeMap.get(getChromosomeAlias(chrName));
     }
-
 
     public List<String> getAllChromosomeNames() {
         return chromosomeNames;
     }
 
-
     public Collection<Chromosome> getChromosomes() {
         return chromosomeMap.values();
     }
-
 
     public long getTotalLength() {
         if (totalLength < 0) {
@@ -278,7 +281,6 @@ public class GenomeImpl implements Genome {
         }
         return totalLength;
     }
-
 
     public long getCumulativeOffset(String chr) {
 
@@ -384,7 +386,6 @@ public class GenomeImpl implements Genome {
         return sequence.getBase(chr, pos);
     }
 
-
     public void setCytobands(LinkedHashMap<String, List<Cytoband>> chrCytoMap) {
 
         for (Map.Entry<String, List<Cytoband>> entry : chrCytoMap.entrySet()) {
@@ -403,12 +404,10 @@ public class GenomeImpl implements Genome {
         this.geneTrack = geneFeatureTrack;
     }
 
-   
     public FeatureTrack getGeneTrack() {
         return geneTrack;
     }
 
-    
     public List<String> getLongChromosomeNames() {
         if (longChromosomeNames == null) {
             longChromosomeNames = new ArrayList(getAllChromosomeNames().size());
@@ -423,8 +422,6 @@ public class GenomeImpl implements Genome {
         return longChromosomeNames;
     }
 
-
-   
     public long getNominalLength() {
         if (nominalLength < 0) {
             nominalLength = 0;
@@ -435,5 +432,4 @@ public class GenomeImpl implements Genome {
         }
         return nominalLength;
     }
-
 }

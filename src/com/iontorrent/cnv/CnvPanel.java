@@ -109,7 +109,9 @@ public class CnvPanel extends JPanel{
          g.setStroke(new BasicStroke(1));
         Color cgray = new Color(220,220,220);
         
-        for (double yy = 0.5; yy < actualmax; yy+=0.5) {
+        double delta = Math.pow(10, ((int)Math.log10(actualmax)-0.5))/2.0;
+                
+        for (double yy = delta; yy < actualmax; yy+=delta) {
              int y = MY - (int)(yy*dy);
              int y1 = MY + (int)(yy*dy);
              g.setColor(cgray);
@@ -130,7 +132,7 @@ public class CnvPanel extends JPanel{
                 int startx = BORDER+(int)(startposperchr[chr-1]*dxperb);
                 int y = MY - (int)(point.ratio*dy);
                 int x = startx+(int)(pos*dxperb);
-                if (count % 100 == 0) {
+                if (count % 100000 == 0) {
                     p("DataPoint: chr="+chr+", x="+x+", ratio="+point.ratio+", y="+y+", pos="+pos);
                 }
                 g.setColor(Color.blue.brighter());
@@ -138,8 +140,29 @@ public class CnvPanel extends JPanel{
                 g.setColor(Color.black);
                 g.drawOval(x, y, r, r);
                 count++;
-            }
-            
+            }            
+        }
+        g.setColor(Color.red.darker());
+        r = 3;
+        count = 0;
+        for (CnvDataPoint point: data.getRedLinePoints()) {
+            double startpos = point.pos/MB;
+            double endpos = point.end/MB;
+            int chr = point.chr;
+            if (chr < startposperchr.length) {
+                int startx = BORDER+(int)(startposperchr[chr-1]*dxperb);
+                int y = MY - (int)(point.ratio*dy);
+                int x1 = startx+(int)(startpos*dxperb);
+                int x2 = startx+(int)(endpos*dxperb);
+                if (count % 10 == 0) {
+                    p("red DataPoint: chr="+chr+", x="+x1+", ratio="+point.ratio+", y="+y+", pos="+startpos);
+                }
+                g.setColor(Color.red.brighter());
+                g.fill3DRect(x1, y, x2-x1, r, true);
+                g.setColor(Color.black);
+                g.drawRect(x1, y, x2-x1, r);
+                count++;
+            }            
         }
     }
     private void p(String s) {

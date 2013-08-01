@@ -53,8 +53,8 @@ public class RenderTypePanel extends javax.swing.JPanel {
         pan.setLayout(new BorderLayout());
         pan.add("Center", bag);
         panColors.setLayout(new BorderLayout());
-        double cutoff = render.getCutoffScore();
-        txtCutoff.setText(""+cutoff);
+        double parcutoff = render.getParCutoffScore();
+        txtCutoff.setText(""+parcutoff);
         for (int i = 0; i < nr; i++) {
             Color c = render.getColor(i);
             if (c == null) {

@@ -92,6 +92,11 @@ public class IonTorrentArgumentHandler implements ArgumentHandler {
                     if (IGV.DEBUG) MessageUtils.showMessage("Got batchFile  "+val);
                     PreferenceManager.getInstance().putTemp(key, val);
                     return null;
+                } else if (key.equalsIgnoreCase("signature") || key.equalsIgnoreCase("hashcode")) {
+                    log.info("Got hash code/signature for session resources" + key + "=" + val);                    
+                    if (IGV.DEBUG) MessageUtils.showMessage("Got signature  "+val);
+                    PreferenceManager.getInstance().putTemp("signature", val);
+                    return null;
                 } else if (key.equalsIgnoreCase("locus") || key.equalsIgnoreCase("position")) {
                     log.info("Got locus: " + key + "=" + val);
                     igvargs.setLocusString(val);

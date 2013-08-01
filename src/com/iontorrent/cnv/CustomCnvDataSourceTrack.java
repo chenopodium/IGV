@@ -4,27 +4,19 @@
  */
 package com.iontorrent.cnv;
 
-import com.iontorrent.karyo.views.KaryoManager;
-import java.awt.Color;
-import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import javax.swing.JCheckBoxMenuItem;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import org.broad.igv.data.DataSource;
 import org.broad.igv.renderer.PointsRenderer;
-import org.broad.igv.sam.AlignmentTrack;
 import org.broad.igv.track.DataSourceTrack;
 import org.broad.igv.track.Track;
 import org.broad.igv.track.TrackClickEvent;
 import org.broad.igv.track.TrackMenuUtils;
-import org.broad.igv.ui.IGV;
 import org.broad.igv.ui.panel.IGVPopupMenu;
 import org.broad.igv.util.ResourceLocator;
 

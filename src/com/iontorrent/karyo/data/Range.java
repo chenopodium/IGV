@@ -31,4 +31,8 @@ public class Range {
         o = (r.a <a && a < r.b) || ( r.a< b && b < r.b);
         return o;
     }
+    
+    public String toString() {
+        return "["+a+","+b+"]";
+    }
 }

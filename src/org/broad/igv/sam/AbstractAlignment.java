@@ -43,6 +43,9 @@ public abstract class AbstractAlignment implements Alignment {
         return getChr();
     }
 
+    public String getName() {
+        return readName;
+    }
     public String getChr() {
         return chr;
     }

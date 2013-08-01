@@ -14,8 +14,28 @@ public class CnvDataPoint {
     String clone;
     long end;
     int chr;
+    private PlotType type;
 
-    CnvDataPoint(int chr, long pos, long end, double ratio, String clone) {
+    /**
+     * @return the type
+     */
+    public PlotType getType() {
+        return type;
+    }
+
+    /**
+     * @param type the type to set
+     */
+    public void setType(PlotType type) {
+        this.type = type;
+    }
+    
+   public static enum PlotType {
+        SAMPLE,
+        REDLINE,       
+    }
+   
+   CnvDataPoint(int chr, long pos, long end, double ratio, String clone) {
         this.chr = chr;
         this.pos = pos;
         this.end = Math.max(pos+1, end);

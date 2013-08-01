@@ -41,6 +41,10 @@ public class PairedAlignment implements Alignment {
     AlignmentBlock[] blocks;
 
 
+    @Override
+    public String getName() {
+        return readName;
+    }
     public PairedAlignment(Alignment firstAlignment) {
         this.firstAlignment = firstAlignment;
         this.start = firstAlignment.getStart();

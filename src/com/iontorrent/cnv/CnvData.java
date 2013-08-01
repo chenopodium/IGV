@@ -23,13 +23,26 @@ public class CnvData {
     private int colRatio = 2;
     private int colSample = -1;
     private int colControl = -1;
+    private boolean log;
     int bad = 0;
     
     private ArrayList<CnvDataPoint> points;
+    private ArrayList<CnvDataPoint> redlinedata;
     
     
-    public CnvData() {
-        this("h:\\data\\cnv.csv");
+    private String samplefile;
+    private String redline;
+    private String controlfile;
+    
+    private boolean gotAllData;
+    
+    public CnvData(String samplefile, String controlfile, String redline) {       
+        this.samplefile = samplefile;
+        this.controlfile = controlfile;
+        this.redline = redline;
+        this.log = true;
+       
+        
     }
     public CnvData(String file) {
         this.file = file;
@@ -40,6 +53,21 @@ public class CnvData {
     public ArrayList<CnvDataPoint> getPoints(){
         return points;
     }
+    public ArrayList<CnvDataPoint> getRedLinePoints(){
+        return redlinedata;
+    }
+    public ArrayList<CnvDataPoint> loadData(String chr) {
+        if (gotAllData) return points;
+        // TODO: JUST FOR CHR IF NOT NULL
+         if (!FileTools.isUrl(samplefile)) {
+            chr = "ALL";
+            gotAllData = true;
+        }
+        parseSampleAndControlFile(chr);
+         parseRedLineFile();
+       return points;
+        
+    }
     private int count(String line, String s ) {
         int count = 0;
         int pos = line.indexOf(s);
@@ -49,7 +77,117 @@ public class CnvData {
         }
         return count;
     }
-    public void parse() {
+    
+    public void parseRedLineFile (){
+        ArrayList<String> slines = FileTools.getFileAsArray(redline);
+         
+        redlinedata = new ArrayList<CnvDataPoint>();
+        int count = 0;
+        
+        if (slines == null || slines.size()<1){
+           p("Got no data in file "+samplefile+" or "+controlfile);
+           return;
+           
+        }
+        String sep = "\t";
+        this.setColChr(1);
+        this.setColPos(2);
+        this.setColEnd(3);
+        this.setColRatio(4);
+        for (int i = 0; i < slines.size() ; i++) {
+            String sline = slines.get(i);
+            ArrayList<String> sitems = StringTools.parseList(sline, sep);
+            if (sitems != null && sitems.size()>3) {
+                String schr = get(sitems, getColChr()).toLowerCase();
+                if (schr.startsWith("chr")) schr = schr.substring(3);
+                int chr = getInt(schr);
+                double ratio = getDouble(get(sitems, getColRatio()));
+                
+              
+                long spos = getLong(get(sitems, getColPos()));
+                long send = getLong(get(sitems,this.colEnd));
+                if (chr > 0 && spos > -1 ) {
+                      if (ratio < 100) {
+                       // if (log) ratio = Math.log(ratio);
+                        if (count % 10000 == 0) p("Got RED line: "+chr+":"+spos+"-"+send+", ratio="+(int)ratio);
+                        CnvDataPoint point = new CnvDataPoint(chr, spos, send, ratio, "");
+                          redlinedata.add(point);
+                        count++;
+                    }
+                    else p("ratio too large, ignoring: "+chr+":"+spos+"-"+send+", ratio="+(int)ratio);
+                }
+                else {
+                    if (bad == 0 || bad % 100 == 0 || bad <10) {
+                        p("Ignoring lines: "+sline);
+                        bad++;
+                    }
+                }                                                           
+            }
+        }
+    
+    }
+    public void parseSampleAndControlFile(String chrToLoad) {
+        
+         ArrayList<String> slines = FileTools.getFileAsArray(samplefile);
+         ArrayList<String> clines = FileTools.getFileAsArray(controlfile);
+         
+         points = new ArrayList<CnvDataPoint>();
+        int count = 0;
+        
+        if (slines == null || slines.size()<1 || clines == null || clines.size()<1){
+           p("Got no data in file "+samplefile+" or "+controlfile);
+           return;
+           
+        }
+        String sep = "\t";
+        this.setColChr(1);
+        this.setColPos(2);
+        this.setColEnd(3);
+        this.setColRatio(4);
+        for (int i = 0; i < slines.size() && i < clines.size(); i++) {
+            String cline = clines.get(i);
+            String sline = slines.get(i);
+            ArrayList<String> citems = StringTools.parseList(cline, sep);
+            ArrayList<String> sitems = StringTools.parseList(sline, sep);
+            if (citems != null && citems.size()>3 && sitems != null && sitems.size()>3) {
+                String schr = get(citems, getColChr()).toLowerCase();
+                if (schr.startsWith("chr")) schr = schr.substring(3);
+                int chr = getInt(schr);
+                double sample = getDouble(get(sitems, getColRatio()));
+                double control = getDouble(get(citems, getColRatio()));
+                if (control > 0.00001) {
+                    // XXX difference? log? ratio?
+                    double ratio = sample;// - control;
+                    
+                    long cpos = getLong(get(citems, getColPos()));
+                    long cend = getLong(get(citems,this.colEnd));
+                    long spos = getLong(get(sitems, getColPos()));
+                    long send = getLong(get(sitems,this.colEnd));
+                    if (chr > 0 && cpos > -1 && (cpos == spos)) {
+                        //if (ratio > 10) ratio = ratio / 1000;
+                        //if (ratio <-10) ratio = ratio / 1000;
+                        // check position xxx
+                        
+                        if (ratio < 30) {
+                           // if (log) ratio = Math.log(ratio);
+                            if (count % 10000 == 0) p("Got data, line: "+chr+":"+spos+"-"+send+", ratio="+(int)ratio);
+                            CnvDataPoint point = new CnvDataPoint(chr, spos, send, ratio, "");
+                            points.add(point);
+                            count++;
+                        }
+                        else p("ratio too large, ignoring: "+chr+":"+spos+"-"+send+", ratio="+(int)ratio);
+                    }
+                    else {
+                        if (bad == 0 || bad % 100 == 0 || bad <10) {
+                            p("Ignoring lines: "+cline+"/"+sline);
+                            bad++;
+                        }
+                    }
+                }                                            
+            }
+        }
+    }
+    public void parseCustomFile() {
         ArrayList<String> lines = FileTools.getFileAsArray(getFile());
         
         
@@ -88,6 +226,11 @@ public class CnvData {
                     }
                 }
                 
+                if (log) {
+                    //p("Computing log")
+                    if (ratio >=0) ratio = Math.log(ratio);
+                    else ratio  =0;
+                }
                 String schr = get(items, getColChr()).toLowerCase();
                 if (schr.startsWith("chr")) schr = schr.substring(3);
                 int chr = getInt(schr);
@@ -97,7 +240,7 @@ public class CnvData {
                 if (chr > 0 && pos > -1 ) {
                     //if (ratio > 10) ratio = ratio / 1000;
                     //if (ratio <-10) ratio = ratio / 1000;
-                    if (count % 100 == 0) p("Got data, line: "+chr+":"+pos+"-"+end+", ratio="+ratio+", "+desc);
+                    if (count % 1000 == 0) p("Got data, line: "+chr+":"+pos+"-"+end+", ratio="+ratio+", "+desc);
                     CnvDataPoint point = new CnvDataPoint(chr, pos, end, ratio, desc);
                     points.add(point);
                     count++;
@@ -110,6 +253,7 @@ public class CnvData {
                 }
             }
         }
+        gotAllData = true;
         
     }
     private String get( ArrayList<String> items, int col) {
@@ -248,5 +392,19 @@ public class CnvData {
     }
     public void setColControl(int colControl) {
         this.colControl = colControl;
+    }
+
+    /**
+     * @return the log
+     */
+    public boolean isLog() {
+        return log;
+    }
+
+    /**
+     * @param log the log to set
+     */
+    public void setLog(boolean log) {
+        this.log = log;
     }
 }

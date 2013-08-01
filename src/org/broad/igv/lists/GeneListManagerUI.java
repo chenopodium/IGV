@@ -475,7 +475,6 @@ public class GeneListManagerUI extends JDialog {
 
     private void initComponents() {
         // JFormDesigner - Component initialization - DO NOT MODIFY  //GEN-BEGIN:initComponents
-        // Generated using JFormDesigner non-commercial license
         createUIComponents();
 
         dialogPane = new JPanel();
@@ -517,6 +516,7 @@ public class GeneListManagerUI extends JDialog {
 
         //======== this ========
         setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        setTitle("Gene List Network");
         Container contentPane = getContentPane();
         contentPane.setLayout(new BorderLayout());
 
@@ -841,7 +841,6 @@ public class GeneListManagerUI extends JDialog {
     }
 
     // JFormDesigner - Variables declaration - DO NOT MODIFY  //GEN-BEGIN:variables
-    // Generated using JFormDesigner non-commercial license
     private JPanel dialogPane;
     private JPanel contentPanel;
     private JPanel panel2;

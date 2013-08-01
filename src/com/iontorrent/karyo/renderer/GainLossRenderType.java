@@ -41,10 +41,10 @@ public class GainLossRenderType extends RenderType {
         String rel = "";
         if (this.getRelevantAttName() != null) rel = "based on "+rel+" or ";
         
-        if (nr == 0) return "Neutral color at "+this.getCutoffScore();
-        else if (nr == 1)return "Gain color ("+rel+"score > "+this.getCutoffScore()+")" ;
+        if (nr == 0) return "Neutral color at "+this.getParCutoffScore();
+        else if (nr == 1)return "Gain color ("+rel+"score > "+this.getParCutoffScore()+")" ;
         
-        else if (nr == 2)  return "Loss color ( "+rel+"score < "+this.getCutoffScore()+")";        
+        else if (nr == 2)  return "Loss color ( "+rel+"score < "+this.getParCutoffScore()+")";        
         else return null;
     }
     @Override
@@ -80,8 +80,8 @@ public class GainLossRenderType extends RenderType {
                 else return NEUTRAL;
             }            
         }
-        if (f.isInsertion(this.getCutoffScore())) return GAIN;
-        else if (f.isDeletion(this.getCutoffScore())) return LOSS;
+        if (f.isInsertion(this.getCutoffScore(f))) return GAIN;
+        else if (f.isDeletion(this.getCutoffScore(f))) return LOSS;
         else return NEUTRAL;               
     }
     

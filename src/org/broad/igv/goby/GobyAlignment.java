@@ -72,6 +72,10 @@ public class GobyAlignment implements Alignment {
         }
     };
 
+    @Override
+    public String getName() {
+        return "goby";
+    }
     /**
      * Construct the facade for an iterator and entry.
      *

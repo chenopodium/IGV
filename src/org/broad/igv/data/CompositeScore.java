@@ -35,6 +35,10 @@ public class CompositeScore implements LocusScore {
     private WindowFunction windowFunction;
 
 
+     @Override
+    public String getName() {
+        return null;
+    }
     public CompositeScore(int start, int end, float value, float[] data, String[] probes, WindowFunction windowFunction) {
         this.start = start;
         this.end = end;

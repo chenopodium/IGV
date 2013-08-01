@@ -106,4 +106,6 @@ public interface Alignment extends LocusScore {
     String getClipboardString(double location);
 
     Strand getReadStrand();
+    
+    
 }

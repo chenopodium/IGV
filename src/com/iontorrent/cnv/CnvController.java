@@ -20,6 +20,7 @@ public class CnvController {
     CnvData data;
     static String lastfile;
     String file;
+    private boolean isLog;
     private int colChr = -1;
     private int colPos = -1;
     private int colEnd = -1;
@@ -34,7 +35,9 @@ public class CnvController {
     }
 
     public String getCustomProperties() {
-        String s = "chr:" + colChr + "_pos:" + colPos +  "_end:" + colEnd + "_desc:" + colDesc + "_ratio:" + colRatio + "_sample:" + colSample + "_control:" + colControl;
+        String s = "chr:" + colChr + "_pos:" + colPos +  "_end:" + colEnd + "_desc:" + colDesc 
+                + "_ratio:" + colRatio + "_sample:" + colSample + "_control:" + colControl
+                + "_log:"+(isLog ? 1 : 0);
         return s;
     }
 
@@ -72,7 +75,9 @@ public class CnvController {
                 } else if (a.startsWith("ratio")) {
                     colRatio = val;
                 } else if (a.startsWith("control")) {
-                    colControl = val;
+                    colControl = val;                
+                } else if (a.startsWith("log")) {
+                    isLog = val > 0;
                 }
             }
 
@@ -125,6 +130,7 @@ public class CnvController {
         CnvTablePanel tablepanel = new CnvTablePanel(model);
         
         tablepanel.setColChr(colChr);
+        tablepanel.setLog(isLog);
         tablepanel.setColControl(colControl);
         tablepanel.setColDesc(colDesc);
         tablepanel.setColPos(colPos);
@@ -145,6 +151,8 @@ public class CnvController {
             setColRatio(tablepanel.getColRatio());
             setColSample(tablepanel.getColSample());
             setColControl(tablepanel.getColControl());
+            setIsLog(tablepanel.isLog());
+            
             return true;
         }
 
@@ -199,7 +207,8 @@ public class CnvController {
         data.setColRatio(getColRatio());
         data.setColPos(getColPos());
         data.setColEnd(getColEnd());
-        data.parse();
+        data.setLog(this.isLog);
+        data.parseCustomFile();
         return data;
     }
 
@@ -274,5 +283,19 @@ public class CnvController {
     }
     private void setColControl(int colControl) {
         this.colControl = colControl;
+    }
+
+    /**
+     * @return the isLog
+     */
+    public boolean isIsLog() {
+        return isLog;
+    }
+
+    /**
+     * @param isLog the isLog to set
+     */
+    public void setIsLog(boolean isLog) {
+        this.isLog = isLog;
     }
 }

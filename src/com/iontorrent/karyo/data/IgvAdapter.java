@@ -62,6 +62,13 @@ public class IgvAdapter {
         tree.setName(n);
         // can take a long times
         tree.loadFeatures();
+        if (chr.isSexChromosome()) {
+             if (tree.getTotalNrChildren()>0) {
+                p("FOUND DATA ON X or Y CHROMOSOME");
+                if (chr.isY()) ktrack.setMale(true);
+                else ktrack.setFemale(true);
+             }           
+        }
 //        ArrayList<KaryoFilter> filters = ktrack.getPossibleFilters();
 //        if (filters != null) {
 //            for (KaryoFilter filter: filters) {

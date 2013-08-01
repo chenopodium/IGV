@@ -19,6 +19,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import org.apache.log4j.Logger;
 
 /**
  * Chromosome for the "Affective" project.  A "chromosome" in this project represents part of a calendar day.
@@ -54,7 +55,19 @@ public class AffectiveChromosome implements Chromosome {
         name = dateString;
     }
 
+    @Override
+    public boolean isSexChromosome() {
+        boolean sex =  name.equalsIgnoreCase("x") || name.equalsIgnoreCase("23") || isY();
+        if (sex) Logger.getLogger(getClass().getName()).info("Chr "+name+" is a sex chromosome");
+        return sex;
+    }
 
+    @Override
+    public boolean isY() {
+        boolean y =  name.equalsIgnoreCase("y") || name.equalsIgnoreCase("chry") || name.equalsIgnoreCase("24");
+        if (y) Logger.getLogger(getClass().getName()).info("Chr "+name+" is a y chromosome");
+        return y; 
+    }
     public int getLength() {
         return length;
     }

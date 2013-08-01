@@ -109,6 +109,11 @@ public class DatasetSizeTest {
             this.score = score;
             this.start = start;
         }
+        
+     @Override
+    public String getName() {
+        return name;
+    }
 
         public void setStart(int start) {
             //To change body of implemented methods use File | Settings | File Templates.

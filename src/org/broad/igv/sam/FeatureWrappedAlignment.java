@@ -42,6 +42,10 @@ public class FeatureWrappedAlignment implements Alignment {
     AlignmentBlock[] blocks;
     Strand strand;
 
+    @Override
+    public String getName() {
+        return readName;
+    }
     public FeatureWrappedAlignment(BasicFeature f) {
 
         this.readName = f.getName();

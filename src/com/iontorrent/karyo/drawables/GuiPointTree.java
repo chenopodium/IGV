@@ -148,8 +148,6 @@ public class GuiPointTree extends GuiFeatureTree {
         }
         double dxpixels = Math.max(0.0000001, (double)trackwidth/2/(double)(max-min+1));
           
-        double cutoff = renderType.getCutoffScore();
-        
         int minheight = (int) pointType.getMinPointHeight();
         int minwidth = (int) pointType.getMinPointWidth();
        // for (int times = 0; times < 3; times++) {
@@ -162,6 +160,7 @@ public class GuiPointTree extends GuiFeatureTree {
                     min = range.min;
                     max = range.max;
                 }
+                double cutoff = renderType.getCutoffScore(f);
                 if ( ( times == 0 && score == cutoff ) || 
                         (times ==1 && score != cutoff ) || 
                         ( times ==2 &&  pointType.outlineOval(min, max, cutoff, score))) {

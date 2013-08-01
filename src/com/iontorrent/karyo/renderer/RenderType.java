@@ -4,6 +4,7 @@
  */
 package com.iontorrent.karyo.renderer;
 
+import com.iontorrent.karyo.data.Chromosome;
 import com.iontorrent.karyo.data.FeatureMetaInfo;
 import com.iontorrent.karyo.data.FeatureTree;
 import com.iontorrent.karyo.data.KaryoFeature;
@@ -34,7 +35,7 @@ public class RenderType {
     //  Color color;
     private String type;
     private String relevantAttName;
-    private double cutoffScore;
+    private double parcutoffScore;
 
     protected static GuiProperties gui;
     
@@ -64,12 +65,25 @@ public class RenderType {
 //        instances.put(this.getClass(), count);
     }
 
-    public double getCutoffScore() {
-        if (cutoffScore == Integer.MIN_VALUE) cutoffScore = 2;
-        return cutoffScore;
+    public double getParCutoffScore() {
+         if (parcutoffScore == Integer.MIN_VALUE) parcutoffScore = 2;  
+         return parcutoffScore;
+    }
+    public double getCutoffScore(KaryoFeature f) {
+        
+        if (parcutoffScore == Integer.MIN_VALUE) parcutoffScore = 2;                     
+        return getActualCutoffScoreBasedOnChromosome(f, parcutoffScore);
+    }
+    private double getActualCutoffScoreBasedOnChromosome(KaryoFeature f, double cutoff) {
+        // only check for MALE samples        
+        if(cutoff != 2 || Chromosome.isPar(ktrack.isMale(), f)) return cutoff;
+        else {
+            //p("Getting getActualCutoffScoreBasedOnChromosome chr "+f.getChr()+", cutoff="+cutoff+", -> GOT NON-PAR REGION ON Y CHROMOSOME: "+f.getStart()+"-"+f.getEnd());
+            return 1.0;
+        }
     }
     public void setCutoffScore(double d){
-        this.cutoffScore = d;
+        this.parcutoffScore = d;
     }
     public String getColorName(int colornr) {
        if (colornr <=0) return "Track color";
@@ -152,11 +166,11 @@ public class RenderType {
     public Color getColor(FeatureMetaInfo meta, KaryoFeature f) {
         Color c = this.getColor(0);
         if (c == null) c = getKaryoColorNeutral();
-        if (f.isInsertion(this.getCutoffScore())) {
+        if (f.isInsertion(this.getCutoffScore(f))) {
             c = this.getColor(1);
             if (c == null) c = getKaryoColorGain();
         }
-        else if (f.isDeletion(this.getCutoffScore())) {
+        else if (f.isDeletion(this.getCutoffScore(f))) {
             c = this.getColor(2);
             if (c == null) c = getKaryoColorLoss();
         }
@@ -185,7 +199,7 @@ public class RenderType {
         
         double MAX = range.max;
         double MIN = range.min;
-        double middle = getCutoffScore();
+        double middle = getCutoffScore(f);
         
         double delta = Math.max(MAX-MIN, 1);
         
@@ -220,11 +234,11 @@ public class RenderType {
         double MAX = Math.max(range.max, score);
         double MIN = Math.min(range.min, score);
         if (MAX== MIN) MAX = MIN+1;
-       return getGradientColor(MIN, MAX, score);
+       return getGradientColor(f, MIN, MAX, score);
         
     }
   
-    public Color getGradientColor(double MIN, double MAX, double score) {
+    public Color getGradientColor(KaryoFeature f, double MIN, double MAX, double score) {
               
         
         
@@ -235,7 +249,7 @@ public class RenderType {
         if (clow == null) clow = cmid;
         if (chigh == null) chigh = cmid;
         double rangedelta = MAX-MIN;
-        double middle = getCutoffScore();
+        double middle = getCutoffScore(f);
         
 //        if (debug) {
 //            //MIN=1.0, MAX=1.0, score=1.0, middle=2.0
@@ -409,7 +423,7 @@ public class RenderType {
     }
 
     private void intValues() {         
-        cutoffScore = getKaryoCutoffScore();        
+        parcutoffScore = getKaryoCutoffScore();        
         this.relevantAttName = this.getKaryoScoreName();
         initColors();
     }

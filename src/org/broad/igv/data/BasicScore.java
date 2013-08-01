@@ -40,6 +40,11 @@ public class BasicScore implements LocusScore {
         this.end = end;
         this.score = score;
     }
+    
+     @Override
+    public String getName() {
+        return null;
+    }
 
     public BasicScore(BasicScore bs) {
 

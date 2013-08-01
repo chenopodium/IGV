@@ -67,6 +67,11 @@ public class RNAIGeneScore implements LocusScore {
         this.end = gene.getEnd();
     }
 
+    
+     @Override
+    public String getName() {
+        return gene.toString();
+    }
     /**
      * Constructs ...
      *

@@ -38,4 +38,6 @@ public interface LocusScore extends org.broad.tribble.Feature {
      * @return
      */
     public String getValueString(double position, WindowFunction windowFunction);
+
+    public String getName();
 }

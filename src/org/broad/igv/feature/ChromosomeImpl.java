@@ -22,6 +22,7 @@ package org.broad.igv.feature;
 
 import java.util.Arrays;
 import java.util.List;
+import org.apache.log4j.Logger;
 
 /**
  * Simple representation of a chromosome.  Basically a name, length, and optionally a list of cytobands.
@@ -47,7 +48,19 @@ public class ChromosomeImpl implements Chromosome {
         cytobands = Arrays.asList(cytoband);
 
     }
+    @Override
+    public boolean isSexChromosome() {
+        boolean sex =  name.equalsIgnoreCase("x") || name.equalsIgnoreCase("23") || isY();
+        if (sex) Logger.getLogger(getClass().getName()).info("Chr "+name+" is a sex chromosome");
+        return sex;
+    }
 
+    @Override
+    public boolean isY() {
+        boolean y =  name.equalsIgnoreCase("y") || name.equalsIgnoreCase("chry") || name.equalsIgnoreCase("24");
+        if (y) Logger.getLogger(getClass().getName()).info("Chr "+name+" is a y chromosome");
+        return y; 
+    }
 
     @Override
     public int getIndex() {

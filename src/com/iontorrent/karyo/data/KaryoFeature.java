@@ -21,6 +21,7 @@ import org.apache.log4j.Logger;
 import org.broad.igv.data.seg.Segment;
 import org.broad.igv.feature.BasicFeature;
 import org.broad.igv.feature.LocusScore;
+import org.broad.igv.feature.genome.GenomeManager;
 import org.broad.igv.track.AbstractTrack;
 import org.broad.igv.variant.Allele;
 import org.broad.igv.variant.Genotype;
@@ -74,6 +75,7 @@ public class KaryoFeature implements Feature {
 
     }
 
+   
     public boolean isInsertion(double cutoffScore) {
         if (cutoffScore == Integer.MIN_VALUE) {
             cutoffScore = 2;
@@ -227,11 +229,14 @@ public class KaryoFeature implements Feature {
     }
 
     public String toString(FeatureMetaInfo info, String nl) {
+        
+        String spar = getParString(info, nl);
         if (feature instanceof Variant) {
             Variant v = (Variant) feature;
             
             String h = "Variant type: " + v.getType() + nl;
             h += "Position: " + v.getPositionString() + nl;
+            h += spar;
             if (v.getAlleleFraction() > 0) {
                 h += "Allele fraction: " + f.format(v.getAlleleFraction()) + nl;
             }
@@ -313,23 +318,23 @@ public class KaryoFeature implements Feature {
                 }
                 h += "</b>";
             }
-
+           
             return h;
         } else if (feature instanceof LocusScore) {
             LocusScore basic = (LocusScore) feature;
             String scorename= "Score";
             if (info != null) scorename = info.getScoreLabel();
-            return "<b>"+scorename+" =" + basic.getScore() + "</b>" + nl + "Position: " + feature.getStart() + "-" + feature.getEnd() + nl;
+            return "<b>"+scorename+" =" + basic.getScore() + "</b>" + nl + "Position: " + feature.getStart() + "-" + feature.getEnd() + nl+spar;
         } else if (feature instanceof Segment) {
             Segment basic = (Segment) feature;
             String scorename= "Score";
             if (info != null) scorename = info.getScoreLabel();
-            return "<b>"+scorename+" =" + basic.getScore() + "</b>" + nl + "Position: " + feature.getStart() + "-" + feature.getEnd() + nl;
+            return "<b>"+scorename+" =" + basic.getScore() + "</b>" + nl + "Position: " + feature.getStart() + "-" + feature.getEnd() + nl+spar;
         } else if (feature instanceof BasicFeature) {
             BasicFeature basic = (BasicFeature) feature;
-            return basic.getName() + ": " + basic.getType() + nl + "Position: " + getChr() + " " + feature.getStart() + "-" + feature.getEnd() + nl + feature.toString();
+            return basic.getName() + ": " + basic.getType() + nl + "Position: " + getChr() + " " + feature.getStart() + "-" + feature.getEnd() + nl + feature.toString()+spar;
         } else {
-            return feature.getClass().getName() + nl + "Position: " + getChr() + " " + feature.getStart() + "-" + feature.getEnd() + nl + feature.toString();
+            return feature.getClass().getName() + nl + "Position: " + getChr() + " " + feature.getStart() + "-" + feature.getEnd() + nl + feature.toString()+spar;
         }
     }
 
@@ -365,17 +370,29 @@ public class KaryoFeature implements Feature {
         } else if (feature instanceof Segment) {
             return toString(info, "\n");
         } else {
-            return feature.toString();
+            String spar = getParString(info, "\n")+"\n";
+            return spar+feature.toString();
         }
     }
 
+    public String getParString(FeatureMetaInfo info, String nl) {
+         boolean par  = Chromosome.isPar(info.getTrack().isMale(),this);
+        String spar = nl+"Feature is in ";
+        if (par) spar += "par region";
+        else spar +="<b>non par region</b>";
+        if (Chromosome.isX(getChr())) spar += " on X";
+        else if (Chromosome.isY(getChr())) spar += " on Y";
+        return spar;
+    }
     public String toHtml(FeatureMetaInfo info) {
         String nl = "<br>";
         AbstractTrack igvtrack = info.getTrack().getTrack();
         if (feature instanceof Variant) {
             if (igvtrack != null && igvtrack instanceof VariantTrack) {
                 VariantTrack vtrack = (VariantTrack)igvtrack;
-                return vtrack.getVariantToolTip((Variant)feature);
+                String spar = getParString(info, nl)+nl;
+                String h= spar+vtrack.getVariantToolTip((Variant)feature);
+                return  h;
             }
             else return toString(info, nl);
         } else {

@@ -40,6 +40,10 @@ public class DotAlignedAlignment implements Alignment {
     boolean negativeStrand;
 
 
+    @Override
+    public String getName() {
+        return readName;
+    }
     public DotAlignedAlignment(String chromosome, int start, int end, boolean isNegative, String name) {
         this.negativeStrand = isNegative;
         this.readName = name;

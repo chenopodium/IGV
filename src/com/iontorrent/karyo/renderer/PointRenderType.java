@@ -44,16 +44,16 @@ public class PointRenderType extends RenderType {
      @Override
     public String getColorName(int nr) {         
         if (nr <= 0) return "Neutral color";
-        else if (nr == 1)return "High color for values > "+this.getCutoffScore() ;
-        else if (nr == 2)  return "Low color for values < "+this.getCutoffScore();
+        else if (nr == 1)return "High color for values > "+this.getParCutoffScore() ;
+        else if (nr == 2)  return "Low color for values < "+this.getParCutoffScore();
         
         else return null;
     }
   @Override
      public String getColorShortName(int nr) {
-        if (nr == 1)return ">"+(int)this.getCutoffScore() ;
-        else if (nr == 2)  return "<"+(int)this.getCutoffScore();
-        else return "="+(int)this.getCutoffScore();
+        if (nr == 1)return ">"+(int)this.getParCutoffScore() ;
+        else if (nr == 2)  return "<"+(int)this.getParCutoffScore();
+        else return "="+(int)this.getParCutoffScore();
     }
       // TODO: use color gradient with multiple colors
     @Override

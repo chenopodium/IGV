@@ -15,7 +15,6 @@
  * THE BROAD OR MIT SHALL BE ADVISED, SHALL HAVE OTHER REASON TO KNOW, OR IN FACT
  * SHALL KNOW OF THE POSSIBILITY OF THE FOREGOING.
  */
-
 package org.broad.igv.data.seg;
 
 import org.broad.igv.Globals;
@@ -35,11 +34,9 @@ public class FreqData {
     public static float DEFAULT_AMP_THRESHOLD = 0.1f;
     public static float DEFAULT_DEL_THRESHOLD = -0.1f;
     public static int DEFAULT_BIN_SIZE = 200000;
-
     private float ampThreshold = DEFAULT_AMP_THRESHOLD;
     private float delThreshold = DEFAULT_DEL_THRESHOLD;
     private int binSize = DEFAULT_BIN_SIZE;    // 200 kb bin size;
-
     private SegmentedDataSet dataset;
     private int numberOfSamples;
     // private boolean logNormalized;
@@ -59,7 +56,6 @@ public class FreqData {
         compute();
 
     }
-
 
     public void setParameters(int binSize, float delThreshold, float ampThreshold) {
         this.binSize = binSize;
@@ -116,8 +112,8 @@ public class FreqData {
                 if (segments != null) {
 
                     for (LocusScore seg : segments) {
-                        final float segScore = logNormalized ? seg.getScore() :
-                                (float) (Math.log(seg.getScore() / 2) / Globals.log2);
+                        final float segScore = logNormalized ? seg.getScore()
+                                : (float) (Math.log(seg.getScore() / 2) / Globals.log2);
 
                         if (segScore > ampThreshold || segScore < delThreshold) {
 
@@ -178,7 +174,6 @@ public class FreqData {
     }
 
     // For testing
-
     public void dumpData(String chr) {
 
         System.out.println("track name=Amplifications");
@@ -218,8 +213,8 @@ public class FreqData {
         return delThreshold;
     }
 
-
     public class Bin implements LocusScore {
+
         String chr;
         int start;
         int end;
@@ -232,11 +227,15 @@ public class FreqData {
             this.end = end;
         }
 
+        @Override
+        public String getName() {
+            return "" + count;
+        }
+
         void increment(float count, float score) {
             this.count += count;
             totalCN = getTotalCN() + score;
         }
-
 
         float getCount() {
             return count;
@@ -245,7 +244,6 @@ public class FreqData {
         float getAvgCN() {
             return count == 0 ? 0 : getTotalCN() / count;
         }
-
 
         public String getChr() {
             return chr;
@@ -258,7 +256,6 @@ public class FreqData {
         public int getEnd() {
             return end;
         }
-
 
         public void setStart(int start) {
             //To change body of implemented methods use File | Settings | File Templates.
@@ -286,6 +283,4 @@ public class FreqData {
             return totalCN;
         }
     }
-
-
 }

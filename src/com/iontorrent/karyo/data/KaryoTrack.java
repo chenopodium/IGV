@@ -31,6 +31,8 @@ public class KaryoTrack {
     private ArrayList<RenderType> rendererTypes;
     private String sample;
     
+    private boolean male;
+    private boolean female;
     
     public KaryoTrack(AbstractTrack track, int nr) {
         this.track = track;
@@ -252,5 +254,33 @@ public class KaryoTrack {
      */
     public void setOrder(int order) {
         track.setTrackorder(order);
+    }
+
+    /**
+     * @return the male
+     */
+    public boolean isMale() {
+        return male;
+    }
+
+    /**
+     * @param male the male to set
+     */
+    public void setMale(boolean male) {
+        this.male = male;
+    }
+
+    /**
+     * @return the female
+     */
+    public boolean isFemale() {
+        return female;
+    }
+
+    /**
+     * @param female the female to set
+     */
+    public void setFemale(boolean female) {
+        this.female = female;
     }
 }

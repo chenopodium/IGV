@@ -9,12 +9,14 @@ import com.iontorrent.utils.io.FileTools;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collection;
 import java.util.List;
 import org.apache.log4j.Logger;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.session.IGVSessionReader;
 import org.broad.igv.session.Session;
 import org.broad.igv.ui.IGV;
+import org.broad.igv.ui.util.MessageUtils;
 import org.broad.igv.util.ParsingUtils;
 import org.broad.igv.util.ResourceLocator;
 import org.broad.igv.util.Utilities;
@@ -34,29 +36,75 @@ public class IonTorrentSessionReader extends IGVSessionReader {
     }
 
     @Override
+    protected String checkAccessToResources(Collection<ResourceLocator> dataFiles) {
+        if (dataFiles == null) {
+            return null;
+        }
+        String signature = PreferenceManager.getInstance().getTemp("signature");
+        if (signature == null) {
+            log.warn("got no signature in temp preferences, assuming resources are ok for now");
+            return null;
+        }
+        long lsignature = Long.parseLong(signature);
+        long hash = 0;
+        for (ResourceLocator file : dataFiles) {
+            hash += file.getUrl().toLowerCase().hashCode();
+        }
+        if (lsignature != hash) {
+            log.warn("Signature " + signature + "/" + lsignature + " is not equals to hash code " + hash);
+
+            StringBuilder message = new StringBuilder();
+            message.append("<html>The following data file(s) could not be accessed due to security concerns<ul>");
+            for (ResourceLocator file : dataFiles) {
+                if (file.isLocal()) {
+                    message.append("<li>");
+                    message.append(file.getPath());
+                    message.append("</li>");
+                } else {
+                    message.append("<li>Server: ");
+                    message.append(file.getServerURL());
+                    message.append("  Path: ");
+                    message.append(file.getPath());
+                    message.append("</li>");
+                }
+            }
+            message.append("</ul>");
+            message.append("<li>It looks like the session.xml file has been tampered with</li></ul>");
+            message.append("</html>");
+
+            MessageUtils.showMessage(message.toString());
+
+
+            return message.toString();
+        } else {
+            return null;
+        }
+    }
+
+    @Override
     public boolean loadSession(Session session, String sessionPath, int tries) throws IOException {
         this.path = sessionPath;
-        log.info("loadSession, try: "+tries);
+        log.info("loadSession, try: " + tries);
         InputStream inputStream = null;
-        
+
         if (tries > 2) {
-             log.info("===== loadSession: Too many tries, failed");
-             return false;
-           
+            log.info("===== loadSession: Too many tries, failed");
+            return false;
+
         }
         if (tries > 1) {
             PreferenceManager pref = PreferenceManager.getInstance();
             log.info("===== loadSession: More than one try. Will check token and use a default IGV token if there was one");
-             
+
             String header_value = pref.getTemp("header_value");
-            
+
             if (header_value != null) {
                 header_value = "__IGV__";
                 pref.putTemp("header_value", header_value);
                 pref.putTemp("header_encrypt", "false");
                 // turn off encryption
-                log.info("There is a token. Setting it to default "+pref.getTemp("header_value")+", encrypt is now "+pref.getTempAsBoolean("header_encrypt"));
-                
+                log.info("There is a token. Setting it to default " + pref.getTemp("header_value") + ", encrypt is now " + pref.getTempAsBoolean("header_encrypt"));
+
             }
         }
         try {
@@ -96,20 +144,23 @@ public class IonTorrentSessionReader extends IGVSessionReader {
         return loadSession(inputStream, session, sessionPath, tries++);
 
     }
+
     @Override
     protected boolean handleError(Exception e, String path, List<String> errors) {
         String reason = getMessageForContent(e.getMessage(), path);
-        log.info("Handling error: "+e.getMessage()+" -> reason="+reason);
-        if (!errors.contains(reason)) errors.add(reason);
-        if (reason.indexOf("token")>-1) {
+        log.info("Handling error: " + e.getMessage() + " -> reason=" + reason);
+        if (!errors.contains(reason)) {
+            errors.add(reason);
+        }
+        if (reason.indexOf("token") > -1) {
             Exception usererror = new Exception(reason);
-                usererror.setStackTrace(e.getStackTrace());
+            usererror.setStackTrace(e.getStackTrace());
             throw new RuntimeException(usererror);
-            
+
         }
         return true;
     }
-    
+
     @Override
     protected Document loadDocument(InputStream inputStream) throws RuntimeException {
         Document document = null;

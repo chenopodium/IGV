@@ -28,8 +28,8 @@ public class CnvRenderType extends RenderType{
     @Override
     public String getColorName(int nr) {         
         if (nr <= 0) return "Neutral color";
-        else if (nr == 1)return "Color for CNV > "+this.getCutoffScore() ;
-        else if (nr == 2)  return "Color for CNV < "+this.getCutoffScore();
+        else if (nr == 1)return "Color for CNV > "+this.getParCutoffScore() ;
+        else if (nr == 2)  return "Color for CNV < "+this.getParCutoffScore();
         
         else return null;
     }
@@ -44,15 +44,15 @@ public class CnvRenderType extends RenderType{
      // TODO: use color gradient with multiple colors
     @Override
     public Color getColor(FeatureMetaInfo meta, KaryoFeature f) {
-        if (f.isInsertion(this.getCutoffScore())) return this.getColor(1);
-        else if (f.isDeletion(this.getCutoffScore())) return this.getColor(2);
+        if (f.isInsertion(this.getCutoffScore(f))) return this.getColor(1);
+        else if (f.isDeletion(this.getCutoffScore(f))) return this.getColor(2);
         return this.getColor(0);
         //return c;
     }
     @Override
     public boolean drawFeature(KaryoFeature f) {
-        if (f.isInsertion(this.getCutoffScore())) return true;
-        else if (f.isDeletion(this.getCutoffScore())) return true;
+        if (f.isInsertion(this.getCutoffScore(f))) return true;
+        else if (f.isDeletion(this.getCutoffScore(f))) return true;
         else return true;
     }
    
