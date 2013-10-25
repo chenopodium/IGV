@@ -62,9 +62,11 @@ public abstract class DataTrack extends AbstractTrack {
 
     }
     private void p(String s ){
-        System.out.println("Datatrack: "+s);
+        Logger.getLogger(getClass().getName()).info(s);
+        System.out.println(getClass().getName()+": "+s);
     }
 
+    @Override
     public void render(RenderContext context, Rectangle rect) {
 
         if (featuresLoading) {
@@ -77,13 +79,13 @@ public abstract class DataTrack extends AbstractTrack {
         int end = (int) context.getEndLocation() + 1;
         int zoom = context.getZoom();
 
-      //  p("Rendering: "+chr+", "+start+"-"+end);
+    //    p("======================== Rendering: "+chr+", "+start+"-"+end);
         List<LocusScore> inViewScores = null;
 
         LoadedDataInterval interval = loadedIntervalCache.get(context.getReferenceFrame().getName());
         if (interval != null && interval.contains(chr, start, end, zoom)) {
             inViewScores = interval.getScores();
-            p("getting  scores from cache");
+     //       p("getting scores from cache: "+inViewScores.size());
         } else {
             // Get a buffer +/- 50% of screen size
             int delta = (end - start) / 2;
@@ -100,7 +102,7 @@ public abstract class DataTrack extends AbstractTrack {
         }
 
         if (autoScale && !FrameManager.isGeneListMode() && !FrameManager.isExomeMode()) {
-            p("mode 1");
+           // p("mode 1");
             InViewInterval inter = computeScale(start, end, inViewScores);
             if (inter.endIdx > inter.startIdx) {
                 inViewScores = inViewScores.subList(inter.startIdx, inter.endIdx);
@@ -131,7 +133,7 @@ public abstract class DataTrack extends AbstractTrack {
         if (inViewScores == null || inViewScores.size()<1) {
          //    p("Got no scores");
         }
-        p("Rendering "+inViewScores.size());
+       // else  p("Rendering "+inViewScores.size()+" in view scores, such as this one: "+inViewScores.get(0));
         getRenderer().render(inViewScores, context, rect, this);
     }
 

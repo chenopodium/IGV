@@ -11,26 +11,24 @@ import com.iontorrent.cnv.CustomCnvDataSourceTrack;
 import com.iontorrent.cnv.SegmentedCustomCnvDataSet;
 import com.iontorrent.cnv.SegmentedRedLineCnvDataSet;
 import com.iontorrent.utils.ErrorHandler;
-import com.iontorrent.utils.StringTools;
 import com.iontorrent.utils.io.FileTools;
 import java.awt.Color;
+import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
-import org.broad.igv.data.seg.SegmentedDataSource;
 import org.broad.igv.feature.genome.Genome;
-import org.broad.igv.renderer.PointsRenderer;
-import org.broad.igv.track.DataSourceTrack;
 import org.broad.igv.track.Track;
 import org.broad.igv.track.TrackHandler;
 import org.broad.igv.track.TrackProperties;
 import org.broad.igv.ui.util.MessageUtils;
+import org.broad.igv.util.HttpUtils;
 import org.broad.igv.util.ParsingUtils;
 import org.broad.igv.util.ResourceLocator;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
-import org.openide.util.Exceptions;
 
 /**
  *
@@ -46,16 +44,16 @@ public class IonTorrentTrackHandler implements TrackHandler {
 
 
         String file = locator.getPath();
-        p("Procesing custom file: " + file);
+        p("Processing custom file: " + file);
         if (file.endsWith(".csv") || file.endsWith(".tsv")) {
             loadCustomCnv(locator, newTracks);
 
         } else if (file.endsWith(".json")) {
             try {
                 loadCustomCnvJson(locator, newTracks);
-            } catch (JSONException ex) {
+            } catch (Exception ex) {
                p("Could not read json file: "+file);
-                MessageUtils.showMessage("I could not read this file: " + file);
+                MessageUtils.showMessage("I could not read this file: " + file+": "+ErrorHandler.getString(ex));
             }
 
         } else {
@@ -66,12 +64,18 @@ public class IonTorrentTrackHandler implements TrackHandler {
         return newTracks;
     }
 
-    public void loadCustomCnvJson(ResourceLocator locator, List<Track> newTracks) throws JSONException {
+    public void loadCustomCnvJson(ResourceLocator locator, List<Track> newTracks) throws JSONException, IOException {
         p("Loading custom cnv file via JSON - check properties: " + locator.getTrackLine());
         TrackProperties tp = getTrackLine(locator);
         String path = locator.getPath();
         
-       String json = FileTools.getFileAsString(path);
+        p("Loading file as string: "+path);
+        String json = null;
+        if (FileTools.isUrl(path)) {
+            p("Path is url: "+path);
+            json = HttpUtils.getInstance().getContentsAsString(new URL(path));
+        }
+        else  json = FileTools.getFileAsString(path);
          p("About to parse json "+json);
           JSONObject JSON = null;
         try {
@@ -81,8 +85,10 @@ public class IonTorrentTrackHandler implements TrackHandler {
             return;
         }
          String controlname = JSON.getString("control");
-         String samplename = JSON.getString("sample");
+         String diffname = JSON.getString("diff");
          String redlinename = JSON.getString("redline");
+         String summaryname = null;
+         if (JSON.has("summary"))    summaryname=  JSON.getString("summary");
          
          // extract fron path name
          int slash = path.lastIndexOf("/");
@@ -92,15 +98,22 @@ public class IonTorrentTrackHandler implements TrackHandler {
          p("JSON name: "+jsonname);
          
          String controlfile = path.replace(jsonname, controlname);
-         String samplefile = path.replace(jsonname, samplename);
+         String difffile = path.replace(jsonname, diffname);
          String redfile = path.replace(jsonname, redlinename);
+         String summaryfile = null;
+         if (summaryname != null) {
+             summaryfile = path.replace(jsonname, summaryname);
+         }
          
          p("Got controlfile: "+controlfile);
-         p("Got samplefile: "+samplefile);
+         p("Got difffile: "+difffile);
          p("Got redfile: "+redfile);
+         p("Got summaryfile: "+summaryfile);
          
          // xxx todo 
-        CnvData data = new CnvData(samplefile, controlfile, redfile);
+        //  String props = tp.getCustomProperties();
+        //    ok = cont.parseCustomProperties(props);
+        CnvData data = new CnvData(diffname, summaryfile, redfile);
        // data.parseSampleAndControlFile();
         // also read red file
         String id = path;
@@ -152,9 +165,11 @@ public class IonTorrentTrackHandler implements TrackHandler {
         return tp;
     }
      public void addCustomJsonTrack(String id, CnvData data, ResourceLocator locator, List<Track> newTracks) {
+        TrackProperties tp = getTrackLine(locator);
+        
         SegmentedRedLineCnvDataSet ds = new SegmentedRedLineCnvDataSet(FileTools.isUrl(locator.getPath()), id, data);
         CustomCNVDataSource source = new CustomCNVDataSource(id, ds);
-        CustomCnvDataSourceTrack track = new CustomCnvDataSourceTrack(data, locator, id, "Custom Json Cnv", source);
+        CustomCnvDataSourceTrack track = new CustomCnvDataSourceTrack(data, locator, id, locator.getName(), source);
 
         track.setName(locator.getFileName());
         track.setAltColor(Color.red.darker());

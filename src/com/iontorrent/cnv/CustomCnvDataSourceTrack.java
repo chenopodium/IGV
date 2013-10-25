@@ -11,12 +11,14 @@ import java.util.List;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
+import org.apache.log4j.Logger;
 import org.broad.igv.data.DataSource;
 import org.broad.igv.renderer.PointsRenderer;
 import org.broad.igv.track.DataSourceTrack;
 import org.broad.igv.track.Track;
 import org.broad.igv.track.TrackClickEvent;
 import org.broad.igv.track.TrackMenuUtils;
+import org.broad.igv.track.WindowFunction;
 import org.broad.igv.ui.panel.IGVPopupMenu;
 import org.broad.igv.util.ResourceLocator;
 
@@ -27,7 +29,9 @@ import org.broad.igv.util.ResourceLocator;
 public class CustomCnvDataSourceTrack extends DataSourceTrack {
 
     CnvData data;
-
+    private boolean toggleRedLine;
+    private static Logger log = Logger.getLogger(CustomCnvDataSourceTrack.class);
+    
     public CustomCnvDataSourceTrack(CnvData data, ResourceLocator locator, String id, String name, DataSource dataSource) {
         super(locator, id, name, dataSource);
         this.data = data;
@@ -44,9 +48,24 @@ public class CustomCnvDataSourceTrack extends DataSourceTrack {
 
     }
 
-    private void showInWindow() {
-
-        CnvControlPanel.show(data);
+    private void toggleLine() {
+        toggleRedLine();
+        if (toggleRedLine) {
+            setWindowFunction(WindowFunction.noRefLine);
+            p("================= removing red line");
+        }
+        else {
+            setWindowFunction(null);
+            p(" ===============Enabling red line");
+        }
+        //CnvControlPanel.show(data);
+    }
+    
+    private void p(String s) {
+        log.info(s);
+    }
+    void toggleRedLine() {
+        toggleRedLine = !toggleRedLine;
     }
 
     @Override
@@ -65,15 +84,24 @@ public class CustomCnvDataSourceTrack extends DataSourceTrack {
             menu.add(popupTitle);
         }
 
-        final JMenuItem showInWindow = new JCheckBoxMenuItem("<html>Show track in <b>separate</b> window</html>");
-        showInWindow.addActionListener(new ActionListener() {
+//        final JMenuItem showInWindow = new JCheckBoxMenuItem("<html>Show track in <b>separate</b> window</html>");
+//        showInWindow.addActionListener(new ActionListener() {
+//            @Override
+//            public void actionPerformed(ActionEvent e) {
+//                showInWindow();
+//            }
+//        });
+     //   menu.add(showInWindow);
+
+        
+         final JMenuItem toggleLine = new JCheckBoxMenuItem("<html>Toggle orange <b>ploidy line</b></html>");
+        toggleLine.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                showInWindow();
+                toggleLine();
             }
         });
-        menu.add(showInWindow);
-
+        menu.add(toggleLine);
         //addSeparator();
         TrackMenuUtils.addStandardItems(menu, tracks, te);
         

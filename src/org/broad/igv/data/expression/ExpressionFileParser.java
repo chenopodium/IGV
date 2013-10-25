@@ -123,6 +123,7 @@ public class ExpressionFileParser {
 
     public static boolean parsableMAGE_TAB(ResourceLocator file) throws IOException {
         AsciiLineReader reader = null;
+        log.info("processing parsableMAGE_TAB");
         try {
             reader = ParsingUtils.openAsciiReader(file);
             String nextLine = null;

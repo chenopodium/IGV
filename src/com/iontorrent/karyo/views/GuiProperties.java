@@ -139,6 +139,36 @@ public class GuiProperties {
 		// keys to upper case
 	}
 
+        public double getFilterValue(String sample, String name,
+			String filetype) {
+		double d = getDouble(getValueFor(sample, name, filetype, "FILTER_VALUE"));
+
+		return d;
+	}
+	public String getFilterOperator(String sample, String name, String filetype) {
+		String res = getValueFor(sample, name, filetype, "FILTER_OPERATOR");
+                if (res != null) {
+                    res = res.replace("greater", ">");
+                    res = res.replace("gt", ">");
+                    res = res.replace("lt", "<");
+                    res = res.replace("less", "<");
+                    res = res.replace("equals", "=");
+                    res = res.replace("eq", "=");
+                    res = res.replace("not", "<>");
+                }
+		// p("Score for " + name + ", " + filetype + "=" + res);
+		return res;
+	}
+	public String getFilterKey(String sample, String name, String filetype) {
+		String res = getValueFor(sample, name, filetype, "FILTER_KEY");
+		// p("Score for " + name + ", " + filetype + "=" + res);
+		return res;
+	}
+        public String getFilterMode(String sample, String name, String filetype) {
+		String res = getValueFor(sample, name, filetype, "FILTER_MODE");
+		// p("Score for " + name + ", " + filetype + "=" + res);
+		return res;
+	}
 	public boolean setDisplayName(String sample, String name, String filetype,
 			String value) {
 		return setValueFor(sample, name, filetype, "DISPLAY_NAME", value);
@@ -155,7 +185,9 @@ public class GuiProperties {
 	}
 
 	public String getDisplayName(String sample, String name, String filetype) {
-		return getValueFor(sample, name, filetype, "DISPLAY_NAME");
+		String s = getValueFor(sample, name, filetype, "DISPLAY_NAME");
+                if (s != null) s = s.replace("_", " ");
+                return s;
 	}
 
 	public String getDescription(String sample, String name, String filetype) {
@@ -203,6 +235,11 @@ public class GuiProperties {
 	}
         public boolean isKaryoVisible(String sample, String name, String filetype) {
 		String res = getValueFor(sample, name, filetype, "KARYO_VISIBLE");
+                if (res == null) return true;
+                else return res.equalsIgnoreCase("true") || res.equals("1");
+	}
+         public boolean isShowSample(String sample, String name, String filetype) {
+		String res = getValueFor(sample, name, filetype, "SHOW_SAMPLE");
                 if (res == null) return true;
                 else return res.equalsIgnoreCase("true") || res.equals("1");
 	}

@@ -15,16 +15,20 @@ import org.broad.tribble.Feature;
  */
 public abstract class KaryoFilter {
 
-     private boolean initialized;
+    private boolean initialized;
     private Color filteredColor = Color.red.darker();
     private Color nonfilteredColor = Color.blue.darker();
     
+    private boolean enabled;
     protected String name;
     protected String fieldname;
     protected double treshold;
     protected boolean not;
+    protected int filterCount;
+    protected int totalCount;
+    protected int notApplied;
     
-    protected FilterMode filterMode = FilterMode.HIGHLIGHT_FILTERED;
+    protected FilterMode filterMode = FilterMode.SHOW_FILTERED;
 
     /**
      * @return the initialized
@@ -32,12 +36,40 @@ public abstract class KaryoFilter {
     public boolean isInitialized() {
         return initialized;
     }
-
+    public int getTotalCount() {
+        return totalCount;
+    }
+    public int getFilterCount() {
+        return filterCount;
+    }
+    public void resetFilterCount() {
+        filterCount = 0;
+        totalCount = 0;
+        notApplied = 0;
+    }
+    
+    public int getNotAppliedCount() {
+        return this.notApplied;
+    }
     /**
      * @param initialized the initialized to set
      */
     public void setInitialized(boolean initialized) {
         this.initialized = initialized;
+    }
+
+    /**
+     * @return the enabled
+     */
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    /**
+     * @param enabled the enabled to set
+     */
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
     }
 
     public static enum FilterMode {
@@ -53,17 +85,26 @@ public abstract class KaryoFilter {
     @Override
     public String toString() {
         String s = "";
-        if (this.isHighlightFiltered()) s = "Highlight areas that have features where ";
-        else if (this.isRemoveFiltered())s = "Hide features where ";
-        else s = "Show features where the ";
+        
         s += fieldname;
-        if (not) s += " is smaller or equal to ";
-        else s +=" is larger than ";
+        if (not) s += "<=";
+        else s +=" > ";
         s += treshold;
-        s += " (filter mode: "+filterMode.name()+")";
+       
         return s;
     }
 
+   
+    public String toHtml() {
+        String s = "";
+        
+        s += fieldname;
+        if (not) s += "&lt<;=";
+        else s +=" &gt; ";
+        s += treshold;
+       
+        return s;
+    }
     public abstract boolean isValid();
     
     public abstract boolean filter(KaryoFeature f);
@@ -73,6 +114,9 @@ public abstract class KaryoFilter {
      */
     public String getName() {
         return name;
+    }
+    public void setFilterMode(FilterMode mode) {
+        this.filterMode = mode;
     }
 
     public FilterMode getFilterMode() {

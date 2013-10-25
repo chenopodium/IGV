@@ -61,7 +61,7 @@ public class MessageUtils {
         boolean showDialog = !(Globals.isHeadless() || Globals.isSuppressMessages() || Globals.isTesting());
         if (showDialog) {
             // Always use HTML for message displays, but first remove any embedded <html> tags.
-            message = "<html>" + message.replaceAll("<html>", "");
+            message = "<html>" + message.replaceAll("<html>", "").replaceAll("</html>", "").replaceAll("\n", "<br>");
             
             Frame parent = IGV.hasInstance() ? IGV.getMainFrame() : null;
             Color background = parent != null ? parent.getBackground() : Color.lightGray;
@@ -118,13 +118,16 @@ public class MessageUtils {
 
         if (SwingUtilities.isEventDispatchThread()) {
             int opt = JOptionPane.showConfirmDialog(component, message, "Confirm", JOptionPane.YES_NO_OPTION);
+            p("confirm, got :"+opt+"==? "+JOptionPane.YES_OPTION);
             return opt == JOptionPane.YES_OPTION;
         } else {
             final ValueHolder returnValue = new ValueHolder();
             Runnable runnable = new Runnable() {
                 public void run() {
                     int opt = JOptionPane.showConfirmDialog(component, message, "Confirm", JOptionPane.YES_NO_OPTION);
+                     p("confirm, got :"+opt+"==? "+JOptionPane.YES_OPTION);
                     returnValue.value = (opt == JOptionPane.YES_OPTION);
+                    
                 }
             };
             try {
@@ -137,9 +140,13 @@ public class MessageUtils {
                 throw new RuntimeException(e.getCause());
             }
 
+            p("confirm answer is: "+returnValue.value);
             return (Boolean) (returnValue.value);
 
         }
+    }
+    private static void p(String s) {
+        log.info(s);
     }
 
     public static String showInputDialog(final String message, final String defaultValue) {

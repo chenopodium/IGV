@@ -157,11 +157,11 @@ public class IonTorrentCommandListener implements CommandListenerIF{
                 String key = (String) it.next();
                 String val = params.get(key);
                 args += " " + key;
-                p("Adding param " + key + " to args");
+              //  p("Adding param " + key + " to args");
                 if (val != null) {
                     args += "=" + val;
                 }
-                p("Adding =" + val + " to args");
+              //  p("Adding =" + val + " to args");
             }
             
             result = "OK (executing " + command + " in thread)";

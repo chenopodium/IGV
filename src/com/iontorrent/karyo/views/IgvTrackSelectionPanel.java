@@ -79,6 +79,7 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
 
         MouseListener list = null;
         int count = 0;
+        p("Found "+tracks.size()+" IGV tracks");
         for (Track igvtrack : tracks) {
 
             p("Got track: " + igvtrack.getDisplayName() + ", " + igvtrack.getClass().getName());
@@ -239,8 +240,11 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
     }
 
     public ArrayList<KaryoTrack> getSelectedTracks() {
-
-        return karyotracks;
+        ArrayList<KaryoTrack> visible = new ArrayList<KaryoTrack>();
+        for (KaryoTrack kt : karyotracks) {
+            if (kt.isVisible())visible.add(kt);
+        }
+        return visible;
     }
 
     /**

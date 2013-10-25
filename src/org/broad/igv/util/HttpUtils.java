@@ -152,7 +152,7 @@ public class HttpUtils {
 
         try {
             is = conn.getInputStream();
-            return readContents(is);
+            return readStringContents(is);
 
         } finally {
             if (is != null) {
@@ -223,6 +223,20 @@ public class HttpUtils {
         return false;
     }
 
+     public boolean resourceAvailable(String fileorurl) {
+         if (com.iontorrent.utils.io.FileUtils.isUrl(fileorurl)) {
+             return new File(fileorurl).exists();
+         }
+         else {
+             try {
+                return resourceAvailable(new URL(fileorurl)) ;
+             } 
+             catch (Exception e) {
+                 log.error("Could not check if "+fileorurl+" exists because: "+ErrorHandler.getString(e));
+             }
+         }
+         return false;
+     }
     public boolean resourceAvailable(URL url) {
 
         if (url.getProtocol().toLowerCase().equals("ftp")) {
@@ -488,12 +502,34 @@ public class HttpUtils {
 
     }
 
+     private String readStringContents(InputStream is) throws IOException {
+        BufferedReader in = new BufferedReader(new InputStreamReader(is));
+
+        String inputLine;
+        StringBuilder res = new StringBuilder();
+        int line = 0;
+        while ((inputLine = in.readLine()) != null) {
+            res = res.append(inputLine+"\n");
+            if (line % 100 == 0) {
+                log.info("Reading line "+line+": "+ inputLine);
+                line++;
+            }
+        }
+            
+        in.close();
+        return res.toString();
+    }
     private String readContents(InputStream is) throws IOException {
         BufferedInputStream bis = new BufferedInputStream(is);
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         int b;
+        int count = 0;
         while ((b = bis.read()) >= 0) {
             bos.write(b);
+            count++;
+            if (count % 100000 == 0) {
+                log.info("Reading byte "+count);
+            }
         }
         return new String(bos.toByteArray());
     }
@@ -616,7 +652,10 @@ public class HttpUtils {
 
         //CR: handle potential ion reporter or ion torrent links
         HttpHandler specialhandler = Handlers.getHttpHandler();
-        if( specialhandler != null) specialhandler.handle(url, conn);
+        if( specialhandler != null){
+            //log.info(" ++++ Using special HTTP handler");
+            specialhandler.handle(url, conn);
+        }
 
         if (method.equals("PUT")) {
             return conn;
@@ -636,11 +675,17 @@ public class HttpUtils {
                 
             }
             if (code >= 300 && code < 400) {
+                if (redirectCount+1 > MAX_REDIRECTS) {
+                     // clear username password just in case                    
+                     this.clearDefaultCredentials();
+                     resetAuthenticator();
+                }
                 if (redirectCount > MAX_REDIRECTS) {
+                   
                     throw new IOException("Too many redirects");
                 }
                 String newLocation = conn.getHeaderField("Location");
-                log.debug("Redirecting to " + newLocation);
+                log.info("Redirecting to " + newLocation);
 
                 return openConnection(new URL(newLocation), requestProperties, method, redirectCount++);
             } // TODO -- handle other response codes.
@@ -660,7 +705,7 @@ public class HttpUtils {
 
                     HttpResponseException exc = new HttpResponseException(code);
                     String details = readErrorStream(conn);
-                    log.info("error stream: " + details);
+                   if (details != null) log.info("error stream: " + details);
                     details = this.readInputStream(conn);
                     log.info("input stream: " + details);
                     log.info(message);

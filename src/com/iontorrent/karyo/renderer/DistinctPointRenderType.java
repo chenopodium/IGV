@@ -27,12 +27,12 @@ public class DistinctPointRenderType extends PointRenderType {
   
     @Override
     public Color getColor(FeatureMetaInfo meta, KaryoFeature f) {        
-        return super.getDistinctColor(meta, f);
+        return super.getDistinctColor(meta, f, true);
     }
        
     @Override
      public double getMinPointHeight() {
-        return 8;
+        return 6;
     }
     @Override
     public double getMinPointWidth() {

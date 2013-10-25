@@ -33,6 +33,7 @@ public enum WindowFunction implements CollUtils.Valued {
     percentile90("90th Percentile"),
     percentile98("98th Percentile"),
     stddev("Standard Deviation"),
+    noRefLine("No reference function"),
     count("Count"),
     density("Density");
 

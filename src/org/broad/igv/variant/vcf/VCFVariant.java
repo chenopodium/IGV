@@ -70,6 +70,48 @@ public class VCFVariant implements Variant {
 
     }
 
+    @Override
+    public double getPloidy() {
+        if (this.getSampleNames() == null || getSampleNames().size()<1) {
+            log.info("getPloidy: no sample info, no ploidy");
+            return -1;
+        }
+        int p = -1;
+        for (String s: this.getSampleNames()) {
+            p = getPloidy(s);
+            if (p != -1) {
+               // log.info("Got Ploidy "+p+" for sample "+s);
+            
+            }
+        }
+        return p;
+    }
+    
+    public double getScore() {
+        return getPloidy();
+    }
+    
+    public int getPloidy(String sample) {
+        Genotype genotype = getGenotype(sample);
+        if (genotype != null && genotype.getAttributes() != null) {
+            Set<String> keys = genotype.getAttributes().keySet();
+            if (keys.size() > 0) {
+                String key = "CN";
+                //for (String key : keys) {
+                    try {
+                        String sp = genotype.getAttributeAsString(key);
+                        if (sp == null) return -1;
+                        else return Integer.parseInt(sp);
+                    } catch (Exception e) {
+                        log.info("getPloidy: Could not get "+key+"  from sample "+sample);
+                    }
+               // }
+            }
+            else log.info("Sample "+sample+" has no keys at "+this.getPositionString());
+        }
+        else log.info("Sample "+sample+" has no genotype at "+this.getPositionString());
+        return -1;
+    }
     /**
      * Allele frequency is a comma separated list of doubles
      * We strip away brackets and parentheses

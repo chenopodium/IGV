@@ -9,6 +9,7 @@ import org.broad.igv.track.FeatureTrack;
 import java.text.ParseException;
 import java.util.*;
 
+
 /**
  * @author Jim Robinson
  * @date 1/21/12
@@ -38,16 +39,10 @@ public class AffectiveGenome implements Genome {
         //addChromosome(new AffectiveChromosome("2011-04-06"));
     }
 
-    /** determine if this organism is female or not - currently just for humans :-) */
-    @Override
-    public boolean isFemale(List<Chromosome>  chromosomesWithData) {
-        // if the list does not contain y, then it is not a female
-        for (Chromosome chr: chromosomesWithData) {
-            if (chr.isY()) return false;
-        }
-        return true;
-    }
 
+    public boolean isHuman() {
+        return this.getId().toLowerCase().startsWith("hg") || this.getDisplayName().toLowerCase().startsWith("Human");
+    }
     /**
      * The "AffectiveGenome" represents the calendar, so any valid date string is a chromosome.  If its not
      * been added yet add it.

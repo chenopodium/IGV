@@ -479,7 +479,7 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
                                 fBlockBuilder.getFlowSignalContext(readBases, fromIdx, op.nBases), this);
                         //  log.info("Got block: "+block.getBaseAlignment().toString());
                     } else {
-                        log.info("Got NO FlowSignalContextBuilder");
+                       // log.info("Got NO FlowSignalContextBuilder");
                         block = AlignmentBlock.getInstance(blockStart, blockBases, blockQualities, this);
                     }
 

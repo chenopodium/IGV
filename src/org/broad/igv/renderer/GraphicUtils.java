@@ -174,13 +174,25 @@ public class GraphicUtils {
         final int margin = 5;
         int textHeight = (int) stringBounds.getHeight() + margin;
         double textWidth = stringBounds.getWidth() + 10;
-        if (textWidth < rect.width) {
+        boolean nl = string.indexOf("<br>") > 0 || string.indexOf("\n") > 0;
+        
+        if (textWidth < rect.width && !nl) {
             GraphicUtils.drawVerticallyCenteredText(string, margin, rect, g2D, false, clear);
         } else {
             int charWidth = (int) (stringBounds.getWidth() / string.length());
             int charsPerLine = rect.width / charWidth;
             int nStrings = (string.length() / charsPerLine) + 1;
+            if (nl) {                
+                nStrings++;
+            }
+            int nlpos = 0;
+            if (nl) {
+                nlpos = Math.max(string.indexOf("<br>"), string.indexOf("\n"));
+                p("drawWrappedText: Found nl in "+string);
+                p("nStrings = "+nStrings+", textHeight="+textHeight+", rect.height="+rect.height);
+            }
             if (nStrings * textHeight > rect.height) {
+                p("drawWrappedText: Shortening string "+string+", nlines="+nStrings+", rect.height="+rect.height);
                 // Shorten string to fit in space.  Try a max of 5 times,  progressivley shortening string
                 int nChars = (rect.width - 2 * margin) / charWidth + 1;
                 int nTries = 0;
@@ -199,15 +211,24 @@ public class GraphicUtils {
                 Rectangle tmp = new Rectangle(rect);
                 tmp.y -= ((nStrings - 1) * textHeight) / 2;
                 while (breakPoint < string.length()) {
+                    
                     int end = Math.min(string.length(), breakPoint + charsPerLine);
+                    if (nlpos > 0 && breakPoint == 0) {
+                        end = Math.min(string.length(), nlpos);                        
+                    }
                     GraphicUtils.drawVerticallyCenteredText(string.substring(breakPoint, end), margin, tmp, g2D, false);
-                    breakPoint += charsPerLine;
+                    if (nlpos > 0 && breakPoint == 0) {
+                        breakPoint += nlpos;
+                    }
+                    else breakPoint += charsPerLine;
                     tmp.y += textHeight;
                 }
             }
         }
     }
-
+    private static void p(String s){
+        System.out.println("GraphicUtils: "+s);
+    }
 
     /**
      * Method description

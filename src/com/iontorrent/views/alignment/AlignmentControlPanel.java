@@ -135,7 +135,7 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
         pan.add(revpanel);
         
         SimpleDialog dialog = new SimpleDialog("Forward and reverse ionoagrams at " + locus, pan, 1200, Math.min(800,forpanel.getPreferredHeight() +revpanel.getPreferredHeight())
-                , 200, 100, image.getImage(), true);
+                , 200, 100, image.getImage(), false);
         forpanel.scrollToCenter();
         revpanel.scrollToCenter();
         dialog.setLocation(200, 100);
@@ -143,15 +143,15 @@ public class AlignmentControlPanel extends javax.swing.JPanel {
     }
     public static void showForwardPanel(AlignmentControlPanel forpanel, String locus, ImageIcon image) {
         
-        fordia = new SimpleDialog("Ionogram Alignment (forward) at " + locus, forpanel, 1200, Math.min(800,forpanel.getPreferredHeight()), 200, 100, image.getImage(), true);
+        fordia = new SimpleDialog("Ionogram Alignment (forward) at " + locus, forpanel, 1200, Math.min(800,forpanel.getPreferredHeight()), 200, 100, image.getImage(), false);
         forpanel.scrollToCenter();
         fordia.setLocation(200, 100);
     }
      public static void showReversePanel(AlignmentControlPanel forpanel, String locus, ImageIcon image) {
         
-        revdia = new SimpleDialog("Ionogram Alignment (reverse) at " + locus, forpanel, 1200,  Math.min(800,forpanel.getPreferredHeight()), 400, 600, image.getImage(), true);
+        revdia = new SimpleDialog("Ionogram Alignment (reverse) at " + locus, forpanel, 1200,  Math.min(800,forpanel.getPreferredHeight()), 400, 600, image.getImage(), false);
         revpanel.scrollToCenter();
-        revdia.setLocation(200, 100);
+        revdia.setLocation(400, 300);
     }
     public static AlignmentControlPanel getForPanel(int location, IonogramAlignment alignment, FlowValue curFlowValue) {
         if (alignment == null) return null;

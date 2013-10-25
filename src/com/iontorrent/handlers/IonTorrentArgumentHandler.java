@@ -94,7 +94,7 @@ public class IonTorrentArgumentHandler implements ArgumentHandler {
                     return null;
                 } else if (key.equalsIgnoreCase("signature") || key.equalsIgnoreCase("hashcode")) {
                     log.info("Got hash code/signature for session resources" + key + "=" + val);                    
-                    if (IGV.DEBUG) MessageUtils.showMessage("Got signature  "+val);
+                   // if (IGV.DEBUG) MessageUtils.showMessage("Got signature  "+val);
                     PreferenceManager.getInstance().putTemp("signature", val);
                     return null;
                 } else if (key.equalsIgnoreCase("locus") || key.equalsIgnoreCase("position")) {
@@ -106,9 +106,9 @@ public class IonTorrentArgumentHandler implements ArgumentHandler {
                     if (IGV.DEBUG) MessageUtils.showMessage("Currently not handled specifically, adding it to preferences: "+ key + "=" + val);
                     if (prefs.contains(key)) {
                         prefs.put(key, val);
-                        log.info("Got general preference setting: " + key + "=" + val);
+                    //    log.info("Got general preference setting: " + key + "=" + val);
                     }
-                    else log.info("Got temp preference setting: " + key + "=" + val);
+                  //  else log.info("Got temp preference setting: " + key + "=" + val);
                     if (key.equalsIgnoreCase("header_value")) {
                         String algo = Encryptor.getDefaultAlgorithm();                   
                         try {

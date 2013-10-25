@@ -66,7 +66,6 @@ public class GuiPointTree extends GuiFeatureTree {
         int h = (int) chromo.getHeight();
         int w = (int) getAbsoluteSize().getWidth();
         y += h;
-        int minwidth = (int) pointType.getMinPointWidth()+2;
         g.setColor(new Color(252, 252, 252));
         g.fillRect(x-w, y-h, w, h);
         g.setColor(new Color(250, 250, 250));
@@ -100,10 +99,12 @@ public class GuiPointTree extends GuiFeatureTree {
         int trackwidth, int maxnr, int starty, int endy, int trackstartx, int y, int h) {
         // depends on filter mode! And wether we draw all or not
         List<KaryoFeature> features = null;
-        if (filter != null && filter.isValid()) {
+        if (filter != null && filter.isValid()  && filter.isEnabled()) {
             features = node.getFilteredFeatures(filter, true);
+           // p("Got "+features.size()+" FILTERED features");
         } else {
             features = node.getAllFeatures(true);
+           // p("Got "+features.size()+" UNFILTERED features");
         }
         FeatureMetaInfo.Range r = super.ktrack.getMetaInfo().getRangeForAttribute(this.renderType.getRelevantAttName());
         if (r == null && nrerrors < 100){
@@ -202,26 +203,29 @@ public class GuiPointTree extends GuiFeatureTree {
                             r = minwidth+2;
                             rh = Math.max(minheight+2, (y2-y1));
                         }
-                        int my = y1;
+                        int my = y1-r/4;
                          if (toLeft) {
-                             g.fillRoundRect(trackstartx - (int) dx, my, r,rh, r, r);
+                             int thisx = trackstartx -r;
+                             
+                             g.fillRoundRect(thisx - (int) dx, my, r,rh, r, r/2);
                            // g.fillOval(trackstartx - (int) dx, my, r,rh);
                            if (times == 2 && r>3)  {
                                 gg.setPaint(c.darker());
-                                g.drawRoundRect(trackstartx - (int) dx,my, r,rh, r, r);
+                                g.drawRoundRect(thisx - (int) dx,my, r,rh, r, r/2);
                                // g.drawOval(trackstartx - (int) dx,my, r,rh);
                             }
 
                         } else {
-                              g.fillRoundRect(trackstartx + (int) dx, my, r,rh, r, r);
+                              g.fillRoundRect(trackstartx + (int) dx, my, r,rh, r, r/2);
                             //g.fillOval(trackstartx + (int) dx,my, r,rh);
                             if (times == 2 && r>3)  {
                                 gg.setPaint(c.darker());
                                 //g.drawOval(trackstartx +(int) dx,my, r,rh);
-                                g.drawRoundRect(trackstartx + (int) dx,my, r,rh, r, r);
+                                g.drawRoundRect(trackstartx + (int) dx,my, r,rh, r, r/2);
                             }
                         }
                     }
+                   // else p("Not drawing feature, was filtered OUT");
                 }
             }
        // }

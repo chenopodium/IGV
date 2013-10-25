@@ -21,7 +21,9 @@ import org.apache.log4j.Logger;
 import org.broad.igv.data.seg.Segment;
 import org.broad.igv.feature.BasicFeature;
 import org.broad.igv.feature.LocusScore;
+import org.broad.igv.feature.genome.GenderManager;
 import org.broad.igv.feature.genome.GenomeManager;
+
 import org.broad.igv.track.AbstractTrack;
 import org.broad.igv.variant.Allele;
 import org.broad.igv.variant.Genotype;
@@ -56,23 +58,15 @@ public class KaryoFeature implements Feature {
     public boolean overlaps(KaryoFeature f) {
         return f.range.overlaps(range);
     }
+    public Range getRange() {
+        return range;
+    }
+    
 
     public String getAttribute(Variant var, String rel) {
-        String res = var.getAttributeAsString(rel);
-        Iterator it = var.getAttributes().keySet().iterator();
-        if (it != null) {
-            for (; it.hasNext();) {
-                String n = "" + it.next();
-                if (n.equalsIgnoreCase(rel)) {
-                    rel = n;
-                    res = var.getAttributeAsString(rel);
-                    //    p("Got att "+rel+": "+n);     
-                }
-
-            }
-        }
-        return res;
-
+        String value = var.getAttributeAsString(rel);
+        
+        return value;
     }
 
    
@@ -83,6 +77,7 @@ public class KaryoFeature implements Feature {
         if (feature instanceof Variant) {
             Variant var = (Variant) feature;
 
+          //  p("++++++++++++++++++++ isInsertion of variant called");
             String scopynr = getAttribute(var, "COPYNR");
             if (scopynr != null && scopynr.length() > 0) {
                 int copynr = -1;
@@ -133,8 +128,11 @@ public class KaryoFeature implements Feature {
     }
 
     public double getScore(FeatureMetaInfo info, String relevantName) {
+        return getScore(info, relevantName, false);
+    }
+    public double getScore(FeatureMetaInfo info, String relevantName, boolean debug) {
         double score = 0;
-        //  p("get score "+this.getRelevantAttName()+" for "+f.getClass().getName());
+        if (debug)  p("get score "+relevantName+" for "+f.getClass().getName());
 
         Feature f = this.feature;
 
@@ -144,16 +142,17 @@ public class KaryoFeature implements Feature {
 
             String sscore = getAttribute(v, relevantName);
 
+            if (debug)  p(" -> Variant, getAtt("+relevantName+")="+sscore);
             if (sscore != null && sscore.length() > 0) {
                 //        p("Got v.getAttributeAsString: "+sscore);
                 try {
                     score = Double.parseDouble(sscore);
                 } catch (Exception e) {
-                    // p("Could not parse score "+relevantName+"="+sscore +" to Double");
+                    if (debug) p("Could not parse score "+relevantName+"="+sscore +" to Double");
                 }
             } else {
                 // check the default values
-                //        p("Getting score via info.getValue("+this.getRelevantAttName()+")");
+                if (debug) p("Getting score via info.getValue("+relevantName+")");
                 return info.getValue(relevantName, f);
             }
         } else if (f instanceof Segment) {
@@ -179,7 +178,9 @@ public class KaryoFeature implements Feature {
         if (cutoffScore == Integer.MIN_VALUE) {
             cutoffScore = 2;
         }
+        
         if (feature instanceof Variant) {
+          //  p("++++++++++++++++++++ isDeletion of variant called");
             Variant var = (Variant) feature;
             String scopynr = getAttribute(var, "COPYNR");
             if (scopynr != null && scopynr.length() > 0) {
@@ -376,12 +377,20 @@ public class KaryoFeature implements Feature {
     }
 
     public String getParString(FeatureMetaInfo info, String nl) {
-         boolean par  = Chromosome.isPar(info.getTrack().isMale(),this);
-        String spar = nl+"Feature is in ";
-        if (par) spar += "par region";
-        else spar +="<b>non par region</b>";
-        if (Chromosome.isX(getChr())) spar += " on X";
-        else if (Chromosome.isY(getChr())) spar += " on Y";
+        if (info == null) return "";
+         boolean par  = GenderManager.isPar(info.getTrack().isMale(),getChr(), getRange());
+        String spar = "";
+        //if (par) spar += "par region";
+        boolean isX = GenderManager.isX(getChr());
+        boolean isY = GenderManager.isY(getChr());
+        if ( isX || isY) {
+            if (!par) spar =nl+"<b>Non par region</b>";        
+            else spar =nl+"Par region";        
+            if (isX) spar += " on X";
+            else if (isY) spar += " on Y";
+        }
+        //if (info.getTrack().isMale()) spar += " (sample is <b>male</b>)<br>";
+       // else spar += " (sample is <b>not</b> male)<br>";
         return spar;
     }
     public String toHtml(FeatureMetaInfo info) {
@@ -392,6 +401,21 @@ public class KaryoFeature implements Feature {
                 VariantTrack vtrack = (VariantTrack)igvtrack;
                 String spar = getParString(info, nl)+nl;
                 String h= spar+vtrack.getVariantToolTip((Variant)feature);
+                return  h;
+            }
+            else return toString(info, nl);
+        } else {
+            return toString(info, nl);
+        }
+    }
+    public String toShortHtml(FeatureMetaInfo info) {
+        String nl = "<br>";
+        AbstractTrack igvtrack = info.getTrack().getTrack();
+        if (feature instanceof Variant) {
+            if (igvtrack != null && igvtrack instanceof VariantTrack) {
+                VariantTrack vtrack = (VariantTrack)igvtrack;
+                String spar = getParString(info, nl);
+                String h= spar+vtrack.getVariantToolTip((Variant)feature, true);
                 return  h;
             }
             else return toString(info, nl);

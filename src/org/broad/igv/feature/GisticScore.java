@@ -16,7 +16,7 @@
  * SHALL KNOW OF THE POSSIBILITY OF THE FOREGOING.
  */
 
-
+ 
 /*
 * GisticScore.java
 *
@@ -51,12 +51,17 @@ public class GisticScore implements LocusScore {
     private float gScore;
     private Type gisticType;
 
+    
     /**
      * Creates a new instance of GisticScore
      */
     public GisticScore() {
     }
 
+    @Override
+    public String getName() {
+        return null;
+    }
     /**
      * Constructs ...
      *

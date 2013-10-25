@@ -21,6 +21,7 @@ package com.iontorrent.karyo.drawables;
 import com.iontorrent.karyo.data.Band;
 import com.iontorrent.karyo.data.Chromosome;
 import com.iontorrent.event.SelectionEvent;
+import com.iontorrent.karyo.data.Range;
 import com.iontorrent.views.basic.DrawingCanvas;
 import com.iontorrent.views.basic.GuiCanvas;
 import com.iontorrent.views.basic.GuiObject;
@@ -28,6 +29,7 @@ import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.HashMap;
+
 
 public class GuiChromosome extends GuiObject {
 
@@ -129,7 +131,22 @@ public class GuiChromosome extends GuiObject {
             return null;
         }
         int loc = getEventLocation(evt.getY());
-        return htmlstart + toHtml() + "<br>Position: " + (int) (loc / 1000000) + " MB" + htmlend;
+        
+        Band b = null;
+        for (int i = 0; b == null && i < chromo.getBands().size(); i++) {
+            Band band = chromo.getBands().get(i);
+            if (loc >= band.getStart() && loc <= band.getEnd()) {
+                b = band;
+            }
+        }
+        String h=htmlstart + toHtml() + "<br>Position: " + (int) (loc / 1000000) + " MB";
+        if (b != null) {
+            h += "<br>Band: "+b.toString();            
+           if (b.isPar()) h += "<br><b>Par region</b>";            
+        }
+      
+        h += htmlend;
+        return h;
     }
 
     private static Color getCytobandColor(Band band) {
@@ -234,10 +251,13 @@ public class GuiChromosome extends GuiObject {
 
         Paint shade = new GradientPaint(x + w / 3, 0, new Color(255, 255, 255, 0), x + w, 0, new Color(0, 0, 0, 110));
 
+        int b = 0;
         for (Band band : chromo.getBands()) {
+            b++;
             double h1 = getHeight(band.getStart());
             double h2 = getHeight(band.getEnd());
             Paint paint = getPaint(band);
+         //   if (band.isPar()) p("Drawing par band"+b+" of "+total+": "+band);
 
             g.setPaint(paint);
 
@@ -366,13 +386,17 @@ public class GuiChromosome extends GuiObject {
 
     private Paint getPaint(Band b) {
         Color c = this.getColor(b);
+        
+        
+        if (b.isPar()) return  new Color(255, 200,200);
         Paint p = c;
+        
+        
         if (b.isCentromer()) {
             p = getStripedPaint(2, 1);
         } else if (b.isStalk()) {
-            p = getStripedPaint(2, -1);
+            p = getStripedPaint(2, -1);        
         }
-
         return p;
     }
 

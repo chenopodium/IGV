@@ -56,6 +56,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import java.util.List;
+import org.broad.igv.PreferenceManager;
 import org.broad.igv.track.TrackOrderComparator;
 import org.broad.igv.track.TrackProperties;
 import org.broad.igv.util.collections.CollUtils;
@@ -464,20 +465,43 @@ public class IGVSessionReader implements SessionReader {
         } else if (nodeName.equalsIgnoreCase(SessionElement.VISIBLE_ATTRIBUTES.getText())) {
             processVisibleAttributes(session, (Element) element, additionalInformation);
         }
-        
-        
+
+
 
     }
 
-    /** hook in to add code to check the validity of resources urls. For instance,
-     * to verify that the session.xlm file has not been tampered with, one could add a signature/hash code
-     * of those urls and check the hash code with the hash code of the computed urls  */
-    protected String  checkAccessToResources(Collection<ResourceLocator> dataFiles) {
+    /**
+     * hook in to add code to check the validity of resources urls. For
+     * instance, to verify that the session.xlm file has not been tampered with,
+     * one could add a signature/hash code of those urls and check the hash code
+     * with the hash code of the computed urls
+     */
+    protected String checkAccessToResources(Collection<ResourceLocator> dataFiles) {
         return null;
     }
+
+    protected int computeHash(ResourceLocator file) {
+        if (file != null && file.getPath() != null) {
+            String path = file.getPath().toLowerCase();
+            if (path.indexOf("txt.gz") < 0) {
+                int h = path.hashCode();
+              //  log.info("Got sig hash for: " + file.getPath().toLowerCase() + ":" + h);
+                return h;
+            }
+        }
+        return 0;
+    }
+
     private void processResources(Session session, Element element, HashMap additionalInformation, String rootPath) {
         dataFiles = new ArrayList();
         missingDataFiles = new ArrayList();
+
+        //also get attributes of resources, such as the hash code
+        if (element.hasAttribute("hash")) {
+            String hash = element.getAttribute("hash");
+          //  log.info("========== RESOURCES has att hash: " + hash + ", storing in preferences");
+            PreferenceManager.getInstance().putTemp("signature", hash);
+        }
         NodeList elements = element.getChildNodes();
         process(session, elements, additionalInformation, rootPath);
 
@@ -505,10 +529,10 @@ public class IGVSessionReader implements SessionReader {
 
             MessageUtils.showMessage(message.toString());
         }
-        
+
         if (dataFiles.size() > 0) {
-            String message= checkAccessToResources(dataFiles) ;
-            if (message != null && message.length()>0) {               
+            String message = checkAccessToResources(dataFiles);
+            if (message != null && message.length() > 0) {
                 MessageUtils.showMessage(message.toString());
                 return;
             }
@@ -526,15 +550,15 @@ public class IGVSessionReader implements SessionReader {
                 final String relPath = fullToRelPathMap.get(suppliedPath);
 
                 TrackLoadRunnable runnable = new TrackLoadRunnable(locator, relPath, suppliedPath, errors);
-                   
+
                 boolean isAlignment = locator.getPath().endsWith(".bam") || locator.getPath().endsWith(".entries")
                         || locator.getPath().endsWith(".sam");
 
-                 boolean isCustom = locator.getPath().endsWith(".txt") || locator.getPath().endsWith(".csv");                        
+                boolean isCustom = locator.getPath().endsWith(".txt") || locator.getPath().endsWith(".csv");
 
                 // Run synchronously if in batch mode or if there are no "track" elments, or if this is an alignment file
                 if (isCustom || isAlignment || Globals.isBatch() || !hasTrackElments) {
-                    log.info("Loading "+ locator.getPath()+" synchronously");
+                    log.info("Loading " + locator.getPath() + " synchronously");
                     synchronousLoads.add(runnable);
                 } else {
                     TrackThread t = new TrackThread(runnable);
@@ -582,15 +606,19 @@ public class IGVSessionReader implements SessionReader {
     }
 
     private class TrackThread extends Thread {
+
         TrackLoadRunnable runnable;
-        public TrackThread (TrackLoadRunnable runnable) {
+
+        public TrackThread(TrackLoadRunnable runnable) {
             super(runnable);
             this.runnable = runnable;
         }
+
         public TrackLoadRunnable getRunnable() {
             return runnable;
         }
     }
+
     private class TrackLoadRunnable implements Runnable {
 
         ResourceLocator locator;
@@ -612,7 +640,7 @@ public class IGVSessionReader implements SessionReader {
 
         public void run() {
             loadTrack();
-            
+
         }
 
         public void loadTrack() {
@@ -620,7 +648,7 @@ public class IGVSessionReader implements SessionReader {
             boolean abort = false;
             ok = true;
             try {
-                log.info("LOADING TRACK "+locator.getPath());
+             //   log.info("==== LOADING TRACK FOR LOCATOR " + locator.getPath());
                 tracks = igv.load(locator);
                 //    log.info("Got tracks "+tracks+" for locator "+locator.getPath());
                 for (Track track : tracks) {
@@ -639,16 +667,26 @@ public class IGVSessionReader implements SessionReader {
                     }
 
                     if (relPath != null) {
+                        log.info("Got rel path: " + relPath);
                         id = id.replace(suppliedPath, relPath);
                     }
 
                     List<Track> trackList = trackDictionary.get(id);
                     if (trackList == null) {
                         trackList = new ArrayList();
-                        // log.info("Adding track id: "+id);
+                      //  log.info("Adding to trackDictionary, id: " + id);
                         trackDictionary.put(id, trackList);
                         if (track.getName() != null) {
+                         //   log.info("Adding to trackDictionary, name: " + track.getName());
                             trackDictionary.put(track.getName(), trackList);
+                        }
+                        if (track.getResourceLocator() != null) {
+                          //  log.info("Adding to trackDictionary, rl path: " + track.getResourceLocator().getPath());
+                            trackDictionary.put(track.getName(), trackList);
+                        }
+                        if (track.getDisplayName() != null) {
+                        //    log.info("Adding to trackDictionary, display name: " + track.getDisplayName());
+                            trackDictionary.put(track.getDisplayName(), trackList);
                         }
                     }
                     trackList.add(track);
@@ -767,10 +805,23 @@ public class IGVSessionReader implements SessionReader {
             }
         }
 
-        dataFiles.add(resourceLocator);
 
-        NodeList elements = element.getChildNodes();
-        process(session, elements, additionalInformation, rootPath);
+        //also get attributes of resources, such as the hash code
+        boolean resourcevalid = true;
+        if (element.hasAttribute("hash")) {
+            String hash = element.getAttribute("hash");
+            int computed = this.computeHash(resourceLocator);
+            if (!hash.equals("" + computed)) {
+                resourcevalid = false;
+            }
+            log.info("========== RESOURCE " + resourceLocator.getPath() + " has att hash: " + hash + ", computed hash=" + computed + ": same? " + resourcevalid);
+
+        }
+        if (resourcevalid) {
+            dataFiles.add(resourceLocator);
+            NodeList elements = element.getChildNodes();
+            process(session, elements, additionalInformation, rootPath);
+        }
 
     }
 
@@ -972,7 +1023,7 @@ public class IGVSessionReader implements SessionReader {
         }
 
         // now sort tracks by order
-       // log.info("======== Sorting panel tracks by order");
+        // log.info("======== Sorting panel tracks by order");
         Collections.sort(panelTracks, new TrackOrderComparator());
         for (Track t : panelTracks) {
             log.info(t.getTrackorder() + ":" + t.getName());
@@ -1027,7 +1078,9 @@ public class IGVSessionReader implements SessionReader {
 
         String trackLine = getAttribute(element, SessionAttribute.TRACK_LINE.getText());
 
-        if (trackLine != null) log.info("Got trackline "+trackLine+" for id "+id);
+        if (trackLine != null) {
+            log.info("Got trackline " + trackLine + " for id " + id);
+        }
 
         if (element.hasChildNodes()) {
             Node childNode = element.getFirstChild();
@@ -1040,9 +1093,11 @@ public class IGVSessionReader implements SessionReader {
 
         // Get matching tracks.
         List<Track> matchedTracks = trackDictionary.get(id);
-
         if (matchedTracks == null) {
-            log.info("Warning.  No tracks were found with id: " + id + " in session file. Check spelling. Tracks are:");
+            matchedTracks = trackDictionary.get(getAttribute(element, SessionAttribute.NAME.getText()));
+        }
+        if (matchedTracks == null) {
+            log.info("Warning.  No tracks were found in trackDictionary with id: " + id + ", element: " + element.toString() + ",  in session file. Check spelling. Tracks are:");
             for (Iterator it = trackDictionary.keySet().iterator(); it.hasNext();) {
                 log.info("              - " + it.next());
             }
@@ -1061,10 +1116,10 @@ public class IGVSessionReader implements SessionReader {
                     tp = new TrackProperties();
                     ParsingUtils.parseTrackLine(trackLine, tp);
                     track.setProperties(tp);
-                    log.info("Processing trackLine " + trackLine + " for " + track.getDisplayName() + ":" + tp.toString());
-                    log.info("cutoff of properties=" + tp.getCutoffScore() + ", trackorder of properties: " + tp.getTrackorder());
-                    log.info("Got cutoff: " + track.getCutoffScore());
-                    log.info("Got order: " + track.getTrackorder());
+                   // log.info("Processing trackLine " + trackLine + " for " + track.getDisplayName() + ":" + tp.toString());
+                   // log.info("cutoff of properties=" + tp.getCutoffScore() + ", trackorder of properties: " + tp.getTrackorder());
+                    //log.info("Got cutoff: " + track.getCutoffScore());
+                   // log.info("Got order: " + track.getTrackorder());
 
                 }
                 if (drAttributes != null) {

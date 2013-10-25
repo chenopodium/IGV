@@ -29,7 +29,7 @@ public class FilterManager {
     private FilterManager() {
         allfilters = new  ArrayList<KaryoFilter>();
         allfilters.add(new VariantAttributeFilter());
-        allfilters.add(new VariantFrequencyFilter());
+     //   allfilters.add(new VariantFrequencyFilter());
         allfilters.add(new LocusScoreFilter());
     }
     public ArrayList<KaryoFilter> getAllFilters() {
@@ -41,10 +41,11 @@ public class FilterManager {
             p("No sample features");
             return null;
         }
-        p("Getting filters for feature "+f.getClass().getName()+" out of "+allfilters.size()+" possible filters");
+      //  p("Getting filters for feature "+f.getClass().getName()+" out of "+allfilters.size()+" possible filters");
         ArrayList<KaryoFilter> res = new ArrayList<KaryoFilter>();
         for (KaryoFilter fil: allfilters) {
            // p("Checking filters for feature "+f);
+            // clone !!
             if (fil.isForFeature(f)) res.add(fil.copy());
         }
         return res;

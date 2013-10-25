@@ -13,6 +13,7 @@ package org.broad.igv.data.seg;
 //~--- non-JDK imports --------------------------------------------------------
 
 import com.iontorrent.utils.ErrorHandler;
+import java.util.HashMap;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.exceptions.DataLoadException;
@@ -80,7 +81,7 @@ public class SegmentFileParser implements SegFileParser {
         AsciiLineReader reader = null;
         String nextLine = null;
         int lineNumber = 0;
-        log.info("About to parse: "+locator.getPath());
+        log.info("=======About to parse: "+locator.getPath());
         try {
             reader = ParsingUtils.openAsciiReader(locator);
 
@@ -111,7 +112,7 @@ public class SegmentFileParser implements SegFileParser {
                 chrColumn = 1;
                 startColumn = 2;
                 endColumn = 3;
-                dataColumn = headings.length - 1;
+                dataColumn = 4;//headings.length - 1;
             }
 
             while ((nextLine = reader.readLine()) != null && (nextLine.trim().length() > 0)) {
@@ -125,14 +126,20 @@ public class SegmentFileParser implements SegFileParser {
                     try {
                         start = ParsingUtils.parseInt(tokens[startColumn].trim());
                     } catch (NumberFormatException numberFormatException) {
-                        throw new ParserException("Column " + (startColumn + 1) + " must contain a numeric value.",
+                        Exception pe= new ParserException("Column " + (startColumn + 1) + " must contain a numeric value.",
                                 lineNumber, nextLine);
+                        log.warn(ErrorHandler.getString(pe));
+                         log.info("Skipping line: " + nextLine);
+                        continue;
                     }
                     try {
                         end = ParsingUtils.parseInt(tokens[endColumn].trim());
                     } catch (NumberFormatException numberFormatException) {
-                        throw new ParserException("Column " + (endColumn + 1) + " must contain a numeric value.",
+                        Exception pe = new ParserException("Column " + (endColumn + 1) + " must contain a numeric value.",
                                 lineNumber, nextLine);
+                        log.warn(ErrorHandler.getString(pe));
+                         log.info("Skipping line: " + nextLine);
+                        continue;
                     }
 
                     String chr = tokens[chrColumn].trim();
@@ -144,6 +151,7 @@ public class SegmentFileParser implements SegFileParser {
                     String trackId = new String(tokens[sampleColumn].trim());
 
                     StringBuffer desc = null;
+                    HashMap<String,String> atts = null;
                     if (birdsuite) {
                         desc = new StringBuffer();
                         desc.append("<br>");
@@ -152,8 +160,11 @@ public class SegmentFileParser implements SegFileParser {
                         desc.append(tokens[6]);
                     } else {
                         if (tokens.length > 4) {
+                            atts = new HashMap<String, String>();
                             desc = new StringBuffer();
+                            // add a map with key/value
                             for (int i = 4; i < headings.length - 1; i++) {
+                                atts.put(headings[i], tokens[i]);
                                 desc.append("<br>");
                                 desc.append(headings[i]);
                                 desc.append(": ");
@@ -166,9 +177,10 @@ public class SegmentFileParser implements SegFileParser {
                     try {
                         float value = Float.parseFloat(tokens[dataColumn]);
                         String description = desc == null ? null : desc.toString();
-                        dataset.addSegment(trackId, chr, start, end, value, description);
-                    } catch (NumberFormatException numberFormatException) {
-                        // log.info("Skipping line: " + nextLine);
+                          
+                        dataset.addSegment(trackId, chr, start, end, value, description, atts);
+                    } catch (Exception e) {
+                         log.info("Skipping line: " + nextLine);
                     }
                 }
             }

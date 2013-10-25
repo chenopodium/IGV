@@ -86,6 +86,19 @@ public class SegmentedAsciiDataSet implements SegmentedDataSet {
      *
      */
     public void addSegment(String heading, String c, int start, int end, float value, String desc) {
+        addSegment(heading, c, start, end, value, desc, null);
+    }
+    /**
+     *
+     * @param heading
+     * @param c
+     * @param start
+     * @param end
+     * @param value
+     * @param desc
+     * @param atts
+     */
+    public void addSegment(String heading, String c, int start, int end, float value, String desc, HashMap<String,String> atts) {
 
         String chr = genome == null ? c : genome.getChromosomeAlias(c);
 
@@ -101,7 +114,7 @@ public class SegmentedAsciiDataSet implements SegmentedDataSet {
             segmentList = new ArrayList<LocusScore>();
             chrSegments.put(chr, segmentList);
         }
-        segmentList.add(new Segment(chr, start, start, end, end, value, desc));
+        segmentList.add(new Segment(chr, start, start, end, end, value, desc, atts));
         dataMax = Math.max(dataMax, value);
         dataMin = Math.min(dataMin, value);
         if (value < 0) {
@@ -207,7 +220,7 @@ public class SegmentedAsciiDataSet implements SegmentedDataSet {
                         int gEnd = genome.getGenomeCoordinate(chr, seg.getEnd());
                          if ((gEnd - gStart) > minFeatureSize) {
                             wholeGenomeScores.add(new Segment(chr, gStart, gStart, gEnd,
-                                    gEnd, seg.getScore(), seg.getDescription()));
+                                    gEnd, seg.getScore(), seg.getDescription(), seg.getAttributes()));
                         }
                     }
 

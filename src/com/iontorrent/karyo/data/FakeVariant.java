@@ -45,7 +45,12 @@ public class FakeVariant implements Variant {
         if (Math.random()>0.5) type = "LOSS";
         getAttributes().put("INDELTYPE", type);
     }
-    
+    public double getPloidy() {
+        return 2;
+    }
+    public double getScore() {
+        return getPloidy();
+    }
     @Override
     public String getID() {
         return id;

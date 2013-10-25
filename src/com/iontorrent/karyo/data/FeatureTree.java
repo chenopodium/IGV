@@ -19,7 +19,7 @@ public class FeatureTree extends FeatureTreeNode {
 
     static final int DEFAULT_BUCKETS = 200;
     private String name;
-    private ArrayList<KaryoFilter> filters;
+  //  private ArrayList<KaryoFilter> filters;
     private Feature sampleFeature;
     private KaryoTrack track;
 
@@ -28,7 +28,7 @@ public class FeatureTree extends FeatureTreeNode {
     }
 
     public FeatureTree(KaryoTrack track, AbstractTrack source, Chromosome chr, int nrbuckets) {
-        super(source, chr.getName(), 0, (int) chr.getLength(), nrbuckets);
+        super(source, chr.getName(), 0, (int) chr.getLength(), nrbuckets, "", 0);
         this.track = track;
     }
 
@@ -36,7 +36,7 @@ public class FeatureTree extends FeatureTreeNode {
         return track.getTrack();
     }
     public void loadFeatures() {
-        p("========= loading ALL features for " + track.getTrackDisplayName() + ", " + track.getTrack().toString() + ", " + track.getTrack().getAttributeValue("DATA_FILE"));
+     //   p("========= loading ALL features (or SUMMARIES) for chr "+chr+", " + track.getTrackDisplayName() + ", " + track.getTrack().toString());
 
         this.totalNrChildren = 0;
         if (!chr.startsWith("chr")) {
@@ -51,21 +51,26 @@ public class FeatureTree extends FeatureTreeNode {
         } else {
             int total = 0;
             int totalwithatts = 0;
-            //   p("Got "+res.size()+" items");
+          //  p("Got "+res.size()+" features");
             for (int i = 0; i < res.size(); i++) {
                 Object obj = res.get(i);
                 Feature f = (Feature) obj;
                 if (f != null) {
-                    if (sampleFeature == null) {
+                    if (track.getSampleafeture() == null) {
                         sampleFeature = f;
                         track.setSampleafeture(f);
-                        track.setMetainfo(FeatureMetaInfo.createMetaInfo(track, sampleFeature));
+                        if (track.getMetaInfo() == null) {
+                          //  p("Creating new meta info for track "+track.getTrackDisplayName());
+                                    
+                            track.setMetainfo(FeatureMetaInfo.createMetaInfo(track, sampleFeature));
+                        }
                     }
                     total++;
                     this.addFeature(new KaryoFeature(f));
+                   // p("Maybe Populating metainfo with feature "+f);
                     if (total < FeatureMetaInfo.MAX_NR_FEATURES) {
                         if (total < 100000) {
-                            //   p("Populating metainfo with feature "+f);
+                            
                             if (f instanceof KaryoFeature) {
                                 track.getMetaInfo().populateMetaInfo(((KaryoFeature) f).getFeature());
                             } else {
@@ -73,10 +78,14 @@ public class FeatureTree extends FeatureTreeNode {
                             }
 
                         }
+                       // else p("NO populating meta: total is "+total);
                     }
+                    //else p("NO populating meta: total is "+total);
                 }
             }
+         //   p("Attributes in meta: "+track.getMetaInfo().getAttributes());
         }
+        sampleFeature = track.getSampleafeture();
         // p("LOADING DONE. Found "+this.getTotalNrChildren()+ " on the entire chromosome");
     }
 
@@ -103,44 +112,41 @@ public class FeatureTree extends FeatureTreeNode {
         this.name = name;
     }
 
-    public ArrayList<KaryoFilter> getFilters() {
-        return filters;
-    }
+//    public ArrayList<KaryoFilter> getFilters() {
+//        return filters;
+//    }
 
     public KaryoFilter getFilter() {
-        if (filters != null && filters.size() > 0) {
-            return filters.get(0);
-        } else {
-            return null;
-        }
+       return track.getFilter();
     }
 
-    public boolean hasFilter() {
-        return getFilter() != null;
+    public boolean hasEnabledFilter() {
+        return this.track.getFilter() != null && track.getFilter().isEnabled();
     }
 
     public int filter() {
         int filtered = 0;
-        if (filters != null) {
-            for (KaryoFilter f : filters) {
-                if (f.isInitialized() && f.isValid()) {
-
+        if (this.getFilter() != null && this.getFilter().isEnabled()) {
+           // for (KaryoFilter f : filters) {
+            KaryoFilter f = this.getFilter();
+                if (f.isValid()) {
                     filtered = this.filter(f);
                     // p("Got "+filtered+" features");
-                    p("Filtering tree by " + f.getDescription() + ", got " + filtered + " filtered features");
+                  //  p("Filtering tree by " + f.getDescription() + ", got " + filtered + " filtered features");
                     // use AND.... not done yet
                 }
-            }
+           // }
         }
+        else p("Tree has no filter");
         return filtered;
     }
 
-    public void addFilter(KaryoFilter filter) {
-        if (filters == null) {
-            filters = new ArrayList<KaryoFilter>();
-        }
-        filters.add(filter);
-    }
+//    public void addFilter(KaryoFilter filter) {
+//        if (filters == null) {
+//            filters = new ArrayList<KaryoFilter>();
+//        }
+//        filters.add(filter);
+//    }
 
     private void p(String msg) {
         // Logger.getLogger("FeatureTree").info(msg);

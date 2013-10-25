@@ -269,7 +269,7 @@ public class AlignmentDataManager {
 
          boolean ignore = !PreferenceManager.getInstance().isAutoLoadBamTracks();
         if (ignore) {
-            Logger.getLogger("AlignmentDataManager").info("preload: Not loading bam yet");
+        //    Logger.getLogger("AlignmentDataManager").info("preload: Not loading bam yet");
             return;
         }
         final String chr = context.getChr();
@@ -366,7 +366,7 @@ public class AlignmentDataManager {
         }
         boolean ignore = PreferenceManager.getInstance().getTempAsBoolean("IGNORE_BAM_TRACKS");
         if (ignore) {
-            Logger.getLogger("AlignmentDataManager").info("Not loading bam yet");
+            //Logger.getLogger("AlignmentDataManager").info("Not loading bam yet");
             return;
         }
 

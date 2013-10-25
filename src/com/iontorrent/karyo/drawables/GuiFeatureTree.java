@@ -60,7 +60,7 @@ public class GuiFeatureTree extends GuiObject {
     public GuiFeatureTree(KaryoTrack ktrack, DrawingCanvas canvas, GuiChromosome chromo, FeatureTree tree, int dx, double scale) {
         super(chromo, canvas, chromo.getAbsolutePosition());
         //this.scale = scale;
-         width = WIDTH;
+        this.width = WIDTH;
         this.chromo = chromo;
         this.renderType = ktrack.getRenderType();
         this.ktrack = ktrack;
@@ -85,16 +85,18 @@ public class GuiFeatureTree extends GuiObject {
 
     public void update(FeatureTree tree) {
         this.tree = tree;
+        int x = (int) chromo.getX() + dx;
+        int y = (int) chromo.getY();
+        int h = (int) chromo.getHeight();
+        int w = width;
         if (dx < 0) {
             toLeft = true;
-            setAbsolutePosition(new Point(chromo.getX() + dx - width, chromo.getY()));
+            setAbsolutePosition(new Point(x-w, y));
         } else {
             toLeft = false;
-            setAbsolutePosition(new Point(chromo.getX() + dx - width, chromo.getY()));
-        }
-        
-        double h = chromo.getHeight();
-        setAbsoluteSize(new Dimension(width, (int) h + 20));
+            setAbsolutePosition(new Point(x-w, y));
+        }           
+        setAbsoluteSize(new Dimension(w, (int) h + 20));
     }
 
     protected double getHeight(long bases) {
@@ -127,19 +129,19 @@ public class GuiFeatureTree extends GuiObject {
         int x = (int) chromo.getX() + dx;
         int y = (int) chromo.getY();
         int h = (int) chromo.getHeight();
+        
         int w = (int) getAbsoluteSize().getWidth();
+        setAbsolutePosition(new Point(x-w, y));
         y += h;
-        
-        
+       
         g.setColor(new Color(252, 252, 252));
         g.fillRect(x-w, y-h, w, h);
         g.setColor(new Color(250, 250, 250));
         g.drawRect(x-w, y-h, w, h);
-        //  p("Drawing "+chromo+"  at "+x+"/"+y+", w="+w+", h="+h);
-
-//        g.setColor(new Color(240,240,240));
-//        if (!toLeft)g.drawLine(x, y - h, x, y); 
-//        else g.drawLine(x - w, y - h, x - w, y);
+       
+       // g.setColor(Color.red);
+        //g.drawRect((int)this.getAbsolutePosition().getX(), (int)this.getAbsolutePosition().getY(), this.getWidth(), this.getHeight());
+       
         
         g.setColor(ktrack.getRenderType().getColor(0));
         int start = tree.getStart();
@@ -154,7 +156,7 @@ public class GuiFeatureTree extends GuiObject {
         // if we have at least one pixel per 
         boolean drawall = (nrpixelperfeature > this.min_nr_pixels_per_feature_to_draw_all);
 
-
+       
         KaryoFilter filter = tree.getFilter();
         drawBuckets(start, delta, nodes, nrpixelperfeature, drawall, g, filter, w, maxnr, x, y, h);
 
@@ -209,6 +211,7 @@ public class GuiFeatureTree extends GuiObject {
                        }
                        startx += nrpixelperfeature;
                    }
+                   //else p("NOT drawing feature, was filtered OUT");
                 }
             }
         } else {
@@ -260,7 +263,11 @@ public class GuiFeatureTree extends GuiObject {
 
     public int filter() {
         int nr = tree.filter();
-     //  p("Filtered tree " + tree.getName() + ": " + nr);
+        
+        if (tree.hasEnabledFilter()) {
+            p("Tree "+tree.getName()+"has filter. " + tree.getName() + " with filter "+tree.getFilter().toHtml()+": found " + nr+"/"+tree.getFilter().getFilterCount()+"  of "+(tree.getNrFeatures()+tree.getTotalNrChildren()));
+        }
+       // else p("Tree has NO enabled filters");
         return nr;
     }
 
@@ -272,8 +279,8 @@ public class GuiFeatureTree extends GuiObject {
      * This method should be overwritten for any specific instance
      */
     public String toString(String nl) {
-        String res = "<b>Track '"+ tree.getName() + "', " + tree.getTotalNrChildren() + " features</b><br>";
-        res += "(Rendering type: "+this.renderType.getName()+")<br>";
+        String res = "Track <b>"+ tree.getSource().getDisplayName()+"</b>";// + "', " + tree.getTotalNrChildren() + " features</b><br>";
+        //if (DEBUG) res += "(Rendering type: "+this.renderType.getName()+")<br>";
         return res;
     }
 
@@ -295,32 +302,56 @@ public class GuiFeatureTree extends GuiObject {
         }
         int loc = getEventLocation(evt.getY());
         int MB = 5;
-        List<KaryoFeature> features = tree.getFeaturesAt(loc, MB*1000000);
+        int MILLION = 1000000;
+        // only features that are drawn
+        KaryoFilter fil = tree.getFilter();
+        if (fil == null || !fil.isEnabled() || !fil.isValid()) fil = null;
+        List<KaryoFeature> features = tree.getFeaturesAt(loc, MB*1000000, fil);
         String info = "";
-        if (features != null) {
-          //  p("Found " + features.size() + " features in this area (+- "+MB+" MB): ");
-            int mb = (int)loc/MB;
-            info = "Found " + features.size() +" at "+mb+" MB (+- "+MB+" MB):<br>";
-            if (features.size() < 4) {
-                for (KaryoFeature f : features) {
-                    
-                    info += f.toHtml(this.ktrack.getMetaInfo()) + "_________________<br>";
+        if (features != null && features.size()>0) {
+            
+            p("Found " + features.size() + " items at "+loc/MILLION+"  (+- "+MB+" MB): ");
+            
+            info = "Found " + features.size() +" at "+loc/MILLION+" MB (+- "+MB+" MB):<br>";
+            if (features.size() < 5) {
+                boolean table = features.size()>1;
+                // table?
+                if (table)info += "<table border='1'><tr>";
+                for (KaryoFeature f : features) {                    
+                    if (table) info += "<td>";
+                    info +=f.toHtml(this.ktrack.getMetaInfo());
+                    if (table) info += "</td>";
                   //  p(f.toString());
                 }
-            } else {
-                info = "Found " + features.size() +" at "+mb+" MB (+- "+MB+" MB). Example: <br>";
-                info += features.get(0).toHtml(this.ktrack.getMetaInfo());
-                //p(features.get(0).toString());
+                if (table)info += "</tr></table>";
+            }
+            else {
+                int nr = 1;
+                // table?
+                int MAX = 12;
+                if (features.size()> MAX) {
+                     info += "Showing just <b>first "+MAX+" of "+features.size()+"</b>: <br>";
+                }
+                info += "<table border='1'><tr>";                
+                for (KaryoFeature f : features) {
+                    
+                    info += "<td>"+f.toShortHtml(this.ktrack.getMetaInfo())+"</td>";
+                  //  p(f.toString());
+                  if (nr % 4 == 0)   {
+                      info += "</tr><tr>";
+                  }
+                  nr++;
+                  if(nr > MAX) break;
+                }
+                info += "</tr></table>";            
             }
         } else {
-          //  info = "Found no features there";
+        //  p("Found no features at "+loc);
+          //tree.getAllFeatures().toString();
+         // tree.getb
+          
         }
-        if (tree.getNodeForLocation(loc) != null && tree.hasFilter()) {
-            if (tree.getNrFilterPassed() > 0) {
-                info += "<br>Got " + tree.getNrFilterPassed() + " filtered features";
-            }
-           // info += "<br>Filter: " + tree.getFilter().toString();
-        }
+        
         return htmlstart + toHtml() + "<br>Position: " + (int) (loc / 1000000) + " MB"
                 + "<br>" + info
                 +  htmlend;

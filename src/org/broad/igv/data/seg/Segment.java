@@ -18,6 +18,7 @@
 
 package org.broad.igv.data.seg;
 
+import java.util.HashMap;
 import org.broad.igv.feature.LocusScore;
 import org.broad.igv.track.WindowFunction;
 
@@ -27,14 +28,14 @@ import org.broad.igv.track.WindowFunction;
  */
 public class Segment implements LocusScore {
 
-    private int extendedStart = -1;
-    private int extendedEnd = -1;
-    private int start;
-    private int end;
-    private float score;
-    private String chr;
-    private String description;
-
+    protected int extendedStart = -1;
+    protected int extendedEnd = -1;
+    protected int start;
+    protected int end;
+    protected float score;
+    protected String chr;
+    protected String description;
+    protected HashMap<String,String> atts;
 
     public Segment(int start, int end, float score) {
         this.start = start;
@@ -54,10 +55,11 @@ public class Segment implements LocusScore {
     }
 
 
-    public Segment(String chr, int start, int origStart, int end, int origEnd, float value, String description) {
+    public Segment(String chr, int start, int origStart, int end, int origEnd, float value, String description, HashMap<String,String> atts) {
         this.start = start;
         this.chr = chr;
         this.end = end;
+        this.atts = atts;
         this.extendedStart = origStart;
         this.extendedEnd = origEnd;
         this.score = value;
@@ -65,13 +67,17 @@ public class Segment implements LocusScore {
     }
 
     public Segment copy() {
-        Segment seg = new  Segment(chr, start, extendedStart, end, extendedEnd, score, description);        
+        
+        Segment seg = new  Segment(chr, start, extendedStart, end, extendedEnd, score, description, atts);        
         return seg;
     }
     public void setChr(String chr) {
         this.chr = chr;
     }
 
+    public HashMap<String,String> getAttributes(){
+        return atts;
+    }
     /** Added by CR */
     @Override
     public String getChr() {

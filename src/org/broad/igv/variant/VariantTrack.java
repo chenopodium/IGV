@@ -229,7 +229,6 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         return alignmentFiles == null ? null : alignmentFiles.get(sample);
     }
 
-
     /**
      * Set groups from global sample information attributes.
      */
@@ -240,8 +239,8 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         String newGroupByAttribute = !IGV.hasInstance() ? null : IGV.getInstance().getGroupByAttribute();
 
         // The first equality handles the case where both are null
-        if ((newGroupByAttribute == groupByAttribute) ||
-                (newGroupByAttribute != null && newGroupByAttribute.equals(groupByAttribute))) {
+        if ((newGroupByAttribute == groupByAttribute)
+                || (newGroupByAttribute != null && newGroupByAttribute.equals(groupByAttribute))) {
             // Nothing to do
             return;
         }
@@ -284,11 +283,9 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         }
     }
 
-
     public boolean isEnableMethylationRateSupport() {
         return enableMethylationRateSupport;
     }
-
 
     /**
      * Returns the height of a single sample (genotype) band
@@ -779,7 +776,6 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         this.renderID = value;
     }
 
-
     public boolean getHideFiltered() {
         return hideFiltered;
     }
@@ -787,7 +783,6 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
     public void setHideFiltered(boolean value) {
         this.hideFiltered = value;
     }
-
 
     public ColorMode getColorMode() {
         return coloring;
@@ -799,7 +794,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
 
     public String getNameValueString(int y) {
         if (y < top + variantBandHeight) {
-            return getName();
+            return "<html>" + getDisplayName(true) + "</html>";
         } else {
             String sample = getSampleAtPosition(y);
             return sample;
@@ -819,8 +814,10 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
     @Override
     public String getValueStringAt(String chr, double position, int y, ReferenceFrame frame) {
 
-        
-        if (chr.equalsIgnoreCase(Globals.CHR_ALL)) return null;
+
+        if (chr.equalsIgnoreCase(Globals.CHR_ALL)) {
+            return null;
+        }
         try {
             double maxDistance = 10 * frame.getScale();
             Variant variant = getFeatureClosest(position, maxDistance, frame);
@@ -923,89 +920,130 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
     }
 
     public String getVariantToolTip(Variant variant) {
+        return getVariantToolTip(variant, false);
+    }
+
+    public String getVariantToolTip(Variant variant, boolean isShort) {
         String id = variant.getID();
 
         StringBuffer toolTip = new StringBuffer();
         toolTip.append("Chr: " + variant.getChr());
         toolTip.append("<br>Position: " + variant.getPositionString());
-        toolTip.append("<br>ID: " + id);
-        toolTip.append("<br>Reference: " + variant.getReference());
-        Set<Allele> alternates = variant.getAlternateAlleles();
-        if (alternates.size() > 0) {
-            toolTip.append("<br>Alternate: " + alternates.toString());
+        if (!isShort) {
+            toolTip.append("<br>ID: " + id);
+            toolTip.append("<br>Reference: " + variant.getReference());
         }
-
-        toolTip.append("<br>Qual: " + numFormat.format(variant.getPhredScaledQual()));
-        toolTip.append("<br>Type: " + variant.getType());
-        if (variant.isFiltered()) {
-            toolTip.append("<br>Is Filtered Out: Yes</b>");
-            toolTip = toolTip.append(getFilterTooltip(variant));
+        
+        double p = variant.getPloidy();
+        if (p >= 0) {
+            String pl = "Ploidy: " + variant.getPloidy();
+            if (p > 2) {
+                pl = "<font color='000099'>" + pl + "</font>";
+            } else if (p == 1) {
+                pl = "<font color='990000'>" + pl + "</font>";
+            }
+            toolTip.append("<br><b>" + pl + "</b>");
         } else {
-            toolTip.append("<br>Is Filtered Out: No</b><br>");
+            toolTip.append("<br>Ploidy: unknown");
         }
-        toolTip.append("<br><b>Alleles:</b>");
-        toolTip.append(getAlleleToolTip(variant));
-
-        double[] af = variant.getAlleleFreqs();
-        if (af[0] < 0 && variant.getSampleNames().size() > 0) {
-            af = new double[]{variant.getAlleleFraction()};
-        }
-        String afMsg = "Unknown";
-        if (af[0] >= 0) {
-            afMsg = numFormat.format(af[0]);
-            for (int ii = 1; ii < af.length; ii++) {
-                afMsg += ", " + numFormat.format(af[ii]);
+        if (!isShort) {
+            Set<Allele> alternates = variant.getAlternateAlleles();
+            if (alternates.size() > 0) {
+                toolTip.append("<br>Alternate: " + alternates.toString());
             }
         }
-        toolTip.append("<br>Allele Frequency: " + afMsg + "<br>");
+        if (!isShort) {
+            toolTip.append("<br>Qual: " + numFormat.format(variant.getPhredScaledQual()));
+            toolTip.append("<br>Type: " + variant.getType());
+            if (variant.isFiltered()) {
+                toolTip.append("<br>Is Filtered Out: Yes</b>");
+                toolTip = toolTip.append(getFilterTooltip(variant));
+            } else {
+                toolTip.append("<br>Is Filtered Out: No</b><br>");
+            }
+            toolTip.append("<br><b>Alleles:</b>");
+            toolTip.append(getAlleleToolTip(variant));
 
-        if (variant.getSampleNames().size() > 0) {
-            toolTip = toolTip.append(getSampleToolTip(null, variant));
-            double afrac = variant.getAlleleFraction();
-            toolTip = toolTip.append("<br>Minor Allele Fraction: " + numFormat.format(afrac) + "<br>");
-        }
 
-        toolTip.append("<br><b>Genotypes:</b>");
+            double[] af = variant.getAlleleFreqs();
+            if (af[0] < 0 && variant.getSampleNames().size() > 0) {
+                af = new double[]{variant.getAlleleFraction()};
+            }
+            String afMsg = "Unknown";
+            if (af[0] >= 0) {
+                afMsg = numFormat.format(af[0]);
+                for (int ii = 1; ii < af.length; ii++) {
+                    afMsg += ", " + numFormat.format(af[ii]);
+                }
+            }
+            toolTip.append("<br>Allele Frequency: " + afMsg + "<br>");
 
-        // for all samples!
-        toolTip.append(getGenotypeToolTip(variant) + "<br>");
-        toolTip.append(getVariantInfo(variant) + "<br>");
+            if (variant.getSampleNames().size() > 0) {
+                toolTip = toolTip.append(getSampleToolTip(null, variant));
+                double afrac = variant.getAlleleFraction();
+                toolTip = toolTip.append("<br>Minor Allele Fraction: " + numFormat.format(afrac) + "<br>");
+            }
+
+            toolTip.append("<br><b>Genotypes:</b>");
+            // for all samples!
+            toolTip.append(getGenotypeToolTip(variant) + "<br>");
+        }        
+        toolTip.append(getVariantInfo(variant, isShort) + "<br>");
+        
         return toolTip.toString();
     }
-
     protected String getVariantInfo(Variant variant) {
+        return getVariantInfo(variant, false);
+    }
+    protected String getVariantInfo(Variant variant, boolean isShort) {
         Set<String> keys = variant.getAttributes().keySet();
         if (keys.size() > 0) {
-            String toolTip = "<br><b>Variant Attributes</b>";
-            int count = 0;
-
-            // Put AF and GMAF and put at the top, if present
-            String k = "AF";
-            String afValue = variant.getAttributeAsString(k);
-            if (afValue != null && afValue.length() > 0 && !afValue.equals("null")) {
-                toolTip = toolTip.concat("<br>" + getFullName(k) + ": " + variant.getAttributeAsString(k));
+            
+            if (isShort) {
+                String key = "CONFIDENCE";
+                String value = variant.getAttributeAsString(key);
+                if (value != null && value.length()>0) {
+                    String name = getFullName(key);                    
+                    name = "<b><font color='000099'>"+name+"</font></b>";                    
+                    return "<br>" + name + ": " + variant.getAttributeAsString(key);
+                }
             }
-            k = "GMAF";
-            afValue = variant.getAttributeAsString(k);
-            if (afValue != null && afValue.length() > 0 && !afValue.equals("null")) {
-                toolTip = toolTip.concat("<br>" + getFullName(k) + ": " + variant.getAttributeAsString(k));
-            }
+            else {
+                String toolTip = "<br><b>Variant Attributes</b>";
+                int count = 0;
 
-            for (String key : keys) {
-                count++;
-
-                if (key.equals("AF") || key.equals("GMAF")) {
-                    continue;
+                // Put AF and GMAF and put at the top, if present
+                String k = "AF";
+                String afValue = variant.getAttributeAsString(k);
+                if (afValue != null && afValue.length() > 0 && !afValue.equals("null")) {
+                    toolTip = toolTip.concat("<br>" + getFullName(k) + ": " + variant.getAttributeAsString(k));
+                }
+                k = "GMAF";
+                afValue = variant.getAttributeAsString(k);
+                if (afValue != null && afValue.length() > 0 && !afValue.equals("null")) {
+                    toolTip = toolTip.concat("<br>" + getFullName(k) + ": " + variant.getAttributeAsString(k));
                 }
 
-                if (count > MAX_FILTER_LINES) {
-                    toolTip = toolTip.concat("<br>....");
-                    break;
-                }
-                toolTip = toolTip.concat("<br>" + getFullName(key) + ": " + variant.getAttributeAsString(key));
+                for (String key : keys) {
+                    count++;
 
+                    if (key.equals("AF") || key.equals("GMAF")) {
+                        continue;
+                    }
+
+                    if (count > MAX_FILTER_LINES) {
+                        toolTip = toolTip.concat("<br>....");
+                        break;
+                    }
+                    String name = getFullName(key);
+                    if (name.equalsIgnoreCase("CONFIDENCE")) {
+                        name = "<b><font color='000099'>"+name+"</font></b>";
+                    }
+                    toolTip = toolTip.concat("<br>" + name + ": " + variant.getAttributeAsString(key));
+
+                }            
+                return toolTip;
             }
-            return toolTip;
         }
         return " ";
     }
@@ -1084,6 +1122,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         fullNames.put("AC", "Allele Count in Genotypes");
         fullNames.put("AN", "Total Alleles in Genotypes");
         fullNames.put("AF", "Allele Frequency");
+        fullNames.put("CN", "Copy Number");
         fullNames.put("DP", "Depth");
         fullNames.put("MQ", "Mapping Quality");
         fullNames.put("NS", "Number of Samples with Data");
@@ -1098,10 +1137,19 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         return fullNames.containsKey(key) ? fullNames.get(key) : key;
     }
 
-
     private String getSampleToolTip(String sample, Variant variant) {
+        if (sample == null) {
+            if (variant.getSampleNames() != null && variant.getSampleNames().size() > 0) {
+                sample = (String) variant.getSampleNames().iterator().next();
+            }
+        }
+        if (sample == null) {
+            return "";
+        }
         double goodBaseCount = variant.getGenotype(sample).getAttributeAsDouble("GB");
-        if (Double.isNaN(goodBaseCount)) goodBaseCount = 0;
+        if (Double.isNaN(goodBaseCount)) {
+            goodBaseCount = 0;
+        }
         if (sample != null && isEnableMethylationRateSupport() && goodBaseCount < 10) {
             return sample;
         }
@@ -1175,7 +1223,6 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         return toolTip;
     }
 
-
     public IGVPopupMenu getPopupMenu(final TrackClickEvent te) {
 
         final ReferenceFrame referenceFrame = te.getFrame();
@@ -1194,18 +1241,12 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         return new VariantMenu(this, selectedVariant);
     }
 
-
     /**
      * Handle a mouse click from the name panel.
      * <p/>
-     * if (e.isMetaDown() || e.isControlDown()) {
-     * toggleTrackSelections(e);
-     * } else if (e.isShiftDown()) {
-     * shiftSelectTracks(e);
-     * } else if (!isTrackSelected(e)) {
-     * clearTrackSelections();
-     * selectTracks(e);
-     * }
+     * if (e.isMetaDown() || e.isControlDown()) { toggleTrackSelections(e); }
+     * else if (e.isShiftDown()) { shiftSelectTracks(e); } else if
+     * (!isTrackSelected(e)) { clearTrackSelections(); selectTracks(e); }
      *
      * @param e
      */
@@ -1252,10 +1293,9 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
 
     }
 
-
     /**
-     * Return the index for the sample.  This is a very inefficient implementation, but we don't care because
-     * these lists are tiny.
+     * Return the index for the sample. This is a very inefficient
+     * implementation, but we don't care because these lists are tiny.
      *
      * @param sample
      * @return
@@ -1376,7 +1416,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         if (colorModeText != null) {
             try {
                 setColorMode(ColorMode.valueOf(colorModeText));
-                log.info("Got color mode: "+colorModeText);
+                log.info("Got color mode: " + colorModeText);
             } catch (Exception e) {
                 log.error("Error interpreting color mode: " + colorModeText);
             }

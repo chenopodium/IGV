@@ -88,11 +88,13 @@ public class GuiIndelTree extends GuiFeatureTree {
         // depends on filter mode! And wether we draw all or not
         g.setColor(ktrack.getColor());
         List<KaryoFeature> features = null;
-        if (filter != null && filter.isValid())
+        if (filter != null && filter.isValid() && filter.isEnabled())
         {
             features = node.getFilteredFeatures(filter, true);
+            //p("Got "+features.size()+" FILTERED features");
         } else {
             features = node.getAllFeatures(true);
+          //  p("Got "+features.size()+" UNFILTERED features");
         }
 
         ArrayList<KaryoFeature> gains = new ArrayList<KaryoFeature>();
@@ -100,7 +102,7 @@ public class GuiIndelTree extends GuiFeatureTree {
         ArrayList<KaryoFeature> other = new ArrayList<KaryoFeature>();
         
         for (KaryoFeature f : features) {
-            String type = gltype.getGainType(f);
+            String type = gltype.getGainType(f, ktrack.getMetaInfo());
             if (type.equals(gltype.GAIN)) {
                 gains.add(f);
             } 
@@ -164,6 +166,7 @@ public class GuiIndelTree extends GuiFeatureTree {
                     }
                     startx += nrpixelperfeature;
                 }
+              //  else p("Not drawing feature, was filtered OUT");
             }
 
         } else {

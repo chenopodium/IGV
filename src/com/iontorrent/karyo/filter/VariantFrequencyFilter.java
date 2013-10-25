@@ -36,6 +36,7 @@ public class VariantFrequencyFilter extends KaryoFilter{
     
     @Override
     public boolean filter(KaryoFeature kf) {
+        if (!isEnabled()) return true;
         Feature f = kf.getFeature();
         if (!(f instanceof Variant)) return true;
         Variant var = (Variant)f;
@@ -45,7 +46,9 @@ public class VariantFrequencyFilter extends KaryoFilter{
         boolean passed = false;
         if (not) passed= (frac <= treshold);
         else passed= frac> treshold;
-     //   p(var.getAlleleFraction()+"-> filter "+ok);
+       if (passed) this.filterCount++;
+       // p("     passed? "+passed);
+        filterCount++;
         return passed;
     }
     private void p(String s) {
@@ -59,6 +62,6 @@ public class VariantFrequencyFilter extends KaryoFilter{
     
     @Override
     public boolean isValid() {
-        return (this.fieldname != null && this.isInitialized());
+        return (this.fieldname != null);
     }
 }

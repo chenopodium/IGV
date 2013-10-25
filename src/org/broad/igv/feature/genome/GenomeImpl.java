@@ -18,6 +18,7 @@
  */
 package org.broad.igv.feature.genome;
 
+import com.iontorrent.karyo.data.Range;
 import org.apache.log4j.Logger;
 import org.broad.igv.DirectoryManager;
 import org.broad.igv.Globals;
@@ -87,21 +88,6 @@ public class GenomeImpl implements Genome {
         }
 
         initializeChromosomeAliases();
-    }
-
-    /**
-     * determine if this organism is female or not - currently just for humans
-     * :-)
-     */
-    @Override
-    public boolean isFemale(List<Chromosome> chromosomesWithData) {
-        // if the list does not contain y, then it is not a female
-        for (Chromosome chr : chromosomesWithData) {
-            if (chr.isY()) {
-                return false;
-            }
-        }
-        return true;
     }
 
     public String getChromosomeAlias(String str) {
@@ -394,10 +380,15 @@ public class GenomeImpl implements Genome {
 
             Chromosome chromosome = chromosomeMap.get(chr);
             if (chromosome != null) {
+                GenderManager.addParBands(this, chromosome, cytobands);
                 ((ChromosomeImpl) chromosome).setCytobands(cytobands);
             }
         }
 
+    }
+
+    private void p(String s) {
+        log.info(s);
     }
 
     public void setGeneTrack(FeatureTrack geneFeatureTrack) {

@@ -293,6 +293,7 @@ public class TrackNamePanel extends TrackPanelComponent implements Paintable {
                 break;
             }
         }
+       // System.out.println("TrackNamePanel: getTooltipTextForLocation: "+ text);
         return text;
     }
 

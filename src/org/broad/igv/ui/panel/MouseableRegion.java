@@ -28,6 +28,7 @@ import org.broad.igv.ui.IGV;
 import java.awt.*;
 import java.util.HashSet;
 import java.util.Set;
+import org.broad.igv.track.AbstractTrack;
 
 /**
  * Regions that represent tracks
@@ -46,7 +47,10 @@ public class MouseableRegion {
         if (track.getName().equals(track.getName())) {
             this.text = track.getName();
         } else {
-            this.text = "<html>" + track.getDisplayName() + "<br>" + track.getName();
+            if (track instanceof AbstractTrack) {
+                this.text = "<html>" + ((AbstractTrack)track).getDisplayName(true) + "<br>" + track.getName();
+            }
+            else this.text = "<html>" + track.getDisplayName() + "<br>" + track.getName();
         }
         trackCltn = new SingleTrackRegion(track);
     }

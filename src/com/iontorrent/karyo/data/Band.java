@@ -19,6 +19,14 @@ public class Band {
     private short stain;
     private Chromosome chr;
 
+     public Band(String name, Chromosome chr, Range r) {
+        this.name = name;
+        this.type = 'x';
+        this.stain = 50;
+        this.start =r.a;
+        this.end = r.b;
+        this.chrname = chr.getName();
+    }
     public Band(Cytoband cyto) {
         this.name = cyto.getName();
         this.type = cyto.getType();
@@ -130,6 +138,9 @@ public class Band {
     }
     public boolean isCentromer() {
         return type == 'c';
+    }
+     public boolean isPar() {
+        return type == 'x';
     }
     public boolean issNeg() {
         return type == 'n';

@@ -18,6 +18,7 @@
 */
 package com.iontorrent.karyo.filter;
 
+import com.iontorrent.guiutils.FlowPanel;
 import com.iontorrent.karyo.filter.KaryoFilter;
 import com.iontorrent.karyo.data.KaryoTrack;
 import com.iontorrent.karyo.views.KaryoManager;
@@ -26,6 +27,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.logging.Logger;
 import javax.swing.DefaultListModel;
+import javax.swing.JCheckBox;
+import javax.swing.JOptionPane;
 
 /**
  *
@@ -37,7 +40,8 @@ public class FilterController extends javax.swing.JPanel {
     
     private ArrayList<KaryoTrack> tracks;
     private HashMap<KaryoTrack, ArrayList<FilterPanel>> filterpanelmap;
-
+    private  DefaultListModel model;
+    
     /**
      * Creates new form FilterController
      */
@@ -46,18 +50,27 @@ public class FilterController extends javax.swing.JPanel {
         filterpanelmap = new HashMap<KaryoTrack, ArrayList<FilterPanel>>();
         initComponents();
         tracks = man.getKaryoTracks();
-        DefaultListModel model = new DefaultListModel();
+        model = new DefaultListModel();
         int nr = 0;
         
         for (KaryoTrack t : tracks) {            
-            model.addElement(t);
-            nr++;
+            // only if track has filters!
+            if (t.getPossibleFilters() != null){ 
+                model.addElement(t);
+                nr++;
+            }
+        }
+        if (model.size() <1) {
+            JOptionPane.showMessageDialog(this, "Found no tracks that have filters. Normally .vcf tracks or .seg tracks should have filters", "No filters found", JOptionPane.INFORMATION_MESSAGE);
         }
         this.listTracks.setModel(model);
-        panelFilters.setLayout(new GridLayout(5, 1));
+        
         if (nr > 0) {
             this.listTracks.setSelectedIndex(0);
         }
+    }
+    public int getNrTracksWithFilters() {
+        return model.size();
     }
 
     private void showFiltersForSelectedTrack() {
@@ -65,8 +78,11 @@ public class FilterController extends javax.swing.JPanel {
         panelFilters.removeAll();
 
         KaryoTrack track = (KaryoTrack) listTracks.getSelectedValue();
-        if (track == null || track.getPossibleFilters() == null) {
-            p("track "+track+" is null or has no filters");
+        if (track == null) return;
+        
+        ArrayList<KaryoFilter> possfilters = track.getPossibleFilters();
+        if (possfilters == null) {
+            p("track "+track+" has no filters");
             repaint();
             return;
         }
@@ -74,7 +90,7 @@ public class FilterController extends javax.swing.JPanel {
         ArrayList<FilterPanel> panels = filterpanelmap.get(track);
         if (panels == null) {
             panels = new ArrayList<FilterPanel>();
-            ArrayList<KaryoFilter> possfilters = track.getPossibleFilters();
+            
             for (KaryoFilter fil : possfilters) {
                 p("Got filter "+fil.getClass().getName()+" for track "+track.getTrackDisplayName());
                 FilterPanel pan = FilterPanel.createPanel(fil, track);
@@ -85,9 +101,13 @@ public class FilterController extends javax.swing.JPanel {
             filterpanelmap.put(track, panels);
         }
         p("Got "+panels.size()+" filter panels for track "+track.getTrackDisplayName());
+        
+        panelFilters.setLayout(new GridLayout(panels.size(), 2));
         for (FilterPanel pan : panels) {
             p("Got filter panel: "+pan.getClass().getName());
-            panelFilters.add(pan);
+            // also add enabled/disabled?
+           
+            panelFilters.add(new FlowPanel(pan));
         }
         invalidate();
         revalidate();
@@ -96,12 +116,20 @@ public class FilterController extends javax.swing.JPanel {
     }
 
     public void okClicked() {
+        p("okClicked");
         for (KaryoTrack t : tracks) {
             
             ArrayList<FilterPanel> panels = filterpanelmap.get(t);
             if (panels != null) {
                 for (FilterPanel pan : panels) {
                     pan.updateFilter();
+                    KaryoFilter f = pan.filter;
+                    p("Updating filtfer: "+f);
+                    if (f.isEnabled()) {
+                        p("NOt sure if correct, setting enabled filter "+f+" to karyotrack"+t.getTrackName());
+                        t.setFilter(f);
+                    }
+                    
                 }
             }
         }
@@ -157,7 +185,7 @@ public class FilterController extends javax.swing.JPanel {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(jLabel2)
-                        .addGap(0, 108, Short.MAX_VALUE))
+                        .addGap(0, 430, Short.MAX_VALUE))
                     .addComponent(panelFilters, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
         );

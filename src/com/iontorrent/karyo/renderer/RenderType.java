@@ -15,6 +15,7 @@ import com.iontorrent.karyo.views.GuiProperties;
 import com.iontorrent.views.basic.DrawingCanvas;
 import java.awt.Color;
 import org.apache.log4j.Logger;
+import org.broad.igv.feature.genome.GenderManager;
 import org.broad.tribble.Feature;
 
 /**
@@ -72,16 +73,17 @@ public class RenderType {
     public double getCutoffScore(KaryoFeature f) {
         
         if (parcutoffScore == Integer.MIN_VALUE) parcutoffScore = 2;                     
-        return getActualCutoffScoreBasedOnChromosome(f, parcutoffScore);
+        //return getActualCutoffScoreBasedOnChromosome(f, parcutoffScore);
+        return parcutoffScore;
     }
-    private double getActualCutoffScoreBasedOnChromosome(KaryoFeature f, double cutoff) {
-        // only check for MALE samples        
-        if(cutoff != 2 || Chromosome.isPar(ktrack.isMale(), f)) return cutoff;
-        else {
-            //p("Getting getActualCutoffScoreBasedOnChromosome chr "+f.getChr()+", cutoff="+cutoff+", -> GOT NON-PAR REGION ON Y CHROMOSOME: "+f.getStart()+"-"+f.getEnd());
-            return 1.0;
-        }
-    }
+//    private double getActualCutoffScoreBasedOnChromosome(KaryoFeature f, double cutoff) {
+//        // only check for MALE samples        
+//        if(cutoff != 2 || GenderManager.isPar(ktrack.isMale(), f.getChr(),f.getRange())) return cutoff;
+//        else {
+//            //p("Getting getActualCutoffScoreBasedOnChromosome chr "+f.getChr()+", cutoff="+cutoff+", -> GOT NON-PAR REGION ON Y CHROMOSOME: "+f.getStart()+"-"+f.getEnd());
+//            return 1.0;
+//        }
+//    }
     public void setCutoffScore(double d){
         this.parcutoffScore = d;
     }
@@ -108,6 +110,19 @@ public class RenderType {
     public String getKaryoDisplayName() {
          return gui.getDisplayName(getGuiSample(), getGuiKey(), ktrack.getFileExt());
     }
+    public String getKaryoFilterKey() {
+         return gui.getFilterKey(getGuiSample(), getGuiKey(), ktrack.getFileExt());
+    }
+    public String getKaryoFilterOperator() {
+         return gui.getFilterOperator(getGuiSample(), getGuiKey(), ktrack.getFileExt());
+    }
+    
+    public String getKaryoFilterMode() {
+        return gui.getFilterMode(getGuiSample(), getGuiKey(), ktrack.getFileExt());
+    }
+    public double getKaryoFilterValue() {
+         return gui.getFilterValue(getGuiSample(), getGuiKey(), ktrack.getFileExt());
+    }
     public double getKaryoCutoffScore(){
         return gui.getKaryoCutoffScore(getGuiSample(), getGuiKey(), ktrack.getFileExt());
     }
@@ -118,7 +133,7 @@ public class RenderType {
     }
       public String getKaryoScoreLabel(){
         String rel= gui.getScoreLabel(getGuiSample(), getGuiKey(), ktrack.getFileExt());
-        if (rel == null) rel = "Score";
+        if (rel == null || rel.equals("null")) rel = "Score";
         return rel;
     }
     public Color getKaryoColorGain(){
@@ -177,24 +192,28 @@ public class RenderType {
         return c;
     }
     public Color getDistinctColor(FeatureMetaInfo meta, KaryoFeature f) {
+        return getDistinctColor(meta, f, false);
+    }
+    public Color getDistinctColor(FeatureMetaInfo meta, KaryoFeature f, boolean debug) {
         String fieldname =this.getRelevantAttName();
-      //  p("Getting color for "+fieldname);
+      //  if(debug)  p("Getting color for "+fieldname);
         if (fieldname == null) {
              fieldname = meta.getScoreFieldName(f.getFeature());
              this.setRelevantAttName(fieldname);
+              if(debug)  p("Fieldname was null, it is now "+fieldname);
         }
         
         FeatureMetaInfo.Range range = meta.getRangeForAttribute(fieldname);
       
         if (range == null) {
             if (this.nrerrors < 5)  {
-                p("Found no range for field "+fieldname+" in meta info: "+meta.getTrackname()+", "+meta.getClass().getName());
+                if (debug) p("Found no range for field "+fieldname+" in meta info: "+meta.getTrackname()+", "+meta.getClass().getName());
                 nrerrors++;
             }
             return this.getColor(0);
         }
         
-        
+         //if(debug)  p("Getting color for "+this.getRelevantAttName());
         double score = f.getScore(meta, this.getRelevantAttName());
         
         double MAX = range.max;
@@ -202,10 +221,17 @@ public class RenderType {
         double middle = getCutoffScore(f);
         
         double delta = Math.max(MAX-MIN, 1);
-        
-        if (Math.abs(score - middle) < delta/10) return this.getColor(0);
-        else if (score > middle) return this.getColor(1);
-        else return getColor(2);
+        int which = 0;
+        if (Math.abs(score - middle) <= delta/10) which=0;
+        else if (score > middle) which =1;
+        else  which = 2;
+        if (debug) {
+            String type = "neutral";
+            if (which ==1) type = "GAIN";
+            else if (which ==2) type = "LOSS";
+          // p("Color for "+this.getRelevantAttName()+":cutoff="+middle+", score="+score+", delta="+delta+", resulting color: "+which+"="+type );
+        }
+        return getColor(which);
         
     }
    
@@ -400,7 +426,7 @@ public class RenderType {
      */
     public Color getColor(int nr) {
         if (nr >= colors.length || nr >= this.nrcolors) {
-            err("Colors out of range: "+nr+", "+nrcolors);
+           // err("Colors out of range: "+nr+", "+nrcolors);
             return null;
         }
         Color c = colors[nr];
@@ -452,4 +478,5 @@ public class RenderType {
         }
         return new Color(r, g, b);
     }   
+
 }

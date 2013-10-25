@@ -5,11 +5,10 @@
 package com.iontorrent.karyo.filter;
 
 import com.iontorrent.karyo.data.FeatureMetaInfo;
-import com.iontorrent.karyo.data.FeatureTree;
 import com.iontorrent.karyo.data.KaryoTrack;
-import com.iontorrent.karyo.data.Range;
-import com.iontorrent.karyo.filter.VariantAttributeFilter;
+import java.awt.BorderLayout;
 import java.util.ArrayList;
+import javax.swing.JLabel;
 import javax.swing.SpinnerNumberModel;
 
 /**
@@ -21,20 +20,48 @@ public class VariantAttributePanel extends FilterPanel {
     /**
      * Creates new form VariantAttributePanel
      */
-    public VariantAttributePanel(VariantAttributeFilter filter, KaryoTrack track) {
+    public VariantAttributePanel(VariantAttributeFilter filter, KaryoTrack track, ArrayList<String> allowedAtts) {
         super(filter, track);
         initComponents();
-
+         boxen.setSelected(filter.isEnabled());
+        setEnabledFontAndColor(boxen);
+        
         String first = null;
         if (meta != null) {
             boxNames.removeAllItems();
             for (String att : meta.getAttributes()) {
-                this.boxNames.addItem(att);
-                if (first == null) first = att;
+                p("Found att " + att + " in meta");
+                if (allowedAtts == null || allowedAtts.contains(att) || allowedAtts.contains(att.toUpperCase())) {
+                    this.boxNames.addItem(att);
+                    if (first == null) {
+                        first = att;
+                    }
+                } else {
+                    p("    ... but NOT allowing it, we only allow: " + allowedAtts);
+                }
             }
         }
         boxNames.setSelectedItem(first);
-        
+        if (filter.getAttname() != null) {
+            boxNames.setSelectedItem(filter.getAttname());
+        }
+        this.updateValues((String) boxNames.getSelectedItem());
+        if (filter.getOperator() != null) {
+            boxOp.setSelectedItem(filter.getOperator());
+        }
+        if (filter.getAttvalue() != null) {
+            this.txtValue.setText(filter.getAttvalue());            
+            if (boxVals.isVisible()) {
+                boxVals.setSelectedItem(filter.getAttvalue());
+            }
+        }
+        if (boxNames.getItemCount()<1) {
+            p("Got no attribute names, might as well remove this component :-)");
+            this.removeAll();
+            this.setLayout(new BorderLayout());
+            add("Center", new JLabel("<html>I found <b>no attributes</b> that I can use for filtering for this track</html>"));
+            
+        }
     }
 
     public String getSelectedAtt() {
@@ -47,38 +74,40 @@ public class VariantAttributePanel extends FilterPanel {
 
     @Override
     public void updateFilter() {
-        ((VariantAttributeFilter)filter).setAttname(getSelectedAtt());
+        VariantAttributeFilter vfil = (VariantAttributeFilter) filter;
+        p("=====Updating filter. boxOp is visible? " + boxOp.isVisible());
+        vfil.setAttname(getSelectedAtt());
+        this.filter.setEnabled(this.boxen.isSelected());
         if (boxVals.isVisible()) {
-            ((VariantAttributeFilter)filter).setAttvalue(getSelectedValue());
+            vfil.setAttvalue(getSelectedValue());
+            vfil.setOperator("=");
         }
-        else {
-            Number num = (Number) spinner.getValue();
-            ((VariantAttributeFilter)filter).setAttvalue(num.toString());
+        if (txtValue.isVisible()) {
+            String val= this.txtValue.getText();
+            vfil.setAttvalue(val);
+            p("Got value from text: " + val);
             String op = boxOp.getSelectedItem().toString().trim();
-            ((VariantAttributeFilter)filter).setOperator(op);
+            p("Got op: " + op);
+            vfil.setOperator(op);
         }
+        p("Got filte op=" + vfil.getOperator() + ", value=" + vfil.getAttvalue());
     }
 
     private void updateValues(String att) {
         if (meta != null) {
             if (meta.isRange(att)) {
                 boxVals.setVisible(false);
+              //  spinner.setVisible(true);
+                this.boxOp.setVisible(true);
+                this.txtValue.setVisible(true);
                 FeatureMetaInfo.Range r = meta.getRangeForAttribute(att);
-                p("Got range: "+r);
-                this.txtValue.setVisible(false);
-                SpinnerNumberModel model = (SpinnerNumberModel) spinner.getModel();
-                model.setMaximum(r.max);
-                model.setMinimum(r.min);
-                p("Model min is set to "+model.getMinimum());
-                p("Model max is set to "+model.getMaximum());
-                model.setValue(model.getMinimum());
-                Double step = new Double((r.max-r.min)/100);
-                p("Model step is set to "+step);
-                model.setStepSize(step);
-            }
-            else {
+                p("Got range: " + r);
+                this.txtValue.setVisible(true);
+                
+            } else {
                 ArrayList<String> vals = meta.getValuesForAttribute(att);
-                spinner.setVisible(false);
+               // spinner.setVisible(false);
+                boxVals.setVisible(true);
                 this.boxOp.setVisible(false);
                 this.txtValue.setVisible(false);
                 if (vals != null) {
@@ -90,9 +119,11 @@ public class VariantAttributePanel extends FilterPanel {
             }
         }
     }
-    private void p(String s){
-        System.out.println("VariantAttributePanel: "+s);
+
+    private void p(String s) {
+        System.out.println("VariantAttributePanel: " + s);
     }
+
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -105,13 +136,14 @@ public class VariantAttributePanel extends FilterPanel {
         jSpinner1 = new javax.swing.JSpinner();
         jScrollPane1 = new javax.swing.JScrollPane();
         jList1 = new javax.swing.JList();
-        jLabel1 = new javax.swing.JLabel();
+        jPanel1 = new javax.swing.JPanel();
         boxNames = new javax.swing.JComboBox();
+        txtValue = new javax.swing.JTextField();
+        jLabel1 = new javax.swing.JLabel();
+        boxOp = new javax.swing.JComboBox();
         jLabel2 = new javax.swing.JLabel();
         boxVals = new javax.swing.JComboBox();
-        txtValue = new javax.swing.JTextField();
-        spinner = new javax.swing.JSpinner();
-        boxOp = new javax.swing.JComboBox();
+        boxen = new javax.swing.JCheckBox();
 
         jList1.setModel(new javax.swing.AbstractListModel() {
             String[] strings = { "Item 1", "Item 2", "Item 3", "Item 4", "Item 5" };
@@ -120,7 +152,7 @@ public class VariantAttributePanel extends FilterPanel {
         });
         jScrollPane1.setViewportView(jList1);
 
-        jLabel1.setText(org.openide.util.NbBundle.getMessage(VariantAttributePanel.class, "VariantAttributePanel.jLabel1.text")); // NOI18N
+        setLayout(new java.awt.BorderLayout());
 
         boxNames.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "REF (reference bases)", "ALT (alternate non-reference alleles)", "QUAL (phred scaled quality)", "FILTER (pass or list of fllters that failedd)", "AA (ancestral allele)", "AC (allele count in genotypes)", "AF (alle frequency)", "AN (total nr of alleles in called genotypes)", "VT (variant type)", " " }));
         boxNames.addActionListener(new java.awt.event.ActionListener() {
@@ -129,46 +161,64 @@ public class VariantAttributePanel extends FilterPanel {
             }
         });
 
-        jLabel2.setText(org.openide.util.NbBundle.getMessage(VariantAttributePanel.class, "VariantAttributePanel.jLabel2.text")); // NOI18N
-
         txtValue.setText(org.openide.util.NbBundle.getMessage(VariantAttributePanel.class, "VariantAttributePanel.txtValue.text")); // NOI18N
+        txtValue.setMinimumSize(new java.awt.Dimension(80, 20));
 
-        spinner.setModel(new javax.swing.SpinnerNumberModel());
+        jLabel1.setText(org.openide.util.NbBundle.getMessage(VariantAttributePanel.class, "VariantAttributePanel.jLabel1.text")); // NOI18N
 
         boxOp.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "=", ">", "<", "<>" }));
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
-        this.setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(jLabel1)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(boxNames, javax.swing.GroupLayout.PREFERRED_SIZE, 165, javax.swing.GroupLayout.PREFERRED_SIZE)
+        jLabel2.setText(org.openide.util.NbBundle.getMessage(VariantAttributePanel.class, "VariantAttributePanel.jLabel2.text")); // NOI18N
+
+        boxVals.setMinimumSize(new java.awt.Dimension(100, 20));
+        boxVals.setPreferredSize(new java.awt.Dimension(60, 20));
+
+        boxen.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
+        boxen.setText(org.openide.util.NbBundle.getMessage(VariantAttributePanel.class, "VariantAttributePanel.boxen.text")); // NOI18N
+        boxen.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                boxenActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addComponent(boxen)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(jLabel2)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(txtValue, javax.swing.GroupLayout.PREFERRED_SIZE, 93, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(boxOp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(spinner, javax.swing.GroupLayout.PREFERRED_SIZE, 57, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(boxVals, 0, 17, Short.MAX_VALUE))
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addComponent(boxNames, javax.swing.GroupLayout.PREFERRED_SIZE, 165, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(boxOp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(4, 4, 4)
+                        .addComponent(txtValue, javax.swing.GroupLayout.PREFERRED_SIZE, 93, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(boxVals, 0, 124, Short.MAX_VALUE))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addComponent(jLabel1)
+                        .addGap(138, 138, 138)
+                        .addComponent(jLabel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
         );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel1)
-                    .addComponent(boxNames, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel2)
+                    .addComponent(boxen)
+                    .addComponent(jLabel1))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(boxNames, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(boxOp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(boxVals, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(txtValue, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(spinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(boxOp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(0, 132, Short.MAX_VALUE))
+                    .addComponent(txtValue, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(0, 5, Short.MAX_VALUE))
         );
+
+        add(jPanel1, java.awt.BorderLayout.CENTER);
     }// </editor-fold>//GEN-END:initComponents
 
     private void boxNamesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_boxNamesActionPerformed
@@ -176,18 +226,23 @@ public class VariantAttributePanel extends FilterPanel {
         if (sel != null) {
             this.updateValues(sel);
         }
-
     }//GEN-LAST:event_boxNamesActionPerformed
+
+    private void boxenActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_boxenActionPerformed
+        setEnabledFontAndColor(boxen);
+    }//GEN-LAST:event_boxenActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JComboBox boxNames;
     private javax.swing.JComboBox boxOp;
     private javax.swing.JComboBox boxVals;
+    private javax.swing.JCheckBox boxen;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JList jList1;
+    private javax.swing.JPanel jPanel1;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JSpinner jSpinner1;
-    private javax.swing.JSpinner spinner;
     private javax.swing.JTextField txtValue;
     // End of variables declaration//GEN-END:variables
 }

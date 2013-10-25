@@ -662,7 +662,7 @@ public class CoverageTrack extends AbstractTrack {
 
         IGVPopupMenu popupMenu = new IGVPopupMenu();
 
-        JLabel popupTitle = new JLabel("  " + getDisplayName(), JLabel.CENTER);
+        JLabel popupTitle = new JLabel("  " + getDisplayName(true), JLabel.CENTER);
 
         Font newFont = popupMenu.getFont().deriveFont(Font.BOLD, 12);
         popupTitle.setFont(newFont);

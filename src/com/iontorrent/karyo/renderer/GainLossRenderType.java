@@ -4,6 +4,7 @@
  */
 package com.iontorrent.karyo.renderer;
 
+import com.iontorrent.karyo.data.FeatureMetaInfo;
 import com.iontorrent.karyo.data.FeatureTree;
 import com.iontorrent.karyo.data.KaryoFeature;
 import com.iontorrent.karyo.data.KaryoTrack;
@@ -64,21 +65,23 @@ public class GainLossRenderType extends RenderType {
         return new GuiIndelTree(ktrack, canvas, chromo, tree, dx);        
     }
     
-    public String getGainType(KaryoFeature f) {
+    public String getGainType(KaryoFeature f, FeatureMetaInfo info) {
         Feature feature = f.getFeature();
-     //   p("getGainType: att name="+this.getRelevantAttName()+" for "+feature.getClass().getName());
+     
         if (feature instanceof Variant) {
-            Variant var = (Variant)feature;
             String rel = this.getRelevantAttName();
-            String indeltype = f.getAttribute(var,rel);
-          //  p("Got "+rel+" "+indeltype);
-            
-            if (indeltype != null) {
-           //     p("Got indeltype from "+rel+":"+indeltype);
-                if (indeltype.contains("INS")) return GAIN;
-                else if (indeltype.contains("DEL")) return LOSS;
-                else return NEUTRAL;
-            }            
+            double cutoff = this.getCutoffScore(f);
+            double score =f.getScore(info, rel) ;
+            p("getGainType: att="+this.getRelevantAttName()+" for "+feature.getChr()+":"+feature.getStart()+", score  is: "+score+", cutoff="+cutoff);
+            if (score > cutoff) {
+                p("   -> gain");
+                return GAIN;
+            }
+            else if (score < cutoff) {
+                p("   -> loss");
+                return LOSS;
+            }
+            else return NEUTRAL;          
         }
         if (f.isInsertion(this.getCutoffScore(f))) return GAIN;
         else if (f.isDeletion(this.getCutoffScore(f))) return LOSS;

@@ -4,6 +4,8 @@
  */
 package com.iontorrent.cnv;
 
+import java.util.HashMap;
+
 /**
  *
  * @author Chantal
@@ -15,7 +17,7 @@ public class CnvDataPoint {
     long end;
     int chr;
     private PlotType type;
-
+    HashMap<String,String> atts;
     /**
      * @return the type
      */
@@ -23,6 +25,9 @@ public class CnvDataPoint {
         return type;
     }
 
+    public HashMap<String,String> getAttributes() {
+        return atts;
+    }
     /**
      * @param type the type to set
      */
@@ -35,9 +40,10 @@ public class CnvDataPoint {
         REDLINE,       
     }
    
-   CnvDataPoint(int chr, long pos, long end, double ratio, String clone) {
+   CnvDataPoint(int chr, long pos, long end, double ratio, String clone, HashMap<String,String> atts) {
         this.chr = chr;
         this.pos = pos;
+        this.atts = atts;
         this.end = Math.max(pos+1, end);
         this.ratio = ratio;
         this.clone = clone;

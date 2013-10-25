@@ -45,12 +45,28 @@ public class IonTorrentSessionReader extends IGVSessionReader {
             log.warn("got no signature in temp preferences, assuming resources are ok for now");
             return null;
         }
-        long lsignature = Long.parseLong(signature);
+        long lsignature = 0;
+        if (signature != null && signature.length() > 0){
+            try {
+                lsignature = Long.parseLong(signature);
+            }
+            catch (Exception e){
+                log.warn("Could not interpret signature "+signature);
+            }
+        }
         long hash = 0;
         for (ResourceLocator file : dataFiles) {
-            hash += file.getUrl().toLowerCase().hashCode();
+            if (file != null && file.getPath() != null) {
+                String path = file.getPath().toLowerCase();
+                if (path.indexOf("txt.gz")<0) {
+                    int h = path.hashCode();
+                    hash += h;
+                    log.info("Adding sig hash for: "+file.getPath().toLowerCase()+":"+h);
+                }
+            }
+            else log.warn("Got no file or path for resourcelocator: "+file);
         }
-        if (lsignature != hash) {
+        if (lsignature > 0 && lsignature != hash) {
             log.warn("Signature " + signature + "/" + lsignature + " is not equals to hash code " + hash);
 
             StringBuilder message = new StringBuilder();
@@ -61,9 +77,7 @@ public class IonTorrentSessionReader extends IGVSessionReader {
                     message.append(file.getPath());
                     message.append("</li>");
                 } else {
-                    message.append("<li>Server: ");
-                    message.append(file.getServerURL());
-                    message.append("  Path: ");
+                    message.append("<li>");
                     message.append(file.getPath());
                     message.append("</li>");
                 }
@@ -73,9 +87,9 @@ public class IonTorrentSessionReader extends IGVSessionReader {
             message.append("</html>");
 
             MessageUtils.showMessage(message.toString());
-
-
-            return message.toString();
+            // XXX TODO to activate, uncommoent
+            // return message.toString();
+            return null;
         } else {
             return null;
         }

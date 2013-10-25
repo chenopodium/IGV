@@ -1094,7 +1094,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             Collection<Track> tracks = new ArrayList();
             tracks.add(AlignmentTrack.this);
 
-            JLabel popupTitle = new JLabel("  " + AlignmentTrack.this.getDisplayName(), JLabel.CENTER);
+            JLabel popupTitle = new JLabel("  " + AlignmentTrack.this.getDisplayName(true), JLabel.CENTER);
 
             Font newFont = getFont().deriveFont(Font.BOLD, 12);
             popupTitle.setFont(newFont);

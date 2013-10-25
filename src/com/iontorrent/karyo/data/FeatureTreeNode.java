@@ -38,9 +38,11 @@ public class FeatureTreeNode {
     // filter
     private int errors = 0;
     private int nrFilterPassed;
-   
-
-    public FeatureTreeNode(AbstractTrack source, String chr, int start, int end, int nrbuckets) {
+    private int nodeNr;
+    private String nodeparent;
+    public FeatureTreeNode(AbstractTrack source, String chr, int start, int end, int nrbuckets, String nodeparent, int nodeNr) {
+        this.nodeNr = nodeNr;
+        this.nodeparent = nodeparent;
         this.nrbuckets = nrbuckets;
         this.source = source;
         this.start = start;
@@ -59,14 +61,15 @@ public class FeatureTreeNode {
     }
 
     public List<KaryoFeature> getFilteredFeatures(KaryoFilter filter, boolean debug) {
-        if (!filter.isValid()) {
+        debug = true;
+        if (!filter.isEnabled() || !filter.isValid()) {
             if (debug) {
-                p("getFilteredFeatures(filter): Filter " + filter + " is not valied, returning null");
+                // p("getFilteredFeatures(filter): Filter " + filter + " is not enabled or not valid, returning null");
             }
             return null;
         }
         if (debug) {
-            p("getFilteredFeatures(filter): Filter " + filter + " is valid");
+            // p("getFilteredFeatures(filter): Filter " + filter + " is valid");
         }
         List<KaryoFeature> res = new ArrayList<KaryoFeature>();
 
@@ -91,7 +94,7 @@ public class FeatureTreeNode {
             }
         }
         if (debug) {
-            p("getFilteredFeatures(filter): Filter " + filter + " is valid, got " + res.size() + " filtered features for node " + this);
+            //if (res.size()>0) p("getFilteredFeatures(filter): Filter " + filter + " is valid, got " + res.size() + " filtered features for node " + this);
         }
         return res;
     }
@@ -170,24 +173,27 @@ public class FeatureTreeNode {
             return;
         }
         features = new ArrayList<KaryoFeature>();
-        List res = loadFeatures_r(chr, start, end-1);
+        List res = loadFeatures_r(chr, start, end - 1);
         if (res != null) {
-            if (res.size()>1000) {
-                p("Got "+res.size()+" features at "+chr+":"+start+"-"+end+" , checking memory");
-                boolean ok= checkMemory();
-                if (!ok) return;
+            if (res.size() > 1000) {
+                p("Got " + res.size() + " features at " + chr + ":" + start + "-" + end + " , checking memory");
+                boolean ok = checkMemory();
+                if (!ok) {
+                    return;
+                }
             }
             for (Object o : res) {
                 Feature f = (Feature) o;
                 // sanity check
-                if (f.getEnd()<start || f.getStart()> end) {
+                if (f.getEnd() < start || f.getStart() > end) {
 //                    if (errors <10) p("FEATURE "+f.getStart()+"-"+f.getEnd()+" NOT IN RANGE "+start+"-"+end);
 //                    errors++;
+                } else {
+                    features.add(new KaryoFeature(f));
                 }
-                else features.add(new KaryoFeature(f));
             }
         }
-        
+
     }
 
     private synchronized boolean checkMemory() {
@@ -196,7 +202,7 @@ public class FeatureTreeNode {
             System.gc();
             if (RuntimeUtils.getAvailableMemoryFraction() < 0.1) {
                 int maxmb = (int) (Runtime.getRuntime().maxMemory() / 1000000);
-                p("Still low on memory after system.gc. Max is "+maxmb);                
+                p("Still low on memory after system.gc. Max is " + maxmb);
                 return false;
             }
 
@@ -209,32 +215,32 @@ public class FeatureTreeNode {
         if (!chr.startsWith("chr")) {
             chr = "chr" + chr;
         }
-       // p(source.getName() + ": loadFeatures");
+        // p(source.getName() + ": loadFeatures");
 
         List res = null;
         if (source instanceof CoverageTrack) {
             CoverageTrack ctrack = (CoverageTrack) source;
             if (ctrack != null && ctrack.getDataSource() != null) {
                 res = ctrack.getDataSource().getSummaryScoresForRange(chr, start, end, zoom);
-   //             p("Loading coverage info from CoverageTrack track NOT DONE");
+                //             p("Loading coverage info from CoverageTrack track NOT DONE");
             }
             features = new ArrayList<KaryoFeature>();
 
 
         } else if (source instanceof DataSourceTrack) {
- //           p("Loading data for DataSourceTrack ");
+            p("Loading data for DataSourceTrack ");
             DataSourceTrack ctrack = (DataSourceTrack) source;
             res = ctrack.getSummaryScores(chr, start, end, zoom);
 
         } else if (source instanceof FeatureTrack) {
-          //  p("Loading features from feature track");
+            //  p("Loading features from feature track");
             FeatureTrack fsource = (FeatureTrack) source;
             res = fsource.getFeatures(chr, getStart(), getEnd());
         } else if (source instanceof FakeTrack) {
-        //    p("Loading FakeTrack");
-            FakeTrack fsource = (FakeTrack)source;
+            //    p("Loading FakeTrack");
+            FakeTrack fsource = (FakeTrack) source;
             res = fsource.getFeatures(chr, getStart(), getEnd());
-        
+
         } else {
             err("========= Got abstract track " + source.getClass().getName() + ", not sure how to load anything");
         }
@@ -261,9 +267,12 @@ public class FeatureTreeNode {
         } else {
             int b1 = getBucket(f.getStart());
             int end = f.getEnd();
-            if (end > f.getStart()) end = end-1;
+            if (end > f.getStart()) {
+                end = end - 1;
+            }
             int b2 = getBucket(end);
 
+            int nr = 0;
             for (int b = b1; b <= b2 && b < nodes.length; b++) {
                 if (b >= 0) {
                     if (getNodes()[b] == null) {
@@ -275,7 +284,7 @@ public class FeatureTreeNode {
                             // if small genome region, just store all features there and do not recurse any further                    
                             childbuckets = 0; // leaf!
                         }
-                        nodes[b] = new FeatureTreeNode(source, chr, bucketstart, bucketend-1, childbuckets);
+                        nodes[b] = new FeatureTreeNode(source, chr, bucketstart, bucketend - 1, childbuckets, this.nodeparent+this.nodeNr, nr++);
                     }
                     getNodes()[b].addFeature(f);
                 }
@@ -308,7 +317,7 @@ public class FeatureTreeNode {
     public FeatureTreeNode getNodeForLocation(int location) {
         int b = getBucket(location);
         if (b < 0 || b >= nodes.length) {
-            //    p("Location out of bounds: "+location+"-> bucket "+b);
+                p("Location out of bounds: "+location+"-> bucket "+b);
             return null;
         }
         return getNodes()[getBucket(location)];
@@ -318,20 +327,49 @@ public class FeatureTreeNode {
         return (int) ((double) (location - getStart()) / (double) (getEnd() - getStart()) * (double) getNrbuckets());
     }
 
-    public List<KaryoFeature> getFeaturesAt(int location, int errortolerance) {
+    public List<KaryoFeature> getFeaturesAt(int location, int errortolerance, KaryoFilter fil) {
         List<KaryoFeature> res = new ArrayList<KaryoFeature>();
+        int pos = location - errortolerance;
+        int bstart = Math.max(0,getBucket(pos));
+        int bend = getBucket(location + errortolerance);
+        if (bend < 0) bend = this.nodes.length;
+        p("Finding features between "+pos/1000000+" and "+(location+errortolerance)/1000000+", buckets "+bstart+"-"+bend);
+        for (int bucket = bstart; bucket <= bend && bucket < nodes.length; bucket++) {
+            FeatureTreeNode node =  nodes[bucket];
+            if (node != null) {                
+                List<KaryoFeature> subres = node.getFeaturesAt_r(pos, errortolerance, fil);
+                if (subres != null) {
+                //    p("Found "+subres+" features in tree at "+pos+", bucket "+bucket);
+                    res.addAll(subres);
+                }
+             //   else p("Found no features in tree at "+pos);
+                
+            } else {
+                p("Found no tree at "+pos/1000000+", bucket"+bucket);                
+            }
+        }
+        return res;
+    }
+
+    public List<KaryoFeature> getFeaturesAt_r(int location, int errortolerance, KaryoFilter fil) {
+        List<KaryoFeature> res = new ArrayList<KaryoFeature>();
+        //p("Checking node "+this.nodeparent+this.nodeNr+" at "+this.getStart()/1000000+"-"+this.getEnd()/1000000);
         if (isLeaf()) {
             // find feat
+            if (features == null) this.getAllFeatures();
             if (features != null && features.size() > 0) {
-              //  p("Finding which of " + features.size() + " features is at " + location + ", start-end=" + start + "-" + end);
-                if (location < start || location > end) {
-                    p("Should not be in this tree node! Location off");
-                }
+                //  p("Finding which of " + features.size() + " features is at " + location + ", start-end=" + start + "-" + end);
+//                if (location < start || location > end) {
+//                    p("Should not be in this tree node! Location off");
+//                }
                 for (KaryoFeature f : features) {
                     // just appoximately, such as for tool tip text
                     if (f.getStart() - errortolerance <= location && f.getEnd() + errortolerance > location) {
-                        // p("   checking " + f.getStart() + "-" + f.getEnd());
-                        res.add(f);
+                       // p("   checking " + f.getStart() + "-" + f.getEnd());
+                        if (fil == null || !fil.isEnabled() || fil.filter(f)) {
+                           // p("found " + f.getStart()/1000000);
+                            res.add(f);
+                        }
                     }
                 }
                 return res;
@@ -341,15 +379,26 @@ public class FeatureTreeNode {
         } else {
             FeatureTreeNode node = getNodeForLocation(location);
             if (node != null) {
-                return node.getFeaturesAt(location, errortolerance);
+                List<KaryoFeature> subres = node.getFeaturesAt_r(location, errortolerance, fil);
+                if (subres != null) {
+                   return subres;
+                }
             }
+            return res;
             //else p("Got no node at "+location);
         }
-        return null;
     }
 
     public List<KaryoFeature> getAllFeatures() {
         return getAllFeatures(false);
+    }
+
+    public int getNrFeatures() {
+        if (features == null) {
+            return 0;
+        } else {
+            return features.size();
+        }
     }
 
     public List<KaryoFeature> getAllFeatures(boolean debug) {
@@ -357,8 +406,8 @@ public class FeatureTreeNode {
             if (features == null && this.totalNrChildren > 0) {
                 loadFeatures();
             }
-            if (this.getTotalNrChildren() <features.size()) {
-                p("getAllFeatures for "+this.chr+":"+this.getStart()+"-"+this.getEnd()+": Total nr children " + getTotalNrChildren() + ", but loaded features:" + features.size());
+            if (this.getTotalNrChildren() < features.size()) {
+                p("getAllFeatures for " + this.chr + ":" + this.getStart() + "-" + this.getEnd() + ": Total nr children " + getTotalNrChildren() + ", but loaded features:" + features.size());
             }
             //   if (debug) p("getAllFeatures: leaf. "+this);
             return features;
@@ -419,6 +468,6 @@ public class FeatureTreeNode {
         Logger.getLogger("FeatureTreeNode").warning(s);
         Exception e = new Exception("FATAL ERROR IN FeatureTreeNode: " + s);
         Logger.getLogger("FeatureTreeNode").warning(ErrorHandler.getString(e));
-      //  System.exit(0);
+        //  System.exit(0);
     }
 }

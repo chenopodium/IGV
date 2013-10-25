@@ -284,10 +284,14 @@ public class PreferenceManager implements PropertyManager {
         return temporaryValues;
     }
     public String getTemp(String key) {
-        return temporaryValues.get(key);
+        return temporaryValues.get(key.toUpperCase());
     }
+    public String getTempKeys() {
+        return ""+temporaryValues.keySet();
+    }
+        
     public boolean hasTemp(String key) {
-        return temporaryValues != null && temporaryValues.containsKey(key);
+        return temporaryValues != null && temporaryValues.containsKey(key.toUpperCase());
     }
     public boolean getTempAsBoolean(String key) {
         String s= getTemp(key);
@@ -295,6 +299,10 @@ public class PreferenceManager implements PropertyManager {
         else return (s.equalsIgnoreCase("true"));
     }
     public void putTemp(String key, String val) {
+        key = key.toUpperCase();
+        if (key.endsWith("_NAME")) {
+            log.info("Adding temp "+key+"="+val);
+        }
         temporaryValues.put(key, val);
     }
  /**

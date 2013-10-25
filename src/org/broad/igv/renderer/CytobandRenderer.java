@@ -26,6 +26,7 @@
  */
 package org.broad.igv.renderer;
 
+
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.feature.Cytoband;
 import org.broad.igv.ui.panel.FrameManager;
@@ -103,7 +104,7 @@ public class CytobandRenderer {
 
             int start = (int) (graphicRect.getX() + scale * cytoband.getStart());
             int end = (int) (graphicRect.getX() + scale * cytoband.getEnd());
-            if (end > lastPX) {
+          //  if (end > lastPX) {
 
                 int y = (int) graphicRect.getY() + CYTOBAND_Y_OFFSET;
                 int height = (int) graphicRect.getHeight();
@@ -135,8 +136,8 @@ public class CytobandRenderer {
                     g2D.setColor(Color.BLACK);
                     g2D.drawRect(start, y, (end - start), height);
                 }
-            }
-            lastPX = end;
+           // }
+           // lastPX = end;
         }
     }
 
@@ -159,7 +160,7 @@ public class CytobandRenderer {
                 int e = (int) (sc * cytoband.getEnd());
                 int stringWidth = (int) fm.getStringBounds(cytoband.getName(), g).getWidth();
                 int x = (int) (s + (e - s - stringWidth) / 2);
-                if (x > (prevEnd + minSpacing)) {
+                if (x > (prevEnd + minSpacing) || cytoband.isPar()) {
                     g.drawString(cytoband.getName(), x, adjustedY);
                     prevEnd = x + stringWidth;
                 }
@@ -176,6 +177,11 @@ public class CytobandRenderer {
     }
 
     private static Color getCytobandColor(Cytoband data) {
+        
+        if (data.isPar()) {
+            System.out.println("CytobandRenderer: got par cytoband: "+data);
+            return new Color(255, 200, 200);
+        }
         if (data.getType() == 'p') { // positive: "gpos100"
             int stain = data.getStain(); // + 4;
 

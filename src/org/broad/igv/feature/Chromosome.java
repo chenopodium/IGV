@@ -29,7 +29,4 @@ public interface Chromosome  {
 
     void setIndex(int ii);
 
-    boolean isSexChromosome();
-    
-    boolean isY();
 }

@@ -40,9 +40,15 @@ public class ApplicationStatusBar extends JPanel { //StatusBar {
     private JLabel messageBox3;
     private JLabel memoryStatus;
 
+    private boolean info32shown;
+    private boolean infoshown;
+    private boolean memWarningshown;
     java.util.Timer timer;
+    private static int M = 1000000;
 
     public ApplicationStatusBar() {
+        info32shown = false;
+        memWarningshown = false;
         initialize();
     }
 
@@ -82,7 +88,7 @@ public class ApplicationStatusBar extends JPanel { //StatusBar {
 
         MemoryUpdateTask updateTask = new MemoryUpdateTask(memoryStatus);
         timer = new java.util.Timer();
-        timer.schedule(updateTask, 0, 1000);
+        timer.schedule(updateTask, 0, 5000);
 
 
     }
@@ -129,11 +135,31 @@ public class ApplicationStatusBar extends JPanel { //StatusBar {
         @Override
         public void run() {
             Runtime runtime = Runtime.getRuntime();
-            int freeMemory = (int) (runtime.freeMemory() / 1000000);
-            int totalMemory = (int) (runtime.totalMemory() / 1000000);
+            int freeMemory = (int) (runtime.freeMemory() / M);
+            int totalMemory = (int) (runtime.totalMemory() / M);
             int usedMemory = (totalMemory - freeMemory);
+            int maxMemory = (int)(runtime.maxMemory()/M) ;
             String um = format.format(usedMemory);
             String tm = format.format(totalMemory);
+            String arch = System.getProperty("sun.arch.data.model");
+            if (!infoshown) {
+                Logger.getLogger("ApplicationStatusBar").info("arch="+arch+", max mem: "+maxMemory+", used="+usedMemory+", total="+totalMemory+", free="+freeMemory);
+                infoshown = true;
+            }
+            if (!info32shown && maxMemory < 1600) {
+                
+                // user is running Java 32 bit!
+                MessageUtils.showMessage("You seem to run Java <b>32 bit</b>. This means IGV has little memory to use. "
+                        + "<br>If you run into performance problems, <b>please install Java 64 bit (and browser)</b> and <b>disable/remove Java 32</b>.<br>"
+                        + "Alternatively, you can <b>save</b> the igv.jnlp file, and then start it from the <b>file explorer</b> in case you <b>do</b> have Java 64 bit.");
+                info32shown = true;
+            }
+            if (! memWarningshown && maxMemory - usedMemory < 50) {
+                // warning
+                 MessageUtils.showMessage("Your memory is running low. This might cause IGV to hang - in case you are working with large data sets, consider loading less data.<br>"
+                         + "In case you are running Java 32 bit, please upgrade the browser and Java to 64 bit.");
+                memWarningshown = true;
+            }
             textField.setText(um + "M of " + tm + "M");
         }
 

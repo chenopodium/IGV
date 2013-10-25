@@ -67,7 +67,7 @@ public abstract class FeatureMetaInfo {
         this.trackname = trackname;
     }
 
-    public  class Range {
+    public static class Range {
 
         public double min;
         public double max;
@@ -77,6 +77,8 @@ public abstract class FeatureMetaInfo {
             min = Integer.MAX_VALUE;
             max = Integer.MIN_VALUE;
         }
+
+      
 
         public void add(double d) {
             if (d > max) {
@@ -128,6 +130,9 @@ public abstract class FeatureMetaInfo {
     public void addAtt(String att) {
         if (!atts.contains(att)) {
             atts.add(att);
+          //  if (count < 100) {
+           // p("Adding " + att);
+         //   }
         }
     }
 
@@ -152,6 +157,8 @@ public abstract class FeatureMetaInfo {
             addAtt(att, d.doubleValue());
             return;
         } catch (Exception e) {
+            //p("Could not parse "+value+"  for "+att);
+            addAtt(att);
         }
         ArrayList<String> vals = attvaluesmap.get(att.toUpperCase());
         if (vals == null) {
@@ -161,41 +168,19 @@ public abstract class FeatureMetaInfo {
         if (!vals.contains(value)) {
             vals.add(value);
         }
-    }
-
-    public void populateMetaInfo(FeatureTree tree) {
-        int nrprocessed = 0;
-        // we collect data for say at least 1000 features
-        for (int b = 0; b < tree.getNrbuckets(); b++) {
-            FeatureTreeNode node = tree.getNodeForBucket(b);
-            if (node != null && node.getTotalNrChildren() > 0) {
-                for (Feature f : node.getAllFeatures()) {
-                    if (f != null) {
-                        if (f instanceof KaryoFeature) {
-                            populateMetaInfo(((KaryoFeature)f).getFeature());
-                        }
-                        else populateMetaInfo(f);
-                        nrprocessed++;
-                        if (nrprocessed > MAX_NR_FEATURES) {
-                            return;
-                        }
-
-                    }
-                };
-
-            }
-        }
-    }
+    }   
 
     public ArrayList<String> getAttributes() {
         return atts;
     }
 
     public boolean isRange(String name) {
+        if (attrangemap == null || attrangemap.keySet() == null || name == null) return false;
         return attrangemap.keySet().contains(name.toUpperCase());
     }
 
     public ArrayList<String> getValuesForAttribute(String att) {
+        if (attvaluesmap == null || att == null) return null;
         return attvaluesmap.get(att.toUpperCase());
     }
 

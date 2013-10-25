@@ -44,10 +44,11 @@ public class VCFWrapperCodec extends AsciiFeatureCodec<VCFVariant> {
 
     @Override
     public VCFVariant decode(String line) {
-       // Logger.getLogger(VCFWrapperCodec.class).info("VCFWrapperCodec: got line:\n" + line);
+      //  Logger.getLogger(VCFWrapperCodec.class).info("VCFWrapperCodec: got line:\n" + line);
         VariantContext vc  = null;
         try {
              vc = (VariantContext) wrappedCodec.decode(line);
+            // vc.g
         }
         catch (Throwable e) {
              Logger.getLogger(VCFWrapperCodec.class).info("Got error in:"+e.getMessage()+" for line: "+line);

@@ -30,8 +30,6 @@ public interface Genome {
     String getPrevChrName(String chr);
 
     String getChromosomeAlias(String str);
-
-    public boolean isFemale(List<Chromosome> chromosomesWithData);
     
     long getTotalLength();
 

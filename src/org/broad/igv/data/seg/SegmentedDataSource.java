@@ -45,6 +45,7 @@ public class SegmentedDataSource implements DataSource {
      */
     String trackIdentifier;
     SegmentedDataSet dataset;
+    WindowFunction statType;
 
     /**
      * Constructs ...
@@ -63,10 +64,13 @@ public class SegmentedDataSource implements DataSource {
 
 
     public void setWindowFunction(WindowFunction statType) {
-
-        // ignore
+        this.statType = statType;
+       
     }
 
+    protected void p(String s) {
+         Logger.getLogger("SegmentedDataSource").info(s);
+    }
 
     public boolean isLogNormalized() {
         return dataset.isLogNormalized();
@@ -88,7 +92,7 @@ public class SegmentedDataSource implements DataSource {
     }
 
     private List<LocusScore> getSegments(String chr) {
-
+        //p("getSegments for "+chr);
         return dataset.getSegments(trackIdentifier, chr);
 
     }
@@ -98,6 +102,7 @@ public class SegmentedDataSource implements DataSource {
     public List<LocusScore> getSummaryScoresForRange(String chr, int startLocation,
                                                      int endLocation, int zoom) {
         if (chr.equals(Globals.CHR_ALL)) {
+      //      p("Getting wholegenome scores");
             return getWholeGenomeScores();
         }
         return getSegments(chr);
@@ -111,11 +116,13 @@ public class SegmentedDataSource implements DataSource {
 
 
     public Collection<WindowFunction> getAvailableWindowFunctions() {
-        return new ArrayList();
+        Collection<WindowFunction> res = new ArrayList<WindowFunction>();
+        res.add(WindowFunction.noRefLine);
+        return res;
     }
 
     
     public WindowFunction getWindowFunction() {
-        return null;
+        return statType;
     }
 }

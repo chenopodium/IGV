@@ -11,6 +11,9 @@
 package org.broad.igv.track;
 
 //~--- non-JDK imports --------------------------------------------------------
+import com.iontorrent.karyo.data.KaryoTrack;
+import com.iontorrent.karyo.renderer.RenderManager;
+import com.iontorrent.karyo.views.GuiProperties;
 import com.iontorrent.utils.ErrorHandler;
 import com.iontorrent.utils.StringTools;
 import org.apache.log4j.Logger;
@@ -168,7 +171,11 @@ public abstract class AbstractTrack implements Track {
         return name;
     }
 
+    @Override
     public String getDisplayName() {
+        return getDisplayName(false);
+    }
+    public String getDisplayName(boolean withSampleInfo) {
 
         String sampleKey = IGV.getInstance().getSession().getTrackAttributeName();
         if (sampleKey != null && sampleKey.trim().length() > 0) {
@@ -179,12 +186,13 @@ public abstract class AbstractTrack implements Track {
         }
         String disp = getName();
 
+        String sample = null;
         if (this.getResourceLocator() != null) {
-            String sample = this.getResourceLocator().getSampleId();
+            sample = this.getResourceLocator().getSampleId();
             if (sample == null) {
                 sample = this.getSample();
             }
-            //   log.info("getDisplayName: name is "+disp+", sample="+sample);
+           
             if (sample != null) {
                 if (!disp.toUpperCase().startsWith(sample.toUpperCase())) {
                     sample = Character.toUpperCase(sample.charAt(0)) + sample.substring(1);
@@ -193,18 +201,59 @@ public abstract class AbstractTrack implements Track {
             }
 
         } else if (this.getSample() != null) {
-            String sample = this.getSample();
+            sample = this.getSample();
             if (!disp.toUpperCase().startsWith(sample.toUpperCase())) {
-                sample = Character.toUpperCase(sample.charAt(0)) + sample.substring(1);
+                sample = firstUpper(sample);
                 disp = sample + " " + disp;
+            }
+        }
+        if (sample != null) {
+            // check if we really want to show it
+            GuiProperties gui = RenderManager.getGuiProperties();
+            
+            boolean show = gui.isShowSample(sample, getName(), getFileExt());
+            if (!show) {
+                log.info("NOT showing sample name for "+getName());
+                sample = null;
+            }
+        }
+        if (sample != null) {
+            if (withSampleInfo) { 
+                String realname = this.prefMgr.getTemp(sample+"_name");
+           //    log.info("getDisplayName: name is "+disp+", sample="+sample+", getting "+sample+"_name -> realname="+realname);
+               // TESTING
+              // if (realname == null) realname="testsample";
+                if (realname != null) {
+                    disp += "<br><b>sample name: "+realname+"</b>";
+                }
             }
         }
         disp = disp.replace("_", " ");
         disp = disp.replace("-", " ");
+        disp = firstUpper(disp);
         ///disp = disp.replace(".", " ");
         return disp;
     }
-
+ public String getFileExt() {
+        if (getResourceLocator() == null) {
+            return "?";
+        }
+        String path = this.getResourceLocator().getPath();
+        if (path == null) {
+            return "?";
+        }
+        int dot = path.lastIndexOf(".");
+        if (dot < 0) {
+            return "?";
+        }
+        return path.substring(dot + 1);
+    }
+    protected String firstUpper(String s) {
+        if (!s.startsWith(s.toUpperCase())) {
+            s = Character.toUpperCase(s.charAt(0)) + s.substring(1);              
+        }
+        return s;
+    }
     public void setSampleId(String sampleId) {
         this.sampleId = sampleId;
     }
@@ -549,7 +598,7 @@ public abstract class AbstractTrack implements Track {
 
         if (ranges != null && ranges.size() > 0) {
             int nr = ranges.size();
-            log.info("Found other data ranges: " + ranges.size() + "! Computing mean");
+         //   log.info("Found other data ranges: " + ranges.size() + "! Computing mean");
             for (DataRange r : ranges) {
                 min = Math.min(min, r.getMinimum());
                 max = Math.max(max, r.getMaximum());
@@ -558,9 +607,9 @@ public abstract class AbstractTrack implements Track {
             baseline = baseline /(nr+1);
             dr = new DataRange(min, baseline, max);
             setDataRange(dr);
-            log.info("Got new data range: "+min+"-"+max+", base="+baseline);
+          //  log.info("Got new data range: "+min+"-"+max+", base="+baseline);
         } else {
-            log.info("no linked data range");
+           // log.info("no linked data range");
         }
 
     }
@@ -594,7 +643,7 @@ public abstract class AbstractTrack implements Track {
 
         if (popupText != null) {
 
-            final TooltipTextFrame tf = new TooltipTextFrame(getName(), popupText);
+            final TooltipTextFrame tf = new TooltipTextFrame(getDisplayName(true), popupText);
             Point p = me.getComponent().getLocationOnScreen();
             tf.setLocation(Math.max(0, p.x + me.getX() - 150), Math.max(0, p.y + me.getY() - 150));
 
@@ -646,7 +695,7 @@ public abstract class AbstractTrack implements Track {
         }
 
         if (properties.getLinkedTrack() != null) {
-            log.info("setProperties: Got linkedTrack " + properties.getLinkedTrack() + " for " + this.getName());
+            log.info("=========================== setProperties: Got linkedTrack " + properties.getLinkedTrack() + " for " + this.getName());
             this.setLinkedTrack(properties.getLinkedTrack());
         }
         if (properties.getCustomProperties() != null) {
@@ -1135,7 +1184,7 @@ public abstract class AbstractTrack implements Track {
     }
 
     public String getNameValueString(int y) {
-        return getName();
+        return "<html>"+this.getDisplayName(true)+ "</html>";
     }
 
     /**

@@ -10,6 +10,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.log4j.Logger;
+import org.broad.igv.data.seg.ReferenceSegment;
 import org.broad.igv.data.seg.Segment;
 import org.broad.igv.data.seg.SegmentedDataSet;
 import org.broad.igv.feature.FeatureUtils;
@@ -57,9 +59,11 @@ public class SegmentedRedLineCnvDataSet implements SegmentedDataSet {
         loadedChromosomes = new ArrayList<String>();
         this.data = data;
         this.id = id;
-        if (!useIndex) {
+        p("Constructor of SegmentedRedLineCnvDataSet. useIndex is: "+useIndex+" (but ignoring it)");
+      //  if (useIndex != true) {
             loadData("ALL");
-        }
+     //   }
+     //   else p("NOT loading data yet");
     }
 
     public void sortLists() {
@@ -72,20 +76,49 @@ public class SegmentedRedLineCnvDataSet implements SegmentedDataSet {
     }
 
     private void loadData(String chr) {
+        p(" ============================== loadData "+chr);
         data.loadData(chr);
-        // load just data for chr unless it is null
-        for (CnvDataPoint point : data.getPoints()) {
-            // use hash map or similar
-            if (chr == null || chr.equals("ALL") || chr.equalsIgnoreCase("chr" + point.chr)) {
-                this.addSegment(id, "chr" + point.chr, (int) point.pos, (int) point.end + 1, (float) point.ratio, point.clone);
+        
+        if (data.getPoints() != null) {
+            // load just data for chr unless it is null
+            int count = 0;
+            for (CnvDataPoint point : data.getPoints()) {
+                // use hash map or similar
+                if (chr == null || chr.equals("ALL") || chr.equalsIgnoreCase("chr" + point.chr)) {
+                    this.addSegment(chr, id, "chr" + point.chr, (int) point.pos, (int) point.end + 1, (float) point.ratio, point.clone, point.getAttributes());
+                    count++;
+                }
+            }
+           if (count >0) {
+               p("Remembering that we loaded "+chr+":  we found "+count);
+               loadedChromosomes.add(chr);
+           }
+           
+        }
+        else p("Probably just have summary and red line data");
+        if ( data.getRedLinePoints() != null ) {
+            p("loadData: Adding read line data "+data.getRedLinePoints().size()+" for chr "+chr);
+            for (CnvDataPoint point : data.getRedLinePoints()) {
+                // use hash map or similar
+                if (chr == null || chr.equals("ALL") || chr.equalsIgnoreCase("chr" + point.chr)) {
+                //    p("Adding REF data");
+                    this.addSegment(chr, id, "chr" + point.chr, (int) point.pos, (int) point.end + 1, (float) point.ratio, "REF", point.getAttributes());
+                }                
             }
         }
-        for (CnvDataPoint point : data.getRedLinePoints()) {
-            // use hash map or similar
-            if (chr == null || chr.equals("ALL") || chr.equalsIgnoreCase("chr" + point.chr)) {
-                this.addSegment(id, "chr" + point.chr, (int) point.pos, (int) point.end + 1, (float) point.ratio,"RED");
+        else p("Got NO redline data");
+        if (data.getSummaryPoints() != null) {
+            p("loadData: Adding SUMMARY data "+data.getRedLinePoints().size()+" for chr "+chr);
+            for (CnvDataPoint point : data.getSummaryPoints()) {
+                // use hash map or similar
+                if (chr == null || chr.equals("ALL")|| chr.equalsIgnoreCase("chr" + point.chr) ) {
+             //       p("Adding SUMMARY data");
+                    // xxx atts
+                    this.addSegment(chr, id, "chr" + point.chr, (int) point.pos, (int) point.end + 1, (float) point.ratio, "SUMMARY", point.getAttributes());
+                }
             }
         }
+        else p("Got NO summary data points");
         sortLists();
     }
 
@@ -95,6 +128,7 @@ public class SegmentedRedLineCnvDataSet implements SegmentedDataSet {
      */
     private void loadSegments(String heading, String chr) {
         if (loadedChromosomes.contains(chr)) {
+            p("Data for "+chr+" already loaded");
             return;
         }
         Map<String, List<LocusScore>> chrSegments = segments.get(heading);
@@ -103,15 +137,15 @@ public class SegmentedRedLineCnvDataSet implements SegmentedDataSet {
             chrSegments = new HashMap();
             segments.put(heading, chrSegments);
         }
-        loadedChromosomes.add(chr);
+     
+        p("loadSegments: calling loadData");
         loadData(chr);
     }
 
     /**
      *
      */
-    public void addSegment(String heading, String c, int start, int end, float value, String desc) {
-
+    public void addSegment(String chrToRemember, String heading, String c, int start, int end, float value, String des, HashMap<String,String> atts) {
         count++;
         String chr = genome == null ? c : genome.getChromosomeAlias(c);
         // p("Adding seg to chr "+chr);
@@ -122,26 +156,33 @@ public class SegmentedRedLineCnvDataSet implements SegmentedDataSet {
             segments.put(heading, chrSegments);
         }
 
-        List<LocusScore> segmentList = chrSegments.get(chr);
+        List<LocusScore> segmentList = chrSegments.get(chrToRemember);
         if (segmentList == null) {
             segmentList = new ArrayList<LocusScore>();
-            chrSegments.put(chr, segmentList);
+            chrSegments.put(chrToRemember, segmentList);
         }
-        Segment seg = new Segment(chr, start, start, end, end, value, desc);
+        Segment seg = null;
+        if (des != null && des.equalsIgnoreCase("REF")) {
+            seg=  new ReferenceSegment(chr, start, start, end, end, value, des, atts);
+         //   p("Created REF segment: "+seg);
+        }
+        else seg=   new Segment(chr, start, start, end, end, value, des, atts);
         segmentList.add(seg);
         dataMax = Math.max(dataMax, value);
         dataMin = Math.min(dataMin, value);
         if (value < 0) {
             logNormalized = true;
         }
-        //  if (count % 100 ==0) p("Got segment: "+seg+", max="+dataMax+", min="+dataMin);
+     //   if (count % 100 ==0) p("Got segment: "+seg+", max="+dataMax+", min="+dataMin);
 
+      //  p("Adding "+chr+" to chromosomes, remembering segments with heading "+heading+"/"+chr);
         chromosomes.add(chr);
 
     }
 
     private void p(String s) {
-        //   System.out.println("SegmentedCustomCnvDataSet: "+s);
+       Logger.getLogger(getClass().getName()).info(s);
+           System.out.println(getClass().getName()+": "+s);
     }
 
     /**
@@ -162,14 +203,26 @@ public class SegmentedRedLineCnvDataSet implements SegmentedDataSet {
      */
     @Override
     public List<LocusScore> getSegments(String heading, String chr) {
-        if (useIndex) {
+        p("========  getSegments for "+chr+", useIndex is: "+useIndex);
+        if (useIndex ||  !loadedChromosomes.contains(chr))  {
+            p(chr+" not loaded yet, calling loadSegments "+heading+"/"+chr);
             loadSegments(heading, chr);
         }
-        p("Getting indexed segments " + heading + "/" + chr);
+        else {
+            p("NOT loading segments, because useIndex="+useIndex+", loaded.contains(chr)="+loadedChromosomes.contains(chr));
+        }
         Map<String, List<LocusScore>> chrSegments = segments.get(heading);
-        //    p("getSegments: Got: "+chrSegments.size()+" for heading "+heading);
+        if (chrSegments == null) p(" ------------ Got NO segments for heading "+heading);
         List<LocusScore> res = (chrSegments == null) ? null : chrSegments.get(chr);
-        // p("Got locus scores: "+res+" for chr "+chr);
+        if (res != null) {
+            p("Got locus scores: "+res.size()+" for chr "+chr);
+            for (LocusScore score: res) {
+                if (score instanceof ReferenceSegment) {
+                  //  p("          Found ref");
+                }
+            }
+        }
+        else p("----------- getSements: Got NO locus scores for "+heading+"/"+chr);
         return res;
     }
 
@@ -228,40 +281,49 @@ public class SegmentedRedLineCnvDataSet implements SegmentedDataSet {
      */
     @Override
     public List<LocusScore> getWholeGenomeScores(String heading) {
-        // p("getWholeGenomeScores "+heading);
+        p("========= getWholeGenomeScores "+heading);
 
         List<LocusScore> wholeGenomeScores = wholeGenomeScoresCache.get(heading);
         if ((wholeGenomeScores == null) || wholeGenomeScores.isEmpty()) {
-
+            p("Got no whole genome scores yet");
             // Compute the smallest concievable feature that could be viewed on the
             // largest screen.  Be conservative.   The smallest feature is one at
             // the screen resolution scale in <chr units> / <pixel>
             double minFeatureSize = 0; // ((double) genome.getLength()) / (maxScreenSize * locationUnit);
 
-            long offset = 0;
             wholeGenomeScores = new ArrayList(1000);
 
-            for (String chr : genome.getLongChromosomeNames()) {
-                List<LocusScore> chrSegments = getSegments(heading, chr);
-                if (chrSegments != null) {
-                    int lastgEnd = -1;
-                    //      p("getWholeGenomeScores: got "+chrSegments.size()+" for "+heading+"/"+chr);
-                    for (LocusScore score : chrSegments) {
-                        Segment seg = (Segment) score;
-                        int gStart = genome.getGenomeCoordinate(chr, seg.getStart());
-                        int gEnd = genome.getGenomeCoordinate(chr, seg.getEnd());
-                        if ((gEnd - gStart) >= minFeatureSize) {
-                            wholeGenomeScores.add(new Segment(chr, gStart, gStart, gEnd,
-                                    gEnd, seg.getScore(), seg.getDescription()));
+            //for (String chr : genome.getLongChromosomeNames()) {
+            String chr = "ALL";
+            List<LocusScore> chrSegments = getSegments(heading, chr);
+            if (chrSegments != null) {
+                 p("getWholeGenomeScores: got "+chrSegments.size()+" for "+heading+"/"+chr);
+                for (LocusScore score : chrSegments) {
+                    Segment seg = (Segment) score;
+                    String segchr = seg.getChr();
+                    int gStart = genome.getGenomeCoordinate(segchr, seg.getStart());
+                    int gEnd = genome.getGenomeCoordinate(segchr, seg.getEnd());
+                    if ((gEnd - gStart) >= minFeatureSize) {
+                        Segment s = null;
+                        if (score instanceof ReferenceSegment) {
+                          //  p("Got ref segment: "+score);
+                            s = new ReferenceSegment(segchr, gStart, gStart, gEnd,
+                                    gEnd, seg.getScore(), seg.getDescription(), seg.getAttributes());
+                        } else {
+                            s = new Segment(segchr, gStart, gStart, gEnd,
+                                    gEnd, seg.getScore(), seg.getDescription(), seg.getAttributes());
                         }
-                        //           else p("Too small: "+(gEnd-gStart));
+                        wholeGenomeScores.add(s);
                     }
-
+                    //           else p("Too small: "+(gEnd-gStart));
                 }
-                offset += genome.getChromosome(chr).getLength();
-            }
+
+           }
+              //  offset += genome.getChromosome(chr).getLength();
+           // }
             wholeGenomeScoresCache.put(heading, wholeGenomeScores);
         }
+        else p("Got "+wholeGenomeScores.size()+" whole genome scores");
         return wholeGenomeScores;
 
     }

@@ -18,6 +18,8 @@
 
 package org.broad.igv.feature;
 
+import com.iontorrent.karyo.data.Range;
+
 
 public class Cytoband implements NamedFeature {
     String chromosome;
@@ -25,21 +27,45 @@ public class Cytoband implements NamedFeature {
     String longName;
     int end;
     int start;
-    char type; // p, n, or c
+    char type; // p, n, or c or x for par on sex chromosomes
     short stain;
 
 
+    public Cytoband(String chromosome, String name, int start, int end) {
+        this(chromosome);
+        this.start = start;
+        this.end = end;
+        this.stain =0;
+        this.type='x';
+        this.name=name;
+        
+    }
     public Cytoband(String chromosome) {
         this.chromosome = chromosome;
         this.name = "";
     }
 
-
+    public boolean isPar() {
+        return type == 'x';
+    }
+    
+    public Range getRange() {
+        return new Range(start, end);
+    }
+    
+    public boolean overlaps(Range r) {
+        return getRange().overlaps(r);
+    }
     public void trim() {
 
         // @todo -- trim arrays
     }
 
+    @Override
+    public String toString() {
+        return "Band "+start+"-"+end+":"+type+"="+name;
+    }
+    @Override
     public String getChr() {
         return chromosome;
     }

@@ -77,7 +77,7 @@ public class GuiHeatMapTree extends GuiFeatureTree {
         // depends on filter mode! And wether we draw all or not
         g.setColor(ktrack.getColor());
         List<KaryoFeature> features = null;
-        if (filter != null && filter.isValid()) {
+        if (filter != null && filter.isValid() && filter.isEnabled()) {
             features = node.getFilteredFeatures(filter, true);
         } else {
             features = node.getAllFeatures(true);

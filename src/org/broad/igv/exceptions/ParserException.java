@@ -18,6 +18,9 @@
 
 package org.broad.igv.exceptions;
 
+import com.iontorrent.utils.ErrorHandler;
+import org.apache.log4j.Logger;
+
 /**
  * Created by IntelliJ IDEA.
  * User: nazaire
@@ -76,6 +79,7 @@ public class ParserException extends RuntimeException {
             message = "";
 
         if (getCause() != null) {
+            Logger.getLogger("ParserException").info("ParseError: "+ErrorHandler.getString(new Exception("parseException")));
             if (line != null) {
                 return "Failed to parse line " + lineNumber + ":\n"
                         + "Cause\n  " + getCause().getClass().getSimpleName() + ": " + message;

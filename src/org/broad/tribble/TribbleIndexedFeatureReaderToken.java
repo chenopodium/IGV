@@ -25,6 +25,8 @@ package org.broad.tribble;
 
 
 
+import com.iontorrent.utils.io.FileTools;
+import com.iontorrent.utils.io.FileUtils;
 import org.broad.tribble.index.Block;
 import org.broad.tribble.index.Index;
 import org.broad.tribble.index.IndexFactory;
@@ -39,6 +41,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.logging.Logger;
 import java.util.zip.GZIPInputStream;
 import org.broad.igv.util.HttpUtils;
 import org.broad.igv.util.stream.SeekableServiceStream;
@@ -74,12 +77,12 @@ public class TribbleIndexedFeatureReaderToken<T extends Feature> extends Abstrac
         if (requireIndex) {
             
             String indexFile = Tribble.indexFile(featurePath);
-            if (http.resourceAvailable(new URL(indexFile))) {
+            if (http.resourceAvailable(indexFile)) {
                 index = IndexFactory.loadIndex(indexFile);
             } else {
                 // See if the index itself is gzipped
                 indexFile = indexFile + ".gz";
-                if (http.resourceAvailable(new URL(indexFile))) {
+                if (http.resourceAvailable(indexFile)) {
                     index = IndexFactory.loadIndex(indexFile);
                 } else {
                     throw new TribbleException("An index is required, but none found.");
@@ -124,20 +127,28 @@ public class TribbleIndexedFeatureReaderToken<T extends Feature> extends Abstrac
     private void readHeader() throws IOException {
         InputStream is = null;
         PositionalBufferedStream pbs = null;
-        try {
-            is = http.openConnectionStream(new URL(path));
-            if (path.endsWith("gz")) {
-                // TODO -- warning I don't think this can work, the buffered input stream screws up position
-                is = new GZIPInputStream(new BufferedInputStream(is));
+       
+            try {
+                if (FileUtils.isUrl(path)) {
+                    Logger.getLogger("TribbleIndexedFeatureReaderToken").info("Path is a URL:"+ path);
+                    is = http.openConnectionStream(new URL(path));
+                }
+                else {
+                    is = FileUtils.openFile(new File(path));
+                }
+                if (path.endsWith("gz")) {
+                    // TODO -- warning I don't think this can work, the buffered input stream screws up position
+                    is = new GZIPInputStream(new BufferedInputStream(is));
+                }
+                pbs = new PositionalBufferedStream(is);
+                header = codec.readHeader(pbs);
+            } catch (Exception e) {
+                throw new TribbleException.MalformedFeatureFile("Unable to parse header with error: " + e.getMessage(), path, e);
+            } finally {
+                if ( pbs != null ) pbs.close();
+                else if (is != null) is.close();
             }
-            pbs = new PositionalBufferedStream(is);
-            header = codec.readHeader(pbs);
-        } catch (Exception e) {
-            throw new TribbleException.MalformedFeatureFile("Unable to parse header with error: " + e.getMessage(), path, e);
-        } finally {
-            if ( pbs != null ) pbs.close();
-            else if (is != null) is.close();
-        }
+        
     }
 
     /**
@@ -187,9 +198,12 @@ public class TribbleIndexedFeatureReaderToken<T extends Feature> extends Abstrac
          * @throws IOException
          */
         public WFIterator() throws IOException {
-            log("Opening stream to "+path);
-                    
-            final InputStream inputStream = HttpUtils.getInstance().openConnectionStream(new URL(path));
+        //    log("Opening stream to "+path);
+            InputStream inputStream = null;
+            if (!FileTools.isUrl(path)) {
+                 inputStream = FileUtils.openFile(new File(path));
+            }
+            else  inputStream = HttpUtils.getInstance().openConnectionStream(new URL(path));
 
             if (path.endsWith(".gz")) {
                 // Gzipped -- we need to buffer the GZIPInputStream methods as this class makes read() calls,

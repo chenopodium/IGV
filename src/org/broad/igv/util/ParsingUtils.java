@@ -12,6 +12,7 @@ package org.broad.igv.util;
 
 //~--- non-JDK imports --------------------------------------------------------
 
+import com.iontorrent.utils.ErrorHandler;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.renderer.*;
@@ -249,18 +250,25 @@ public class ParsingUtils {
     public static boolean parseTrackLine(String nextLine, TrackProperties trackProperties)
             throws NumberFormatException {
 
-        log.info("===parseTrackLine: Parsing trackline: "+nextLine);
+        log.info("================= parseTrackLine: Parsing trackline: "+nextLine);
         boolean foundProperties = false;
         try {
             // track type=wiggle_0 name="CSF +" description="CSF +" visibility=full autoScale=off viewLimits=-50:50
-            List<String> tokens = StringUtils.breakQuotedString(nextLine, ' ');
+            List<String> tokens = null;
+            try {
+                tokens = StringUtils.breakQuotedString(nextLine, ' ');
+            }
+            catch (Exception e) {
+                log.error("Could not break string: "+nextLine, e);
+            }
+            log.info("parseTrackLine: Got tokens "+tokens.size()+" tokens: "+tokens);
             for (String pair : tokens) {
-                log.info("parseTrackLine: Got "+tokens);
+               // log.info("Processing pair: "+pair);
                 List<String> kv = StringUtils.breakQuotedString(pair, '=');
-                if (kv.size() == 2) {
+                if (kv.size() >1) {
                     foundProperties = true;
                     String key = kv.get(0).toLowerCase().trim();
-                    String value = kv.get(1).replaceAll("\"", "");
+                    String value = kv.get(1).replaceAll("\"", "").trim();
 
                     if (key.equals("coords")) {
                         if (value.equals("0")) {
@@ -280,8 +288,13 @@ public class ParsingUtils {
                     } else if (key.equals("description")) {
                         trackProperties.setDescription(value);
                      } else if (key.equalsIgnoreCase("linkedtrack")) {
+                         if (kv.size()>2) {
+                             String last = kv.get(2).replaceAll("\"", "").trim();
+                             value += "="+last;
+                             log.info("Got more than one equals, putting together: "+value);
+                         }
                         trackProperties.setLinkedTrack(value);
-                        log.info("parseTrackLine: Got "+key+"="+value);
+                        log.info("linkedtrack:  Got "+key+"="+value);
                     } else if (key.equalsIgnoreCase("customproperties")) {
                         trackProperties.setCustomProperties(value);
                         log.info("parseTrackLine: Got "+key+"="+value);
@@ -432,15 +445,14 @@ public class ParsingUtils {
                         } else if (key.equals("meta")) {
                             trackProperties.setMetaData(value);
                         }
+                        else log.warn("-------- DO NOT RECOGNIZE TRACKLINE KEY: "+key);
                     }
                 }
+                else log.info("--------------- NOT processing "+pair+" because I just got one argument: "+kv);
             }
 
-        } catch (
-                Exception exception
-                )
-
-        {
+        } catch ( Exception exception) {
+            log.warn("Error parsing track line: " + nextLine + ":" + exception.getMessage());
             MessageUtils.showMessage("Error parsing track line: " + nextLine + " (" + exception.getMessage() + ")");
         }
 
@@ -452,9 +464,9 @@ public class ParsingUtils {
     public static boolean pathExists(String covPath) {
         try {
             return (new File(covPath)).exists() ||
-                    (HttpUtils.isRemoteURL(covPath) && HttpUtils.getInstance().resourceAvailable(new URL(covPath)));
-        } catch (MalformedURLException e) {
-            // todo -- log
+                    (HttpUtils.isRemoteURL(covPath) && HttpUtils.getInstance().resourceAvailable(covPath));
+        } catch (Exception e) {
+            Logger.getLogger("ParsingUtils").error("Cannot check pathExists for "+covPath+" because: "+ErrorHandler.getString(e));                     
             return false;
         }
     }

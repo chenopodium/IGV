@@ -16,6 +16,8 @@ import com.iontorrent.karyo.data.KaryoTrack;
 import com.iontorrent.karyo.drawables.GuiChromosome;
 import com.iontorrent.karyo.drawables.GuiFeatureTree;
 import com.iontorrent.karyo.drawables.PhysicalCoord;
+import com.iontorrent.karyo.filter.KaryoFilter;
+import com.iontorrent.karyo.renderer.RenderManager;
 import com.iontorrent.threads.Task;
 import com.iontorrent.threads.TaskListener;
 import com.iontorrent.utils.StringTools;
@@ -54,8 +56,8 @@ public class KaryoOverviewPanel extends JPanel {
     private GuiChromosome current_chromosome;
     private int detailzoom = 100;
     private String msg;
-    
     private static final int TRACKDX = 20;
+
     public KaryoOverviewPanel(KaryoManager man) {
         this.man = man;
         igvadapter = man.getIgvAdapter();
@@ -64,11 +66,11 @@ public class KaryoOverviewPanel extends JPanel {
     }
 
     public void setSliderValue(int v) {
-           p(" === SET SLIDER VALUE TO "+v);
+        p(" === SET SLIDER VALUE TO " + v);
         mainview.setSliderValuePercent(v);
-        mainview.repaint(); 
+        mainview.repaint();
     }
-    
+
     public void createView() {
         if (split != null) {
             remove(split);
@@ -76,27 +78,27 @@ public class KaryoOverviewPanel extends JPanel {
         mainview = createOverviewView();
         split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
         split.add(mainview);
-        
+
         Rectangle r = mainview.getVisibleRect();
         int rw = r.width;
         int rh = r.height;
         add("Center", split);
-    mainview.scrollRectToVisible(new Rectangle(0,0, rw, rh ));
-       
+        mainview.scrollRectToVisible(new Rectangle(0, 0, rw, rh));
+
         split.setDividerLocation(1000);
         if (guichromosomes != null && guichromosomes.size() > 1) {
             if (detailview != null) {
                 this.detailzoom = (int) detailview.getZoomValue();
-                p("Old detail zoom value was: "+detailzoom);
+                p("Old detail zoom value was: " + detailzoom);
             }
-            detailview = createDetailView(guichromosomes.get(0));            
+            detailview = createDetailView(guichromosomes.get(0));
             split.add(detailview);
             //detailview.setSliderValuePercent(100);
         }
         p("Main View created with bands without tracks");
         if (msg != null) {
             // got a message
-           JLabel  messagelabel = new JLabel();
+            JLabel messagelabel = new JLabel();
             messagelabel.setText(msg);
             add("South", messagelabel);
         }
@@ -127,7 +129,9 @@ public class KaryoOverviewPanel extends JPanel {
                 public void taskDone(Task task) {
                     p("==================Loading tracks done, adding " + man.getSelectdKaryoTracks().size() + " tracks to overview");
                     addTracksToOverview();
-                    if (man.getControl()!= null) man.getControl().recreateView(false);
+                    if (man.getControl() != null) {
+                        man.getControl().recreateView(false);
+                    }
                 }
             });
             // we need to show some message in the meantime in the control panel!
@@ -149,8 +153,24 @@ public class KaryoOverviewPanel extends JPanel {
 
         ArrayList<KaryoTrack> karyotracks = man.getSelectdKaryoTracks();
 
+        for (KaryoTrack kt : karyotracks) {
+            if (!kt.isVisible()) {
+                continue;
+            }
+            ArrayList<KaryoFilter> filters = kt.getPossibleFilters();
+            if (filters != null && filters.size() > 0) {
+                for (KaryoFilter fil : filters) {
+                    if (fil.isEnabled()) {
+                        p("===================== found enabled filter, setting to kt: " + fil);
+                        kt.setFilter(fil);
+                    }
+                    else p("Found disabled filter: "+fil);
+                }
+            }
+            else p("Found no possible filters");
+        }
         //     p("adding " + karyotracks.size() + " karyotracks");
-        
+
         for (int c = 0; c < guichromosomes.size(); c++) {
             final GuiChromosome guichr = guichromosomes.get(c);
             final Chromosome chr = guichr.getChromosome();
@@ -169,28 +189,30 @@ public class KaryoOverviewPanel extends JPanel {
                 if (tree == null) {
                     //  p("Tree is null for this chromosome and kt, nee to load it");
                     tree = igvadapter.createTree(kt, chr);
-                    chr.addTree(kt, tree);
+                    if (tree != null) chr.addTree(kt, tree);
                 }
 
-                 trackx = getTrackX(trees, guichr, 1, totaltrees);
-                 
+                trackx = getTrackX(trees, guichr, 1, totaltrees);
+
                 if (tree == null) {
                     p("Could not create tree for chr " + chr);
                 } else {
                     if (tree.getTotalNrChildren() == 0) {
                         //  p("Got a tree, but it has no items, won't show it");
                     } else {
-                        
+
                         // p("Got variant tree  " + tree.getName() + " for chr " + chr.getName() + " with " + tree.getTotalNrChildren() + " features");
                         final GuiFeatureTree guitree = kt.getRenderType().getGuiTree(mainview.getCanvas(), guichr, tree, trackx);
+
+
 
                         guitrees.add(guitree);
 
                         mainview.addDrawable(guitree);
-                        
-                        Text st = new Text(kt.getShortName(),  guitree.getX()+3, guitree.getY()- 3, Color.black);
+
+                        Text st = new Text(kt.getShortName(), guitree.getX() + 3, guitree.getY() - 3, Color.black);
                         mainview.addText(st);
-                       // p("Added text: "+st.getText()+", at "+st.getX()+"/"+st.getY());
+                        // p("Added text: "+st.getText()+", at "+st.getX()+"/"+st.getY());
                         guitree.addSelectionListener(new SelectionListener() {
                             @Override
                             public void selectionPerformed(SelectionEvent evt) {
@@ -214,14 +236,14 @@ public class KaryoOverviewPanel extends JPanel {
                                 mainview.repaint();
                             }
                         });
-                       
+
                         trees++;
                     }
                 }
             }
         }
         man.setGuitrees(guitrees);
-        man.filterTrees();
+        // man.filterTrees();
         updateDetailView();
     }
 
@@ -236,7 +258,7 @@ public class KaryoOverviewPanel extends JPanel {
         }
         int DTRACK = GuiFeatureTree.WIDTH + TRACKDX;
         int nrchr = chromosomes.size();
-        int DXCHROMO = Math.max(120, man.getNrSelectdKaryoTracks() * DTRACK+TRACKDX);
+        int DXCHROMO = Math.max(120, man.getNrSelectdKaryoTracks() * DTRACK + TRACKDX);
         int width = 1400;
         int nrperrow = (width - 100) / DXCHROMO;
         int nrrows = nrchr / nrperrow + 1;
@@ -260,30 +282,30 @@ public class KaryoOverviewPanel extends JPanel {
         height += rowheights[row] + 2 * dy;
 
         final ZoomCanvas view = new ZoomCanvas((JFrame) man.getFrame(), width, height, GuiCanvas.NONE, false, true);
-        p("Min zoom: "+view.getMinZoom());
-     //   view.zoomOut();
-        int startx = Math.max(120, man.getNrSelectdKaryoTracks() * DTRACK/2+TRACKDX);
+        p("Min zoom: " + view.getMinZoom());
+        //   view.zoomOut();
+        int startx = Math.max(120, man.getNrSelectdKaryoTracks() * DTRACK / 2 + TRACKDX);
         int starty = 50;
 
         int x = startx;
         int y = starty;
 
         p("Creating overview, DTRACK = " + DTRACK + ", nr visible tracks = " + man.getNrSelectdKaryoTracks());
-       
+
         guichromosomes = new ArrayList<GuiChromosome>();
 
         int h = 0;
         row = 0;
-       
+
         for (int c = 0; c < chromosomes.size(); c++) {
             final Chromosome chr = chromosomes.get(c);
             //   p("Got chromosome: "+chr);
             chr.findCenter();
-           
-            if (c> 0 && c % nrperrow == 0) {
+
+            if (c > 0 && c % nrperrow == 0) {
                 x = startx;
                 y += rowheights[row] + dy;
-                row++;                
+                row++;
             }
 
             //  h = (int) GuiChromosome.getDefaultHeight(chr.getLength());
@@ -330,8 +352,8 @@ public class KaryoOverviewPanel extends JPanel {
             y += rowheights[row] + dy;
         }
 
-       
-        
+
+
         return view;
     }
 
@@ -341,22 +363,22 @@ public class KaryoOverviewPanel extends JPanel {
             int where = Math.max(split.getDividerLocation(), 500);
             split.remove(detailview);
 
-             if (detailview != null) {
+            if (detailview != null) {
                 this.detailzoom = (int) detailview.getZoomValue();
-             //   p("Old detail zoom value was: "+detailzoom);
+                //   p("Old detail zoom value was: "+detailzoom);
             }
             detailview = createDetailView(current_chromosome);
             split.add(detailview);
             split.setDividerLocation(where);
-            
-            if (this.getCurrent_location()>0){ 
-                double percent = (double)this.getCurrent_location()/(double)GuiChromosome.largest;
-                int targety = (int)(detailview.getHeight()*percent);
-                
+
+            if (this.getCurrent_location() > 0) {
+                double percent = (double) this.getCurrent_location() / (double) GuiChromosome.largest;
+                int targety = (int) (detailview.getHeight() * percent);
+
                 int vish = detailview.getVisibleRect().height;
-                int half = vish/2;
-             //   p("trying to scroll to "+targety +" in detail view, vish = "+vish);
-                detailview.getCanvas().scrollRectToVisible(new Rectangle(0,targety-half, detailview.getViewRect().width, vish ));
+                int half = vish / 2;
+                //   p("trying to scroll to "+targety +" in detail view, vish = "+vish);
+                detailview.getCanvas().scrollRectToVisible(new Rectangle(0, targety - half, detailview.getViewRect().width, vish));
             }
         } else {
             p("Got no currently selected chromosome, won't create detail view");
@@ -367,23 +389,23 @@ public class KaryoOverviewPanel extends JPanel {
     protected int getTrackX(int treenr, final GuiChromosome guichr, int SCALEX, int totaltrees) {
         int trackx;
         int dx = 20;
-        int half = totaltrees/2;
+        int half = totaltrees / 2;
         // treenr starts at 0
         if (treenr >= half) {
             // right
-            trackx = guichr.getWidth() + SCALEX * dx * (treenr-half + 1);
+            trackx = guichr.getWidth() + SCALEX * dx * (treenr - half + 1);
         } else {
             // left
-            trackx = (int) (-dx * SCALEX * (half-treenr-0.5))+SCALEX*4 ;
+            trackx = (int) (-dx * SCALEX * (half - treenr - 0.5)) + SCALEX * 4;
         }
         return trackx;
     }
 
     public ZoomCanvas createDetailView(final GuiChromosome parentchr) {
-        int SCALE = 5;
+        int SCALEY = 10;
         int SCALEX = 2;
         final int width = 400;
-        final int height = GuiChromosome.defaultheight * SCALE + 100;
+        final int height = GuiChromosome.defaultheight * SCALEY + 100;
         ArrayList<KaryoTrack> karyotracks = man.getSelectdKaryoTracks();
 
         int startx = Math.max(130, 120 + ((karyotracks.size()) / 2) * 30);
@@ -398,10 +420,10 @@ public class KaryoOverviewPanel extends JPanel {
 
         Point start = new Point(x, y);
 
-        final GuiChromosome guichr = new GuiChromosome(view.getCanvas(), chr, start, SCALE);
+        final GuiChromosome guichr = new GuiChromosome(view.getCanvas(), chr, start, SCALEY);
 
 
-       // p("Current location of detal chr: " + current_location + "/" + parentchr.getCurrentLocation());
+        // p("Current location of detal chr: " + current_location + "/" + parentchr.getCurrentLocation());
         guichr.setCurLocation(parentchr.getCurrentLocation());
         guichr.setSelected(true, false);
         guichr.setLinkedView(parentchr);
@@ -425,10 +447,10 @@ public class KaryoOverviewPanel extends JPanel {
                 for (GuiChromosome gc : guichromosomes) {
                     gc.setSelected(false, false);
                 }
-               
+
                 guichr.getLinkedView().setCurLocation(current_location);
                 guichr.getLinkedView().setSelected(true, false);
-                
+
                 if (evt.getActionCommand().equalsIgnoreCase("DOUBLE")) {
                     p("Showing location in IGV");
                     showLocation(null, guichr, loc);
@@ -446,9 +468,9 @@ public class KaryoOverviewPanel extends JPanel {
             FeatureTree tree = chr.getTree(kt);
             if (tree == null) {
                 tree = igvadapter.createTree(kt, chr);
-                chr.addTree(kt, tree);
+                if (tree != null) chr.addTree(kt, tree);
             }
-             trackx = getTrackX(trees, guichr, SCALEX, totaltrees);
+            trackx = getTrackX(trees, guichr, SCALEX, totaltrees);
 
             if (tree != null) {
                 //  p("Got variant tree  " + tree.getName() + " for chr " + chr.getName() + " with " + tree.getTotalNrChildren() + " features");
@@ -457,10 +479,10 @@ public class KaryoOverviewPanel extends JPanel {
                 } else {
                     final GuiFeatureTree guitree = kt.getRenderType().getGuiTree(mainview.getCanvas(), guichr, tree, trackx);
 
-                     
-                    Text st = new Text(kt.getShortName(),  guitree.getX()-1, guitree.getY() - 3, Color.black);
+
+                    Text st = new Text(kt.getShortName(), guitree.getX() - 1, guitree.getY() - 3, Color.black);
                     view.addDrawable(st);
-                        
+
                     //GuiFeatureTree guitree = new GuiFeatureTree(kt, view.getCanvas(), guichr, tree, trackx);
                     guitree.setWidth(SCALEX * guitree.getWidth());
                     guitrees.add(guitree);
@@ -474,12 +496,12 @@ public class KaryoOverviewPanel extends JPanel {
                             parentchr.setCurLocation(loc);
                             current_location = loc;
                             current_chromosome = guichr;
-                             for (GuiChromosome gc : guichromosomes) {
-                                    gc.setSelected(false, false);
-                             }
-                             guichr.setSelected(true, false);
-                             guichr.getLinkedView().setSelected( true, false);
-                             guichr.getLinkedView().setCurLocation( current_location);
+                            for (GuiChromosome gc : guichromosomes) {
+                                gc.setSelected(false, false);
+                            }
+                            guichr.setSelected(true, false);
+                            guichr.getLinkedView().setSelected(true, false);
+                            guichr.getLinkedView().setCurLocation(current_location);
                             p("Detail tree got selected of chr :" + guichr.getName() + ", location=" + current_location);
                             current_chromosome.setCurLocation(current_location);
                             if (evt.getActionCommand().equalsIgnoreCase("DOUBLE")) {
@@ -492,7 +514,7 @@ public class KaryoOverviewPanel extends JPanel {
                     });
 
                     view.addDrawable(guitree);
-                   
+
                     trees++;
                 }
             } else {
@@ -506,7 +528,7 @@ public class KaryoOverviewPanel extends JPanel {
         int largest = (int) GuiChromosome.largest;
 
         int h = (int) GuiChromosome.getDefaultHeight(largest);
-        PhysicalCoord coord = new PhysicalCoord(view.getCanvas(), x, y, h * SCALE, largest);
+        PhysicalCoord coord = new PhysicalCoord(view.getCanvas(), x, y, h * SCALEY, largest);
         view.addDrawable(coord);
         view.setSliderValuePercent(detailzoom);
         return view;
@@ -538,7 +560,9 @@ public class KaryoOverviewPanel extends JPanel {
             boolean found = false;
             for (GuiFeatureTree gt : trees) {
                 if (gt.isVisible()) {
-                    List<KaryoFeature> features = gt.getTree().getFeaturesAt(loc, nrMB * MB);
+                    KaryoFilter fil = gt.getTree().getFilter();
+                    if (fil == null || !fil.isEnabled() || fil.isValid()) fil = null;
+                    List<KaryoFeature> features = gt.getTree().getFeaturesAt(loc, nrMB * MB, fil);
                     if (features != null) {
                         for (KaryoFeature f : features) {
                             int delta = Math.abs(loc - (f.getStart() + f.getEnd()) / 2);

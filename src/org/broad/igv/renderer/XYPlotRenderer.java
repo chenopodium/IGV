@@ -22,6 +22,7 @@
 package org.broad.igv.renderer;
 
 //~--- non-JDK imports --------------------------------------------------------
+import com.iontorrent.utils.ErrorHandler;
 import org.broad.igv.Globals;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.feature.LocusScore;
@@ -35,6 +36,8 @@ import java.awt.*;
 import java.text.DecimalFormat;
 import java.util.List;
 import java.util.logging.Logger;
+import org.broad.igv.data.seg.ReferenceSegment;
+import org.broad.igv.track.WindowFunction;
 
 /**
  * @author jrobinso
@@ -43,7 +46,8 @@ public abstract class XYPlotRenderer extends DataRenderer {
 
     private int msgs;
     private double marginFraction = 0.2;
-
+    static final Logger log = Logger.getLogger(XYPlotRenderer.class.getName());
+    
     protected void drawDataPoint(Color graphColor, int dx, int pX, int baseY, int pY,
             RenderContext context) {
         dx = Math.max(5, dx);
@@ -113,7 +117,8 @@ public abstract class XYPlotRenderer extends DataRenderer {
      */
     @Override
     public synchronized void renderScores(Track track, List<LocusScore> locusScores, RenderContext context, Rectangle arect) {
-
+        try{ 
+     //   log.info("renderScores: "+locusScores.size()+", context: chr="+context.getChr()+", origin="+context.getOrigin());
         boolean showMissingData = PreferenceManager.getInstance().getAsBoolean(PreferenceManager.SHOW_MISSING_DATA_KEY);
 
         Graphics2D noDataGraphics = context.getGraphic2DForColor(UIConstants.NO_DATA_COLOR);
@@ -135,11 +140,6 @@ public abstract class XYPlotRenderer extends DataRenderer {
         float cutOff = (float) track.getCutoffScore();
         float baseValue = 0;
         
-        p("Nr locus scores: "+locusScores.size());
-       
-//        if ( msgs <10) {
-//            Logger.getLogger("XYPlotRenderer").info("Got cutoffscore/basevalue : " + baseValue +" for "+track.getName());
-//        }
 
         if (baseValue == 0) {
             baseValue = dataRange.getBaseline();
@@ -179,8 +179,10 @@ public abstract class XYPlotRenderer extends DataRenderer {
 //        midG.drawLine(midY, midY, midY, midY);
         
         int lastPx = 0;
+        boolean first = true;
         for (LocusScore score : locusScores) {
-            // p("Got score: "+score);
+      //      if (first) p("Drawing score: "+score);
+            first = false;
             // Note -- don't cast these to an int until the range is checked.
             // could get an overflow.
             double pX = ((score.getStart() - origin) / locScale);
@@ -190,13 +192,13 @@ public abstract class XYPlotRenderer extends DataRenderer {
                 p("continue 1");
                 continue;
             } else if (pX > adjustedRect.getMaxX()) {
-                p("break 1");
-                break;
+                p("break 1, px too large:"+pX+">  "+adjustedRect.getMaxX());
+                continue;
             }
 
             float dataY = score.getScore();
             if (isLog && dataY <= 0) {
-                p("continue 2");
+                p("continue 2: dataY <=0");
                 continue;
             }
 
@@ -210,10 +212,18 @@ public abstract class XYPlotRenderer extends DataRenderer {
                 //Color color = (dataY >= baseValue) ? posColor : negColor;
                 // if sepecial segment?
                 Color color = Color.black;
-                if (score.getName() != null && score.getName().equalsIgnoreCase("RED"))color = Color.red;
-                
+                boolean draw = true;
+                if (score instanceof ReferenceSegment) {
+                    if (track.getWindowFunction() != null && track.getWindowFunction() == WindowFunction.noRefLine) {
+                        draw = false;
+                    }
+                    else {
+                        p("Got ref segment");                    
+                        color = Color.orange;
+                    }
+                }                
                 else  color = getGradientColor(minValue, maxValue, dataY, posColor, negColor, midColor, cutOff);
-                drawDataPoint(color, (int) dx, (int) pX, baseY, pY, context);
+                if (draw) drawDataPoint(color, (int) dx, (int) pX, baseY, pY, context);
 
             }
             if (showMissingData) {
@@ -239,7 +249,10 @@ public abstract class XYPlotRenderer extends DataRenderer {
                 noDataGraphics.fillRect(lastPx + 2, (int) arect.getY(), w, (int) arect.getHeight());
             }
         }
-
+        }
+        catch (Exception e) {
+            log.warning(ErrorHandler.getString(e));
+        }
     }
 
     private void p(String s) {

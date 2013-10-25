@@ -37,7 +37,10 @@ import org.broad.igv.track.RenderContext;
 import org.broad.igv.track.Track;
 
 import java.awt.*;
+import java.util.ArrayList;
 import java.util.List;
+import org.broad.igv.data.seg.ReferenceSegment;
+import org.broad.igv.track.WindowFunction;
 
 /**
  * @author jrobinso
@@ -57,18 +60,41 @@ public abstract class DataRenderer implements Renderer<LocusScore> {
      * @param context
      * @param rect
      */
+    @Override
     public void render(List<LocusScore> scores, RenderContext context, Rectangle rect, Track track) {
 
         if (scores != null) {
             // Prevent modification of the scores collection during rendering.  This collection
             // has caused concurrent modification exceptions.
             synchronized (scores) {
+                
                 renderScores(track, scores, context, rect);
+                
+                ArrayList<LocusScore> refscores = new ArrayList<LocusScore>();
+                // check if user has "draw reference" enabled
+                
+                if (track.getWindowFunction() != null && track.getWindowFunction().equals(WindowFunction.noRefLine)) {
+                   // log.info("NOT drawing red line because window function is: "+track.getWindowFunction());
+                }
+                else {
+                  //  log.info("Drawing red line because window function is:" +track.getWindowFunction());
+                    for (LocusScore s: scores) {
+                        if (s instanceof ReferenceSegment ) {
+                            //log.info("Found ref: "+s);
+                            refscores.add(s);
+                        }
+                    }
+                }
+                if (refscores.size()>0) {
+                   //log.info("Drawing refsegments such as this one: "+refscores.get(0));
+                   renderScores(track, refscores, context, rect); 
+                }
+              //  else log.info("Got NO ref segments");
                 renderAxis(track, context, rect);
             }
         }
         else {
-           
+            log.info("Got NO scores");
         }
         renderBorder(track, context, rect);
 

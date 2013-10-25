@@ -29,29 +29,46 @@ public class VariantAttributeFilter extends KaryoFilter{
     }
     
   
+    public String getOperator() {
+        return operator;
+    }
     // example VT = SNP, INDEL, SV
    @Override
     public String toString() {
         String s = "";
-        if (this.isHighlightFiltered()) s = "Highlight areas that have features where ";
-        else if (this.isRemoveFiltered())s = "Hide features where ";
-        else s = "Show features where the ";
         s += attname;
-        if (not) s += " is  ";
-        else s +=" is not ";
-        s += attvalue;
-        s += " (filter mode: "+filterMode.name()+")";
+        if (not) s += "not";
+        if (operator == null) operator = "=";
+        s +=" "+operator+" ";
+        if (attvalue != null) s += attvalue;
+        else s += this.treshold;
         return s;
     }
-    
+     public String toHtml() {
+        String s = "";
+        s += attname;
+        if (not) s += "not";
+        if (operator == null) operator = "=";
+        s +=" "+operator+" ";
+        if (attvalue != null) s += attvalue;
+        else s += this.treshold;
+        s = s.replace("<","&lt;");
+        s = s.replace(">","&gt;");
+        return s;
+    }
     @Override
     public boolean filter(KaryoFeature kf) {
-        if (attname == null || attvalue == null) return true;
+        if (!isEnabled() || attname == null ) return true;
+        
+        if (attvalue != null && !attvalue.equals("null")) numvalue = Double.parseDouble(attvalue);
+        else numvalue = this.treshold;
         
         Feature f = kf.getFeature();
         if (!(f instanceof Variant)) return true;
         Variant var = (Variant)f;
         String value = var.getAttributeAsString(attname);
+        
+      //  p("filtering "+attname+", "+value+" with filter "+this.toString());
         // if this is  number, operator is not null
         boolean passed = true;
         if (operator != null) {
@@ -63,14 +80,18 @@ public class VariantAttributeFilter extends KaryoFilter{
                 else  passed =  d !=   numvalue;
             }
             catch (Exception e) {
-                p("Could not parse to double: "+value);
+            //    p("Could NOT get value "+value+"  for attname="+attname+"  for variant at "+var.getPositionString());
+                passed = false;
             }
         }
         else {
             passed = value != null && value.equalsIgnoreCase(attvalue);
         }
         if (not) passed= !passed;
-             
+        if (passed) this.filterCount++;
+       
+        this.totalCount++;
+     //    p("     passed? "+passed+", filtercount="+filterCount);
         return passed;
     }
     @Override
@@ -140,11 +161,11 @@ public class VariantAttributeFilter extends KaryoFilter{
 
     @Override
     public boolean isValid() {
-        return (this.attname != null && this.attvalue != null);
+        return (this.attname != null);
     }
 
     public void setOperator(String op) {
         this.operator = op;
-        numvalue = Double.parseDouble(attvalue);
+        
     }
 }

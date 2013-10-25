@@ -105,6 +105,10 @@ public interface Variant extends Feature {
      */
     Genotype getGenotype(String sample);
 
+    
+    double getScore();
+    
+    double getPloidy() ;
     /**
      * @return the list of filters applied to this variant.  Should not return null, return an empty collection if no filters.
      */

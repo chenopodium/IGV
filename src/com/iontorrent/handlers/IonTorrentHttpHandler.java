@@ -70,7 +70,7 @@ public class IonTorrentHttpHandler implements HttpHandler {
         if (header_value != null && header_key == null) {
             header_key = "Authorization";
         }
-        boolean show = HEADER_CHECKS < 20;/// || url.toString().endsWith(".seg") || url.toString().endsWith(".bed");
+        boolean show =  HEADER_CHECKS < 3;/// || url.toString().endsWith(".seg") || url.toString().endsWith(".bed");
 //        if (show) {
 //            log.info("checkForHeaderParameters: header key and value: " + header_key + "=" + header_value + ", ecnryption is: " + header_encrypt + ", will add it to connection header");
 //            log.info("checkForHeaderParameters: server:" + server + ", URL is: " + url.toString());

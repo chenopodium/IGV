@@ -12,8 +12,12 @@ import java.util.ArrayList;
 
 import java.util.logging.Logger;
 import javax.swing.JOptionPane;
+import org.broad.igv.feature.genome.GenderManager;
+
 import org.broad.igv.track.AbstractTrack;
 import org.broad.igv.ui.IGV;
+import org.broad.igv.ui.util.MessageUtils;
+import org.broad.igv.util.RuntimeUtils;
 
 /**
  *
@@ -22,8 +26,11 @@ import org.broad.igv.ui.IGV;
 public class IgvAdapter {
     private IgvTrackSelectionPanel igvselpanel;
     private KaryoControlPanel control;
+    private static boolean memWarningShown = false;
+            
     public IgvAdapter(KaryoControlPanel control){
         this.control = control;
+        
     }
     
     private void showIgvTrackSelection() {
@@ -50,34 +57,36 @@ public class IgvAdapter {
              p("Got no variant track or no IGV running");
              return null;
         }
-        p("IGVAdapter: CreateTree and load data called");
+        p("IGVAdapter: CreateTree and load data called. Checking memory");
+        if (RuntimeUtils.getAvailableMemory()/1000000 < 50) {
+            // stop loading
+            String msg = "IGV is running low on memory, I will stop loading data now.<br>If you are using Java 32 bit, please <b>upgrade to Java 64 bit!</b>";
+            if (!memWarningShown) {
+                MessageUtils.showMessage(msg);
+                memWarningShown = true;
+            }
+            else GuiUtils.showNonModalMsg(msg);
+            return null;
+        }
         AbstractTrack track = ktrack.getTrack();
       //  p("Got track with name: "+track.getName());
         FeatureTree tree = new FeatureTree(ktrack, ktrack.getTrack(), chr);        
         String n = track.getName();
         int pos = n.indexOf("_");
         if (pos >0) n = n.substring(0, pos);
-        pos = n.indexOf(".");
+        pos = n.lastIndexOf(".");
         if (pos >0) n = n.substring(0, pos);
         tree.setName(n);
         // can take a long times
         tree.loadFeatures();
-        if (chr.isSexChromosome()) {
+        
+        if (GenderManager.isSexChromosome(chr.getName())) {
              if (tree.getTotalNrChildren()>0) {
                 p("FOUND DATA ON X or Y CHROMOSOME");
-                if (chr.isY()) ktrack.setMale(true);
+                if (GenderManager.isY(chr.getName())) ktrack.setMale(true);
                 else ktrack.setFemale(true);
              }           
         }
-//        ArrayList<KaryoFilter> filters = ktrack.getPossibleFilters();
-//        if (filters != null) {
-//            for (KaryoFilter filter: filters) {
-//                if (filter.isForFeature(tree.getSampleFeature())) {
-//                    tree.addFilter(filter);
-//                }
-//            }
-//        }
-            
         return tree;
     }
     private void p(String s) {
@@ -85,10 +94,12 @@ public class IgvAdapter {
     }
 
     public void showLocation(String name, int loc, int end) {
-    //    p("Going to lucis "+name+":"+loc);
+        p("++++++++++++++++++++++++++++++++  Going to locus "+name+":"+loc+" +++++++++++++++++++++++++ ");
         if (!name.startsWith("chr")) {
             name = "chr"+name;
         }
+        IGV.getInstance().goToLocus(name+":"+loc+"-"+end);
+        IGV.getMainFrame().toFront();
         IGV.getInstance().goToLocus(name+":"+loc+"-"+end);
         IGV.getMainFrame().toFront();
     }

@@ -46,6 +46,7 @@ public class IonTorrentCommandExecutor implements CommandExecutorIF{
         return args;
     }
 
+    @Override
     public String execute(String command) {
         
         //log.info("Executing "+command);
@@ -62,6 +63,7 @@ public class IonTorrentCommandExecutor implements CommandExecutorIF{
                 String param3 = args.size() > 3 ? args.get(3) : null;
                 String param4 = args.size() > 4 ? args.get(4) : null;
 
+                if (!cmd.equals("set")) log.info("Got command: "+cmd);
                 if (cmd.equalsIgnoreCase("echo")) {
                     result = cmd;
                 } else if (cmd.equalsIgnoreCase("msg")) {
@@ -79,8 +81,9 @@ public class IonTorrentCommandExecutor implements CommandExecutorIF{
                     result = param1;
                 } else if (cmd.equalsIgnoreCase("quit") || cmd.equalsIgnoreCase("exit")) {
                     boolean ok = MessageUtils.confirm("IGV was asked to exit. Is that ok?");
-
+                    log.info("is answer ok="+ok);
                     if (ok) {
+                        log.info("User wants to exit");
                         try {
                             IGV.getInstance().saveStateForExit();
                             Frame mainFrame = IGV.getMainFrame();
@@ -90,6 +93,10 @@ public class IonTorrentCommandExecutor implements CommandExecutorIF{
                         } finally {
                             System.exit(0);
                         }
+                    }
+                    else {
+                        log.info("User does not want to exit");
+                        return "not exited";
                     }
                 } else if (cmd.equalsIgnoreCase("set")) {
                     String parts[] = param1.split("=", 2);
@@ -115,7 +122,7 @@ public class IonTorrentCommandExecutor implements CommandExecutorIF{
                         if (prefs.contains(key)) {
                             //     log.info("Set: regular preference: put("+key+ ","+value+")");
                             prefs.put(key, value);
-                            prefs.putTemp(key, value);
+                            prefs.putTemp(key.toUpperCase(), value);
                             // checking for some of the settings
                             if (key.equalsIgnoreCase(PreferenceManager.SHOW_ATTRIBUTE_VIEWS_KEY)) {
                                 log.info("Dealing with " + key);

@@ -47,6 +47,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
+import org.broad.igv.PreferenceManager;
 
 /**
  * @author jrobinso
@@ -289,43 +290,59 @@ public class SessionWriter {
         if ((resourceLocators != null) && !resourceLocators.isEmpty()) {
 
             Element filesElement = document.createElement(SessionElement.RESOURCES.getText());
-
+            String signature = PreferenceManager.getInstance().getTemp("signature");
+            log.info("====================== About to store Resources tag, signature/hash is: "+signature);
+            filesElement.setAttribute("hash", signature);
+            ArrayList<String> done = new ArrayList<String>();
+            
             for (ResourceLocator resourceLocator : resourceLocators) {
                 if (resourceLocator.exists() || !(resourceLocator.getPath() == null)) {
+                    String path = resourceLocator.getPath().toLowerCase();
+                    if (!done.contains(path)) {
+                        done.add(path);
+                        //RESOURCE ELEMENT
+                        Element dataFileElement = document.createElement(SessionElement.RESOURCE.getText());
 
-                    //RESOURCE ELEMENT
-                    Element dataFileElement = document.createElement(SessionElement.RESOURCE.getText());
+                        //REQUIRED ATTRIBUTES - Cannot be null
+                        dataFileElement.setAttribute(SessionAttribute.PATH.getText(), resourceLocator.getPath());
 
-                    //REQUIRED ATTRIBUTES - Cannot be null
-                    dataFileElement.setAttribute(SessionAttribute.PATH.getText(), resourceLocator.getPath());
+                        //OPTIONAL ATTRIBUTES
 
-                    //OPTIONAL ATTRIBUTES
+                        if (path != null && path.indexOf("txt.gz")<0) {
+                            int hash = path.hashCode();
+                            log.info("Storing hash "+hash+"for path "+path);
+                            dataFileElement.setAttribute("hash", ""+hash);
+                        }
 
-                    if (resourceLocator.getName() != null) {
-                        dataFileElement.setAttribute(SessionAttribute.NAME.getText(), resourceLocator.getName());
+                        if (resourceLocator.getName() != null) {
+                            dataFileElement.setAttribute(SessionAttribute.NAME.getText(), resourceLocator.getName());
+                        }
+                        if (resourceLocator.getSampleId() != null) {
+                            dataFileElement.setAttribute(SessionAttribute.SAMPLE_ID.getText(), resourceLocator.getSampleId());
+                        }
+                        if (resourceLocator.getServerURL() != null) {
+                            dataFileElement.setAttribute(SessionAttribute.SERVER_URL.getText(), resourceLocator.getServerURL());
+                        }
+                        if (resourceLocator.getInfolink() != null) {
+                            dataFileElement.setAttribute(SessionAttribute.HYPERLINK.getText(), resourceLocator.getInfolink());
+                        }
+                        if (resourceLocator.getUrl() != null) {
+                            dataFileElement.setAttribute(SessionAttribute.FEATURE_URL.getText(), resourceLocator.getUrl());
+                        }
+                        if (resourceLocator.getDescription() != null) {
+                            dataFileElement.setAttribute(SessionAttribute.DESCRIPTION.getText(), resourceLocator.getDescription());
+                        }
+                        if (resourceLocator.getType() != null) {
+                            dataFileElement.setAttribute(SessionAttribute.TYPE.getText(), resourceLocator.getType());
+                        }
+                        if (resourceLocator.getCoverage() != null) {
+                            dataFileElement.setAttribute(SessionAttribute.COVERAGE.getText(), resourceLocator.getCoverage());
+                        }
+                        if (resourceLocator.getTrackLine() != null) {
+                            dataFileElement.setAttribute(SessionAttribute.TRACK_LINE.getText(), resourceLocator.getTrackLine());
+                        }
+                        filesElement.appendChild(dataFileElement);
                     }
-                    if (resourceLocator.getServerURL() != null) {
-                        dataFileElement.setAttribute(SessionAttribute.SERVER_URL.getText(), resourceLocator.getServerURL());
-                    }
-                    if (resourceLocator.getInfolink() != null) {
-                        dataFileElement.setAttribute(SessionAttribute.HYPERLINK.getText(), resourceLocator.getInfolink());
-                    }
-                    if (resourceLocator.getUrl() != null) {
-                        dataFileElement.setAttribute(SessionAttribute.FEATURE_URL.getText(), resourceLocator.getUrl());
-                    }
-                    if (resourceLocator.getDescription() != null) {
-                        dataFileElement.setAttribute(SessionAttribute.DESCRIPTION.getText(), resourceLocator.getDescription());
-                    }
-                    if (resourceLocator.getType() != null) {
-                        dataFileElement.setAttribute(SessionAttribute.TYPE.getText(), resourceLocator.getType());
-                    }
-                    if (resourceLocator.getCoverage() != null) {
-                        dataFileElement.setAttribute(SessionAttribute.COVERAGE.getText(), resourceLocator.getCoverage());
-                    }
-                    if (resourceLocator.getTrackLine() != null) {
-                        dataFileElement.setAttribute(SessionAttribute.TRACK_LINE.getText(), resourceLocator.getTrackLine());
-                    }
-                    filesElement.appendChild(dataFileElement);
                 }
             }
             globalElement.appendChild(filesElement);

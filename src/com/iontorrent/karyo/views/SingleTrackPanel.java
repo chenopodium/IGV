@@ -183,7 +183,7 @@ public class SingleTrackPanel extends JPanel {
     private String getShorterName(String n, int minlen, int maxlen) {
         if (n != null && n.length() > maxlen) {
             n = n.substring(0, maxlen);
-            int dot = n.indexOf(".");
+            int dot = n.lastIndexOf(".");
             int under = n.indexOf("_");
             int hy = n.indexOf("-");
             int col = n.indexOf(":");

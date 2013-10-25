@@ -76,6 +76,7 @@ import org.broad.igv.ui.panel.TrackPanel;
     public void setWindowFunction(WindowFunction statType) {
         clearCaches();
         dataSource.setWindowFunction(statType);
+        
 
     }
 

@@ -139,7 +139,7 @@ public class TrackLoader {
             pref = PreferenceManager.getInstance();
         }
         final String path = locator.getPath();
-        log.info("About to load " + locator.getPath());
+        log.info("============= About to load " + locator.getPath());
         try {
             String typeString = locator.getType();
             if (typeString == null) {
@@ -165,6 +165,10 @@ public class TrackLoader {
                     }
                 }
             }
+            if (typeString == null) {
+                p("typeString was null!");
+                 typeString = path.toLowerCase();
+            }
             typeString = typeString.toLowerCase();
 
             if (typeString.endsWith(".tbi")) {
@@ -172,7 +176,8 @@ public class TrackLoader {
                         + " load the associated gzipped file, which should have an extension of '.gz'");
             }
 
-            p("load: type String is " + typeString);
+            p("============ load: type String is " + typeString+", locator="+locator.getType());
+            //p("=== path is: "+path);
             //This list will hold all new tracks created for this locator
             List<Track> newTracks = new ArrayList<Track>();
 
@@ -187,6 +192,7 @@ public class TrackLoader {
             }
             //else p("Got no trackline");
             String serverURL = locator.getServerURL();
+          //  p("serverURL is: "+serverURL);
             if (serverURL != null && serverURL.startsWith("jdbc:")) {
                 this.loadFromDatabase(locator, newTracks, genome);
             } else if (typeString.endsWith(".dbxml")) {
@@ -202,7 +208,7 @@ public class TrackLoader {
                 loadVCFListFile(locator, newTracks, genome);
             } else if (typeString.endsWith(".vcf") || typeString.endsWith(".vcf4")) {
                 // VCF files must be indexed.
-                throw new IndexNotFoundException(path + ", the file needs to end with .vcf.gz and must have a file .vcf.gz.tbi");
+                throw new IndexNotFoundException(path + ", the file needs to end with .vcf.gz <b>and must have a file .vcf.gz.tbi</b>");
             } else if (typeString.endsWith(".trio")) {
                 loadTrioData(locator);
             } else if (typeString.endsWith("varlist")) {
@@ -279,9 +285,17 @@ public class TrackLoader {
                 loadMultipleAlignmentTrack(locator, newTracks, genome);
             } else if (path.toLowerCase().contains(".peak.bin")) {
                 loadPeakTrack(locator, newTracks, genome);
-            } else if ("mage-tab".equals(locator.getType()) || ExpressionFileParser.parsableMAGE_TAB(locator)) {
-                locator.setDescription("MAGE_TAB");
-                loadGctFile(locator, newTracks, genome);
+            } else if (!typeString.endsWith(".json") && 
+                    ( "mage-tab".equals(locator.getType()) || ExpressionFileParser.parsableMAGE_TAB(locator))) {
+                 TrackHandler customhandler = Handlers.getTrackHandler();
+                if (customhandler != null) {
+                    log.info("Loading track with custom track handler: " + customhandler.getClass().getName());
+                    customhandler.loadCustomFile(locator, newTracks, genome);
+                }
+                else {
+                    locator.setDescription("MAGE_TAB");
+                    loadGctFile(locator, newTracks, genome);
+                }
             } else if (GWASParser.isGWASFile(typeString)) {
                 p("load: loadGWASFile for " + path);
                 loadGWASFile(locator, newTracks, genome);
@@ -293,7 +307,7 @@ public class TrackLoader {
                 loadListFile(locator, newTracks, genome);
             } else if (path.contains("Participant") && path.endsWith(".csv")) {
                 loadAffectiveAnnotationTrack(locator, newTracks, genome);
-            } else if (AttributeManager.isSampleInfoFile(locator)) {
+            } else if (!typeString.endsWith(".json") && AttributeManager.isSampleInfoFile(locator)) {
                 // This might be a sample information file.
                 p("load: loadSampleInfo for " + path);
                 boolean ok = AttributeManager.getInstance().loadSampleInfo(locator);
@@ -308,16 +322,17 @@ public class TrackLoader {
 
 
             } else {
+                p("Trying Custom Handler for "+typeString);
                 // try custom handler
                 TrackHandler customhandler = Handlers.getTrackHandler();
                 if (customhandler != null) {
                     log.info("Loading track with custom track handler: " + customhandler.getClass().getName());
                     customhandler.loadCustomFile(locator, newTracks, genome);
                 }
-                MessageUtils.showMessage("<html>Unknown file type: " + path + "<br>Check file extenstion");
+                else MessageUtils.showMessage("<html>Unknown file type: " + path + "<br>Check file extenstion");
             }
 
-
+            p("Done dealing with typestring: "+typeString);
 
             for (Track track : newTracks) {
 
@@ -543,11 +558,11 @@ public class TrackLoader {
 
         FeatureCodec codec = CodecFactory.getCodec(locator.getPath(), genome);
         if (codec != null) {
-            p("Got codec: " + codec.getClass().getName());
+          //  p("Got codec: " + codec.getClass().getName());
             AbstractFeatureReader<Feature> bfs = getFeatureReader(locator.getPath(), codec, false);
-            p("Got reader: " + bfs.getClass().getName());
+          //  p("Got reader: " + bfs.getClass().getName());
             Iterable<Feature> iter = bfs.iterator();
-            p("Got iterator: " + iter.getClass().getName());
+         //   p("Got iterator: " + iter.getClass().getName());
             Object header = bfs.getHeader();
             TrackProperties trackProperties = getTrackProperties(header);
             List<FeatureTrack> tracks = AbstractFeatureParser.loadTracks(iter, locator, genome, trackProperties);
@@ -606,7 +621,7 @@ public class TrackLoader {
     }
 
     private void loadGctFile(ResourceLocator locator, List<Track> newTracks, Genome genome) throws IOException {
-
+        log.info("loadGctFile");
         if (locator.isLocal()) {
             if (!checkSize(locator.getPath())) {
                 return;
@@ -1053,12 +1068,12 @@ public class TrackLoader {
             if (covPath != null) {
                 try {
                     if ((new File(covPath)).exists() || (HttpUtils.isRemoteURL(covPath)
-                            && HttpUtils.getInstance().resourceAvailable(new URL(covPath)))) {
+                            && HttpUtils.getInstance().resourceAvailable(covPath))) {
                         TDFReader reader = TDFReader.getReader(covPath);
                         TDFDataSource ds = new TDFDataSource(reader, 0, alignmentTrack.getName() + " coverage", genome);
                         covTrack.setDataSource(ds);
                     }
-                } catch (MalformedURLException e) {
+                } catch (Exception e) {
                     // This is expected if
                     //    log.info("Could not loading coverage data: MalformedURL: " + covPath);
                 }
