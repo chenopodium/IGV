@@ -46,7 +46,8 @@ public class CnvData {
         this.redline = redline;
         this.log = true;
         parseRedLineFile();
-        parseSummaryFile();
+    //    parseSummaryFile();
+        loadData("ALL");
     }
 
     public CnvData(String file) {
@@ -68,32 +69,27 @@ public class CnvData {
     }
 
     public ArrayList<CnvDataPoint> loadData(String chr) {
-        p("==== loadData: " + chr);
-         Exception e = new Exception("Testing if kv");
-        String stack = ErrorHandler.getString(e);
+        p("==== loadData: " + chr);         
      //   p("loaddata trace: "+ErrorHandler.getString(e));
         if (gotAllData && points != null && points.size()>0) {
-            p("loadData data already loaded, gotAllData is true");
+          //  p("loadData data already loaded, gotAllData is true");
             return points;
         }
         boolean justSummary = false;
-        if (stack.indexOf("FeatureTree")> -1) {
-            justSummary = true;
-            p("=========  loadData called from FeatureTree, only loading SUMMERIES ================ ");
-        }
-        if (justSummary || chr.equalsIgnoreCase("ALL")) {
-            p("loadData ALL or just summary: return summary data if it is there");       
-            if (summarydata == null) {
-                p("loadData ALL: Got no summary data, loading all data");
-                 parseSampleFile(chr);
-            }
-            if (summarydata != null) {
-                p("loadData we DO have summary data ");
-                return summarydata;
-            }
-        }
+       // return ALL data
+//        if (justSummary || chr.equalsIgnoreCase("ALL")) {
+//            p("loadData ALL or just summary: return summary data if it is there");       
+//            if (summarydata == null) {
+//                p("loadData ALL: Got no summary data, loading all data");
+//                 parseSampleFile(chr);
+//            }
+//            if (summarydata != null) {
+//                p("loadData we DO have summary data ");
+//                return summarydata;
+//            }
+//        }
        // p("loadData ==== Parsing sample data");
-        parseSampleFile(chr);
+        parseSampleFile(chr, true);
       //  p("loadData ==== Parsing sampledata DONE");
 
         return points;
@@ -111,7 +107,7 @@ public class CnvData {
     }
 
     public void parseRedLineFile() {
-        p("========= parsing red line file "+redline);
+    //    p("========= parsing red line file "+redline);
         ArrayList<String> slines = loadContent(redline);
 
         redlinedata = new ArrayList<CnvDataPoint>();
@@ -236,25 +232,31 @@ public class CnvData {
         return chr;
     }
 
-    public void parseSampleFile(String chrToLoad) {
+    public void parseSampleFile(String chrToLoad, boolean alsoForAll) {
         ArrayList<String> slines = null;
         int chr = 0;
         if (loaded == null) {
             loaded = new ArrayList<String>();
         }
         if (loaded.contains(chrToLoad)) {
-            p("Chr " + chrToLoad + " already loaded, loaded contains "+chrToLoad+": "+loaded.contains(chrToLoad));
+            p("Chr " + chrToLoad + " already loaded, loaded contains "+chrToLoad+": "+loaded.contains(chrToLoad)+", total points: "+points.size());
             return;
         }
 
-        if (chrToLoad.equalsIgnoreCase("ALL")) {
+        if (!alsoForAll && chrToLoad.equalsIgnoreCase("ALL")) {
             //slines = loadContent(this.samplefile);
             p("not doing ALL, return nothing, we use the summary for that");
             return;
         } else {
-            chr = getChr(chrToLoad);
-            p("Loading chr specific sample file " + this.samplefile + "." + chr);
-            slines = loadContent(this.samplefile + "." + chr);
+            if (chrToLoad.equalsIgnoreCase("ALL")) {
+               p("Loading ALL data of "+samplefile);
+               slines = loadContent(this.samplefile );
+            }
+            else {
+                chr = getChr(chrToLoad);
+                p("Loading chr specific sample file " + this.samplefile + "." + chr);
+                slines = loadContent(this.samplefile + "." + chr);
+            }
         }
         points = new ArrayList<CnvDataPoint>();
         int count = 0;
@@ -569,7 +571,7 @@ public class CnvData {
         }
 
         if (content == null) {
-            p("GOT NO CONTENT FOR " + path);
+            p("GOT NO CONTENT FOR PATH " + path);
             return null;
         }
         ArrayList<String> slines = StringTools.parseList(content, "\n");

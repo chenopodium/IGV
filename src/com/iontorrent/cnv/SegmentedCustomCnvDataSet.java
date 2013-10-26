@@ -13,6 +13,7 @@ import java.util.Set;
 import org.broad.igv.data.seg.ReferenceSegment;
 import org.broad.igv.data.seg.Segment;
 import org.broad.igv.data.seg.SegmentedDataSet;
+import org.broad.igv.data.seg.SummarySegment;
 import org.broad.igv.feature.FeatureUtils;
 import org.broad.igv.feature.LocusScore;
 import org.broad.igv.feature.genome.Genome;
@@ -212,6 +213,11 @@ public class SegmentedCustomCnvDataSet implements SegmentedDataSet {
                             if (score instanceof ReferenceSegment) {
                               //  p("Got ref segment: "+score);
                                 s = new ReferenceSegment(chr, gStart, gStart, gEnd,
+                                        gEnd, seg.getScore(), seg.getDescription(), seg.getAttributes());
+                            }
+                            else if (score instanceof SummarySegment) {
+                              //  p("Got ref segment: "+score);
+                                s = new SummarySegment(chr, gStart, gStart, gEnd,
                                         gEnd, seg.getScore(), seg.getDescription(), seg.getAttributes());
                             } else {
                                 s = new Segment(chr, gStart, gStart, gEnd,

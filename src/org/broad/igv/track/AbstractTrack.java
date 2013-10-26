@@ -207,16 +207,7 @@ public abstract class AbstractTrack implements Track {
                 disp = sample + " " + disp;
             }
         }
-        if (sample != null) {
-            // check if we really want to show it
-            GuiProperties gui = RenderManager.getGuiProperties();
-            
-            boolean show = gui.isShowSample(sample, getName(), getFileExt());
-            if (!show) {
-                log.info("NOT showing sample name for "+getName());
-                sample = null;
-            }
-        }
+        
         if (sample != null) {
             if (withSampleInfo) { 
                 String realname = this.prefMgr.getTemp(sample+"_name");
@@ -542,9 +533,9 @@ public abstract class AbstractTrack implements Track {
     public void linkDataRange_r(ArrayList<DataRange> ranges, ArrayList<AbstractTrack> done) {
         done.add(this);
         if (this.getLinkedTrack() != null && this.getLinkedTrack().trim().length() > 0) {
-            log.info("========= checking for linked data track for  ========");
+           // log.info("========= checking for linked data track for  ========");
             String other = this.getLinkedTrack().trim().toLowerCase();
-            log.info("Got linked track " + other + ". Will try to find it, and use a common data range");
+          //  log.info("Got linked track " + other + ". Will try to find it, and use a common data range");
             
             for (Track track : IGV.getInstance().getAllTracks()) {
                 String tracklink = track.getLinkedTrack();
@@ -565,13 +556,13 @@ public abstract class AbstractTrack implements Track {
                         || (getResourceLocator() != null && getResourceLocator().getPath() != null && track.getResourceLocator().getPath().equalsIgnoreCase(tracklink))) {
                         if (track != this) {
                             found = true;
-                            log.info("Found reverse track link :"+track.getId()+"-> "+tracklink);
+                        //    log.info("Found reverse track link :"+track.getId()+"-> "+tracklink);
                         }                        
                     }
                 }
                 if (found) {                       
                     if (!done.contains(track)) {
-                        log.info("track not done "+track.getId());
+                       // log.info("track not done "+track.getId());
                         DataRange odr = track.getDataRange();
                         if (odr != null && track instanceof AbstractTrack) {
                             ranges.add(odr);

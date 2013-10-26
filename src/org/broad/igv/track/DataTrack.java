@@ -40,6 +40,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.broad.igv.data.seg.ReferenceSegment;
 
 /**
  * Represents a track of numeric data
@@ -70,11 +71,12 @@ public abstract class DataTrack extends AbstractTrack {
     public void render(RenderContext context, Rectangle rect) {
 
         if (featuresLoading) {
-            p("features still loading");
+            p("render: features still loading");
             return;
         }
-
+        
         String chr = context.getChr();
+        boolean whole = Globals.CHR_ALL.equals(chr);
         int start = (int) context.getOrigin();
         int end = (int) context.getEndLocation() + 1;
         int zoom = context.getZoom();
@@ -91,21 +93,23 @@ public abstract class DataTrack extends AbstractTrack {
             int delta = (end - start) / 2;
             int adjustedStart = Math.max(0, start - delta);
             int adjustedEnd = end + delta;
-            p("Calling load scores");
+            
             inViewScores = load(context, chr, adjustedStart, adjustedEnd, zoom);
+            
         }
 
         //For TDF backwards incompatibility, tell user if CHR_ALL not available
-        if (inViewScores.size() == 0 && Globals.CHR_ALL.equals(chr)) {
+        if (inViewScores.size() == 0 && whole) {
             Graphics2D g = context.getGraphic2DForColor(Color.gray);
-            GraphicUtils.drawCenteredText("Data not available for whole genome view; zoom in to see data", rect, g);
+            GraphicUtils.drawCenteredText("render: Data not available for whole genome view; zoom in to see data", rect, g);
         }
+        else if (whole) p("render: After whole genome load scores, got: " + inViewScores.size());
 
         if (autoScale && !FrameManager.isGeneListMode() && !FrameManager.isExomeMode()) {
            // p("mode 1");
             InViewInterval inter = computeScale(start, end, inViewScores);
-            if (inter.endIdx > inter.startIdx) {
-                inViewScores = inViewScores.subList(inter.startIdx, inter.endIdx);
+            if (inter.endIdx > inter.startIdx) {                
+                if (!whole) inViewScores = inViewScores.subList(inter.startIdx, inter.endIdx);                
                // p("Got InViewInterval: "+inter.toString());
                 DataRange dr = getDataRange();
               //  log.info("Got data range: "+dr);
@@ -130,10 +134,11 @@ public abstract class DataTrack extends AbstractTrack {
             }
 
         }
-        if (inViewScores == null || inViewScores.size()<1) {
-         //    p("Got no scores");
-        }
+         
        // else  p("Rendering "+inViewScores.size()+" in view scores, such as this one: "+inViewScores.get(0));
+        if (whole && inViewScores != null) {
+            p("render: Rendering "+inViewScores.size()+" in view scores, for WHOLE genome");
+        }
         getRenderer().render(inViewScores, context, rect, this);
     }
 
@@ -304,23 +309,27 @@ public abstract class DataTrack extends AbstractTrack {
             interval.startIdx = 0;
             interval.endIdx = scores.size();
             for (int i = 1; i < scores.size(); i++) {
-                if (scores.get(i).getEnd() >= origin) {
-                    interval.startIdx = i - 1;
-                    
-                    break;
+                if (!(scores.get(i) instanceof ReferenceSegment)) {
+                    if (scores.get(i).getEnd() >= origin) {
+                        interval.startIdx = i - 1;
+
+                        break;
+                    }
                 }
             }
           //  if (show) p("interval: "+interval.toString());
             
             for (int i = interval.startIdx ; i < scores.size(); i++) {
-                LocusScore locusScore = scores.get(i);
-                float value = locusScore.getScore();
-                if (Float.isNaN(value)) value = 0;
-                interval.dataMax = Math.max(interval.dataMax, value);
-                interval.dataMin = Math.min(interval.dataMin, value);
-                if (locusScore.getStart() > end) {
-                    interval.endIdx = i;
-                    break;
+                if (!(scores.get(i) instanceof ReferenceSegment)) {
+                    LocusScore locusScore = scores.get(i);
+                    float value = locusScore.getScore();
+                    if (Float.isNaN(value)) value = 0;
+                    interval.dataMax = Math.max(interval.dataMax, value);
+                    interval.dataMin = Math.min(interval.dataMin, value);
+                    if (locusScore.getStart() > end) {
+                        interval.endIdx = i;
+                        break;
+                    }
                 }
             }
         }

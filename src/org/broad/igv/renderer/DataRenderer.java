@@ -39,6 +39,7 @@ import org.broad.igv.track.Track;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import org.broad.igv.data.SummaryScore;
 import org.broad.igv.data.seg.ReferenceSegment;
 import org.broad.igv.track.WindowFunction;
 
@@ -66,6 +67,23 @@ public abstract class DataRenderer implements Renderer<LocusScore> {
         if (scores != null) {
             // Prevent modification of the scores collection during rendering.  This collection
             // has caused concurrent modification exceptions.
+            if (scores != null && Globals.CHR_ALL.equals( context.getReferenceFrame().getChrName())) {
+                log.info("Rendering WHOLE genome, got "+scores.size()+" scores");
+            }
+            if (scores != null && !Globals.CHR_ALL.equals( context.getReferenceFrame().getChrName())) {
+              //  log.info("on chromosome, remvoving Summary scores");
+                List<LocusScore> tmp = new ArrayList<LocusScore>();
+                tmp.addAll(scores);
+                for (LocusScore s: tmp) {
+                    if (s instanceof SummaryScore) {
+                   //     log.info("Removing summary: "+s);
+                        scores.remove(s);
+                    }
+                }
+            }
+//            if (scores != null && Globals.CHR_ALL.equals( context.getReferenceFrame().getChrName())) {
+//                log.info("Rendering WHOLE genome, got "+scores.size()+" scores");
+//            }
             synchronized (scores) {
                 
                 renderScores(track, scores, context, rect);

@@ -14,6 +14,7 @@ import org.apache.log4j.Logger;
 import org.broad.igv.data.seg.ReferenceSegment;
 import org.broad.igv.data.seg.Segment;
 import org.broad.igv.data.seg.SegmentedDataSet;
+import org.broad.igv.data.seg.SummarySegment;
 import org.broad.igv.feature.FeatureUtils;
 import org.broad.igv.feature.LocusScore;
 import org.broad.igv.feature.genome.Genome;
@@ -166,6 +167,10 @@ public class SegmentedRedLineCnvDataSet implements SegmentedDataSet {
             seg=  new ReferenceSegment(chr, start, start, end, end, value, des, atts);
          //   p("Created REF segment: "+seg);
         }
+        else if (des != null && des.equalsIgnoreCase("SUMMARY")) {
+            seg=  new SummarySegment(chr, start, start, end, end, value, des, atts);
+            p("Created SUMMARY segment: "+seg);
+        }
         else seg=   new Segment(chr, start, start, end, end, value, des, atts);
         segmentList.add(seg);
         dataMax = Math.max(dataMax, value);
@@ -205,7 +210,7 @@ public class SegmentedRedLineCnvDataSet implements SegmentedDataSet {
     public List<LocusScore> getSegments(String heading, String chr) {
         p("========  getSegments for "+chr+", useIndex is: "+useIndex);
         if (useIndex ||  !loadedChromosomes.contains(chr))  {
-            p(chr+" not loaded yet, calling loadSegments "+heading+"/"+chr);
+            p(chr+" not loaded yet, calling loadSegments "+heading+" on chr "+chr);
             loadSegments(heading, chr);
         }
         else {
@@ -215,12 +220,8 @@ public class SegmentedRedLineCnvDataSet implements SegmentedDataSet {
         if (chrSegments == null) p(" ------------ Got NO segments for heading "+heading);
         List<LocusScore> res = (chrSegments == null) ? null : chrSegments.get(chr);
         if (res != null) {
-            p("Got locus scores: "+res.size()+" for chr "+chr);
-            for (LocusScore score: res) {
-                if (score instanceof ReferenceSegment) {
-                  //  p("          Found ref");
-                }
-            }
+//            p("Got locus scores: "+res.size()+" for chr "+chr);
+            
         }
         else p("----------- getSements: Got NO locus scores for "+heading+"/"+chr);
         return res;
@@ -297,7 +298,7 @@ public class SegmentedRedLineCnvDataSet implements SegmentedDataSet {
             String chr = "ALL";
             List<LocusScore> chrSegments = getSegments(heading, chr);
             if (chrSegments != null) {
-                 p("getWholeGenomeScores: got "+chrSegments.size()+" for "+heading+"/"+chr);
+         //        p("getWholeGenomeScores: got "+chrSegments.size()+" for "+heading+"/"+chr);
                 for (LocusScore score : chrSegments) {
                     Segment seg = (Segment) score;
                     String segchr = seg.getChr();
@@ -309,6 +310,10 @@ public class SegmentedRedLineCnvDataSet implements SegmentedDataSet {
                           //  p("Got ref segment: "+score);
                             s = new ReferenceSegment(segchr, gStart, gStart, gEnd,
                                     gEnd, seg.getScore(), seg.getDescription(), seg.getAttributes());
+                        }else if (score instanceof SummarySegment) {
+                          //  p("Got ref segment: "+score);
+                            s = new SummarySegment(segchr, gStart, gStart, gEnd,
+                                    gEnd, seg.getScore(), seg.getDescription(), seg.getAttributes());                        
                         } else {
                             s = new Segment(segchr, gStart, gStart, gEnd,
                                     gEnd, seg.getScore(), seg.getDescription(), seg.getAttributes());

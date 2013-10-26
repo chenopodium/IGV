@@ -113,7 +113,7 @@ public class IonTorrentTrackHandler implements TrackHandler {
          // xxx todo 
         //  String props = tp.getCustomProperties();
         //    ok = cont.parseCustomProperties(props);
-        CnvData data = new CnvData(diffname, summaryfile, redfile);
+        CnvData data = new CnvData(difffile, summaryfile, redfile);
        // data.parseSampleAndControlFile();
         // also read red file
         String id = path;
