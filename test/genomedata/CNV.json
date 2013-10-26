@@ -1,0 +1,7 @@
+{
+"control" : "controlCoverage.seg",
+"sample" : "testCoverage.seg",
+"diff" : "diffCoverage.seg",
+"redline" : "CN_Segments.seg",
+"summary" : "diffCoverage.seg.bin"
+}
