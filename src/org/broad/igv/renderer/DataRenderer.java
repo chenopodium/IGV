@@ -29,6 +29,7 @@ package org.broad.igv.renderer;
 
 //~--- non-JDK imports --------------------------------------------------------
 
+import com.iontorrent.utils.ErrorHandler;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.PreferenceManager;
@@ -62,54 +63,59 @@ public abstract class DataRenderer implements Renderer<LocusScore> {
      * @param rect
      */
     @Override
-    public void render(List<LocusScore> scores, RenderContext context, Rectangle rect, Track track) {
-
-        if (scores != null) {
+    public void render(List<LocusScore> origscores, RenderContext context, Rectangle rect, Track track) {
+        List<LocusScore> drawscores = origscores;
+ 
+        if (drawscores != null) {
             // Prevent modification of the scores collection during rendering.  This collection
             // has caused concurrent modification exceptions.
-            if (scores != null && Globals.CHR_ALL.equals( context.getReferenceFrame().getChrName())) {
-                log.info("Rendering WHOLE genome, got "+scores.size()+" scores");
+            if (drawscores != null && Globals.CHR_ALL.equals( context.getReferenceFrame().getChrName())) {
+               // log.info("Rendering WHOLE genome, got "+drawscores.size()+" scores");
             }
-            if (scores != null && !Globals.CHR_ALL.equals( context.getReferenceFrame().getChrName())) {
+            if (drawscores != null && !Globals.CHR_ALL.equals( context.getReferenceFrame().getChrName())) {
               //  log.info("on chromosome, remvoving Summary scores");
                 List<LocusScore> tmp = new ArrayList<LocusScore>();
-                tmp.addAll(scores);
+                tmp.addAll(drawscores);
                 for (LocusScore s: tmp) {
                     if (s instanceof SummaryScore) {
-                   //     log.info("Removing summary: "+s);
-                        scores.remove(s);
+                        log.info("Removing summary: "+s);
+                        drawscores.remove(s);
                     }
                 }
             }
-//            if (scores != null && Globals.CHR_ALL.equals( context.getReferenceFrame().getChrName())) {
-//                log.info("Rendering WHOLE genome, got "+scores.size()+" scores");
-//            }
-            synchronized (scores) {
-                
-                renderScores(track, scores, context, rect);
-                
+           
+            synchronized (drawscores) {       
+             //   log.info("render: Drawing "+drawscores.size() +" segs x="+rect.getX()+"-"+rect.getMaxX()+", y="+rect.getY()+"-"+rect.getMaxY());
+//                if (rect.getY() > 0) {
+//                    log.warn("Tracing wrong ret: "+ErrorHandler.getString(new Exception("rect: "+rect.getY())));
+//                    
+//                }
+                renderScores(track, drawscores, context, rect);                
                 ArrayList<LocusScore> refscores = new ArrayList<LocusScore>();
                 // check if user has "draw reference" enabled
                 
                 if (track.getWindowFunction() != null && track.getWindowFunction().equals(WindowFunction.noRefLine)) {
-                   // log.info("NOT drawing red line because window function is: "+track.getWindowFunction());
+                    log.info("NOT drawing red line because window function is: "+track.getWindowFunction());
                 }
                 else {
                   //  log.info("Drawing red line because window function is:" +track.getWindowFunction());
-                    for (LocusScore s: scores) {
+                    for (LocusScore s: drawscores) {
                         if (s instanceof ReferenceSegment ) {
                             //log.info("Found ref: "+s);
-                            refscores.add(s);
+                            refscores.remove(s);
+                            if (!refscores.contains(s)) refscores.add(s);
                         }
                     }
                 }
                 if (refscores.size()>0) {
-                   //log.info("Drawing refsegments such as this one: "+refscores.get(0));
+                  // log.info("render: Drawing "+refscores.size() +" refsegments x="+rect.getX()+"-"+rect.getMaxX());
+               //    Exception e = new Exception("render: Tracing call");
+               //    log.info(ErrorHandler.getString(e));
                    renderScores(track, refscores, context, rect); 
                 }
               //  else log.info("Got NO ref segments");
                 renderAxis(track, context, rect);
-            }
+           }
         }
         else {
             log.info("Got NO scores");

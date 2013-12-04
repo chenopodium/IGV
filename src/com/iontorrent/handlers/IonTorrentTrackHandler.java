@@ -53,7 +53,11 @@ public class IonTorrentTrackHandler implements TrackHandler {
                 loadCustomCnvJson(locator, newTracks);
             } catch (Exception ex) {
                p("Could not read json file: "+file);
-                MessageUtils.showMessage("I could not read this file: " + file+": "+ErrorHandler.getString(ex));
+               Throwable cause = ex;
+               if (ex.getCause() != null) cause = ex.getCause();
+               String msg = "I could not read this file: <br>" + file+":<br>"+ErrorHandler.getString(cause);
+               
+               MessageUtils.showMessage(msg);
             }
 
         } else {
@@ -97,7 +101,7 @@ public class IonTorrentTrackHandler implements TrackHandler {
          String jsonname = path.substring(slash+1);
          p("JSON name: "+jsonname);
          
-         String controlfile = path.replace(jsonname, controlname);
+        // String controlfile = path.replace(jsonname, controlname);
          String difffile = path.replace(jsonname, diffname);
          String redfile = path.replace(jsonname, redlinename);
          String summaryfile = null;
@@ -105,7 +109,7 @@ public class IonTorrentTrackHandler implements TrackHandler {
              summaryfile = path.replace(jsonname, summaryname);
          }
          
-         p("Got controlfile: "+controlfile);
+        // p("Got controlfile: "+controlfile);
          p("Got difffile: "+difffile);
          p("Got redfile: "+redfile);
          p("Got summaryfile: "+summaryfile);

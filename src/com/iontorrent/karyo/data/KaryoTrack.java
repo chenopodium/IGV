@@ -42,11 +42,11 @@ public class KaryoTrack {
         visible = true;
 
         //track.getResourceLocator().getDescription();
-        this.trackdispname = track.getDisplayName();
+        this.trackdispname = track.getDisplayName().replace("<br>",  " ");
         this.sample = track.getSample();
-        p("Track " + trackdispname + " sample: " + sample);
+     //   p("Track " + trackdispname + " sample: " + sample);
         if (track.getResourceLocator() != null) {
-            p("Resource sample: " + track.getResourceLocator().getSampleId());
+           // p("Resource sample: " + track.getResourceLocator().getSampleId());
             sample = track.getResourceLocator().getSampleId();
         }
         int dot = trackdispname.lastIndexOf(".");
@@ -147,6 +147,7 @@ public class KaryoTrack {
 
         possibleFilters = FilterManager.getManager().getFiltersFor(getSampleafeture());
 
+        if (possibleFilters == null) return null;
         // p("========================= Getting possible filters");
         // currently it should just be one :-)
         if (possibleFilters.size() > 0) {

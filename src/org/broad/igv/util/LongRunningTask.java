@@ -30,8 +30,8 @@ public class LongRunningTask implements Callable {
 
     private static Logger log = Logger.getLogger(LongRunningTask.class);
 
-    private static ExecutorService threadExecutor = Executors.newFixedThreadPool(10);
-    private static ScheduledExecutorService schedule = Executors.newScheduledThreadPool(2);
+    private static ExecutorService threadExecutor = Executors.newFixedThreadPool(15);
+    private static ScheduledExecutorService schedule = Executors.newScheduledThreadPool(4);
 
     Runnable runnable;
 

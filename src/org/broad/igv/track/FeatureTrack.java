@@ -667,8 +667,7 @@ public class FeatureTrack extends AbstractTrack {
             if (cs != null) {
                 cs.setPosEnd(max);
             }
-            setDataRange(new DataRange(0, 0, max));
-            linkDataRange();
+            setDataRange(new DataRange(0, 0, max));            
             coverageRenderer.render(scores, context, inputRect, this);
         }
     }
@@ -860,6 +859,7 @@ public class FeatureTrack extends AbstractTrack {
      */
     public Feature nextFeature(String chr, double center, boolean forward, ReferenceFrame frame) throws IOException {
 
+        log.info("Next feature called");
         Feature f = null;
         boolean canScroll = (forward && !frame.windowAtEnd()) || (!forward && frame.getOrigin() > 0);
         PackedFeatures packedFeatures = packedFeaturesMap.get(frame.getName());

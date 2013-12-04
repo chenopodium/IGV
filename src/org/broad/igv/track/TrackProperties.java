@@ -59,7 +59,7 @@ public class TrackProperties {
     }
     public void setTrackorder(int order) {
         this.trackorder = order;
-        log.info("Got trackorder "+trackorder);
+      //  log.info("Got trackorder "+trackorder);
     }
 
     /**
@@ -73,7 +73,7 @@ public class TrackProperties {
      * @param customProperties the customProperties to set
      */
     public void setCustomProperties(String customProperties) {
-         log.info("Gut setCustomProperties "+customProperties);
+   //      log.info("Gut setCustomProperties "+customProperties);
         this.customProperties = customProperties;
     }
 

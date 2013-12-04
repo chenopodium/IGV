@@ -10,6 +10,7 @@
  */
 package org.broad.igv.feature.tribble;
 
+import com.iontorrent.utils.ErrorHandler;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
@@ -31,10 +32,12 @@ public class VCFWrapperCodec extends AsciiFeatureCodec<VCFVariant> {
     AsciiFeatureCodec wrappedCodec;
     Genome genome;
 
+    int nrerrors = 0;
     public VCFWrapperCodec(AsciiFeatureCodec wrappedCodec, Genome genome) {
         super(VCFVariant.class);
         this.wrappedCodec = wrappedCodec;
         this.genome = genome;
+       // p("Got codec: "+wrappedCodec.getClass().getName());
     }
 
     @Override
@@ -42,8 +45,12 @@ public class VCFWrapperCodec extends AsciiFeatureCodec<VCFVariant> {
         return wrappedCodec.decodeLoc(line);
     }
 
+    private static void p(String s) {
+         Logger.getLogger(VCFWrapperCodec.class).info(s);
+    }
     @Override
     public VCFVariant decode(String line) {
+        //line = line.trim();
       //  Logger.getLogger(VCFWrapperCodec.class).info("VCFWrapperCodec: got line:\n" + line);
         VariantContext vc  = null;
         try {
@@ -51,7 +58,15 @@ public class VCFWrapperCodec extends AsciiFeatureCodec<VCFVariant> {
             // vc.g
         }
         catch (Throwable e) {
-             Logger.getLogger(VCFWrapperCodec.class).info("Got error in:"+e.getMessage()+" for line: "+line);
+            if (nrerrors < 10) {
+               p("Got error in:"+e.getMessage()+" for line: "+line);
+            }
+//            if (nrerrors < 2) {
+//               p("Tracing error: "+ErrorHandler.getString(e)) ;
+//               
+//            }
+            nrerrors++;
+             
         }
         if (vc == null) {
             return null;

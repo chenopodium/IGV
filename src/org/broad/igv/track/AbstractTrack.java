@@ -39,6 +39,7 @@ import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.util.*;
 import java.util.List;
+import org.broad.igv.variant.VariantTrack;
 import org.jfree.util.Log;
 
 /**
@@ -173,8 +174,9 @@ public abstract class AbstractTrack implements Track {
 
     @Override
     public String getDisplayName() {
-        return getDisplayName(false);
+        return getDisplayName(true);
     }
+
     public String getDisplayName(boolean withSampleInfo) {
 
         String sampleKey = IGV.getInstance().getSession().getTrackAttributeName();
@@ -185,14 +187,14 @@ public abstract class AbstractTrack implements Track {
             }
         }
         String disp = getName();
-
+        //  log.info("getDisplayName: getName="+disp);
         String sample = null;
         if (this.getResourceLocator() != null) {
             sample = this.getResourceLocator().getSampleId();
             if (sample == null) {
                 sample = this.getSample();
             }
-           
+
             if (sample != null) {
                 if (!disp.toUpperCase().startsWith(sample.toUpperCase())) {
                     sample = Character.toUpperCase(sample.charAt(0)) + sample.substring(1);
@@ -207,25 +209,27 @@ public abstract class AbstractTrack implements Track {
                 disp = sample + " " + disp;
             }
         }
-        
+
         if (sample != null) {
-            if (withSampleInfo) { 
-                String realname = this.prefMgr.getTemp(sample+"_name");
-           //    log.info("getDisplayName: name is "+disp+", sample="+sample+", getting "+sample+"_name -> realname="+realname);
-               // TESTING
-              // if (realname == null) realname="testsample";
-                if (realname != null) {
-                    disp += "<br><b>sample name: "+realname+"</b>";
-                }
+
+            String realname = this.prefMgr.getTemp(sample + "_name");
+            //  if (realname != null) log.info("getDisplayName: name is "+disp+", sample="+sample+", getting "+sample+"_name -> realname="+realname);
+            // TESTING
+            // if (realname == null) realname="testsample";
+            if (realname != null && realname.length() > 0 && !realname.equalsIgnoreCase("sample")) {
+                disp += "<br> (" + realname + ")";
             }
+
         }
         disp = disp.replace("_", " ");
         disp = disp.replace("-", " ");
         disp = firstUpper(disp);
         ///disp = disp.replace(".", " ");
+        //   log.info("getDisplayName: result is: "+disp);
         return disp;
     }
- public String getFileExt() {
+
+    public String getFileExt() {
         if (getResourceLocator() == null) {
             return "?";
         }
@@ -239,12 +243,14 @@ public abstract class AbstractTrack implements Track {
         }
         return path.substring(dot + 1);
     }
+
     protected String firstUpper(String s) {
         if (!s.startsWith(s.toUpperCase())) {
-            s = Character.toUpperCase(s.charAt(0)) + s.substring(1);              
+            s = Character.toUpperCase(s.charAt(0)) + s.substring(1);
         }
         return s;
     }
+
     public void setSampleId(String sampleId) {
         this.sampleId = sampleId;
     }
@@ -391,6 +397,8 @@ public abstract class AbstractTrack implements Track {
         String key = AttributeManager.getInstance().getSampleFor(getName());
         return key != null ? key : getName();
 
+
+
     }
 
     /**
@@ -401,8 +409,10 @@ public abstract class AbstractTrack implements Track {
      * @return
      */
     private int getDefaultHeight() {
-        if (XYPlotRenderer.class.isAssignableFrom(getDefaultRendererClass())) {
-            return PreferenceManager.getInstance().getAsInt(PreferenceManager.CHART_TRACK_HEIGHT_KEY);
+        if (XYPlotRenderer.class
+                .isAssignableFrom(getDefaultRendererClass())) {
+            return PreferenceManager.getInstance()
+                    .getAsInt(PreferenceManager.CHART_TRACK_HEIGHT_KEY);
         } else {
             return PreferenceManager.getInstance().getAsInt(PreferenceManager.TRACK_HEIGHT_KEY);
         }
@@ -416,7 +426,11 @@ public abstract class AbstractTrack implements Track {
      */
     public int getDefaultMinimumHeight() {
         Renderer r = getRenderer();
-        if (r != null && HeatmapRenderer.class.isAssignableFrom(r.getClass())) {
+
+
+        if (r != null && HeatmapRenderer.class
+                .isAssignableFrom(r.getClass())) {
+
             return 1;
         } else {
             return 10;
@@ -525,88 +539,15 @@ public abstract class AbstractTrack implements Track {
             float baseline = (float) (colorScale == null ? 0 : (colorScale.getNegStart() + colorScale.getPosStart()) / 2);
 
             setDataRange(new DataRange(min, baseline, max));
-            linkDataRange();
+            
         }
         return dataRange;
     }
 
-    public void linkDataRange_r(ArrayList<DataRange> ranges, ArrayList<AbstractTrack> done) {
-        done.add(this);
-        if (this.getLinkedTrack() != null && this.getLinkedTrack().trim().length() > 0) {
-           // log.info("========= checking for linked data track for  ========");
-            String other = this.getLinkedTrack().trim().toLowerCase();
-          //  log.info("Got linked track " + other + ". Will try to find it, and use a common data range");
-            
-            for (Track track : IGV.getInstance().getAllTracks()) {
-                String tracklink = track.getLinkedTrack();
-                boolean found = false;
-                if ((track.getName() != null && track.getName().equalsIgnoreCase(other))
-                        || (track.getId() != null && track.getId().equalsIgnoreCase(other))
-                        || (track.getResourceLocator() != null && track.getResourceLocator().getPath() != null && track.getResourceLocator().getPath().equalsIgnoreCase(other))) {
-                        if (track != this) {
-                            found = true;
-                            log.info("Found track link :"+other+"-> "+track.getId());
-                        }
-                        
-                }
-                else if (tracklink != null) {
-                    tracklink = tracklink.trim().toLowerCase();
-                     if ((getName() != null && getName().equalsIgnoreCase(tracklink))
-                        || (getId() != null && getId().equalsIgnoreCase(tracklink))
-                        || (getResourceLocator() != null && getResourceLocator().getPath() != null && track.getResourceLocator().getPath().equalsIgnoreCase(tracklink))) {
-                        if (track != this) {
-                            found = true;
-                        //    log.info("Found reverse track link :"+track.getId()+"-> "+tracklink);
-                        }                        
-                    }
-                }
-                if (found) {                       
-                    if (!done.contains(track)) {
-                       // log.info("track not done "+track.getId());
-                        DataRange odr = track.getDataRange();
-                        if (odr != null && track instanceof AbstractTrack) {
-                            ranges.add(odr);
-                            AbstractTrack at = (AbstractTrack)track;
-                            at.linkDataRange_r(ranges, done);
-                        }
-                       
-                    }
-                }
-            }
-        }
-    }
-
-    public void linkDataRange() {
-        DataRange dr = this.getDataRange();
-        float min = dr.getMinimum();
-        float max = dr.getMaximum();
-        float baseline = dr.getBaseline();
-        ArrayList<DataRange> ranges = new ArrayList<DataRange>();
-        
-        ArrayList<AbstractTrack> done = new ArrayList<AbstractTrack>();
-
-        linkDataRange_r(ranges, done);
-
-        if (ranges != null && ranges.size() > 0) {
-            int nr = ranges.size();
-         //   log.info("Found other data ranges: " + ranges.size() + "! Computing mean");
-            for (DataRange r : ranges) {
-                min = Math.min(min, r.getMinimum());
-                max = Math.max(max, r.getMaximum());
-                baseline = (baseline + r.getBaseline());
-            }
-            baseline = baseline /(nr+1);
-            dr = new DataRange(min, baseline, max);
-            setDataRange(dr);
-          //  log.info("Got new data range: "+min+"-"+max+", base="+baseline);
-        } else {
-           // log.info("no linked data range");
-        }
-
-    }
-
+   
+    @Override
     public void setDataRange(DataRange axisDefinition) {
-        // log.info("DataRange is "+axisDefinition+" for "+this.getName()+"/"+this.getId());
+        //   log.info("DataRange is "+axisDefinition.getMinimum()+"-"+axisDefinition.getMaximum()+" for "+this.getName()+"/"+this.getId());
         this.dataRange = axisDefinition;
     }
 
@@ -781,9 +722,7 @@ public abstract class AbstractTrack implements Track {
             for (Map.Entry<String, String> entry : attributes.entrySet()) {
                 this.setAttributeValue(entry.getKey(), entry.getValue());
             }
-        }
-        linkDataRange();
-
+        }       
     }
 
     /**
@@ -1057,9 +996,7 @@ public abstract class AbstractTrack implements Track {
             } catch (NumberFormatException e) {
                 log.error("Error restoring featureVisibilityWindow: " + fvw);
             }
-        }
-        linkDataRange();
-
+        }      
     }
 
     public boolean isItemRGB() {
@@ -1175,7 +1112,7 @@ public abstract class AbstractTrack implements Track {
     }
 
     public String getNameValueString(int y) {
-        return "<html>"+this.getDisplayName(true)+ "</html>";
+        return "<html>" + this.getDisplayName(true) + "</html>";
     }
 
     /**
@@ -1301,13 +1238,17 @@ public abstract class AbstractTrack implements Track {
             } else if (s.equalsIgnoreCase("LIGHT_RED")) {
                 c = Color.RED.brighter();
             } else if (s.equalsIgnoreCase("LIGHT_BLUE")) {
-                c = Color.BLUE.brighter();
+                c = Color.BLUE.brighter();            
+            } else if (s.equalsIgnoreCase("RANDOM")) {               
+                c = new Color(rnd(), rnd(), rnd());
             }
         }
 
         return c;
     }
-
+    private int rnd() {
+        return (int)(Math.random()*255.0);
+    }
     public void setColor(String colorString) {
         // Set color
         posColor = getColor(colorString);

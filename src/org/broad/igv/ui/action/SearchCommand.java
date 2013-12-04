@@ -110,7 +110,7 @@ public class SearchCommand implements Command {
             return;
         }
         List<SearchResult> results = runSearch(searchString);
-        if (askUser) {
+        if (askUser && !searchString.equalsIgnoreCase("ALL")) {
             results = askUserFeature(results);
             if (results == null) {
                 if (log.isDebugEnabled()) {
@@ -226,7 +226,7 @@ public class SearchCommand implements Command {
         if (success && recordHistory) {
             IGV.getInstance().getSession().getHistory().push(searchString, origZoom);
         }
-        if (showMessage) {
+        if (showMessage && !searchString.equalsIgnoreCase("ALL")) {
             MessageUtils.showMessage(message);
             Exception e = new Exception("Debug: " + message);
             log.info(ErrorHandler.getString(e));
@@ -488,9 +488,9 @@ public class SearchCommand implements Command {
         }
 
         //startEnd will have coordinates if found.
-        log.info("calcChromoLocus: chr is: "+chr);
+       // log.info("calcChromoLocus: chr is: "+chr);
         chr = genome.getChromosomeAlias(chr);
-        log.info("calcChromoLocus: alias is: "+chr);
+      //  log.info("calcChromoLocus: alias is: "+chr);
         Chromosome chromosome = genome.getChromosome(chr);
         //If we couldn't find chromosome, check
         //whole string

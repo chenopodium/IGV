@@ -71,11 +71,26 @@ public class SegmentedCustomCnvDataSet implements SegmentedDataSet {
     /**
      *
      */
-    public void addSegment(String heading, String c, int start, int end, float value, String desc,HashMap<String,String> atts) {
+    public void addSegment(String heading, String c, int start, int end, float value, String desc, HashMap<String, String> atts) {
 
         count++;
         String chr = genome == null ? c : genome.getChromosomeAlias(c);
-        // p("Adding seg to chr "+chr);
+        String alt = null;
+        if (chr.endsWith("23")) {
+            alt = "chrX";
+        } else if (chr.endsWith("24")) {
+            alt = "chrY";
+        } else if (chr.endsWith("25")) {
+            alt = "chrM";
+        } else if (chr.endsWith("X")) {
+            alt = "chr23";
+        } else if (chr.endsWith("Y")) {
+            alt = "chr24";
+        } else if (chr.endsWith("M")) {
+            alt = "chr25";
+        }
+
+        
         Map<String, List<LocusScore>> chrSegments = segments.get(heading);
         if (chrSegments == null) {
             headings.add(heading);
@@ -88,8 +103,20 @@ public class SegmentedCustomCnvDataSet implements SegmentedDataSet {
             segmentList = new ArrayList<LocusScore>();
             chrSegments.put(chr, segmentList);
         }
+        if (alt != null) {
+            List<LocusScore> altsegmentList = chrSegments.get(alt);
+            if (altsegmentList == null) {
+                altsegmentList = new ArrayList<LocusScore>();
+                chrSegments.put(alt, altsegmentList);
+                p("Adding seg to chr " + chr + " and " + alt);
+            }
+            Segment aseg = new Segment(alt, start, start, end, end, value, desc, atts);
+            altsegmentList.add(aseg);
+            chromosomes.add(alt);
+        }
         Segment seg = new Segment(chr, start, start, end, end, value, desc, atts);
         segmentList.add(seg);
+
         dataMax = Math.max(dataMax, value);
         dataMin = Math.min(dataMin, value);
         if (value < 0) {
@@ -98,7 +125,6 @@ public class SegmentedCustomCnvDataSet implements SegmentedDataSet {
         //  if (count % 100 ==0) p("Got segment: "+seg+", max="+dataMax+", min="+dataMin);
 
         chromosomes.add(chr);
-
     }
 
     private void p(String s) {
@@ -211,12 +237,11 @@ public class SegmentedCustomCnvDataSet implements SegmentedDataSet {
                         if ((gEnd - gStart) >= minFeatureSize) {
                             Segment s = null;
                             if (score instanceof ReferenceSegment) {
-                              //  p("Got ref segment: "+score);
+                                //  p("Got ref segment: "+score);
                                 s = new ReferenceSegment(chr, gStart, gStart, gEnd,
                                         gEnd, seg.getScore(), seg.getDescription(), seg.getAttributes());
-                            }
-                            else if (score instanceof SummarySegment) {
-                              //  p("Got ref segment: "+score);
+                            } else if (score instanceof SummarySegment) {
+                                //  p("Got ref segment: "+score);
                                 s = new SummarySegment(chr, gStart, gStart, gEnd,
                                         gEnd, seg.getScore(), seg.getDescription(), seg.getAttributes());
                             } else {

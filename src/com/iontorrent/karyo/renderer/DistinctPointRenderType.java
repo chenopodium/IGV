@@ -27,7 +27,7 @@ public class DistinctPointRenderType extends PointRenderType {
   
     @Override
     public Color getColor(FeatureMetaInfo meta, KaryoFeature f) {        
-        return super.getDistinctColor(meta, f, true);
+        return super.getDistinctColor(meta, f, false);
     }
        
     @Override

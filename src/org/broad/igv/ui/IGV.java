@@ -1288,6 +1288,7 @@ public class IGV {
         } catch (Exception e) {
             log.error("Error loading ", e);
             String msg = e.getMessage();
+            if (msg == null) msg = ErrorHandler.getString(e);
             msg = msg.replace("\n", "<br>");
             msg = msg.replace("java.lang.Exception:", "");
             String path = sessionPath;
@@ -1487,7 +1488,7 @@ public class IGV {
             Runnable runnable = new Runnable() {
                 public void run() {
                     try {
-                        log.info("Starting runnable for " + locator.getPath());
+                    //    log.info("Starting runnable for " + locator.getPath());
                         List<Track> tracks = load(locator);
                         if (tracks.size() > 0) {
                             String path = locator.getPath();

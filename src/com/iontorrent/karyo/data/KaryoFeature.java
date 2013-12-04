@@ -132,29 +132,14 @@ public class KaryoFeature implements Feature {
     }
     public double getScore(FeatureMetaInfo info, String relevantName, boolean debug) {
         double score = 0;
-        if (debug)  p("get score "+relevantName+" for "+f.getClass().getName());
+        if (debug)  p("get score "+relevantName+" for "+getClass().getName());
 
         Feature f = this.feature;
 
         if (f instanceof Variant) {
-            Variant v = (Variant) f;
-
-
-            String sscore = getAttribute(v, relevantName);
-
-            if (debug)  p(" -> Variant, getAtt("+relevantName+")="+sscore);
-            if (sscore != null && sscore.length() > 0) {
-                //        p("Got v.getAttributeAsString: "+sscore);
-                try {
-                    score = Double.parseDouble(sscore);
-                } catch (Exception e) {
-                    if (debug) p("Could not parse score "+relevantName+"="+sscore +" to Double");
-                }
-            } else {
-                // check the default values
-                if (debug) p("Getting score via info.getValue("+relevantName+")");
-                return info.getValue(relevantName, f);
-            }
+            
+            if (debug) p("Getting score via info.getValue("+relevantName+")");
+            return info.getValue(relevantName, f);            
         } else if (f instanceof Segment) {
             Segment v = (Segment) f;
             score = v.getScore();
@@ -384,8 +369,8 @@ public class KaryoFeature implements Feature {
         boolean isX = GenderManager.isX(getChr());
         boolean isY = GenderManager.isY(getChr());
         if ( isX || isY) {
-            if (!par) spar =nl+"<b>Non par region</b>";        
-            else spar =nl+"Par region";        
+            if (!par) spar ="<b>Non par region</b>";        
+            else spar ="Par region";        
             if (isX) spar += " on X";
             else if (isY) spar += " on Y";
         }
@@ -414,7 +399,7 @@ public class KaryoFeature implements Feature {
         if (feature instanceof Variant) {
             if (igvtrack != null && igvtrack instanceof VariantTrack) {
                 VariantTrack vtrack = (VariantTrack)igvtrack;
-                String spar = getParString(info, nl);
+                String spar = getParString(info, nl)+nl;
                 String h= spar+vtrack.getVariantToolTip((Variant)feature, true);
                 return  h;
             }

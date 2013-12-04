@@ -333,14 +333,16 @@ public class FeatureTreeNode {
         int bstart = Math.max(0,getBucket(pos));
         int bend = getBucket(location + errortolerance);
         if (bend < 0) bend = this.nodes.length;
-        p("Finding features between "+pos/1000000+" and "+(location+errortolerance)/1000000+", buckets "+bstart+"-"+bend);
+       // p("Finding features between "+pos/1000000+" and "+(location+errortolerance)/1000000+", buckets "+bstart+"-"+bend);
         for (int bucket = bstart; bucket <= bend && bucket < nodes.length; bucket++) {
             FeatureTreeNode node =  nodes[bucket];
             if (node != null) {                
                 List<KaryoFeature> subres = node.getFeaturesAt_r(pos, errortolerance, fil);
                 if (subres != null) {
                 //    p("Found "+subres+" features in tree at "+pos+", bucket "+bucket);
-                    res.addAll(subres);
+                    for (KaryoFeature f: subres) {
+                        if (!res.contains(f)) res.add(f);
+                    }
                 }
              //   else p("Found no features in tree at "+pos);
                 

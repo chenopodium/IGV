@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import javax.swing.SwingUtilities;
 import org.broad.igv.feature.Cytoband;
 import org.broad.igv.feature.genome.Genome;
 import org.broad.igv.track.FeatureTrack;
@@ -40,7 +41,7 @@ import org.broad.tribble.Feature;
  * @author Chantal Roth
  */
 public class KaryoManager {
-    
+
     private ArrayList<Chromosome> chromosomes;
     private Frame frame;
     private IgvAdapter igvadapter;
@@ -64,7 +65,7 @@ public class KaryoManager {
         setKaryotracks(new ArrayList<KaryoTrack>());
         loadBandDataIfMissing();
     }
-    
+
     public boolean addFakeTracks() {
         return true;
     }
@@ -73,7 +74,7 @@ public class KaryoManager {
         return control;
     }
 
-    private void loadBandDataIfMissing() {        
+    private void loadBandDataIfMissing() {
         if (chromosomes == null) {
             // get genome from current setting
             Genome genome = IGV.getInstance().getGenomeManager().getCurrentGenome();
@@ -89,12 +90,12 @@ public class KaryoManager {
                     Chromosome chr = new Chromosome(cname, "" + igvchr.getIndex(), igvchr.getLength(), "chromosome");
                     if (chr.getLength() < 1000000) {
                         p("Chromosome " + chr + " is too small, not using it");
-                    } else {                        
+                    } else {
                         List<Cytoband> igvbands = igvchr.getCytobands();
-                        for (Cytoband cyto : igvbands) {                            
+                        for (Cytoband cyto : igvbands) {
                             Band band = new Band(cyto);
                             chr.add(band);
-                        }                       
+                        }
                         chromosomes.add(chr);
                     }
                 } else {
@@ -107,21 +108,21 @@ public class KaryoManager {
         }
     }
 
-    private void loadTracks() {        
+    private void loadTracks(TaskUpdateListener listener) {
         p("============= KaryoManager.loadTracks================ ");
         // boolean show = !tracksLoaded || karyotracks.size() <1;
         boolean show = true;
         ArrayList<KaryoTrack> tracks = igvadapter.getSelectedIgvTracks(show);
         p("loadTracks: Got " + tracks.size() + " SELECTED tracks to load ");
         this.karyotracks = new ArrayList<KaryoTrack>();
-        
+
         boolean takeslong = false;
         int nr = tracks.size();
-        int time = 4*nr;
-        for (KaryoTrack kt: tracks) {
+        int time = 4 * nr;
+        for (KaryoTrack kt : tracks) {
             String disp = kt.getTrackDisplayName().toLowerCase();
             if (disp.startsWith("mother") || disp.startsWith("father") || disp.startsWith("self") || disp.startsWith("proband")) {
-                time = nr*30;//takes a long time!
+                time = nr * 30;//takes a long time!
             }
             takeslong = true;
         }
@@ -131,18 +132,19 @@ public class KaryoManager {
                 tracks.add(new KaryoTrack(new FakeCnvTrack(), 1));
                 tracks.add(new KaryoTrack(new FakeIndelTrack(), 2));
             } else if (tracks.size() > 6 || takeslong) {
-               if (time >= 30) {
-                   //MessageUtils.showMessage("Loading "+nr+" karyo tracks... some tracks are large, and it can take quite a long time to load");
-                   if (!this.checkMemory()) {
+                if (time >= 30) {
+                    //MessageUtils.showMessage("Loading "+nr+" karyo tracks... some tracks are large, and it can take quite a long time to load");
+                    if (!this.checkMemory()) {
                         int free = (int) (Runtime.getRuntime().freeMemory() / 1000000);
-                       // low on memory
-                       GuiUtils.showNonModelMsg("Loading", "Some tracks are <b>large</b>, and I only have "+free+"MB memory left.<br><b>To view large data sets, you might need more memory and Java 64 bit</b>", true, 8);
-                   }
-                    IGV.getInstance().setStatusBarMessage("Loading "+nr+" karyo tracks... some tracks are large, it can take some time (and use quite some memory)");
+                        // low on memory
+                        GuiUtils.showNonModelMsg("Loading", "Some tracks are <b>large</b>, and I only have " + free + "MB memory left.<br><b>To view large data sets, you might need more memory and Java 64 bit</b>", true, 8);
+                    }
+                    IGV.getInstance().setStatusBarMessage("Loading " + nr + " karyo tracks... some tracks are large, it can take some time (and use quite some memory)");
                     // check memory
-               }
-               else GuiUtils.showNonModelMsg("Loading", "Loading "+nr+" karyo tracks...", true, time);
-               IGV.getInstance().setStatusBarMessage("Loading  karyo track data...");
+                } else {
+                    GuiUtils.showNonModelMsg("Loading", "Loading " + nr + " karyo track(s) ...", true, time);
+                }
+                IGV.getInstance().setStatusBarMessage("Loading karyo track data...");
             }
             nr = 1;
             for (KaryoTrack track : tracks) {
@@ -157,7 +159,7 @@ public class KaryoManager {
             // set order
             int order = gui.getTrackOrder(track.getSample(), track.getTrackName(), track.getFileExt());
             if (order != 0) {
-               // p("loadTracks: Got order " + order + " for track " + track.getSample() + "_" + track.getTrackName());
+                // p("loadTracks: Got order " + order + " for track " + track.getSample() + "_" + track.getTrackName());
                 track.setOrder(order);
             } else {
                 track.setOrder(10);
@@ -167,14 +169,19 @@ public class KaryoManager {
         nr = 1;
         for (KaryoTrack track : this.getKaryoTracks()) {
             // set nr
-            track.setShortname(""+nr);           
+            track.setShortname("" + nr);
             nr++;
         }
-         for (int c = 0; c < this.chromosomes.size(); c++) {
+        int nrchr = this.chromosomes.size();
+        for (int c = 0; c < nrchr; c++) {
             int trees = 0;
             int trackx;
             int totaltrees = karyotracks.size();
+
+
+            int count = 0;
             for (KaryoTrack kt : karyotracks) {
+                count++;
                 if (!kt.isVisible()) {
                     continue;
                 }
@@ -182,55 +189,81 @@ public class KaryoManager {
                 Chromosome chr = chromosomes.get(c);
                 FeatureTree tree = chr.getTree(kt);
                 if (tree == null) {
-                    p("---> loadTracks:Creating tree, loading all features - and in some cases just summary!");
+                    long starttime = System.currentTimeMillis();
+                    p("---> loadTracks: createTree, loading all features - and in some cases just summary");
                     tree = igvadapter.createTree(kt, chr);
-                    if (tree != null) chr.addTree(kt, tree);
+                    long endtime = System.currentTimeMillis();
+                    long msecs = (endtime - starttime);
+
+                    if (tree != null) {
+                        chr.addTree(kt, tree);
+                        if (listener != null && msecs > 1000) {
+                           // p("Calling back gui to redraw parts, used " + msecs /1000+ " to load this one tree for chr " + (c + 1) + " of " + nrchr);
+                            listener.taskUpdated(c+2);
+                            if (c < nrchr) {
+                                if (msecs > 10000) GuiUtils.showNonModelMsg("Loading", "Loading data for chromosome "+(c + 2)+" of "+nrchr+" ...", true, (int)(msecs/2000));                                                          
+                            }
+
+                        } else {
+                            //p("Not calling redraw, secs is :" + time + ", listener is: " + listener);
+                        }
+                    }
                 }
             }
-         }
-       // p("== loadTracks done: Sorted by order. Got " + this.getKaryoTracks().size() + " karyotracks now");
+        }
+        // p("== loadTracks done: Sorted by order. Got " + this.getKaryoTracks().size() + " karyotracks now");
         tracksLoaded = true;
         IGV.getInstance().setStatusBarMessage("");
     }
+
     private synchronized boolean checkMemory() {
         if (RuntimeUtils.getAvailableMemoryFraction() < 0.1) {
             p("Running low on memory");
             System.gc();
             if (RuntimeUtils.getAvailableMemoryFraction() < 0.1) {
                 int maxmb = (int) (Runtime.getRuntime().maxMemory() / 1000000);
-                p("Still low on memory after system.gc. Max is "+maxmb);                
+                p("Still low on memory after system.gc. Max is " + maxmb);
                 return false;
             }
 
         }
         return true;
     }
-    public void loadTracks(TaskListener list) {
+
+    public void loadTracksTask(TaskUpdateListener list) {
         LoadTracksTaks t = new LoadTracksTaks(list);
-        
+
         t.run();
     }
-    
+
     public void saveGuiProperties() {
-        
+
         RenderManager.saveGuiProperties();
-        
+
     }
 
     private class LoadTracksTaks extends Task {
-        
-        public LoadTracksTaks(TaskListener listener) {
-            super(listener);            
+
+        TaskUpdateListener ulistener;
+
+        public LoadTracksTaks(TaskUpdateListener listener) {
+            super(listener);
+            this.ulistener = (TaskUpdateListener) listener;
         }
 
         @Override
         public boolean isSuccess() {
             return karyotracks.size() > 0;
         }
-        
+
         @Override
         protected Void doInBackground() throws Exception {
-            loadTracks();
+            try {
+            Thread.currentThread().sleep(100);
+        } catch (InterruptedException e) {
+        }
+            p("Calling loadTracks, with updatelistener: " + ulistener);
+            loadTracks(ulistener);
             p("LoadTracksTaks: Got " + karyotracks.size() + " after loadTracks");
             return null;
         }
@@ -254,11 +287,11 @@ public class KaryoManager {
         }
         return res;
     }
-    
+
     public ArrayList<GuiFeatureTree> getGuiTrees() {
         return getGuitrees();
     }
-    
+
     public int filterTrees(KaryoFilter fil) {
         int count = 0;
         p("filterTrees: Filtering all " + getGuitrees().size() + " guitrees");
@@ -270,6 +303,7 @@ public class KaryoManager {
         }
         return count;
     }
+
     public int getTotal(KaryoFilter fil) {
         int total = 0;
         for (GuiFeatureTree guitree : getGuitrees()) {
@@ -280,15 +314,16 @@ public class KaryoManager {
         }
         return total;
     }
+
     private void p(String msg) {
         // Logger.getLogger("KaryoManager").info(msg);
         System.out.println("KaryoManager: " + msg);
     }
-    
+
     public ArrayList<KaryoTrack> getKaryoTracks() {
         return getKaryotracks();
     }
-    
+
     public IgvAdapter getIgvAdapter() {
         return igvadapter;
     }
@@ -299,7 +334,7 @@ public class KaryoManager {
     public ArrayList<KaryoTrack> getKaryotracks() {
         return karyotracks;
     }
-    
+
     public ArrayList<KaryoTrack> getSelectdKaryoTracks() {
         if (karyotracks == null) {
             return null;
@@ -361,7 +396,7 @@ public class KaryoManager {
     public void setFrame(Frame frame) {
         this.frame = frame;
     }
-    
+
     public KaryoOverviewPanel createOverView(String msg) {
         KaryoOverviewPanel pan = new KaryoOverviewPanel(this);
         pan.setMsg(msg);

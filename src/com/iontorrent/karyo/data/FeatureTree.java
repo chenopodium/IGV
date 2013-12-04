@@ -137,7 +137,7 @@ public class FeatureTree extends FeatureTreeNode {
                 }
            // }
         }
-        else p("Tree has no filter");
+       // else p("Tree has no filter");
         return filtered;
     }
 

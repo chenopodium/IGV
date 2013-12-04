@@ -61,8 +61,7 @@ import org.broad.igv.ui.panel.TrackPanel;
         }
         DataRange dr = new DataRange(min, baseline, max);
         setDataRange(dr);
-        linkDataRange();
-
+       
     }
 
     public List<LocusScore> getSummaryScores(String chr, int startLocation, int endLocation, int zoom) {

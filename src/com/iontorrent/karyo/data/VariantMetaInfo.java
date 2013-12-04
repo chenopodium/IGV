@@ -49,7 +49,7 @@ public class VariantMetaInfo extends FeatureMetaInfo {
             // if (show) p("Variant has no attributes: "+var.getType()+","+var.toString());
         }
 
-        addAtt("Ploidy", var.getPloidy());
+        if (var.getPloidy()>-1) addAtt("Ploidy", var.getPloidy());
         addAtt("AlleleFraction", var.getAlleleFraction());
         addAtt("HetCount", var.getHetCount());
         addAtt("HomRefCount", var.getHomRefCount());
@@ -63,7 +63,7 @@ public class VariantMetaInfo extends FeatureMetaInfo {
 
     @Override
     public double getValue(String att, Feature f) {
-        //p("populateMetaInfo with feature "+f);
+       
         if (!(f instanceof Variant)) {
             return -1;
         }
@@ -78,6 +78,7 @@ public class VariantMetaInfo extends FeatureMetaInfo {
             return var.getHomRefCount();
         }
         if (att.equalsIgnoreCase("Ploidy")) {
+        //    p("Getting ploidy from var:"+var.getPloidy());
             return var.getPloidy();
         }
         if (att.equalsIgnoreCase("HomVarCount")) {
@@ -95,7 +96,12 @@ public class VariantMetaInfo extends FeatureMetaInfo {
         }
 
         if (att.equalsIgnoreCase("Score")) {
-            return var.getPhredScaledQual();
+            String what = this.getScoreFieldName(f);
+          //  p("Getting SCORE from att. what is the score field? "+what);
+            if (!what.equalsIgnoreCase("score")) {
+                return getValue(what, f);
+            }
+           // else p("I have no idea");
         }
         return -2;
     }

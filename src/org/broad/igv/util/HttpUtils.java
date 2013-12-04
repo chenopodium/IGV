@@ -320,15 +320,9 @@ public class HttpUtils {
 
     public void updateDefaultUserPwSettings() {
         PreferenceManager prefMgr = PreferenceManager.getInstance();
-        defaultUserName = prefMgr.get(PreferenceManager.AUTHENTICATION_DEFAULT_USER, "ionadmin");
+        defaultUserName = prefMgr.get(PreferenceManager.AUTHENTICATION_DEFAULT_USER, "");
         String pwCoded = prefMgr.get(PreferenceManager.AUTHENTICATION_DEFAULT_PW, "");
-        defaultPassword = Utilities.base64Decode(pwCoded).toCharArray();
-        if (defaultUserName.equals("ionadmin") || defaultUserName.equals("ionuser")) {
-            defaultPassword = defaultUserName.toCharArray();
-            String pwEncoded = Utilities.base64Encode(defaultUserName);
-            prefMgr.put(PreferenceManager.PROXY_PW, pwEncoded);
-        }
-        log.info("Default username is now: " + defaultUserName);
+        defaultPassword = Utilities.base64Decode(pwCoded).toCharArray();             
     }
 
     public void updateProxySettings() {
@@ -354,6 +348,7 @@ public class HttpUtils {
             pw = Utilities.base64Decode(pwString);
         }
 
+        log.info("Creating ProxySettings: user="+user+", pw="+pw);
         proxySettings = new ProxySettings(useProxy, user, pw, auth, proxyHost, proxyPort);
     }
 
@@ -675,17 +670,17 @@ public class HttpUtils {
                 
             }
             if (code >= 300 && code < 400) {
+                String newLocation = conn.getHeaderField("Location");
+                log.info("Redirecting to " + newLocation);
                 if (redirectCount+1 > MAX_REDIRECTS) {
                      // clear username password just in case                    
                      this.clearDefaultCredentials();
                      resetAuthenticator();
                 }
-                if (redirectCount > MAX_REDIRECTS) {
-                   
-                    throw new IOException("Too many redirects");
+                if (redirectCount > MAX_REDIRECTS) {                   
+                    throw new IOException("Too many redirects - could be due to login failure. Please verify your proxy password, and also your user password in View/Preferences/Proxy.");
                 }
-                String newLocation = conn.getHeaderField("Location");
-                log.info("Redirecting to " + newLocation);
+                
 
                 return openConnection(new URL(newLocation), requestProperties, method, redirectCount++);
             } // TODO -- handle other response codes.
@@ -697,9 +692,10 @@ public class HttpUtils {
                 } else {
                     // if wrong pw, handle this here!
                     message = conn.getResponseMessage();
+                    log.info("Got code "+code);
                     for (Iterator it = conn.getHeaderFields().keySet().iterator(); it.hasNext();) {
                         String key = (String) it.next();
-                        //   p("Got header property: " + key + "=" + conn.getHeaderField(key));
+                      //  log.info("Got header property: " + key + "=" + conn.getHeaderField(key));
                     }
 
 
@@ -952,16 +948,21 @@ public class HttpUtils {
 
 
             RequestorType type = getRequestorType();
+            
             URL url = this.getRequestingURL();
-
+          //  log.info("PasswordAuthentication: Got requestor type: "+type.toString()+", url="+url);
             boolean isProxyChallenge = type == RequestorType.PROXY;
             if (isProxyChallenge) {
+                
                 if (proxySettings.auth && proxySettings.user != null && proxySettings.pw != null) {
+                    log.info("PasswordAuthentication: Proxy challenge. user="+proxySettings.user);
+                    System.setProperty("http.proxyUser", proxySettings.user);
+                    System.setProperty("http.proxyPassword", proxySettings.pw);
                     return new PasswordAuthentication(proxySettings.user, proxySettings.pw.toCharArray());
                 }
             }
 
-            log.info("IGVAuthenticator: PasswordAuthentication: Default username: " + defaultUserName);
+          //  log.info("IGVAuthenticator: PasswordAuthentication: Default username: " + defaultUserName);
             if (defaultUserName == null || defaultUserName.length() < 1) {
                 PreferenceManager prefMgr = PreferenceManager.getInstance();
                 defaultUserName = prefMgr.get(PreferenceManager.AUTHENTICATION_DEFAULT_USER, "ionuser");
@@ -971,10 +972,10 @@ public class HttpUtils {
                     defaultUserName = null;
                     defaultPassword = null;
                 }
-                log.info("IGVAuthenticator: Got default authentication from preferences: " + defaultUserName);
+      //          log.info("IGVAuthenticator: Got default authentication from preferences: " + defaultUserName);
             }
 
-            log.info("IGVAuthenticator: Using username: " + defaultUserName + "/" + defaultPassword);
+         //   log.info("IGVAuthenticator: Using username: " + defaultUserName + "/" + defaultPassword);
             if (defaultUserName != null && defaultPassword != null && defaultUserName.length() > 0 && defaultPassword.length > 0) {
                 return new PasswordAuthentication(defaultUserName, defaultPassword);
             }

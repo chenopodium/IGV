@@ -1,0 +1,4 @@
+entryName	chrName	begin	end	difference
+diffCoverage	chr16	68835602	68835697	1.99782135076
+diffCoverage	chr16	68846024	68846151	2.44053367217
+diffCoverage	chr16	68847199	68847302	1.67304020794

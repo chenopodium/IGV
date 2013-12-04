@@ -60,7 +60,8 @@ public class IgvAdapter {
         p("IGVAdapter: CreateTree and load data called. Checking memory");
         if (RuntimeUtils.getAvailableMemory()/1000000 < 50) {
             // stop loading
-            String msg = "IGV is running low on memory, I will stop loading data now.<br>If you are using Java 32 bit, please <b>upgrade to Java 64 bit!</b>";
+            String msg = "IGV is running low on memory, I will stop loading data now.<br>If you are using Java 32 bit, please <b>upgrade to Java 64 bit!</b>"
+                    + "<br>(Check your system for installed programs, and remove any old Java 32 bit versions)";
             if (!memWarningShown) {
                 MessageUtils.showMessage(msg);
                 memWarningShown = true;
@@ -82,7 +83,7 @@ public class IgvAdapter {
         
         if (GenderManager.isSexChromosome(chr.getName())) {
              if (tree.getTotalNrChildren()>0) {
-                p("FOUND DATA ON X or Y CHROMOSOME");
+               // p("FOUND DATA ON X or Y CHROMOSOME");
                 if (GenderManager.isY(chr.getName())) ktrack.setMale(true);
                 else ktrack.setFemale(true);
              }           

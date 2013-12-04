@@ -92,6 +92,7 @@ public abstract class AbstractFeatureReader<T extends Feature> implements Featur
             throw new TribbleException.MalformedFeatureFile("Unable to create AbstractFeatureReader using feature file ", featureResource, e);
         }
 
+        
     }
 
     protected AbstractFeatureReader(String path, FeatureCodec codec) {
@@ -105,7 +106,9 @@ public abstract class AbstractFeatureReader<T extends Feature> implements Featur
      *
      * @return the header object we've read-in
      */
+    @Override
     public Object getHeader() {
+        
         return header.getHeaderValue();
     }
 

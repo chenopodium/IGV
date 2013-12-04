@@ -50,7 +50,7 @@ public abstract class GuiObject implements Drawable, SelectionEventProducer, Mou
     protected boolean movable = false;
     private ArrayList<Action> actions;
     protected boolean collapsed = false;
-    protected static String htmlstart = "<html><font color=blue size=-1>";
+    protected static String htmlstart = "<html><font color=black size=-1>";
     protected static String htmlend = "</font></html>";
     protected static String nl = "<br>";
     private Rectangle bounds = null;

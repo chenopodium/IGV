@@ -72,13 +72,15 @@ public class GainLossRenderType extends RenderType {
             String rel = this.getRelevantAttName();
             double cutoff = this.getCutoffScore(f);
             double score =f.getScore(info, rel) ;
-            p("getGainType: att="+this.getRelevantAttName()+" for "+feature.getChr()+":"+feature.getStart()+", score  is: "+score+", cutoff="+cutoff);
+          //  p("getGainType: att="+this.getRelevantAttName()+" for "+feature.getChr()+":"+feature.getStart()+", score  is: "+score+", cutoff="+cutoff);
             if (score > cutoff) {
-                p("   -> gain");
+             //   p("getGainType: att="+this.getRelevantAttName()+" for "+feature.getChr()+":"+feature.getStart()+", score  is: "+score+", cutoff="+cutoff);
+            //    p("   -> gain");
                 return GAIN;
             }
             else if (score < cutoff) {
-                p("   -> loss");
+            //    p("getGainType: att="+this.getRelevantAttName()+" for "+feature.getChr()+":"+feature.getStart()+", score  is: "+score+", cutoff="+cutoff);
+            //    p("   -> loss");
                 return LOSS;
             }
             else return NEUTRAL;          

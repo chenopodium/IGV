@@ -279,7 +279,7 @@ public class GuiFeatureTree extends GuiObject {
      * This method should be overwritten for any specific instance
      */
     public String toString(String nl) {
-        String res = "Track <b>"+ tree.getSource().getDisplayName()+"</b>";// + "', " + tree.getTotalNrChildren() + " features</b><br>";
+        String res = "<b>"+ tree.getSource().getDisplayName().replace("<br>",  " ")+"</b>";// + "', " + tree.getTotalNrChildren() + " features</b><br>";
         //if (DEBUG) res += "(Rendering type: "+this.renderType.getName()+")<br>";
         return res;
     }
@@ -351,6 +351,7 @@ public class GuiFeatureTree extends GuiObject {
          // tree.getb
           
         }
+        
         
         return htmlstart + toHtml() + "<br>Position: " + (int) (loc / 1000000) + " MB"
                 + "<br>" + info

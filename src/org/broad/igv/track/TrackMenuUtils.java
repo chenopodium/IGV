@@ -487,10 +487,6 @@ public class TrackMenuUtils {
                     AbstractTrack b = tracks.get(i + 1);
                     if (a != b) a.setLinkedTrack(b.getId());                                        
                 }
-
-                for (AbstractTrack track : tracks) {                    
-                    track.linkDataRange();                    
-                }
             }
         });
         return item;
@@ -537,9 +533,7 @@ public class TrackMenuUtils {
 
                         for (Track track : selectedTracks) {
                             track.setDataRange(axisDefinition);
-                            if (track instanceof AbstractTrack) {
-                                ((AbstractTrack) track).linkDataRange();
-                            }
+                            
                         }
                         IGV.getInstance().repaint();
                     }

@@ -19,6 +19,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSplitPane;
+import org.apache.log4j.Logger;
 import org.broad.igv.ui.IGV;
 
 /**
@@ -87,65 +88,59 @@ public class KaryoControlPanel extends javax.swing.JPanel {
         recreateView(true);
     }
 
-    public void recreateView(boolean loadData) {
-        p("=============== recreating view, loadData=" + loadData + " ==============");
-        if (view != null) {
-            if (messagelabel != null) {
-                this.remove(messagelabel);
-            }
-            this.remove(view);
+    public void showKaryoStatusMessage(String msg) {  
+        if (msg == null) msg = "Status: OK";
+        if (messagelabel != null) {
+            this.remove(messagelabel);
+            messagelabel.setText(msg);
         }
-        String msg = null;
+        else messagelabel = new JLabel(msg);           
+        add("South", messagelabel);
+        
+      //  p("Added msg label: "+msg);
+    }
+    public void recreateView(boolean loadData) {
+        recreateView(loadData, "");
+    }
+    public void recreateView(boolean loadData, String msg) {
+        p("=============== recreating view, loadData=" + loadData);
+        if (view != null) {            
+            this.remove(view);
+        }        
         if (loadData) {
-            msg = "<html><h2>Loading tracks... you can still click on a chromosome to see details, but the data may not show for a while for large tracks...</h2></html>";
+            msg = "<html><h3><font color='000066'>Loading tracks... you can still click on a chromosome to see details, but the data may not show for a while for large tracks...</font></h3></html>";
         }
         view = manager.createOverView(msg);
+        showKaryoStatusMessage(msg);       
         add("Center", view);
         if (loadData) {
             p("load Data is true");
-            messagelabel = new JLabel();
-            messagelabel.setText(msg);
-            add("South", messagelabel);
-            this.invalidate();
-            this.revalidate();
+            view.invalidate();
+            view.revalidate();
             view.loadTracks();
         } else {
-            // just add already loaded trees
-            p("Not loading data. Adding existing tracks to overview");
-            view.addTracksToOverview();
+            view.addTracksToOverview(false);            
         }
-            panWest.setLayout(new BorderLayout());
-            panWest.removeAll();
-            JSplitPane westsplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
-            SimpleTrackListPanel trackp = new SimpleTrackListPanel(manager, false, this);
-            p("Adding SimpleTrackListPanel to west");
-            //panWest.add(trackp);
-            westsplit.add(trackp);
-            
-            FilterListPanel filterp = new FilterListPanel(manager, false, this);
-            p("======================= Adding FilterListPanel to westsplit");
-            //panWest.add(filterp);
-            //panWest.add(new JPanel());
-            westsplit.add(filterp);
-            westsplit.setDividerLocation(0.5);
-           // westsplit.add(new JLabel("Just testing"));
-            panWest.add("North", westsplit);
-
-            // panWest.add("Center", filterp);
-
-            //      repaint();
-            //       view.repaint();
-            this.paintImmediately(0,0,1000,1000);
-            this.invalidate();
-            this.revalidate();
-            westsplit.invalidate();
-            westsplit.revalidate();
-            panWest.invalidate();
-            panWest.revalidate();
-
-            view.setSliderValue(10);
-        
-        p("================================================= control repainted");
+        panWest.setLayout(new BorderLayout());
+        panWest.removeAll();
+        JSplitPane westsplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+        SimpleTrackListPanel trackp = new SimpleTrackListPanel(manager, false, this);
+        westsplit.add(trackp);
+        FilterListPanel filterp = new FilterListPanel(manager, false, this);
+        westsplit.add(filterp);
+        westsplit.setDividerLocation(0.5);
+        panWest.add("North", westsplit);    
+        this.invalidate();
+        this.revalidate();
+        this.repaint();
+        view.invalidate();
+        view.revalidate();
+        westsplit.invalidate();                
+        westsplit.revalidate();
+        panWest.invalidate();
+        panWest.revalidate();
+        view.setSliderValue(10);
+       // p("================================================= control repainted");
     }
 
     private void showCnvPanel(CnvData data) {
@@ -298,8 +293,8 @@ public class KaryoControlPanel extends javax.swing.JPanel {
     // End of variables declaration//GEN-END:variables
 
     private void p(String msg) {
-        // Logger.getLogger("KaryoControlPanel").info(msg);
-        System.out.println("KaryoControlPanel: " + msg);
+         Logger.getLogger("KaryoControlPanel").info(msg);
+      //  System.out.println("KaryoControlPanel: " + msg);
     }
 
     public void loadCnv() {

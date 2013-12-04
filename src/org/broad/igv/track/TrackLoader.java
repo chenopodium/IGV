@@ -139,7 +139,7 @@ public class TrackLoader {
             pref = PreferenceManager.getInstance();
         }
         final String path = locator.getPath();
-        log.info("============= About to load " + locator.getPath());
+      //  log.info("============= About to load " + locator.getPath());
         try {
             String typeString = locator.getType();
             if (typeString == null) {
@@ -332,7 +332,7 @@ public class TrackLoader {
                 else MessageUtils.showMessage("<html>Unknown file type: " + path + "<br>Check file extenstion");
             }
 
-            p("Done dealing with typestring: "+typeString);
+          //  p("Done dealing with typestring: "+typeString);
 
             for (Track track : newTracks) {
 
@@ -381,7 +381,7 @@ public class TrackLoader {
 
     private void loadIndexed(ResourceLocator locator, List<Track> newTracks, Genome genome) throws IOException {
 
-        log.info("Loading indexed file " + locator.getPath());
+      //  log.info("Loading indexed file " + locator.getPath());
         TribbleFeatureSource src = GFFFeatureSource.isGFF(locator.getPath())
                 ? new GFFFeatureSource(locator.getPath(), genome)
                 : new TribbleFeatureSource(locator.getPath(), genome);
@@ -434,7 +434,7 @@ public class TrackLoader {
             }
             newTracks.add(t);
         }
-        log.info("Loading indexed file done");
+       // log.info("Loading indexed file done");
     }
 
     private void loadVCFListFile(ResourceLocator locator, List<Track> newTracks, Genome genome) throws IOException {
@@ -1021,16 +1021,19 @@ public class TrackLoader {
                 return;
             }
 
+            //log.info("loadAlignmentsTrack: creating dataManager");
             AlignmentDataManager dataManager = new AlignmentDataManager(locator, genome);
 
             // Check that alignments we loaded actually match some data.  Many BAM files will contain some sequences
             // not represented in the genome, buf if there are no matches warn the user.
             List<String> seqNames = dataManager.getSequenceNames();
             if (seqNames != null && seqNames.size() > 0 && genome != null) {
+             //   log.info("loadAlignmentsTrack: checking sequence names");
                 if (!checkSequenceNames(locator.getPath(), genome, seqNames)) {
                     return;
                 }
             }
+            //else log.info("loadAlignmentsTrack: Got no sequence names or no genome yet");
 
             if (locator.getPath().toLowerCase().endsWith(".bam")) {
                 if (!dataManager.hasIndex()) {
@@ -1041,7 +1044,7 @@ public class TrackLoader {
             }
 
             // Store information about what bam file is used
-            log.info("Storing BAM File " + locator.getPath() + " in BAM_FILE preferences");
+            log.info("loadAlignmentsTrack: Storing BAM File " + locator.getPath() + " in BAM_FILE preferences");
             PreferenceManager.getInstance().put(IonTorrentPreferencesManager.BAM_FILE, locator.getPath());
 
             AlignmentTrack alignmentTrack = new AlignmentTrack(locator, dataManager, genome);    // parser.loadTrack(locator, dsName);

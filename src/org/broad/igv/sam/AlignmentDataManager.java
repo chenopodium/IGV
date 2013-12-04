@@ -88,13 +88,15 @@ public class AlignmentDataManager {
     private void initChrMap(Genome genome) {
         if (genome != null) {
             List<String> seqNames = reader.getSequenceNames();
+            log.info("initChrMap: got "+seqNames.size()+" sequence names");
             if (seqNames != null) {
                 for (String chr : seqNames) {
-                    String alias = genome.getChromosomeAlias(chr);
+                    String alias = genome.getChromosomeAlias(chr); 
                     chrMappings.put(alias, chr);
                 }
             }
         }
+        else  log.info("initChrMap: got no chr names");
     }
 
     public void setExperimentType(AlignmentTrack.ExperimentType experimentType) {

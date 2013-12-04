@@ -16,6 +16,7 @@ import java.awt.GridLayout;
 import java.awt.ItemSelectable;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.Collections;
 import java.util.List;
 import javax.swing.JButton;
 import javax.swing.JColorChooser;
@@ -90,6 +91,7 @@ public class RenderTypePanel extends javax.swing.JPanel {
         else {
             this.lblBox.setText("Which attribute should be used as 'score'? ");
             boxAtts.setVisible(true);
+            Collections.sort(atts);
             String scorename = track.getRenderType().getRelevantAttName();
             for (String att: atts) {
                 this.boxAtts.addItem(att);

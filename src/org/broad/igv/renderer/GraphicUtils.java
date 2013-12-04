@@ -28,6 +28,7 @@ import java.awt.*;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 /**
@@ -35,9 +36,8 @@ import java.util.regex.Pattern;
  */
 public class GraphicUtils {
 
-   
     public static void drawCenteredChar(Graphics g, char[] chars, int x, int y,
-                                        int w, int h) {
+            int w, int h) {
 
         // Get measures needed to center the message
         FontMetrics fm = g.getFontMetrics();
@@ -88,7 +88,6 @@ public class GraphicUtils {
         drawVerticallyCenteredText(text, margin, rect, g2D, rightJustify, false);
     }
 
-
     /**
      * Draw a block of text centered verticallyin the rectangle
      *
@@ -96,13 +95,12 @@ public class GraphicUtils {
      * @param rect
      * @param g2D
      */
-    public static void drawVerticallyCenteredText
-            (String text,
-             int margin,
-             Rectangle rect,
-             Graphics g2D,
-             boolean rightJustify,
-             boolean clear) {
+    public static void drawVerticallyCenteredText(String text,
+            int margin,
+            Rectangle rect,
+            Graphics g2D,
+            boolean rightJustify,
+            boolean clear) {
         FontMetrics fontMetrics = g2D.getFontMetrics();
         Rectangle2D textBounds = fontMetrics.getStringBounds(text, g2D);
 
@@ -135,9 +133,8 @@ public class GraphicUtils {
      * @param y
      * @param g
      */
-
     public static void drawRightJustifiedText(String text, int right, int y,
-                                              Graphics g) {
+            Graphics g) {
         FontMetrics fontMetrics = g.getFontMetrics();
 
         Rectangle2D textBounds = fontMetrics.getStringBounds(text, g);
@@ -147,7 +144,7 @@ public class GraphicUtils {
     }
 
     public static void drawDottedDashLine(Graphics2D g, int x1, int y1, int x2,
-                                      int y2) {
+            int y2) {
         Stroke thindashed = new BasicStroke(1.0f, // line width
                 BasicStroke.CAP_BUTT, // cap style
                 BasicStroke.JOIN_BEVEL, 1.0f, // join style, miter limit
@@ -158,7 +155,7 @@ public class GraphicUtils {
     }
 
     public static void drawDashedLine(Graphics2D g, int x1, int y1, int x2,
-                                      int y2) {
+            int y2) {
         Stroke thindashed = new BasicStroke(1.0f, // line width
                 BasicStroke.CAP_BUTT, // cap style
                 BasicStroke.JOIN_BEVEL, 1.0f, // join style, miter limit
@@ -167,6 +164,9 @@ public class GraphicUtils {
         drawDashedLine(g, thindashed, x1, y1, x2, y2);
 
     }
+//    private static void p(String s) {
+//        Logger.getLogger(GraphicUtils.class).info(s);
+//    }
 
     public static void drawWrappedText(String string, Rectangle rect, Graphics2D g2D, boolean clear) {
         FontMetrics fontMetrics = g2D.getFontMetrics();
@@ -174,74 +174,102 @@ public class GraphicUtils {
         final int margin = 5;
         int textHeight = (int) stringBounds.getHeight() + margin;
         double textWidth = stringBounds.getWidth() + 10;
-        boolean nl = string.indexOf("<br>") > 0 || string.indexOf("\n") > 0;
-        
+        boolean nl = string.indexOf("<br>") >= 0 || string.indexOf("\n") >= 0;
+
+
         if (textWidth < rect.width && !nl) {
             GraphicUtils.drawVerticallyCenteredText(string, margin, rect, g2D, false, clear);
         } else {
             int charWidth = (int) (stringBounds.getWidth() / string.length());
             int charsPerLine = rect.width / charWidth;
+
             int nStrings = (string.length() / charsPerLine) + 1;
-            if (nl) {                
-                nStrings++;
-            }
+//            if (nl) {                
+//                nStrings++;
+//            }
             int nlpos = 0;
             if (nl) {
-                nlpos = Math.max(string.indexOf("<br>"), string.indexOf("\n"));
-                p("drawWrappedText: Found nl in "+string);
-                p("nStrings = "+nStrings+", textHeight="+textHeight+", rect.height="+rect.height);
+              //  p("drawWrappedText: found nl in " + string + ". nr=" + nStrings + ",  h=" + rect.getHeight() + ", w=" + rect.getWidth() + ", perline:" + charsPerLine);
+                int nlpos1 = string.indexOf("<br>");
+                int nlpos2 = string.indexOf("\n");
+                string = string.replace("<br>", "");
+                string = string.replace("\n", "");
+                nlpos = Math.max(nlpos1, nlpos2);
+                nStrings++;
+            //    p("nStrings = " + nStrings + ", textHeight=" + textHeight + ", rect.height=" + rect.height + ", nlpos=" + nlpos);
             }
             if (nStrings * textHeight > rect.height) {
-                p("drawWrappedText: Shortening string "+string+", nlines="+nStrings+", rect.height="+rect.height);
-                // Shorten string to fit in space.  Try a max of 5 times,  progressivley shortening string
-                int nChars = (rect.width - 2 * margin) / charWidth + 1;
-                int nTries = 0;
-                String shortString;
-                double w;
-                do {
-                    shortString = StringUtils.checkLength(string, nChars);
-                    w = fontMetrics.getStringBounds(shortString, g2D).getWidth() + 2 * margin;
-                    nTries++;
-                    nChars--;
-                } while (w > rect.width && nTries <= 5 && nChars > 1);
+                if (nlpos > 0) {
+                    //cutting off after nl
+                    string = string.substring(0, nlpos );
+                    GraphicUtils.drawVerticallyCenteredText(string, margin, rect, g2D, false, clear);
+                } else {
+                    p("drawWrappedText: Shortening string " + string + ", nlines=" + nStrings + ", rect.height=" + rect.height);
+                    // Shorten string to fit in space.  Try a max of 5 times,  progressivley shortening string
+                    int nChars = (rect.width - 2 * margin) / charWidth + 1;
+                    int nTries = 0;
+                    String shortString;
+                    double w;
+                    do {
+                        shortString = StringUtils.checkLength(string, nChars);
+                        w = fontMetrics.getStringBounds(shortString, g2D).getWidth() + 2 * margin;
+                        nTries++;
+                        nChars--;
+                    } while (w > rect.width && nTries <= 5 && nChars > 1);
 
-                GraphicUtils.drawVerticallyCenteredText(shortString, margin, rect, g2D, false, clear);
+                    GraphicUtils.drawVerticallyCenteredText(shortString, margin, rect, g2D, false, clear);
+                }
             } else {
+              //  p("--drawWrappedText: computing breakpoint. nStrings=" + nStrings + ", totlen=" + string.length());
                 int breakPoint = 0;
                 Rectangle tmp = new Rectangle(rect);
                 tmp.y -= ((nStrings - 1) * textHeight) / 2;
                 while (breakPoint < string.length()) {
-                    
+
                     int end = Math.min(string.length(), breakPoint + charsPerLine);
+
                     if (nlpos > 0 && breakPoint == 0) {
-                        end = Math.min(string.length(), nlpos);                        
+                        end = nlpos;
                     }
-                    GraphicUtils.drawVerticallyCenteredText(string.substring(breakPoint, end), margin, tmp, g2D, false);
-                    if (nlpos > 0 && breakPoint == 0) {
-                        breakPoint += nlpos;
+                    String sub = string.substring(breakPoint, end);
+              //      p("        got substring " + breakPoint + "-" + end + ":" + string.substring(breakPoint, end));
+                    double w = fontMetrics.getStringBounds(sub, g2D).getWidth() + 2 * margin;
+                    if (w > rect.width) {
+                        int nChars = (rect.width - 2 * margin) / charWidth + 1;
+                        int nTries = 0;
+                        while (w > rect.width && nTries <= 5 && nChars > 1) {
+                            sub = StringUtils.checkLength(sub, nChars);
+                            w = fontMetrics.getStringBounds(sub, g2D).getWidth() + 2 * margin;
+                            nTries++;
+                            nChars--;
+                        }
+                        GraphicUtils.drawVerticallyCenteredText(sub, margin, rect, g2D, false, clear);
+                    } else {
+                        GraphicUtils.drawVerticallyCenteredText(sub, margin, tmp, g2D, false);
                     }
-                    else breakPoint += charsPerLine;
+                    breakPoint = end;
+
+             //       p("        drawWrappedText: new breakopint=" + breakPoint);
                     tmp.y += textHeight;
                 }
             }
         }
     }
-    private static void p(String s){
-        System.out.println("GraphicUtils: "+s);
+
+    private static void p(String s) {
+        Logger.getLogger("GraphicUtils").info(s);
     }
 
     /**
-     * Method description
-     * Stroke thindashed = new BasicStroke(thickness, // line width
-     * BasicStroke.CAP_BUTT, // cap style
-     * BasicStroke.JOIN_BEVEL, 1.0f, // join style, miter limit
-     * dashPattern, // the dash pattern :  on 8, off 3, on 2, off 3
-     * phase);  // the dash phase
+     * Method description Stroke thindashed = new BasicStroke(thickness, // line
+     * width BasicStroke.CAP_BUTT, // cap style BasicStroke.JOIN_BEVEL, 1.0f, //
+     * join style, miter limit dashPattern, // the dash pattern : on 8, off 3,
+     * on 2, off 3 phase); // the dash phase
      *
      * @param g
      */
     public static void drawDashedLine(Graphics2D g, Stroke stroke,
-                                      int x1, int y1, int x2, int y2) {
+            int x1, int y1, int x2, int y2) {
 
 
         Stroke currentStroke = g.getStroke();
@@ -250,7 +278,6 @@ public class GraphicUtils {
         g.setStroke(currentStroke);
 
     }
-
 
     public static void drawHorizontalArrow(Graphics g, Rectangle r, boolean direction) {
         int[] x;

@@ -92,7 +92,7 @@ public class SegmentedDataSource implements DataSource {
     }
 
     private List<LocusScore> getSegments(String chr) {
-        //p("getSegments for "+chr);
+       // p("==== getSegments for "+chr);
         return dataset.getSegments(trackIdentifier, chr);
 
     }
@@ -102,10 +102,10 @@ public class SegmentedDataSource implements DataSource {
     public List<LocusScore> getSummaryScoresForRange(String chr, int startLocation,
                                                      int endLocation, int zoom) {
         if (chr.equals(Globals.CHR_ALL)) {
-      //      p("Getting wholegenome scores");
+         //   p("Getting wholegenome scores");
             return getWholeGenomeScores();
         }
-        return getSegments(chr);
+        else return getSegments(chr);
     }
 
 

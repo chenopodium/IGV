@@ -56,9 +56,10 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
     private final static int DEFAULT_EXPANDED_GENOTYPE_HEIGHT = 15;
     private final int DEFAULT_SQUISHED_GENOTYPE_HEIGHT = 4;
     private final static int DEFAULT_VARIANT_BAND_HEIGHT = 25;
-    private final static int MAX_FILTER_LINES = 15;
+    private final static int MAX_FILTER_LINES = 30;
     // TODO -- this needs to be settable
     public static int METHYLATION_MIN_BASE_COUNT = 10;
+    int messages;
     /**
      * The renderer.
      */
@@ -138,6 +139,11 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
     Map<String, String> alignmentFiles;
     private boolean userSetHeight;
 
+    @Override
+    public String getDisplayName(boolean withSampleInfo) {
+        return super.getDisplayName(false);
+    }
+
     public VariantTrack(ResourceLocator locator, FeatureSource source, List<String> samples,
             boolean enableMethylationRateSupport) {
         super(locator, source);
@@ -166,7 +172,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         double p = Math.pow(cnt, 1.5);
         int MB = 1000000;
         int visWindow = (int) Math.min(500 * MB, (mem / p) * 10000);
-        p("Computing visibility window: nr fatures=" + allSamples.size() + ", mem in MB=" + mem / 1000000 + ", window=" + visWindow);
+        //  p("Computing visibility window: nr fatures=" + allSamples.size() + ", mem in MB=" + mem / 1000000 + ", window=" + visWindow);
         setVisibilityWindow(visWindow);
 
         // Listen for "group by" events.  TODO -- "this" should be removed when track is disposed of
@@ -392,94 +398,113 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         List<Feature> features = packedFeatures.getFeatures();
         if (features.size() > 0) {
 
-            final double locScale = context.getScale();
-            final double origin = context.getOrigin();
-
-            int lastPX = -1;
-            final double pXMin = rect.getMinX();
-            final double pXMax = rect.getMaxX();
-
-            for (Feature feature : features) {
-
-                Variant variant = (Variant) feature;
-
-                //char ref = getReference(variant, windowStart, reference);
-
-                if (hideFiltered && variant.isFiltered()) {
-                    continue;
+            boolean hasLarge = false;
+            int sizelimit = 10;
+            int nrtimes = 1;
+            for (Feature f : features) {
+                if (f.getEnd() - f.getStart() > sizelimit) {
+                    hasLarge = true;
+                    nrtimes = 2;
                 }
+            }
 
-                int start = variant.getStart();
-                int end = variant.getEnd();
-                int pX = (int) ((start - origin) / locScale);
-                int dX = (int) Math.max(2, (end - start) / locScale);
+            for (int times = 0; times < nrtimes; times++) {
+                final double locScale = context.getScale();
+                final double origin = context.getOrigin();
 
-                //    p("Maybe drawing variant :"+variant+", pX="+pX+",  dx="+dX+", locScale="+locScale+", pxmin="+pXMin+", (px+dx)="+(int)(pX+dX));
-                if (pX + (long) dX < (long) pXMin && pX < pXMin) {
-                    //      p("NOT drawing variant :"+variant+" because px+dx < pxmin");
-                    continue;
-                }
-                if (pX > pXMax) {
-                    //       p("NOT drawing variant :"+variant+" because px > mxmax");
-                    break;
-                }
-                int w = (int) dX;
-                int x = pX;
-                if (w < 3) {
-                    w = 3;
-                    x--;
-                }
+                int lastPX = -1;
+                final double pXMin = rect.getMinX();
+                final double pXMax = rect.getMaxX();
 
+                for (Feature feature : features) {
 
-                if ((long) pX + (long) dX > (long) lastPX) {
+                    Variant variant = (Variant) feature;
 
-                    rect.y = top;
-                    rect.height = variantBandHeight;
-                    if (rect.intersects(visibleRectangle)) {
-                        renderer.renderSiteBand(variant, rect, x, w, context);
+                    //char ref = getReference(variant, windowStart, reference);
+
+                    if (hideFiltered && variant.isFiltered()) {
+                        continue;
                     }
 
-                    if (getDisplayMode() != DisplayMode.COLLAPSED) {
-                        rect.y += rect.height;
-                        rect.height = getGenotypeBandHeight();
+                    int start = variant.getStart();
+                    int end = variant.getEnd();
 
-                        // Loop through groups
-                        if (grouped) {
-                            for (Map.Entry<String, List<String>> entry : samplesByGroups.entrySet()) {
-                                for (String sample : entry.getValue()) {
-                                    if (rect.intersects(visibleRectangle)) {
-                                        renderer.renderGenotypeBandSNP(variant, context, rect, x, w, sample, coloring,
-                                                hideFiltered);
-                                    }
-                                    rect.y += rect.height;
-                                }
-                                g2D.setColor(OFF_WHITE);
-                                g2D.fillRect(rect.x, rect.y, rect.width, GROUP_BORDER_WIDTH);
-                                rect.y += GROUP_BORDER_WIDTH;
+                    int size = end - start;
+                    if (times == 0 || (times == 1 && size < sizelimit)) {
+                        int pX = (int) ((start - origin) / locScale);
+                        int dX = (int) Math.max(2, (end - start) / locScale);
+
+                        //if (show)   p("Maybe drawing variant :"+variant+", pX="+pX+",  dx="+dX+", locScale="+locScale+", pxmin="+pXMin+", (px+dx)="+(int)(pX+dX));
+                        if (pX + (long) dX < (long) pXMin && pX < pXMin) {
+                            //  p("NOT drawing variant :"+variant+" because px+dx < pxmin");
+                            continue;
+                        }
+                        if (pX > pXMax) {
+                            //   p("NOT drawing variant and BREAKING :"+variant+" because px > mxmax");
+                            break;
+                        }
+                        int w = (int) dX;
+                        int x = pX;
+                        if (w < 3) {
+                            w = 3;
+                            x--;
+                        }
+
+
+                        if ((long) pX + (long) dX > (long) lastPX) {
+                            //  p("Yes, rendering variant");
+                            rect.y = top;
+                            rect.height = variantBandHeight;
+                            if (rect.intersects(visibleRectangle)) {
+                                renderer.renderSiteBand(variant, rect, x, w, context);
                             }
-                        } else {
-                            for (String sample : allSamples) {
-                                if (rect.intersects(visibleRectangle)) {
-                                    renderer.renderGenotypeBandSNP(variant, context, rect, x, w, sample, coloring,
-                                            hideFiltered);
-                                }
+
+                            if (getDisplayMode() != DisplayMode.COLLAPSED) {
                                 rect.y += rect.height;
+                                rect.height = getGenotypeBandHeight();
+
+                                // Loop through groups
+                                if (grouped) {
+                                    for (Map.Entry<String, List<String>> entry : samplesByGroups.entrySet()) {
+                                        for (String sample : entry.getValue()) {
+                                            if (rect.intersects(visibleRectangle)) {
+                                                renderer.renderGenotypeBandSNP(variant, context, rect, x, w, sample, coloring,
+                                                        hideFiltered);
+                                            }
+                                            rect.y += rect.height;
+                                        }
+                                        g2D.setColor(OFF_WHITE);
+                                        g2D.fillRect(rect.x, rect.y, rect.width, GROUP_BORDER_WIDTH);
+                                        rect.y += GROUP_BORDER_WIDTH;
+                                    }
+                                } else {
+                                    for (String sample : allSamples) {
+                                        if (rect.intersects(visibleRectangle)) {
+                                            renderer.renderGenotypeBandSNP(variant, context, rect, x, w, sample, coloring,
+                                                    hideFiltered);
+                                        }
+                                        rect.y += rect.height;
+                                    }
+
+                                }
                             }
 
+
+                            boolean isSelected = selectedVariant != null && selectedVariant == variant;
+                            if (isSelected) {
+                                Graphics2D selectionGraphics = context.getGraphic2DForColor(Color.black);
+                                selectionGraphics.drawRect(x, top, w, getHeight());
+                            }
+                            // ONLY FOR SMALL VARIANTS!                        
+                            if (size < sizelimit) {
+                                lastPX = pX + dX;
+                            } else {
+                                dX = (int) Math.max(1, 2 / locScale);
+                                lastPX = pX + dX;
+                            }
                         }
                     }
-
-
-                    boolean isSelected = selectedVariant != null && selectedVariant == variant;
-                    if (isSelected) {
-                        Graphics2D selectionGraphics = context.getGraphic2DForColor(Color.black);
-                        selectionGraphics.drawRect(x, top, w, getHeight());
-                    }
-
-                    lastPX = pX + dX;
-
                 }
-
             }
         } else {
             rect.height = variantBandHeight;
@@ -927,24 +952,24 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         String id = variant.getID();
 
         StringBuffer toolTip = new StringBuffer();
-        toolTip.append("Chr: " + variant.getChr());
-        toolTip.append("<br>Position: " + variant.getPositionString());
+        toolTip.append("Position: " + variant.getChr());
+        toolTip.append(", " + variant.getPositionString());
         if (!isShort) {
             toolTip.append("<br>ID: " + id);
             toolTip.append("<br>Reference: " + variant.getReference());
         }
-        
+
         double p = variant.getPloidy();
         if (p >= 0) {
             String pl = "Ploidy: " + variant.getPloidy();
             if (p > 2) {
                 pl = "<font color='000099'>" + pl + "</font>";
-            } else if (p == 1) {
+            } else if (p <2) {
                 pl = "<font color='990000'>" + pl + "</font>";
             }
             toolTip.append("<br><b>" + pl + "</b>");
         } else {
-            toolTip.append("<br>Ploidy: unknown");
+            // toolTip.append("<br>Ploidy: unknown");
         }
         if (!isShort) {
             Set<Allele> alternates = variant.getAlternateAlleles();
@@ -961,7 +986,8 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
             } else {
                 toolTip.append("<br>Is Filtered Out: No</b><br>");
             }
-            toolTip.append("<br><b>Alleles:</b>");
+            addBrIfMissing(toolTip);
+            toolTip.append("<b>Alleles:</b>");
             toolTip.append(getAlleleToolTip(variant));
 
 
@@ -981,35 +1007,45 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
             if (variant.getSampleNames().size() > 0) {
                 toolTip = toolTip.append(getSampleToolTip(null, variant));
                 double afrac = variant.getAlleleFraction();
-                toolTip = toolTip.append("<br>Minor Allele Fraction: " + numFormat.format(afrac) + "<br>");
+                toolTip = toolTip.append("Minor Allele Fraction: " + numFormat.format(afrac) + "<br>");
             }
 
-            toolTip.append("<br><b>Genotypes:</b>");
+            toolTip.append("<b>Genotypes:</b>");
             // for all samples!
+            addBrIfMissing(toolTip);
             toolTip.append(getGenotypeToolTip(variant) + "<br>");
-        }        
+        }
+        addBrIfMissing(toolTip);
         toolTip.append(getVariantInfo(variant, isShort) + "<br>");
-        
+
         return toolTip.toString();
     }
+
+    private void addBrIfMissing(StringBuffer buf) {
+        int pos = buf.lastIndexOf("<br>");
+        if (pos < 0 || pos < buf.length() - 6) {
+            buf.append("<br>");
+        }
+    }
+
     protected String getVariantInfo(Variant variant) {
         return getVariantInfo(variant, false);
     }
+
     protected String getVariantInfo(Variant variant, boolean isShort) {
         Set<String> keys = variant.getAttributes().keySet();
         if (keys.size() > 0) {
-            
+
             if (isShort) {
                 String key = "CONFIDENCE";
                 String value = variant.getAttributeAsString(key);
-                if (value != null && value.length()>0) {
-                    String name = getFullName(key);                    
-                    name = "<b><font color='000099'>"+name+"</font></b>";                    
+                if (value != null && value.length() > 0) {
+                    String name = getFullName(key);
+                    name = "<b><font color='000099'>" + name + "</font></b>";
                     return "<br>" + name + ": " + variant.getAttributeAsString(key);
                 }
-            }
-            else {
-                String toolTip = "<br><b>Variant Attributes</b>";
+            } else {
+                String toolTip = "<b>Variant Attributes:</b>";
                 int count = 0;
 
                 // Put AF and GMAF and put at the top, if present
@@ -1024,24 +1060,60 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
                     toolTip = toolTip.concat("<br>" + getFullName(k) + ": " + variant.getAttributeAsString(k));
                 }
 
-                for (String key : keys) {
-                    count++;
 
-                    if (key.equals("AF") || key.equals("GMAF")) {
-                        continue;
+                int COLS = 2;
+                boolean usetable = keys.size() > 10;
+                if (keys.size() > 0) {
+                    if (usetable) {
+                        toolTip = toolTip.concat("<table border='0' cellspacing='0' cellpadding='0'><tr>");
+                    } else {
+                        toolTip = toolTip.concat("<br>");
                     }
+                    int col = 1;
+                    int nr = 0;
+                    for (String key : keys) {
 
+                        if (key.length() < 1 || key.equals("AF") || key.equals("GMAF")) {
+                            continue;
+                        }
+                        if (count > MAX_FILTER_LINES) {
+                            break;
+                        }
+                        String t = "";
+                        String name = getFullName(key);
+                        if (name.equalsIgnoreCase("CONFIDENCE")) {
+                            name = "<b><font color='000099'>" + name + "</font></b>";
+                        }
+                        if (name.length() > 0) {
+                            t = name + ": " + variant.getAttributeAsString(key);
+                            if (t.length() > 60) {
+                                t = t.substring(0, 60) + "...";
+                            }
+                        } else {
+                            continue;
+                        }
+                        count++;
+                        if (usetable) {
+                            toolTip = toolTip.concat("<td>" + t + "</td>");
+                            if (col % COLS == 0 || t.length() > 30) {
+                                toolTip = toolTip.concat("</tr><tr>");
+                                col = 0;
+                            }
+                        } else {
+                            toolTip = toolTip.concat(t + "<br>");
+                        }
+                        col++;
+                    }
+                    if (usetable) {
+                        toolTip = toolTip.concat("</tr></table>");
+                    }
                     if (count > MAX_FILTER_LINES) {
                         toolTip = toolTip.concat("<br>....");
-                        break;
                     }
-                    String name = getFullName(key);
-                    if (name.equalsIgnoreCase("CONFIDENCE")) {
-                        name = "<b><font color='000099'>"+name+"</font></b>";
-                    }
-                    toolTip = toolTip.concat("<br>" + name + ": " + variant.getAttributeAsString(key));
 
-                }            
+                }
+
+
                 return toolTip;
             }
         }
@@ -1155,24 +1227,51 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         }
         String id = variant.getID();
         StringBuffer toolTip = new StringBuffer();
-        toolTip = toolTip.append("Chr: " + variant.getChr());
-        toolTip = toolTip.append("<br>Position: " + variant.getPositionString());
+        toolTip = toolTip.append("Position: " + variant.getChr());
+        toolTip = toolTip.append(", " + variant.getPositionString());
         toolTip = toolTip.append("<br>ID: " + id + "<br>");
-        toolTip = toolTip.append("<br><b>Sample Information</b>");
+        toolTip = toolTip.append("<b>Sample Information:</b>");
 
         Genotype genotype = variant.getGenotype(sample);
         if (genotype != null && genotype.getAttributes() != null) {
             Set<String> keys = genotype.getAttributes().keySet();
+            int COLS = 3;
+            boolean usetable = keys.size() > 3;
             if (keys.size() > 0) {
-                for (String key : keys) {
-                    try {
-                        toolTip = toolTip.append("<br>" + getFullName(key) + ": " + genotype.getAttributeAsString(key));
-                    } catch (IllegalArgumentException iae) {
-                        toolTip = toolTip.append("<br>" + key + ": " + genotype.getAttributeAsString(key));
-                    }
+                if (usetable) {
+                    toolTip = toolTip.append("<table border='0'  cellspacing='0' cellpadding='0'><tr>");
+                } else {
+                    toolTip = toolTip.append("<br>");
                 }
+                int col = 1;
+                int nr = 0;
+                for (String key : keys) {
+                    String t = "";
+                    try {
+                        t = getFullName(key) + ": " + genotype.getAttributeAsString(key);
+                    } catch (IllegalArgumentException iae) {
+                        t = key + ":" + genotype.getAttributeAsString(key);
+                    }
+                    if (usetable) {
+                        toolTip = toolTip.append("<td height='18'>" + t + "</td>");
+
+                        if (col % COLS == 0) {
+                            toolTip = toolTip.append("</tr><tr>");
+                            col = 1;
+                        }
+                    } else {
+                        toolTip = toolTip.append("<br>");
+                    }
+                    nr++;
+                    col++;
+                }
+                if (usetable) {
+                    toolTip = toolTip.append("</tr></table>");
+                }
+            } else {
+                toolTip = toolTip.append("<br>");
             }
-            toolTip = toolTip.append("<br>Bases: " + genotype.getGenotypeString());
+            toolTip = toolTip.append("Bases: " + genotype.getGenotypeString());
             toolTip = toolTip.append("<br>Quality: " + numFormat.format(genotype.getPhredScaledQual()));
             toolTip = toolTip.append("<br>Type: " + genotype.getType());
         }
@@ -1201,8 +1300,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         double aCount = (counts.getHomVarCount() * 2 + counts.getHetCount()) * 2;
 
         String toolTip = "<br>No Call: " + (int) noCall;
-        toolTip = toolTip.concat("<br>Allele Num: " + (int) aNum);
-        toolTip = toolTip.concat("<br>Allele Count: " + (int) aCount);
+        toolTip = toolTip.concat("<br>Allele Num: " + (int) aNum).concat("; count: " + (int) aCount);
         return toolTip;
     }
 
@@ -1214,7 +1312,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         int homVar = counts.getHomVarCount();
         int var = het + homVar;
 
-        String toolTip = "<br>Non Variant: " + nonVar;
+        String toolTip = "Non Variant: " + nonVar;
         toolTip = toolTip.concat("<br> - No Call: " + noCall);
         toolTip = toolTip.concat("<br> - Hom Ref: " + homRef);
         toolTip = toolTip.concat("<br>Variant: " + var);

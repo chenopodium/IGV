@@ -30,13 +30,14 @@ public class IonTorrentSessionReader extends IGVSessionReader {
 
     private static Logger log = Logger.getLogger(IonTorrentSessionReader.class);
     private String path;
-
+    private static final boolean DEBUG = false;
+    
     public IonTorrentSessionReader(IGV igv) {
         super(igv);
     }
 
     @Override
-    protected String checkAccessToResources(Collection<ResourceLocator> dataFiles) {
+    protected String checkAccessToResources(Collection<ResourceLocator> dataFiles, Collection<ResourceLocator>  invalidFiles) {
         if (dataFiles == null) {
             return null;
         }
@@ -58,32 +59,37 @@ public class IonTorrentSessionReader extends IGVSessionReader {
         for (ResourceLocator file : dataFiles) {
             if (file != null && file.getPath() != null) {
                 String path = file.getPath().toLowerCase();
+                
                 if (path.indexOf("txt.gz")<0) {
                     int h = path.hashCode();
                     hash += h;
-                    log.info("Adding sig hash for: "+file.getPath().toLowerCase()+":"+h);
+                    if (DEBUG)  log.info("Adding sig hash for: "+file.getPath().toLowerCase()+":"+h);
                 }
             }
             else log.warn("Got no file or path for resourcelocator: "+file);
         }
-        if (lsignature > 0 && lsignature != hash) {
-            log.warn("Signature " + signature + "/" + lsignature + " is not equals to hash code " + hash);
+        if (lsignature > 0 && lsignature != hash || invalidFiles.size()>0) {
+            if (DEBUG) log.warn("Signature " + signature + "/" + lsignature + " is not equals to hash code " + hash+", or invalid files");
 
             StringBuilder message = new StringBuilder();
-            message.append("<html>The following data file(s) could not be accessed due to security concerns<ul>");
-            for (ResourceLocator file : dataFiles) {
-                if (file.isLocal()) {
-                    message.append("<li>");
-                    message.append(file.getPath());
-                    message.append("</li>");
-                } else {
-                    message.append("<li>");
-                    message.append(file.getPath());
-                    message.append("</li>");
+            message.append("<html>Some resources could not be accessed due to security concerns. ");
+            // for debugging
+            if (DEBUG) {
+                message.append("<ul>");
+                for (ResourceLocator file : invalidFiles) {
+                    if (file.isLocal()) {
+                        message.append("<li>");
+                        message.append(file.getPath());
+                        message.append("</li>");
+                    } else {
+                        message.append("<li>");
+                        message.append(file.getPath());
+                        message.append("</li>");
+                    }
                 }
+                message.append("</ul>");
             }
-            message.append("</ul>");
-            message.append("<li>It looks like the session.xml file has been tampered with</li></ul>");
+            message.append("<br>It looks like the session.xml file has been tampered with");
             message.append("</html>");
 
             MessageUtils.showMessage(message.toString());
@@ -207,6 +213,10 @@ public class IonTorrentSessionReader extends IGVSessionReader {
 
     private String getMessageForContent(String content, String path) {
         String reason = content;
+        if (content == null ) {
+            return "Not sure why";
+            
+        }
         content = content.toLowerCase();
 
         //String contact = "<br>Please contact a system administrator";

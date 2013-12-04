@@ -110,9 +110,10 @@ public abstract class AbstractDataSource implements DataSource {
     //}
 
 
+    @Override
     public List<LocusScore> getSummaryScoresForRange(String chr, int startLocation, int endLocation, int zoom) {
 
-
+       // log.info("getSummaryScoresForRange chr"+chr );
         List<LocusScore> scores = getPrecomputedSummaryScores(chr, startLocation, endLocation, zoom);
         if (scores != null) {
             return scores;

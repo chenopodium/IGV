@@ -76,14 +76,14 @@ public class TribbleFeatureSource implements org.broad.igv.track.FeatureSource {
         System.out.println("TribbleFeatureSource: "+s);
     }
     protected void init(String path) {
-        log("TribbleFeatureSource init");
+    //    log("TribbleFeatureSource init");
         FeatureCodec codec = CodecFactory.getCodec(path, genome);
         isVCF = codec.getClass() == VCFWrapperCodec.class;
         featureClass = codec.getFeatureType();
-        log("Feature class="+featureClass);
+       // log("Feature class="+featureClass);
         AbstractFeatureReader basicReader = AbstractFeatureReader.getFeatureReader(path, codec, true);
         header = basicReader.getHeader();
-        log("header  = "+header);
+      //  log("header  = "+header.toString());
         initFeatureWindowSize(basicReader);
         reader = new CachingFeatureReader(basicReader, 5, getFeatureWindowSize());
 

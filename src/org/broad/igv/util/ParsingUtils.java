@@ -250,7 +250,7 @@ public class ParsingUtils {
     public static boolean parseTrackLine(String nextLine, TrackProperties trackProperties)
             throws NumberFormatException {
 
-        log.info("================= parseTrackLine: Parsing trackline: "+nextLine);
+    //    log.info("================= parseTrackLine: Parsing trackline: "+nextLine);
         boolean foundProperties = false;
         try {
             // track type=wiggle_0 name="CSF +" description="CSF +" visibility=full autoScale=off viewLimits=-50:50
@@ -261,7 +261,7 @@ public class ParsingUtils {
             catch (Exception e) {
                 log.error("Could not break string: "+nextLine, e);
             }
-            log.info("parseTrackLine: Got tokens "+tokens.size()+" tokens: "+tokens);
+          //  log.info("parseTrackLine: Got tokens "+tokens.size()+" tokens: "+tokens);
             for (String pair : tokens) {
                // log.info("Processing pair: "+pair);
                 List<String> kv = StringUtils.breakQuotedString(pair, '=');
@@ -444,11 +444,16 @@ public class ParsingUtils {
                             trackProperties.setDataURL(value);
                         } else if (key.equals("meta")) {
                             trackProperties.setMetaData(value);
+                            
                         }
-                        else log.warn("-------- DO NOT RECOGNIZE TRACKLINE KEY: "+key);
+                        else {
+                            if (!key.equalsIgnoreCase("ionversion") && !key.equalsIgnoreCase("type")) {
+                                log.warn("--- I do not recognice trackline key: "+key);
+                            }
+                        }
                     }
                 }
-                else log.info("--------------- NOT processing "+pair+" because I just got one argument: "+kv);
+            //    else log.info("NOT processing trackline 'pair' "+pair+" because I just got a key and no value: "+kv);
             }
 
         } catch ( Exception exception) {

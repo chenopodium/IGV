@@ -269,11 +269,14 @@ public class GenomeImpl implements Genome {
     }
 
     public long getCumulativeOffset(String chr) {
-
+        if (!chr.startsWith("chr")) chr = "chr"+chr;
+        long offset = 0;
         Long cumOffset = cumulativeOffsets.get(chr);
         if (cumOffset == null) {
-            long offset = 0;
+            
+           // log.info("getCumulativeOffset for chr "+chr);
             for (String c : getLongChromosomeNames()) {
+               // log.info("    long name: "+c);
                 if (chr.equals(c)) {
                     break;
                 }
@@ -282,7 +285,11 @@ public class GenomeImpl implements Genome {
             cumOffset = new Long(offset);
             cumulativeOffsets.put(chr, cumOffset);
         }
-        return cumOffset.longValue();
+        if (cumOffset != null) return cumOffset.longValue();
+        else {
+            log.info("Could not find off set for "+chr);
+            return offset;
+        }
     }
 
     /**

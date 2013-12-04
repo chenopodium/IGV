@@ -70,6 +70,7 @@ public class IGVSessionReader implements SessionReader {
     private static String INPUT_FILE_KEY = "INPUT_FILE_KEY";
     // Temporary values used in processing
     private Collection<ResourceLocator> dataFiles;
+    private Collection<ResourceLocator> invalidFiles;
     private Collection<ResourceLocator> missingDataFiles;
     private static Map<String, String> attributeSynonymMap = new HashMap();
     private boolean panelElementPresent = false;
@@ -476,7 +477,7 @@ public class IGVSessionReader implements SessionReader {
      * one could add a signature/hash code of those urls and check the hash code
      * with the hash code of the computed urls
      */
-    protected String checkAccessToResources(Collection<ResourceLocator> dataFiles) {
+    protected String checkAccessToResources(Collection<ResourceLocator> dataFiles, Collection<ResourceLocator> invalidFiles) {
         return null;
     }
 
@@ -494,6 +495,7 @@ public class IGVSessionReader implements SessionReader {
 
     private void processResources(Session session, Element element, HashMap additionalInformation, String rootPath) {
         dataFiles = new ArrayList();
+        invalidFiles = new ArrayList();
         missingDataFiles = new ArrayList();
 
         //also get attributes of resources, such as the hash code
@@ -531,7 +533,7 @@ public class IGVSessionReader implements SessionReader {
         }
 
         if (dataFiles.size() > 0) {
-            String message = checkAccessToResources(dataFiles);
+            String message = checkAccessToResources(dataFiles, invalidFiles);
             if (message != null && message.length() > 0) {
                 MessageUtils.showMessage(message.toString());
                 return;
@@ -667,7 +669,7 @@ public class IGVSessionReader implements SessionReader {
                     }
 
                     if (relPath != null) {
-                        log.info("Got rel path: " + relPath);
+                   //     log.info("Got rel path: " + relPath);
                         id = id.replace(suppliedPath, relPath);
                     }
 
@@ -740,7 +742,7 @@ public class IGVSessionReader implements SessionReader {
         // Older sessions used the "name" attribute for the path.
         String path = getAttribute(element, SessionAttribute.PATH.getText());
 
-        log.info("LoadSession.processResource: " + nodeName + ", path=" + path);
+      //  log.info("LoadSession.processResource: " + nodeName + ", path=" + path);
         if (oldSession && name != null) {
             path = name;
             int idx = name.lastIndexOf("/");
@@ -814,13 +816,17 @@ public class IGVSessionReader implements SessionReader {
             if (!hash.equals("" + computed)) {
                 resourcevalid = false;
             }
-            log.info("========== RESOURCE " + resourceLocator.getPath() + " has att hash: " + hash + ", computed hash=" + computed + ": same? " + resourcevalid);
+          //  log.info("========== RESOURCE " + resourceLocator.getPath() + " has att hash: " + hash + ", computed hash=" + computed + ": same? " + resourcevalid);
 
         }
         if (resourcevalid) {
             dataFiles.add(resourceLocator);
             NodeList elements = element.getChildNodes();
             process(session, elements, additionalInformation, rootPath);
+        }
+        else {
+            invalidFiles.add(resourceLocator);
+            log.info("========== RESOURCE " + resourceLocator.getPath() + " has been tampered with and is NOT valid");
         }
 
     }
@@ -1097,10 +1103,10 @@ public class IGVSessionReader implements SessionReader {
             matchedTracks = trackDictionary.get(getAttribute(element, SessionAttribute.NAME.getText()));
         }
         if (matchedTracks == null) {
-            log.info("Warning.  No tracks were found in trackDictionary with id: " + id + ", element: " + element.toString() + ",  in session file. Check spelling. Tracks are:");
-            for (Iterator it = trackDictionary.keySet().iterator(); it.hasNext();) {
-                log.info("              - " + it.next());
-            }
+//            log.info("Warning.  No tracks were found in trackDictionary with id: " + id + ", element: " + element.toString() + ",  in session file. Check spelling. Tracks are:");
+//            for (Iterator it = trackDictionary.keySet().iterator(); it.hasNext();) {
+//                log.info("              - " + it.next());
+//            }
         } else {
             for (final Track track : matchedTracks) {
 

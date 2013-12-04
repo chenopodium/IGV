@@ -53,6 +53,7 @@ public class AlignmentReaderFactory {
 
         String samFile = locator.getPath();
 
+      //  log.info("AlignmentReader: Creating AlignmentReader for "+locator);
         if ("alist".equals(locator.getType())) {
             reader = getMergedReader(locator.getPath(), true);
         } else if (pathLowerCase.startsWith("http") && pathLowerCase.contains("/query.cgi?")) {
@@ -70,13 +71,15 @@ public class AlignmentReaderFactory {
             reader = new GeraldReader(samFile, requireIndex);
         } else if (pathLowerCase.endsWith(".bam")) {
             if (locator.isLocal()) {
+                
                 reader = new BAMFileReader(new File(samFile));
             } else if (HttpUtils.isRemoteURL(locator.getPath().toLowerCase())) {
                 try {
+                //    log.info("AlignmentReader: Creating new BAMHttpReader");
                     reader = new BAMHttpReader(locator, requireIndex);
                 } catch (Exception e) {
                     log.error("", e);
-                    throw new DataLoadException("Error loading BAM file: " + e.toString(), locator.getPath());
+                    throw new DataLoadException("AlignmentReader: Error loading BAM file: " + e.toString(), locator.getPath());
                 }
 
             } else {

@@ -70,13 +70,34 @@ public class VCFVariant implements Variant {
 
     }
 
+    private int tryToGetPloidy(String key) {
+         int p = -1;
+        String s =  this.getAttributeAsString(key);
+        if (s != null && s.length()>0) {
+            try {
+                p = Integer.parseInt(s);
+            }
+            catch (Exception e)  {
+                log.info("Could not get ploidy from "+s+" for key "+key);
+            }
+        }
+        return p;
+    }
     @Override
     public double getPloidy() {
+        int p = tryToGetPloidy("CNV_Ploidy");
+        if (p > -1) return p;
+        p = tryToGetPloidy("LongDel_CNV_Ploidy");
+        if (p > -1) return p;
+        p = tryToGetPloidy("Ploidy");
+        if (p > -1) return p;
+        
+        
         if (this.getSampleNames() == null || getSampleNames().size()<1) {
-            log.info("getPloidy: no sample info, no ploidy");
+            log.info("getPloidy: no sample info, no CNV_ploidy, no LongDel_CNV_Ploidy, no Ploidy key -> no ploidy");
             return -1;
         }
-        int p = -1;
+        
         for (String s: this.getSampleNames()) {
             p = getPloidy(s);
             if (p != -1) {
@@ -107,7 +128,7 @@ public class VCFVariant implements Variant {
                     }
                // }
             }
-            else log.info("Sample "+sample+" has no keys at "+this.getPositionString());
+            //else log.info("Sample "+sample+" has no keys at "+this.getPositionString());
         }
         else log.info("Sample "+sample+" has no genotype at "+this.getPositionString());
         return -1;

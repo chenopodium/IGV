@@ -415,11 +415,20 @@ public class GuiProperties {
 		if (filetype.startsWith(".")) {
 			filetype = filetype.substring(1);
 		}
+                if (name != null && sample != null && name.toLowerCase().startsWith(sample.toLowerCase())) {
+                    name = name.substring(sample.length());
+                }
+                if (name.startsWith("_")) name = name.substring(1);
+                name = name.trim();
 		// int sep = name.indexOf("_");
 		// if (sep > -1) {
 		// name = name.substring(0, sep);
 		// }
-		int sep = name.indexOf(".");
+//                if (name.toLowerCase().startsWith("long") || sample.toLowerCase().startsWith("long")) {
+//                    debug = true;
+//                   
+//                }
+ 		int sep = name.indexOf("."); 
 		if (sep > -1) {
 			name = name.substring(0, sep);
 		}
@@ -468,6 +477,7 @@ public class GuiProperties {
 						+ ", will try just filetype");
 			val = getValueFor("vcf", gui_key, debug);
 		}
+                if (debug) p(" got "+name+"."+filetype+"."+gui_key+"="+val);
 		return val;
 	}
 

@@ -69,7 +69,7 @@ public class CnvData {
     }
 
     public ArrayList<CnvDataPoint> loadData(String chr) {
-        p("==== loadData: " + chr);         
+ //       p("==== loadData: " + chr);         
      //   p("loaddata trace: "+ErrorHandler.getString(e));
         if (gotAllData && points != null && points.size()>0) {
           //  p("loadData data already loaded, gotAllData is true");
@@ -107,7 +107,7 @@ public class CnvData {
     }
 
     public void parseRedLineFile() {
-    //    p("========= parsing red line file "+redline);
+        p("========= parsing red line file "+redline);
         ArrayList<String> slines = loadContent(redline);
 
         redlinedata = new ArrayList<CnvDataPoint>();
@@ -118,6 +118,7 @@ public class CnvData {
             return;
 
         }
+        int nrmessages = 0;
         String sep = "\t";
         this.setColChr(1);
         this.setColPos(2);
@@ -132,30 +133,39 @@ public class CnvData {
                  HashMap<String,String> atts = new HashMap<String,String>();
                 int chr = getChr(schr);
                 double ratio = getDouble(get(sitems, getColRatio()));
-
-// TODO XXX
-                long spos = getLong(get(sitems, getColPos()));
-                long send = getLong(get(sitems, this.colEnd));
-                if (chr > 0 && spos > -1) {
-                    if (ratio < 100) {
-                        // if (log) ratio = Math.log(ratio);
-                        if (count % 100 == 0) {
-                           // p("Got RED line: " + chr + ":" + spos + "-" + send + ", ratio=" + (int) ratio);
+                if (!Double.isNaN(ratio)) {
+                
+                    long spos = getLong(get(sitems, getColPos()));
+                    long send = getLong(get(sitems, this.colEnd));
+                    if (chr > 0 && spos > -1) {
+                        if (ratio < 100) {
+                            // if (log) ratio = Math.log(ratio);
+                            if (count % 100 == 0) {
+                               // p("Got RED line: " + chr + ":" + spos + "-" + send + ", ratio=" + (int) ratio);
+                            }
+                            CnvDataPoint point = new CnvDataPoint(chr, spos, send, ratio, "", atts);
+                            redlinedata.add(point);
+                            count++;
+                        } else {
+                           if (nrmessages < 10) {
+                               p("ratio too large, ignoring: " + chr + ":" + spos + "-" + send + ", ratio=" + (int) ratio);
+                               nrmessages++;
+                           }
                         }
-                        CnvDataPoint point = new CnvDataPoint(chr, spos, send, ratio, "", atts);
-                        redlinedata.add(point);
-                        count++;
                     } else {
-                        p("ratio too large, ignoring: " + chr + ":" + spos + "-" + send + ", ratio=" + (int) ratio);
-                    }
-                } else {
-                    if (bad == 0 || bad % 100 == 0 || bad < 10) {
-                        p("Ignoring lines: " + sline);
-                        bad++;
+                        if (bad == 0 || bad % 100 == 0 || bad < 10) {
+                            if (nrmessages < 10) {
+                                p("Ignoring lines: " + sline);
+                                  nrmessages++;
+                            }
+                            bad++;
+                        }
                     }
                 }
             }
         }
+        p("Got "+count+" red line data");
+       
 
     }
 
@@ -210,24 +220,27 @@ public class CnvData {
 
     }
 
-    private int getChr(String chrToLoad) {
-        int chr = 0;
-
+    public static int getChr(String chrToLoad) {
+        int chr = -1;
+        chrToLoad = chrToLoad.toLowerCase().trim(); 
         if (chrToLoad.startsWith("chr")) {
             chrToLoad = chrToLoad.substring(3);
         }
-        if (chrToLoad.equalsIgnoreCase("x")) {
+        if (chrToLoad.endsWith("x")) {
             chr = 23;
-        } else if (chrToLoad.equalsIgnoreCase("y")) {
+        } else if (chrToLoad.endsWith("y")) {
             chr = 24;
-        } else if (chrToLoad.equalsIgnoreCase("m")) {
+        } else if (chrToLoad.endsWith("m")) {
             chr = 25;
         } else {
             try {
                 chr = Integer.parseInt(chrToLoad);
             } catch (Exception e) {
-                p("Could not parse " + chrToLoad);
+                p("Could not parse chromosome nr " + chrToLoad);
             }
+        }
+        if (chr < 0) {
+            err("could NOT parse chr "+chrToLoad);
         }
         return chr;
     }
@@ -239,7 +252,7 @@ public class CnvData {
             loaded = new ArrayList<String>();
         }
         if (loaded.contains(chrToLoad)) {
-            p("Chr " + chrToLoad + " already loaded, loaded contains "+chrToLoad+": "+loaded.contains(chrToLoad)+", total points: "+points.size());
+         //   p("Chr " + chrToLoad + " already loaded, loaded contains "+chrToLoad+": "+loaded.contains(chrToLoad)+", total points: "+points.size());
             return;
         }
 
@@ -254,8 +267,13 @@ public class CnvData {
             }
             else {
                 chr = getChr(chrToLoad);
-                p("Loading chr specific sample file " + this.samplefile + "." + chr);
-                slines = loadContent(this.samplefile + "." + chr);
+                if (chr <0) {
+                    err("Could not get chr nr from "+chrToLoad);
+                }
+                else {
+                    p("Loading chr specific sample file " + this.samplefile + "." + chr);                                
+                    slines = loadContent(this.samplefile + "." + chr);
+                }
             }
         }
         points = new ArrayList<CnvDataPoint>();
@@ -293,7 +311,7 @@ public class CnvData {
                         points.add(point);
                         count++;
                     } else {
-                        p("value too large, ignoring: " + chr + ":" + spos + "-" + send + ", value=" + value);
+                      //  p("value too large, ignoring: " + chr + ":" + spos + "-" + send + ", value=" + value);
                     }
                 } else {
                     if (bad == 0 || bad % 100 == 0 || bad < 10) {
@@ -394,9 +412,13 @@ public class CnvData {
         }
     }
 
-    private void p(String s) {
+    static void p(String s) {
         Logger.getLogger("CnvData").info(s);
         System.out.println("CnvData: " + s);
+    }
+     static void err(String s) {
+        Logger.getLogger("CnvData").fatal(s);
+        System.err.println("CnvData: " + s);
     }
 
     private int getInt(String s) {
@@ -416,7 +438,7 @@ public class CnvData {
 
     private double getDouble(String s) {
         if (s == null) {
-            return -1;
+            return Double.NaN;
         }
         double d = -1;
         s = s.replace(":", ".");
@@ -424,6 +446,7 @@ public class CnvData {
         try {
             d = Double.parseDouble(s);
         } catch (Exception e) {
+            d = Double.NaN;
         }
         return d;
     }
@@ -558,7 +581,7 @@ public class CnvData {
         String content = null;
         p("Loading cnv data:" + path);
         if (FileTools.isUrl(path)) {
-            p("Path is url: " + path);
+         //   p("Path is url: " + path);
             try {
                 content = HttpUtils.getInstance().getContentsAsString(new URL(path));
             } catch (Exception ex) {

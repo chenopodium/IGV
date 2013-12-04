@@ -137,19 +137,22 @@ public class RenderType {
         return rel;
     }
     public Color getKaryoColorGain(){
+       // p("Got color gain: sample="+getGuiSample()+",key="+getGuiKey()+", ext="+ktrack.getFileExt());
         Color c= gui.getKaryoColorGain(getGuiSample(), getGuiKey(), ktrack.getFileExt());
         if (c == null) this.getDefaultColor(1);
         return c;
     }
     public Color getKaryoColorLoss(){
+     //   p("Got color loss: sample="+getGuiSample()+",key="+getGuiKey()+", ext="+ktrack.getFileExt());
         Color c=  gui.getKaryoColorLoss(getGuiSample(), getGuiKey(), ktrack.getFileExt());
         if (c == null) this.getDefaultColor(2);
         return c;
     }
     public Color getKaryoColorNeutral(){
+     //   p("Got color neutral: sample="+getGuiSample()+",key="+getGuiKey()+", ext="+ktrack.getFileExt());
         Color c=  gui.getKaryoColorNeutral(getGuiSample(), getGuiKey(), ktrack.getFileExt());
         if (c == null) {
-            p("Got no neutral color for "+getGuiKey()+"/"+ ktrack.getFileExt()+", using defaultcolor of track");
+           // p("Got no neutral color for "+getGuiKey()+"/"+ ktrack.getFileExt()+", using defaultcolor of track");
             this.getDefaultColor(0);
         }
         return c;
@@ -196,7 +199,7 @@ public class RenderType {
     }
     public Color getDistinctColor(FeatureMetaInfo meta, KaryoFeature f, boolean debug) {
         String fieldname =this.getRelevantAttName();
-      //  if(debug)  p("Getting color for "+fieldname);
+        if(debug)  p("Getting color for "+fieldname);
         if (fieldname == null) {
              fieldname = meta.getScoreFieldName(f.getFeature());
              this.setRelevantAttName(fieldname);
@@ -213,23 +216,22 @@ public class RenderType {
             return this.getColor(0);
         }
         
-         //if(debug)  p("Getting color for "+this.getRelevantAttName());
+        if(debug)  p("Getting color for "+this.getRelevantAttName());
         double score = f.getScore(meta, this.getRelevantAttName());
         
         double MAX = range.max;
         double MIN = range.min;
         double middle = getCutoffScore(f);
         
-        double delta = Math.max(MAX-MIN, 1);
         int which = 0;
-        if (Math.abs(score - middle) <= delta/10) which=0;
+        if (Math.abs(score - middle) <= 0.001) which=0;
         else if (score > middle) which =1;
         else  which = 2;
         if (debug) {
             String type = "neutral";
             if (which ==1) type = "GAIN";
             else if (which ==2) type = "LOSS";
-          // p("Color for "+this.getRelevantAttName()+":cutoff="+middle+", score="+score+", delta="+delta+", resulting color: "+which+"="+type );
+           //  p("Color for "+this.getRelevantAttName()+":cutoff="+middle+", score="+score+", resulting color: "+which+"="+type );
         }
         return getColor(which);
         

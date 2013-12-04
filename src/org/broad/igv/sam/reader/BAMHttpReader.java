@@ -13,7 +13,7 @@ package org.broad.igv.sam.reader;
 
 import com.iontorrent.utils.ErrorHandler;
 import net.sf.samtools.SAMFileHeader;
-//import net.sf.samtools.SAMFileReader;
+
 import net.sf.samtools.SAMRecord;
 import net.sf.samtools.SAMSequenceRecord;
 import net.sf.samtools.util.CloseableIterator;
@@ -26,8 +26,6 @@ import org.broad.igv.sam.Alignment;
 import org.broad.igv.ui.util.MessageUtils;
 import org.broad.igv.util.HttpUtils;
 import org.broad.igv.util.ResourceLocator;
-import org.broad.igv.util.stream.IGVSeekableStreamFactory;
-import org.broad.igv.util.stream.SeekablePicardStream;
 import org.broad.tribble.util.SeekableFTPStream;
 
 import java.io.*;
@@ -37,8 +35,12 @@ import java.util.Hashtable;
 import java.util.List;
 import java.util.Set;
 import net.sf.samtools.SAMFileReader;
-import net.sf.samtools.util.SeekableBufferedStream;
-import net.sf.samtools.util.SeekableStream;
+import net.sf.samtools.seekablestream.SeekableBufferedStream;
+import net.sf.samtools.seekablestream.SeekableFileStream;
+import net.sf.samtools.seekablestream.SeekableStream;
+import org.broad.igv.util.stream.IGVSeekableStreamFactory;
+import org.broad.igv.util.stream.SeekablePicardStream;
+
 
 /**
  * Created by IntelliJ IDEA.
@@ -63,7 +65,7 @@ public class BAMHttpReader implements AlignmentReader {
     List<String> sequenceNames;
 
     public BAMHttpReader(ResourceLocator locator, boolean requireIndex) throws IOException {
-        this.url = new URL(locator.getPath());
+        this.url = new URL(locator.getPath()); 
         if (requireIndex) {
             indexFile = getIndexFile(url, locator.getIndexPath());
             if (indexFile == null) {
@@ -71,9 +73,18 @@ public class BAMHttpReader implements AlignmentReader {
             }
             //SeekableStream ss = new SeekableBufferedStream(getSeekableStream(url));
             SeekableStream ss = getSeekableStream(url);
-            reader = new SAMFileReader(ss, indexFile, false);
+            SeekableStream si = new SeekableFileStream(indexFile);
+            try {
+              //  log.info("Creating SAMFilereaderCustom with index file");
+                reader = new SAMFileReader(ss, si, false);
+            }
+            catch (Throwable e) {
+                log.info("Failed: "+ErrorHandler.getString(e));
+            }
+            
         } else {
             InputStream is = HttpUtils.getInstance().openConnectionStream(url);
+          //  log.info("BAMHttpReader: creating SAMFileReader");
             reader = new SAMFileReader(new BufferedInputStream(is));
         }
 
@@ -137,7 +148,7 @@ public class BAMHttpReader implements AlignmentReader {
         try {
             if (reader == null) {
                 SeekableStream ss = new SeekableBufferedStream(getSeekableStream(url));
-                reader = new SAMFileReader(ss, indexFile, false);
+                reader = new SAMFileReader(ss, new SeekableFileStream(indexFile), false);
             }
             CloseableIterator<SAMRecord> iter = reader.query(sequence, start + 1, end, contained);
             return new WrappedIterator(iter);
@@ -145,7 +156,7 @@ public class BAMHttpReader implements AlignmentReader {
             log.error("Error opening SAM reader", e);
             throw new RuntimeException("Error opening SAM reader", e);
         }
-    }
+    } 
 
     private SeekableStream getSeekableStream(URL url) throws IOException {
         String protocol = url.getProtocol().toLowerCase();

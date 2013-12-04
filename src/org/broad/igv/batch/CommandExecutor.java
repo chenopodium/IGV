@@ -383,7 +383,7 @@ public class CommandExecutor {
     String loadFiles(final String fileString, final String locus, final boolean merge, String nameString, Map<String, String> params, boolean askUser) throws IOException {
 
 
-        log.info("Run load files name=" + nameString+", file="+fileString);
+       // log.info("Run load files name=" + nameString+", file="+fileString);
 
         String[] files = fileString.split(",");
         String[] names = nameString != null ? nameString.split(",") : null;
@@ -504,7 +504,7 @@ public class CommandExecutor {
         public void run() {
             try {
                 cmdExe.loadFiles(file, locus, merge, name, params, false);
-            } catch (IOException ex) {
+            } catch (Throwable ex) {
                 Logger.getLogger("CommandExecutor.LoadRunnable").error(ErrorHandler.getString(ex));
             }
         }

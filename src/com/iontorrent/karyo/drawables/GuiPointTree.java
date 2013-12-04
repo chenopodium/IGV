@@ -157,9 +157,15 @@ public class GuiPointTree extends GuiFeatureTree {
                 double score = f.getScore(super.ktrack.getMetaInfo(), this.renderType.getRelevantAttName());
                 if (score < min || score > max) {
                     p(this.ktrack.getTrackName()+": SCORE OUTSIDE OF ATT RANGE: "+score+", min="+min+", max="+max);
-                    range.add(score);
-                    min = range.min;
-                    max = range.max;
+                    if (range == null) {
+                        range = new FeatureMetaInfo.Range();
+                    }
+                    if (range != null) {
+                        range.add(score);
+                        min = range.min;
+                        max = range.max;
+                    }
+                    
                 }
                 double cutoff = renderType.getCutoffScore(f);
                 if ( ( times == 0 && score == cutoff ) || 

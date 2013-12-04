@@ -47,6 +47,8 @@ public class AlignmentTileLoader {
     private boolean cancel = false;
     private boolean pairedEnd = false;
 
+    private static final long MB = 1000000;
+    
     // Map of read group -> paired end stats
     //private PairedEndStats peStats;
     private static void cancelReaders() {
@@ -113,6 +115,7 @@ public class AlignmentTileLoader {
             activeLoaders.add(ref);
             iter = reader.query(chr, start, end, false);
 
+            log.info("loadTile: Loading alignment data for "+chr+":"+start+"-"+end);
             while (iter != null && iter.hasNext()) {
 
                 if (cancel) {
@@ -241,10 +244,12 @@ public class AlignmentTileLoader {
     }
 
     private static synchronized boolean checkMemory() {
-        if (RuntimeUtils.getAvailableMemoryFraction() < 0.2) {
+        
+        if (RuntimeUtils.getAvailableMemoryFraction() < 0.2 || RuntimeUtils.getAvailableMemory()< 200*MB) {
             LRUCache.clearCaches();
+            log.info("Checkig memory, trying system.gc: "+RuntimeUtils.getAvailableMemory()/MB+" MB avaiable");
             System.gc();
-            if (RuntimeUtils.getAvailableMemoryFraction() < 0.2) {
+            if (RuntimeUtils.getAvailableMemoryFraction() < 0.2 ||  RuntimeUtils.getAvailableMemory()< 200*MB) {
                 int maxmb = (int) (Runtime.getRuntime().maxMemory() / 1000000);
                 PreferenceManager pref = PreferenceManager.getInstance();
                 boolean down = pref.getAsBoolean(PreferenceManager.SAM_DOWNSAMPLE_READS);

@@ -83,8 +83,8 @@ public class VariantRenderer { //extends FeatureRenderer {
 
 
         final boolean filtered = variant.isFiltered();
-        final Color alleleColor;
-        final Color refColor;
+        Color alleleColor;
+        Color refColor;
         double percent;
         if (track.getColorMode() == VariantTrack.ColorMode.METHYLATION_RATE) {
             alleleColor = this.convertMethylationRateToColor((float) variant.getMethlationRate() / 100);
@@ -105,10 +105,7 @@ public class VariantRenderer { //extends FeatureRenderer {
                 percent = 0;
              }
         } else {
-//            if (variant.getEnd() - variant.getStart() > 1000000) {
-//                log.info("For this huge variant, it makse no sense to use band colors... use track color instaed");
-//                alleleColor = filtered ? colorAlleleBandAlpha : track.getColor();
-//            }
+            
 //            else {
             alleleColor = filtered ? colorAlleleBandAlpha : colorAlleleBand; // Red
             double af = variant.getAlleleFraction();
@@ -133,6 +130,11 @@ public class VariantRenderer { //extends FeatureRenderer {
         final int alleleBarHeight = (int) (percent * barHeight);
         final int remainderHeight = barHeight - alleleBarHeight;
 
+        if (variant.getEnd() - variant.getStart() > 100000) {
+               // log.info("For this huge variant, make it... transparent???");
+                refColor= makeTransparent(refColor);
+                alleleColor= makeTransparent(alleleColor);
+            }
         if (remainderHeight > 0) {
             Graphics2D g = context.getGraphic2DForColor(refColor);
             g.fillRect(pX0, bottomY - alleleBarHeight - remainderHeight, dX, remainderHeight);
@@ -146,6 +148,10 @@ public class VariantRenderer { //extends FeatureRenderer {
 
     }
 
+    private void p(String s) {
+        log.info(s);
+        System.out.println("VariantRenderer: "+s);
+    }
     public void renderGenotypeBandSNP(Variant variant, RenderContext context, Rectangle bandRectangle, int pX0, int dX,
             String sampleName, VariantTrack.ColorMode coloring, boolean hideFiltered) {
 
@@ -174,8 +180,8 @@ public class VariantRenderer { //extends FeatureRenderer {
         Genotype genotype = variant.getGenotype(sampleName);
         if (variant.getEnd() - variant.getStart() > 100000) {
             // this is no ordinary variant... some kind of indel of ploidy... so rendering by genotype makes no sense
-            log.info("Large variant, using coloring by track. Genotype would be: " + genotype + ", track color is: " + track.getColor());
-            coloring = VariantTrack.ColorMode.TRACK;
+          //  p("Large variant size: "+(variant.getEnd() - variant.getStart()));
+            //coloring = VariantTrack.ColorMode.TRACK;
         }
         if (genotype == null) {
             log.error("Now what?");
@@ -327,5 +333,10 @@ public class VariantRenderer { //extends FeatureRenderer {
 
         g.drawChars(chars, 0, 1, msgX, msgY);
 
+    }
+
+    public Color makeTransparent(Color refColor) {
+        refColor= new Color(refColor.getRed(), refColor.getGreen(), refColor.getBlue(), 150);
+        return refColor;
     }
 }

@@ -43,7 +43,7 @@ public class LoadedDataInterval {
     }
 
     public boolean contains(String chr, int start, int end, int zoom) {
-        return this.zoom == zoom && range.contains(chr, start, end);
+        return this.zoom == zoom && (range.contains(chr, start, end)  || range.overlaps(chr, start, end));
     }
 
     public List<LocusScore> getScores() {

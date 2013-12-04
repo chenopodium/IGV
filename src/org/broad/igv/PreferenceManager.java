@@ -340,7 +340,7 @@ public class PreferenceManager implements PropertyManager {
         boolean autoload = false;
         if (hasTemp("IGNORE_BAM_TRACKS"))  {
             autoload = !getTempAsBoolean("IGNORE_BAM_TRACKS");
-            log.info("Found IGNORE_BAM_TRACKS in temp properties");
+          //  log.info("Found IGNORE_BAM_TRACKS in temp properties");
         }
         else autoload = getAsBoolean(PreferenceManager.AUTOLOAD_BAM_TRACKS);
         return autoload;
