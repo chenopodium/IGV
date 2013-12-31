@@ -14,7 +14,9 @@ import com.iontorrent.karyo.drawables.GuiFeatureTree;
 import com.iontorrent.karyo.views.GuiProperties;
 import com.iontorrent.views.basic.DrawingCanvas;
 import java.awt.Color;
+import java.util.HashMap;
 import org.apache.log4j.Logger;
+import org.broad.igv.PreferenceManager;
 import org.broad.igv.feature.genome.GenderManager;
 import org.broad.tribble.Feature;
 
@@ -37,7 +39,7 @@ public class RenderType {
     private String type;
     private String relevantAttName;
     private double parcutoffScore;
-
+    private HashMap<String, Double> cutoffmap;
     protected static GuiProperties gui;
     
     protected KaryoTrack ktrack;
@@ -57,6 +59,8 @@ public class RenderType {
         this.name = name;
         this.description = desc;
         this.nrcolors = nrcolors;
+        cutoffmap = new HashMap<String, Double>();
+        // check preferences if there are cutoff values?
         colors = new Color[nrcolors];
         gui = RenderManager.getGuiProperties();
         intValues();
@@ -72,9 +76,35 @@ public class RenderType {
     }
     public double getCutoffScore(KaryoFeature f) {
         
-        if (parcutoffScore == Integer.MIN_VALUE) parcutoffScore = 2;                     
-        //return getActualCutoffScoreBasedOnChromosome(f, parcutoffScore);
-        return parcutoffScore;
+        String chr = f.getChr();
+        Double score = cutoffmap.get(chr);
+        if (score == null) {
+            String key = chr+"_CUTOFF".toUpperCase();
+            if (PreferenceManager.getInstance().hasTemp(key)) {
+                String val = PreferenceManager.getInstance().getTemp(key);
+                p("getCutoffScore "+chr+": Found value "+val+" for "+key+" in preferences. Adding to hashmap");
+                try {
+                    double d = Double.parseDouble(val);
+                    cutoffmap.put(chr, d); 
+                    p("getCutoffScore "+chr+": Got value: "+d);
+                    return d;
+                }
+                catch (Exception e) {}
+            }
+            p("getCutoffScore "+chr+": Getting cutoff score for chromosome "+chr+":"+score);
+            return score.doubleValue();            
+        }
+        else {
+            if (cutoffmap.size()<1) {
+                p("getCutoffScore "+chr+": Could not find cutoff score for chromosome "+chr+". Keys are: "+cutoffmap.keySet().toString()+", using default "+parcutoffScore);
+            }
+            if (parcutoffScore == Integer.MIN_VALUE) parcutoffScore = 2;                     
+            //return getActualCutoffScoreBasedOnChromosome(f, parcutoffScore);
+            return parcutoffScore;
+        }
+       
+        
+        
     }
 //    private double getActualCutoffScoreBasedOnChromosome(KaryoFeature f, double cutoff) {
 //        // only check for MALE samples        
@@ -84,6 +114,8 @@ public class RenderType {
 //            return 1.0;
 //        }
 //    }
+    
+    // XXX set cutoffscore per chromosome
     public void setCutoffScore(double d){
         this.parcutoffScore = d;
     }

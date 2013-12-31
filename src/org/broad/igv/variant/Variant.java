@@ -109,6 +109,8 @@ public interface Variant extends Feature {
     double getScore();
     
     double getPloidy() ;
+    
+    
     /**
      * @return the list of filters applied to this variant.  Should not return null, return an empty collection if no filters.
      */

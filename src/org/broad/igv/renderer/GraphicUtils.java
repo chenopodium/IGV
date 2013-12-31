@@ -21,15 +21,11 @@
  */
 package org.broad.igv.renderer;
 
-import org.broad.igv.Globals;
 import org.broad.igv.util.StringUtils;
 
 import java.awt.*;
 import java.awt.geom.Rectangle2D;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.logging.Logger;
-import java.util.regex.Pattern;
 
 /**
  * @author jrobinso
@@ -171,7 +167,7 @@ public class GraphicUtils {
     public static void drawWrappedText(String string, Rectangle rect, Graphics2D g2D, boolean clear) {
         FontMetrics fontMetrics = g2D.getFontMetrics();
         Rectangle2D stringBounds = fontMetrics.getStringBounds(string, g2D);
-        final int margin = 5;
+        final int margin = 2;
         int textHeight = (int) stringBounds.getHeight() + margin;
         double textWidth = stringBounds.getWidth() + 10;
         boolean nl = string.indexOf("<br>") >= 0 || string.indexOf("\n") >= 0;
@@ -189,22 +185,24 @@ public class GraphicUtils {
 //            }
             int nlpos = 0;
             if (nl) {
-              //  p("drawWrappedText: found nl in " + string + ". nr=" + nStrings + ",  h=" + rect.getHeight() + ", w=" + rect.getWidth() + ", perline:" + charsPerLine);
+             //   p("drawWrappedText: found nl in " + string + ". nr=" + nStrings + ",  h=" + rect.getHeight() + ", w=" + rect.getWidth() + ", perline:" + charsPerLine);
                 int nlpos1 = string.indexOf("<br>");
                 int nlpos2 = string.indexOf("\n");
                 string = string.replace("<br>", "");
                 string = string.replace("\n", "");
                 nlpos = Math.max(nlpos1, nlpos2);
                 nStrings++;
-            //    p("nStrings = " + nStrings + ", textHeight=" + textHeight + ", rect.height=" + rect.height + ", nlpos=" + nlpos);
+             //   p("nStrings = " + nStrings + ", textHeight=" + textHeight + ", rect.height=" + rect.height + ", nlpos=" + nlpos);
             }
             if (nStrings * textHeight > rect.height) {
                 if (nlpos > 0) {
                     //cutting off after nl
+                    
                     string = string.substring(0, nlpos );
+                 //   p("Cutting off part after nlpos "+nlpos+": drawing just "+string);
                     GraphicUtils.drawVerticallyCenteredText(string, margin, rect, g2D, false, clear);
                 } else {
-                    p("drawWrappedText: Shortening string " + string + ", nlines=" + nStrings + ", rect.height=" + rect.height);
+               //     p("drawWrappedText: Shortening string " + string + ", nlines=" + nStrings + ", rect.height=" + rect.height);
                     // Shorten string to fit in space.  Try a max of 5 times,  progressivley shortening string
                     int nChars = (rect.width - 2 * margin) / charWidth + 1;
                     int nTries = 0;
@@ -220,7 +218,7 @@ public class GraphicUtils {
                     GraphicUtils.drawVerticallyCenteredText(shortString, margin, rect, g2D, false, clear);
                 }
             } else {
-              //  p("--drawWrappedText: computing breakpoint. nStrings=" + nStrings + ", totlen=" + string.length());
+            //    p("--drawWrappedText: computing breakpointfor "+string+": nStrings=" + nStrings + ", totlen=" + string.length()+", textheight="+textHeight+", charpserline="+charsPerLine);
                 int breakPoint = 0;
                 Rectangle tmp = new Rectangle(rect);
                 tmp.y -= ((nStrings - 1) * textHeight) / 2;
@@ -232,9 +230,10 @@ public class GraphicUtils {
                         end = nlpos;
                     }
                     String sub = string.substring(breakPoint, end);
-              //      p("        got substring " + breakPoint + "-" + end + ":" + string.substring(breakPoint, end));
+               //     p("        got substring " + breakPoint + "-" + end + ":" + string.substring(breakPoint, end));
                     double w = fontMetrics.getStringBounds(sub, g2D).getWidth() + 2 * margin;
                     if (w > rect.width) {
+               //         p("          substring too long - shortening maybe");
                         int nChars = (rect.width - 2 * margin) / charWidth + 1;
                         int nTries = 0;
                         while (w > rect.width && nTries <= 5 && nChars > 1) {
@@ -243,8 +242,9 @@ public class GraphicUtils {
                             nTries++;
                             nChars--;
                         }
-                        GraphicUtils.drawVerticallyCenteredText(sub, margin, rect, g2D, false, clear);
+                        GraphicUtils.drawVerticallyCenteredText(sub, margin, tmp, g2D, false, clear);
                     } else {
+                      //  p("          substring NOT too long");
                         GraphicUtils.drawVerticallyCenteredText(sub, margin, tmp, g2D, false);
                     }
                     breakPoint = end;
