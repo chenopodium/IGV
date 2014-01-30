@@ -223,20 +223,19 @@ public class HttpUtils {
         return false;
     }
 
-     public boolean resourceAvailable(String fileorurl) {
-         if (com.iontorrent.utils.io.FileUtils.isUrl(fileorurl)) {
-             return new File(fileorurl).exists();
-         }
-         else {
-             try {
-                return resourceAvailable(new URL(fileorurl)) ;
-             } 
-             catch (Exception e) {
-                 log.error("Could not check if "+fileorurl+" exists because: "+ErrorHandler.getString(e));
-             }
-         }
-         return false;
-     }
+    public boolean resourceAvailable(String fileorurl) {
+        if (com.iontorrent.utils.io.FileUtils.isUrl(fileorurl)) {
+            return new File(fileorurl).exists();
+        } else {
+            try {
+                return resourceAvailable(new URL(fileorurl));
+            } catch (Exception e) {
+                log.error("Could not check if " + fileorurl + " exists because: " + ErrorHandler.getString(e));
+            }
+        }
+        return false;
+    }
+
     public boolean resourceAvailable(URL url) {
 
         if (url.getProtocol().toLowerCase().equals("ftp")) {
@@ -254,9 +253,9 @@ public class HttpUtils {
     }
 
     public String getHeaderField(URL url, String key) throws IOException {
-        
+
         HttpURLConnection conn = openConnection(url, null, "HEAD");
-      //  log.info("Getting header field:"+key);
+        //  log.info("Getting header field:"+key);
         return conn.getHeaderField(key);
     }
 
@@ -322,7 +321,7 @@ public class HttpUtils {
         PreferenceManager prefMgr = PreferenceManager.getInstance();
         defaultUserName = prefMgr.get(PreferenceManager.AUTHENTICATION_DEFAULT_USER, "");
         String pwCoded = prefMgr.get(PreferenceManager.AUTHENTICATION_DEFAULT_PW, "");
-        defaultPassword = Utilities.base64Decode(pwCoded).toCharArray();             
+        defaultPassword = Utilities.base64Decode(pwCoded).toCharArray();
     }
 
     public void updateProxySettings() {
@@ -348,7 +347,7 @@ public class HttpUtils {
             pw = Utilities.base64Decode(pwString);
         }
 
-        log.info("Creating ProxySettings: user="+user+", pw="+pw);
+        log.info("Creating ProxySettings: user=" + user + ", pw=" + pw);
         proxySettings = new ProxySettings(useProxy, user, pw, auth, proxyHost, proxyPort);
     }
 
@@ -497,23 +496,24 @@ public class HttpUtils {
 
     }
 
-     private String readStringContents(InputStream is) throws IOException {
+    private String readStringContents(InputStream is) throws IOException {
         BufferedReader in = new BufferedReader(new InputStreamReader(is));
 
         String inputLine;
         StringBuilder res = new StringBuilder();
         int line = 0;
         while ((inputLine = in.readLine()) != null) {
-            res = res.append(inputLine+"\n");
+            res = res.append(inputLine + "\n");
             if (line % 100 == 0) {
-                log.info("Reading line "+line+": "+ inputLine);
+                log.info("Reading line " + line + ": " + inputLine);
                 line++;
             }
         }
-            
+
         in.close();
         return res.toString();
     }
+
     private String readContents(InputStream is) throws IOException {
         BufferedInputStream bis = new BufferedInputStream(is);
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -523,7 +523,7 @@ public class HttpUtils {
             bos.write(b);
             count++;
             if (count % 100000 == 0) {
-                log.info("Reading byte "+count);
+                log.info("Reading byte " + count);
             }
         }
         return new String(bos.toByteArray());
@@ -544,7 +544,8 @@ public class HttpUtils {
             }
         }
     }
-    private String readInputStream(HttpURLConnection connection) throws IOException {
+
+     private String readInputStream(HttpURLConnection connection) throws IOException {
         InputStream inputStream = null;
 
         try {
@@ -647,7 +648,7 @@ public class HttpUtils {
 
         //CR: handle potential ion reporter or ion torrent links
         HttpHandler specialhandler = Handlers.getHttpHandler();
-        if( specialhandler != null){
+        if (specialhandler != null) {
             //log.info(" ++++ Using special HTTP handler");
             specialhandler.handle(url, conn);
         }
@@ -655,60 +656,57 @@ public class HttpUtils {
         if (method.equals("PUT")) {
             return conn;
         } else {
-     //       log.info("Getting response for method "+method);
+            //       log.info("Getting response for method "+method);
             int code = conn.getResponseCode();
             String message = conn.getResponseMessage();
             // Redirects.  These can occur even if followRedirects == true if there is a change in protocol,
             // for example http -> https.
-           // log.info("Code: "+code+":"+message);
+            // log.info("Code: "+code+":"+message);
             if (code == 201) { // weird created msg
-                
+
                 String details = readInputStream(conn);
                 IOException exc = new IOException(details);
                 log.info("input stream: " + details);
                 throw exc;
-                
+
             }
             if (code >= 300 && code < 400) {
                 String newLocation = conn.getHeaderField("Location");
                 log.info("Redirecting to " + newLocation);
-                if (redirectCount+1 > MAX_REDIRECTS) {
-                     // clear username password just in case                    
-                     this.clearDefaultCredentials();
-                     resetAuthenticator();
+                if (redirectCount + 1 > MAX_REDIRECTS) {
+                    // clear username password just in case                    
+                    this.clearDefaultCredentials();
+                    resetAuthenticator();
                 }
-                if (redirectCount > MAX_REDIRECTS) {                   
+                if (redirectCount > MAX_REDIRECTS) {
                     throw new IOException("Too many redirects - could be due to login failure. Please verify your proxy password, and also your user password in View/Preferences/Proxy.");
                 }
-                
+
 
                 return openConnection(new URL(newLocation), requestProperties, method, redirectCount++);
             } // TODO -- handle other response codes.
             else if (code >= 400) {
-              
+
                 if (code == 404) {
                     message = "File/URL not found (404): " + url.toString();
                     throw new FileNotFoundException(message);
                 } else {
                     // if wrong pw, handle this here!
                     message = conn.getResponseMessage();
-                    log.info("Got code "+code);
-                    for (Iterator it = conn.getHeaderFields().keySet().iterator(); it.hasNext();) {
-                        String key = (String) it.next();
-                      //  log.info("Got header property: " + key + "=" + conn.getHeaderField(key));
-                    }
-
+                    log.info("Got code " + code+" (401 means wrong pw): "+message);
 
                     HttpResponseException exc = new HttpResponseException(code);
-                    String details = readErrorStream(conn);
-                   if (details != null) log.info("error stream: " + details);
-                    details = this.readInputStream(conn);
-                    log.info("input stream: " + details);
-                    log.info(message);
                     if (code == 403 || code == 401 || code == 500) {
-                        log.info(" ======== DEBUGGING ERROR " + code + ", url: "+url);
-                        
+                        log.info(" ======== DEBUGGING ERROR " + code + " (401 means wrong pw), url: " + url);
+
+                        log.info("Trying to get error stream");
+                        String details = readErrorStream(conn);
+                        if (details != null) {
+                            log.info("error stream: " + details);
+                        }
+                       
                         if (this.defaultPassword != null || this.defaultUserName != null) {
+                            log.info("Found default pw, should clear it");
                             MessageUtils.showMessage(exc.getMessage() + "<br>I will clear the credentials and try again");
                             log.info("Clearing credentials");
 
@@ -724,8 +722,8 @@ public class HttpUtils {
 
                                 return openConnection(url, requestProperties, method, redirectCount, false);
                             }
-                        }
-                        else {
+                        } else {
+                            if (code == 401) MessageUtils.showMessage("The wrong pw might be stored. Please check menu View/Preferences/Proxy (bottom part)");
                             log.info(ErrorHandler.getString(exc));
                         }
                     }
@@ -948,21 +946,21 @@ public class HttpUtils {
 
 
             RequestorType type = getRequestorType();
-            
+
             URL url = this.getRequestingURL();
-          //  log.info("PasswordAuthentication: Got requestor type: "+type.toString()+", url="+url);
+            //  log.info("PasswordAuthentication: Got requestor type: "+type.toString()+", url="+url);
             boolean isProxyChallenge = type == RequestorType.PROXY;
             if (isProxyChallenge) {
-                
+
                 if (proxySettings.auth && proxySettings.user != null && proxySettings.pw != null) {
-                    log.info("PasswordAuthentication: Proxy challenge. user="+proxySettings.user);
+                    log.info("PasswordAuthentication: Proxy challenge. user=" + proxySettings.user);
                     System.setProperty("http.proxyUser", proxySettings.user);
                     System.setProperty("http.proxyPassword", proxySettings.pw);
                     return new PasswordAuthentication(proxySettings.user, proxySettings.pw.toCharArray());
                 }
             }
 
-          //  log.info("IGVAuthenticator: PasswordAuthentication: Default username: " + defaultUserName);
+            //  log.info("IGVAuthenticator: PasswordAuthentication: Default username: " + defaultUserName);
             if (defaultUserName == null || defaultUserName.length() < 1) {
                 PreferenceManager prefMgr = PreferenceManager.getInstance();
                 defaultUserName = prefMgr.get(PreferenceManager.AUTHENTICATION_DEFAULT_USER, "ionuser");
@@ -972,10 +970,10 @@ public class HttpUtils {
                     defaultUserName = null;
                     defaultPassword = null;
                 }
-      //          log.info("IGVAuthenticator: Got default authentication from preferences: " + defaultUserName);
+                //          log.info("IGVAuthenticator: Got default authentication from preferences: " + defaultUserName);
             }
 
-         //   log.info("IGVAuthenticator: Using username: " + defaultUserName + "/" + defaultPassword);
+            //   log.info("IGVAuthenticator: Using username: " + defaultUserName + "/" + defaultPassword);
             if (defaultUserName != null && defaultPassword != null && defaultUserName.length() > 0 && defaultPassword.length > 0) {
                 return new PasswordAuthentication(defaultUserName, defaultPassword);
             }

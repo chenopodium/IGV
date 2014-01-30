@@ -42,7 +42,7 @@ public class HttpResponseException extends IOException {
     @Override
     public String getMessage() {
         String scode = " (status code " + statusCode + ")";
-        String prefs = "<br>(check <b>Preferences/Proxy settings</b> to set default username/pw)" ;
+        String prefs = "<br>(check menu <b>View/Preferences/Proxy settings</b> (even if you use no proxy) to set default username/pw)" ;
         String user = " (maybe try a different username/password) ";
         switch (statusCode) {
             case 407:

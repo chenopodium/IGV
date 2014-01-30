@@ -85,25 +85,21 @@ public class RenderType {
                 p("getCutoffScore "+chr+": Found value "+val+" for "+key+" in preferences. Adding to hashmap");
                 try {
                     double d = Double.parseDouble(val);
-                    cutoffmap.put(chr, d); 
+                    score = new Double(d);
+                    cutoffmap.put(chr, score); 
                     p("getCutoffScore "+chr+": Got value: "+d);
                     return d;
                 }
                 catch (Exception e) {}
             }
+            else  {
+                if (parcutoffScore == Integer.MIN_VALUE) parcutoffScore = 2;  
+                return parcutoffScore;
+            }
             p("getCutoffScore "+chr+": Getting cutoff score for chromosome "+chr+":"+score);
             return score.doubleValue();            
         }
-        else {
-            if (cutoffmap.size()<1) {
-                p("getCutoffScore "+chr+": Could not find cutoff score for chromosome "+chr+". Keys are: "+cutoffmap.keySet().toString()+", using default "+parcutoffScore);
-            }
-            if (parcutoffScore == Integer.MIN_VALUE) parcutoffScore = 2;                     
-            //return getActualCutoffScoreBasedOnChromosome(f, parcutoffScore);
-            return parcutoffScore;
-        }
-       
-        
+        else return score.doubleValue();     
         
     }
 //    private double getActualCutoffScoreBasedOnChromosome(KaryoFeature f, double cutoff) {
