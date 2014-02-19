@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.broad.igv.PreferenceManager;
 import org.broad.igv.data.seg.ReferenceSegment;
 import org.broad.igv.data.seg.Segment;
 import org.broad.igv.data.seg.SegmentedDataSet;
@@ -54,11 +55,15 @@ public class SegmentedCustomCnvDataSet implements SegmentedDataSet {
         this.genome = IGV.getInstance().getGenomeManager().getCurrentGenome();
         for (CnvDataPoint point : data.getPoints()) {
             /// add att map?
-            this.addSegment(id, "chr" + point.chr, (int) point.pos, (int) point.end + 1, (float) point.ratio, point.clone, null);
+            String desc = point.clone;
+            if (desc == null) desc = "";            
+            // get expected value
+            this.addSegment(id, "chr" + point.chr, (int) point.pos, (int) point.end + 1, (float) point.ratio,desc, null);
         }
         sortLists();
     }
 
+    
     public void sortLists() {
         for (Map.Entry<String, Map<String, List<LocusScore>>> sampleEntry : segments.entrySet()) {
             for (Map.Entry<String, List<LocusScore>> chrEntry : sampleEntry.getValue().entrySet()) {

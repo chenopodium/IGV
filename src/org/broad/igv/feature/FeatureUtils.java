@@ -20,6 +20,7 @@ import com.google.common.base.Predicate;
 import org.broad.tribble.Feature;
 
 import java.util.*;
+import org.broad.igv.data.seg.ReferenceSegment;
 
 /**
  * @author jrobinso
@@ -179,11 +180,12 @@ public class FeatureUtils {
         int startIdx = 0;
         int endIdx = features.size();
 
+        org.broad.tribble.Feature ref = null;
         while (startIdx != endIdx) {
             int idx = (startIdx + endIdx) / 2;
 
             org.broad.tribble.Feature feature = features.get(idx);
-
+           
             int effectiveStart = feature.getStart();
             int effectiveEnd = feature.getEnd();
 
@@ -202,9 +204,37 @@ public class FeatureUtils {
             }
         }
 
-        return null;
+        return ref;
     }
 
+    public static Feature getClosestFeatureAt(double position, int buffer, List<? extends Feature> features) {
+
+        org.broad.tribble.Feature ref = null;
+        org.broad.tribble.Feature best = null;
+        double bestdelta = 100000000;
+        for (org.broad.tribble.Feature feature: features) {
+
+            if (feature instanceof ReferenceSegment ) {
+                ref = feature;
+                continue;
+            }
+            int start = feature.getStart();
+            int end = feature.getEnd();
+
+            if (position >= start - buffer) {
+                if (position <= end + buffer) {
+                     double mid = (start + end)/2;
+                     if (Math.abs((mid - position)) < bestdelta) {
+                         bestdelta = Math.abs((mid - position));
+                         best = feature;
+                     }
+                } 
+            } 
+        }
+        if (best != null) return best;
+        else return ref;
+    }
+    
     /**
      * Get the index of the feature just to the right of the given position.
      * If there is no feature to the right return -1;

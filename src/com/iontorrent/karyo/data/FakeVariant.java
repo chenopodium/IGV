@@ -29,6 +29,7 @@ public class FakeVariant implements Variant {
     private int start;
     private int end;
     private String chr;
+    private int expected;
     
     private HashMap<String, Object> map;
     
@@ -253,5 +254,19 @@ public class FakeVariant implements Variant {
     
     public String toString() {
         return "Fake variant @"+ this.getPositionString()+", type="+this.getType();    
+    }
+
+    /**
+     * @return the expected
+     */
+    public int getExpected() {
+        return expected;
+    }
+
+    /**
+     * @param expected the expected to set
+     */
+    public void setExpected(int expected) {
+        this.expected = expected;
     }
 }

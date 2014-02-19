@@ -20,7 +20,7 @@ package org.broad.igv.util.stream;
 
 import org.broad.igv.util.HttpUtils;
 import org.broad.tribble.util.SeekableFileStream;
-import org.broad.tribble.util.SeekableHTTPStream;
+
 import org.broad.tribble.util.SeekableStream;
 
 import java.io.File;
@@ -43,7 +43,8 @@ public class IGVSeekableStreamFactory {
                 final URL url = new URL(path);
                 boolean useByteRange = HttpUtils.getInstance().useByteRange(url);
                 if (useByteRange) {
-                    is = new SeekableHTTPStream(new IGVUrlHelper(url));
+                  //  is = new SeekableHTTPStream(new IGVUrlHelper(url));
+                    is = new IGVSeekableHTTPStream(url);
                 } else {
                     is = new SeekableServiceStream(url);
                 }

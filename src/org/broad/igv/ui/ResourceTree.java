@@ -228,6 +228,10 @@ public class ResourceTree {
                 sampleId = getAttribute(xmlNode, ID.getText());
             }
             locator.setSampleId(sampleId);
+            
+            String gender = getAttribute(xmlNode, GENDER.getText());            
+            locator.setGender(gender);
+            
             locator.setUrl(getAttribute(xmlNode, URL.getText()));
             locator.setDescription(getAttribute(xmlNode, DESCRIPTION.getText()));
             locator.setTrackLine(getAttribute(xmlNode, TRACK_LINE.getText()));

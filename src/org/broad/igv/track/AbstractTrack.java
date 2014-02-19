@@ -79,6 +79,7 @@ public abstract class AbstractTrack implements Track {
     protected int fontSize = PreferenceManager.getInstance().getAsInt(PreferenceManager.DEFAULT_FONT_SIZE);
     private boolean showDataRange = true;
     private String sampleId;
+    private String gender;
     private ResourceLocator resourceLocator;
     private int top;
     protected int minimumHeight = -1;
@@ -189,6 +190,7 @@ public abstract class AbstractTrack implements Track {
         String disp = getName();
         //  log.info("getDisplayName: getName="+disp);
         String sample = null;
+        
         if (this.getResourceLocator() != null) {
             sample = this.getResourceLocator().getSampleId();
             if (sample == null) {
@@ -221,6 +223,21 @@ public abstract class AbstractTrack implements Track {
             }
 
         }
+        
+        gender = this.getGender();
+        if (gender != null) {
+            char g = '?';
+            // female &#x2640; &#9792;
+            // male &#9794;	&#x2642;
+            if (gender.toUpperCase().equalsIgnoreCase("MALE")) {
+                g = 9794;
+            }
+            else if (gender.toUpperCase().equalsIgnoreCase("FEMALE")) {
+                g = 9792;
+            }
+            disp += " "+ g;
+        }
+        
         disp = disp.replace("_", " ");
         disp = disp.replace("-", " ");
         disp = firstUpper(disp);
@@ -1367,5 +1384,20 @@ public abstract class AbstractTrack implements Track {
      */
     public void setLinkedTrack(String linkedTrack) {
         this.linkedTrack = linkedTrack;
+    }
+
+    /**
+     * @return the gender
+     */
+    public String getGender() {
+        if (this.resourceLocator != null) return resourceLocator.getGender();
+        else return gender;
+    }
+
+    /**
+     * @param gender the gender to set
+     */
+    public void setGender(String gender) {
+        this.gender = gender;
     }
 }

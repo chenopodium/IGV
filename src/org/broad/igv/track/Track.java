@@ -102,6 +102,8 @@ public interface Track extends Persistable {
     String getNameValueString(int y);
 
     String getSample();
+    
+    String getGender();
 
     void setUrl(String url);
 

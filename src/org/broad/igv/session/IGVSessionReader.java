@@ -162,6 +162,7 @@ public class IGVSessionReader implements SessionReader {
         MID_COLOR("midColor"),
         COLOR_MODE("colorMode"),
         CHROMOSOME("chromosome"),
+        GENDER("gender"),
         END_INDEX("end"),
         EXPAND("expand"),
         SQUISH("squish"),
@@ -728,6 +729,7 @@ public class IGVSessionReader implements SessionReader {
         String label = getAttribute(element, SessionAttribute.LABEL.getText());
         String name = getAttribute(element, SessionAttribute.NAME.getText());
         String sampleId = getAttribute(element, SessionAttribute.SAMPLE_ID.getText());
+        String gender = getAttribute(element, SessionAttribute.GENDER.getText());
         String description = getAttribute(element, SessionAttribute.DESCRIPTION.getText());
         String type = getAttribute(element, SessionAttribute.TYPE.getText());
         String coverage = getAttribute(element, SessionAttribute.COVERAGE.getText());
@@ -786,8 +788,7 @@ public class IGVSessionReader implements SessionReader {
         }
 
         resourceLocator.setSampleId(sampleId);
-
-
+        resourceLocator.setGender(gender);
         resourceLocator.setDescription(description);
         // This test added to get around earlier bug in the writer
         if (type != null && !type.equals("local")) {

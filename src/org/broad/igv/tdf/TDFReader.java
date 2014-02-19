@@ -416,7 +416,8 @@ public class TDFReader {
     public synchronized byte[] readBytes(long position, int nBytes) throws IOException {
         seekableStream.seek(position);
         byte[] buffer = new byte[nBytes];
-        seekableStream.read(buffer, 0, nBytes);
+        //seekableStream.read(buffer, 0, nBytes);
+        int read = seekableStream.read(buffer, 0, nBytes);
         return buffer;
     }
 

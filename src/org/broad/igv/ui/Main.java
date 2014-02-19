@@ -24,9 +24,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import org.apache.log4j.Level;
 import org.broad.igv.Handlers;
-import org.broad.igv.ui.util.MessageUtils;
 
 /**
  * Utility class for launching IGV. Provides a "main" method and an "open"

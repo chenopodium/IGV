@@ -83,7 +83,8 @@ public class SAMTextHeaderCodec {
         readGroups = new ArrayList<SAMReadGroupRecord>();
 
         int nr = 0;
-        int MAX_HEADER= 1000;
+        int MAX_HEADER= 1000000;
+        Logger.getLogger(SAMTextHeaderCodec.class).info("SAMFileHeader: ============= DECODING FILE "+source);
         while (advanceLine() != null & nr <= MAX_HEADER) {
 //            if (nr % 100 == 0) {
 //                p("Decoding header line "+nr);
@@ -117,7 +118,9 @@ public class SAMTextHeaderCodec {
            
         }
         if (nr >=MAX_HEADER) {
-            p("Header is very large:"+ nr+":"+this.textHeader);
+            String s = this.textHeader.toString();
+            if (s.length() > 1000) s = s.substring(0, 1000)+"...";
+            p("Header is very large:"+ nr+":\n"+s);
         }
         mFileHeader.setSequenceDictionary(new SAMSequenceDictionary(sequences));
         mFileHeader.setReadGroups(readGroups);

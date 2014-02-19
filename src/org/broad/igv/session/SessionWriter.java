@@ -320,6 +320,9 @@ public class SessionWriter {
                         if (resourceLocator.getSampleId() != null) {
                             dataFileElement.setAttribute(SessionAttribute.SAMPLE_ID.getText(), resourceLocator.getSampleId());
                         }
+                         if (resourceLocator.getGender() != null) {
+                            dataFileElement.setAttribute(SessionAttribute.GENDER.getText(), resourceLocator.getGender());
+                        }
                         if (resourceLocator.getServerURL() != null) {
                             dataFileElement.setAttribute(SessionAttribute.SERVER_URL.getText(), resourceLocator.getServerURL());
                         }
@@ -390,6 +393,9 @@ public class SessionWriter {
                     }
                     if (track.getSample() != null && track.getSample().length() > 0) {
                         trackElement.setAttribute(IGVSessionReader.SessionAttribute.SAMPLE_ID.getText(), track.getSample());
+                    }
+                     if (track.getGender() != null && track.getGender().length() > 0) {
+                        trackElement.setAttribute(IGVSessionReader.SessionAttribute.GENDER.getText(), track.getGender());
                     }
                     for (Map.Entry<String, String> attrValue : track.getPersistentState().entrySet()) {
                         trackElement.setAttribute(attrValue.getKey(), attrValue.getValue());

@@ -446,6 +446,7 @@ public abstract class DataTrack extends AbstractTrack {
         if (this.getLinkedTrack() != null) {
             buf.append("<b>Data scale is linked to track: " + getLinkedTrack() + "</b><br>");
         }
+        
         if (this.getCutoffScore() != 0 && this.getAltColor() != this.getColor() && this.getDataRange() != null) {
             if (this.getCutoffScore() > -this.getDataRange().getMinimum() && this.getCutoffScore() <= this.getDataRange().getMaximum()) {
                 buf.append("Value where color changes: " + this.getCutoffScore() + "<br>");
@@ -456,7 +457,7 @@ public abstract class DataTrack extends AbstractTrack {
         return buf.toString();
     }
 
-    private LocusScore getLocusScoreAt(String chr, double position, ReferenceFrame frame) {
+    protected LocusScore getLocusScoreAt(String chr, double position, ReferenceFrame frame) {
         int zoom = Math.max(0, frame.getZoom());
         List<LocusScore> scores = getSummaryScores(chr, (int) position - 10, (int) position + 10, zoom);
 
@@ -467,7 +468,7 @@ public abstract class DataTrack extends AbstractTrack {
             // give a 2 pixel window, otherwise very narrow features will be missed.
             double bpPerPixel = frame.getScale();
             int buffer = (int) (2 * bpPerPixel);    /* * */
-            return (LocusScore) FeatureUtils.getFeatureAt(position, buffer, scores);
+            return (LocusScore) FeatureUtils.getClosestFeatureAt(position, buffer, scores);
         }
     }
 

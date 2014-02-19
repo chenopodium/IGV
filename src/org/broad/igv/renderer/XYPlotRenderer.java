@@ -22,6 +22,7 @@
 package org.broad.igv.renderer;
 
 //~--- non-JDK imports --------------------------------------------------------
+import com.iontorrent.cnv.CustomCnvDataSourceTrack;
 import com.iontorrent.utils.ErrorHandler;
 import org.broad.igv.Globals;
 import org.broad.igv.PreferenceManager;
@@ -80,7 +81,7 @@ public abstract class XYPlotRenderer extends DataRenderer {
         Color hi = cmid;
         Color lo = clow;
 
-        if (Math.abs(score - middle) < 0.00001) {
+        if (Math.abs(score - middle) < 0.0000001) {
             return cmid;
         }
 
@@ -100,12 +101,38 @@ public abstract class XYPlotRenderer extends DataRenderer {
         int b = Math.min(255, Math.max(0, (int) (lo.getBlue() + db * ds)));
         Color c = new Color(r, g, b);
 
-        if (score > middle) {
-            //Logger.getLogger("XYPlot").info("Score > middle: "+score+", low="+MIN+", mid=CUTOFF="+middle+", max="+MAX+" => color="+c+", rangedelta="+rangedelta);
+        if (middle != 2) {
+            p("score: " + score + ", low=" + MIN + ", mid=CUTOFF=" + middle + ", max=" + MAX + " => color=" + c + ", rangedelta=" + rangedelta);
             //c = chigh;
         }
         return c;
 
+    }
+    public Color getGainLossColor(double MIN, double MAX, double score, Color chigh, Color clow, Color cmid, double middle) {
+
+
+        if (cmid == null) {
+            cmid = Color.darkGray;
+        }
+        if (chigh == null) {
+            chigh = cmid;
+        }
+        if (clow == null) {
+            clow = cmid;
+        }
+      
+        if (middle == Integer.MIN_VALUE) {
+            middle = (MAX - MIN) / 2;
+        }
+    
+        if (Math.abs(score - middle) < 0.0000001) {
+            return cmid;
+        }
+        if (score > middle) {
+            return chigh;
+        }
+        else return clow;
+      
     }
 
     /**
@@ -120,9 +147,9 @@ public abstract class XYPlotRenderer extends DataRenderer {
     // XXX was synchronized
     public synchronized void renderScores(Track track, List<LocusScore> locusScores, RenderContext context, Rectangle arect) {
         try {
-          //  log.info("renderScores: "+locusScores.size()+", scale="+context.getScale()+",chr="+context.getChr()+", origin="+context.getOrigin());
-            boolean show = locusScores.size()<200;
-                   
+            //  log.info("renderScores: "+locusScores.size()+", scale="+context.getScale()+",chr="+context.getChr()+", origin="+context.getOrigin());
+            boolean show = locusScores.size() < 200;
+
             boolean showMissingData = PreferenceManager.getInstance().getAsBoolean(PreferenceManager.SHOW_MISSING_DATA_KEY);
 
             Graphics2D noDataGraphics = context.getGraphic2DForColor(UIConstants.NO_DATA_COLOR);
@@ -131,24 +158,34 @@ public abstract class XYPlotRenderer extends DataRenderer {
             Rectangle adjustedRect = calculateDrawingRect(arect);
             // for debugging
             Graphics2D g = context.getGraphics();
-           // g.setColor(Color.blue);
-           // g.drawRect(arect.x, arect.y, arect.width, arect.height);
-          //  g.setColor(Color.green);
-          //  g.fillRect(adjustedRect.x, adjustedRect.y, adjustedRect.width, adjustedRect.height);
-                    
+            // g.setColor(Color.blue);
+            // g.drawRect(arect.x, arect.y, arect.width, arect.height);
+            //  g.setColor(Color.green);
+            //  g.fillRect(adjustedRect.x, adjustedRect.y, adjustedRect.width, adjustedRect.height);
+
             double origin = context.getOrigin();
             double locScale = context.getScale();
 
             Color posColor = track.getColor();
             Color negColor = track.getAltColor();
             Color midColor = track.getMidColor();
-            //p(track.getName()+": high color: "+posColor+", midColor: "+midColor+", low color="+negColor);
+          //  p(track.getName()+": high color: "+posColor+", midColor: "+midColor+", low color="+negColor);
             // Get the Y axis definition, consisting of minimum, maximum, and base value.  Often
             // the base value is == min value which is == 0.
 
             DataRange dataRange = track.getDataRange();
             float maxValue = dataRange.getMaximum();
-            float cutOff = (float) track.getCutoffScore();
+
+            float cutOff = 0;
+            if (track instanceof CustomCnvDataSourceTrack) {
+                // CHANGE METHOD GETCUTOFF SCORE TO INCLUDE POSITION!                    
+                cutOff = (float) ((CustomCnvDataSourceTrack) track).getExpectedValue(context.getChr());
+              //  p("XYPlotRenderer: Got CustomCnvDataSourceTrack: cutoff at " + context.getChr() + " is " + cutOff);
+            } else {
+                cutOff = (float) track.getCutoffScore();
+              //  p("XYPlotRenderer: NOT a CustomCnvDataSourceTrack track: " + track.getClass().getName());
+            }
+
             float baseValue = 0;
 
 
@@ -157,7 +194,7 @@ public abstract class XYPlotRenderer extends DataRenderer {
             }
             float minValue = dataRange.getMinimum();
 
-          //  p(track.getName() + ": high color: " + posColor + ", midColor: " + midColor + ", low color=" + negColor + ", min=" + minValue + ", max=" + maxValue);
+            //  p(track.getName() + ": high color: " + posColor + ", midColor: " + midColor + ", low color=" + negColor + ", min=" + minValue + ", max=" + maxValue);
             boolean isLog = dataRange.isLog();
 
             if (isLog) {
@@ -191,32 +228,37 @@ public abstract class XYPlotRenderer extends DataRenderer {
 
             int lastPx = 0;
             boolean first = true;
-           
+
             for (LocusScore score : locusScores) {
-                 show = false;// score instanceof ReferenceSegment;
-                
-                
+                show = false;// score instanceof ReferenceSegment;
+
+
                 first = false;
                 // Note -- don't cast these to an int until the range is checked.
                 // could get an overflow.
-                
+
                 double pX = ((score.getStart() - origin) / locScale);
                 double pEnd = ((score.getEnd() - origin) / locScale);
-                
-                if (show) p("Maybe Drawing score: "+score.getStart()+"-"+score.getEnd()+", x1, x2="+pX+"-"+pEnd);
+
+                if (show) {
+                    p("Maybe Drawing score: " + score.getStart() + "-" + score.getEnd() + ", x1, x2=" + pX + "-" + pEnd);
+                }
                 if (pX < 0 && pEnd < 0) {
-                    if (show) p("start/end < 0");
+                    if (show) {
+                        p("start/end < 0");
+                    }
+                    continue;
+                } else if (pX > adjustedRect.getMaxX() && pEnd > adjustedRect.getMaxX()) {
+                    if (show) {
+                        p("start/end too large: max is " + adjustedRect.getMaxX());
+                    }
                     continue;
                 }
-                else if (pX > adjustedRect.getMaxX() && pEnd  > adjustedRect.getMaxX()) {
-                    if (show) p("start/end too large: max is "+adjustedRect.getMaxX());
-                    continue;
-                }                
                 double dx = Math.ceil((Math.max(1, score.getEnd() - score.getStart())) / locScale) + 1;
 
-               
-              //  dx = Math.min(dx, adjustedRect.getWidth());
-               // dx = Math.max(dx, 0);
+
+                //  dx = Math.min(dx, adjustedRect.getWidth());
+                // dx = Math.max(dx, 0);
                 if ((pX + dx < 0)) {
                     p("continue 1");
                     continue;
@@ -231,18 +273,21 @@ public abstract class XYPlotRenderer extends DataRenderer {
                     continue;
                 }
 
+
                 if (pX < adjustedRect.getMinX()) {
-                    double d = adjustedRect.getMinX()-pX;
+                    double d = adjustedRect.getMinX() - pX;
                     dx = dx - d;
                     pX = Math.max(pX, adjustedRect.getMinX());
                 }
-                
-                
-                  dx = Math.min(dx, adjustedRect.getWidth()-pX);
+
+
+                dx = Math.min(dx, adjustedRect.getWidth() - pX);
                 if (!Float.isNaN(dataY)) {
-                    
+
                     int pY = getY(isLog, dataY, baseValue, baseY, yScaleFactor, adjustedRect);
-                    if (show) p("pX="+pX+", dx="+dx+", py="+pY+", rect y="+adjustedRect.getY()+"-"+adjustedRect.getMaxY());
+                    if (show) {
+                        p("pX=" + pX + ", dx=" + dx + ", py=" + pY + ", rect y=" + adjustedRect.getY() + "-" + adjustedRect.getMaxY());
+                    }
 //                    if (msgs < 10 && baseValue != 0) {
 //                        Logger.getLogger("XY: base=" + baseValue + ", data=" + dataY);
 //                        msgs++;
@@ -256,23 +301,36 @@ public abstract class XYPlotRenderer extends DataRenderer {
                     } else if (score instanceof ReferenceSegment) {
                         if (track.getWindowFunction() != null && track.getWindowFunction() == WindowFunction.noRefLine) {
                             draw = false;
-                            if (show) p("orange line toggled off");
+                            if (show) {
+                                p("orange line toggled off");
+                            }
                         } else {
-                            if (show) p("Got ref segment");                    
+                            if (show) {
+                                p("Got ref segment");
+                            }
                             color = Color.orange;
-                           // if ()
+                            // if ()
                         }
                     } else {
-                        color = getGradientColor(minValue, maxValue, dataY, posColor, negColor, midColor, cutOff);
+                        if (track instanceof CustomCnvDataSourceTrack) {
+                            color = getGainLossColor(minValue, maxValue, dataY, posColor, negColor, midColor, cutOff);
+                            //p("Got color "+color+" for "+dataY+" and mid "+cutOff+", chigh="+posColor+", clow="+negColor);
+                        }
+                        else {
+                            color = getGradientColor(minValue, maxValue, dataY, posColor, negColor, midColor, cutOff);
+                        }
                     }
                     if (draw) {
-                        if (show) p("really drawing data point from pX="+pX+", dx="+dx);
+                        if (show) {
+                            p("really drawing data point from pX=" + pX + ", dx=" + dx);
+                        }
                         drawDataPoint(color, (int) dx, (int) pX, baseY, pY, context);
                     }
 
+                } else if (show) {
+                    p("Y is nan");
                 }
-                else if (show) p("Y is nan");
-                
+
                 if (showMissingData) {
                     if (msgs < 100) {
                         Logger.getLogger("XYPLot").info("Drawing missing data");
@@ -543,7 +601,7 @@ public abstract class XYPlotRenderer extends DataRenderer {
         if (pY < adjustedRect.y) {
             pY = adjustedRect.y;
         } else if (pY >= adjustedRect.y + adjustedRect.height) {
-            pY = adjustedRect.y + adjustedRect.height-1;
+            pY = adjustedRect.y + adjustedRect.height - 1;
         }
         return pY;
     }

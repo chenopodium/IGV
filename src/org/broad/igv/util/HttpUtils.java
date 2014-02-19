@@ -698,8 +698,6 @@ public class HttpUtils {
                     HttpResponseException exc = new HttpResponseException(code);
                     if (code == 403 || code == 401 || code == 500) {
                         log.info(" ======== DEBUGGING ERROR " + code + " (401 means wrong pw), url: " + url);
-
-                        log.info("Trying to get error stream");
                         String details = readErrorStream(conn);
                         if (details != null) {
                             log.info("error stream: " + details);

@@ -29,6 +29,7 @@ public class AffectiveAnnotationTrack extends AbstractTrack {
     private int topMargin = 10;
 
     ColorPalette pallete;
+    
     PaletteColorTable colorTable;
 
     public AffectiveAnnotationTrack(String id, String name, Map<String, java.util.List<Annotation>> annotationMap) {

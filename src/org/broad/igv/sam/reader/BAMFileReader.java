@@ -22,6 +22,7 @@
  */
 package org.broad.igv.sam.reader;
 
+import com.iontorrent.utils.ErrorHandler;
 import net.sf.samtools.*;
 import net.sf.samtools.SAMFileReader.ValidationStringency;
 import net.sf.samtools.util.CloseableIterator;
@@ -49,14 +50,19 @@ public class BAMFileReader implements AlignmentReader {
         try {
             File indexFile = findIndexFile(bamFile);
             reader = new SAMFileReader(bamFile, indexFile);
+            p("Got reader: "+reader+" for file "+bamFile);
             reader.setValidationStringency(ValidationStringency.SILENT);
             loadHeader();
         } catch (Exception e) {
+            log.error("Error loading SAM header: " + ErrorHandler.getString(e));
             MessageUtils.showMessage("Error loading SAM header: " + e.getMessage());
-            e.printStackTrace();
+         
         }
     }
-
+    private void p(String msg) {
+        log.info(msg);
+        System.out.println("BAMFileReader: "+msg);
+    }
     private SAMFileHeader getHeader() {
         if (header == null) {
             loadHeader();
@@ -85,6 +91,9 @@ public class BAMFileReader implements AlignmentReader {
     }
 
     private void loadHeader() {
+        if (reader == null) {
+            log.error("Got no reader!");
+        }
         header = reader.getFileHeader();
     }
 
@@ -174,6 +183,4 @@ public class BAMFileReader implements AlignmentReader {
 
         return null;
     }
-
-
 }

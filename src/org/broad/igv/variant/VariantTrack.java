@@ -39,6 +39,7 @@ import java.text.DecimalFormat;
 import java.util.*;
 import java.util.List;
 import org.broad.igv.Globals;
+import org.broad.igv.PreferenceManager;
 
 /**
  * @author Jesse Whitworth, Jim Robinson, Fabien Campagne
@@ -960,14 +961,46 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         }
 
         double p = variant.getPloidy();
+        
         if (p >= 0) {
             String pl = "Ploidy: " + variant.getPloidy();
-            if (p > 2) {
+            // USE EXPECTED PLOIDY
+            
+            int expected = variant.getExpected();
+            if (expected <=0) {
+                expected = 2;
+                if (this.getSample() != null) {
+                    String key = variant.getChr()+"_CUTOFF_"+this.getSample();
+                    key = key.toUpperCase();
+                    // CHR1_CUTOFF_SELF=4
+                    // CHR2_CUTOFF_SELF=3
+                    // CHR23_CUTOFF_SELF=4
+                    String val = PreferenceManager.getInstance().getTemp(key);
+                    if (val != null) {
+                        try {
+                            expected = Integer.parseInt(val);
+                        }
+                        catch (Exception e) {
+                            p("Could not parse expected from "+val);
+                        }
+                    }
+                    else p("Found no value for expected value for key  "+key);
+                    p("Expected value for "+key+":"+expected);
+                }
+                else p("Got no expected value (using 2), and have no sample info for track "+this.getName());
+                
+                variant.setExpected(expected);
+            }
+            String ex = ""+expected;
+            if (p > expected) {
                 pl = "<font color='000099'>" + pl + "</font>";
-            } else if (p <2) {
+                ex = "<b>"+ex+"</b>";
+            } else if (p <expected) {
                 pl = "<font color='990000'>" + pl + "</font>";
+                ex = "<b>"+ex+"</b>";
             }
             toolTip.append("<br><b>" + pl + "</b>");
+            toolTip.append("<br>Expected ploidy: " + ex + "");
         } else {
             // toolTip.append("<br>Ploidy: unknown");
         }

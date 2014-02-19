@@ -69,7 +69,7 @@ public class IonTorrentSessionReader extends IGVSessionReader {
             else log.warn("Got no file or path for resourcelocator: "+file);
         }
         if (lsignature > 0 && lsignature != hash || invalidFiles.size()>0) {
-            if (DEBUG) log.warn("Signature " + signature + "/" + lsignature + " is not equals to hash code " + hash+", or invalid files");
+            if (DEBUG) log.info("Signature " + signature + "/" + lsignature + " is not equals to hash code " + hash+", or invalid files");
 
             StringBuilder message = new StringBuilder();
             message.append("<html>Some resources could not be accessed due to security concerns. ");
@@ -92,9 +92,9 @@ public class IonTorrentSessionReader extends IGVSessionReader {
             message.append("<br>It looks like the session.xml file has been tampered with");
             message.append("</html>");
 
-            MessageUtils.showMessage(message.toString());
-            // XXX TODO to activate, uncommoent
-            // return message.toString();
+            //MessageUtils.showMessage(message.toString());
+            // XXX TODO to activate, uncommoent below
+            //return message.toString();
             return null;
         } else {
             return null;

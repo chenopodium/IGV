@@ -73,6 +73,8 @@ public class ResourceLocator {
 
     private String sampleId;
 
+    private String gender;
+    
     String username;
     String password;
 
@@ -293,6 +295,20 @@ public class ResourceLocator {
     }
 
     /**
+     * @return the gender
+     */
+    public String getGender() {
+        return gender;
+    }
+
+    /**
+     * @param gender the gender to set
+     */
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+
+    /**
      * FOR LOAD FROM SERVER (LEGACY)
      */
     public static enum AttributeType {
@@ -304,6 +320,7 @@ public class ResourceLocator {
          INFOLINK("infolink"),
         ID("id"),
         SAMPLE_ID("sampleId"),
+        GENDER("gender"),
         NAME("name"),
         URL("url"),
         RESOURCE_TYPE("resourceType"),

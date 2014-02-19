@@ -36,6 +36,8 @@ public class VCFVariant implements Variant {
     private boolean isIndel;
 
     String chr;
+    // the expected ploidy value for a particular chromosome
+    private int expected;
     private double[] alleleFreqs;
     private double methylationRate = Double.NaN;  // <= signals unknown / not applicable
     private double coveredSampleFraction = Double.NaN;
@@ -108,6 +110,7 @@ public class VCFVariant implements Variant {
         return p;
     }
     
+    @Override
     public double getScore() {
         return getPloidy();
     }
@@ -319,6 +322,20 @@ public class VCFVariant implements Variant {
 
     public VariantContext getVariantContext() {
         return variantContext;
+    }
+
+    /**
+     * @return the expected
+     */
+    public int getExpected() {
+        return expected;
+    }
+
+    /**
+     * @param expected the expected to set
+     */
+    public void setExpected(int expected) {
+        this.expected = expected;
     }
 
     /**

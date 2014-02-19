@@ -141,4 +141,8 @@ public interface Variant extends Feature {
     double getCoveredSampleFraction();
 
     String getPositionString();
+
+    public int getExpected();
+
+    public void setExpected(int expected);
 }
