@@ -215,6 +215,12 @@ public class GuiProperties {
 		// p("Score for " + name + ", " + filetype + "=" + res);
 		return res;
 	}
+        
+        public String getKaryoFilterScoreName(String sample, String name, String filetype) {
+		String res = getValueFor(sample, name, filetype, "FILTER_KARYO_SCORE");
+		// p("Score for " + name + ", " + filetype + "=" + res);
+		return res;
+	}
 
 	public boolean setKaryoCutoffScore(String sample, String name,
 			String filetype, double d) {

@@ -92,12 +92,16 @@ public interface Track extends Persistable {
 
 
     void setName(String name);
+    
+    void setDescription(String name);
 
     String getCustomProperties();
     
     String getLinkedTrack();
     
     String getName();
+    
+    String getDescription();
 
     String getNameValueString(int y);
 

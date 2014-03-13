@@ -25,7 +25,7 @@ import org.broad.tribble.Feature;
  * @author Chantal
  */
 public class RenderType {
- public boolean debug = false;
+ public boolean debug = true;
     
     /** Count instances so we know if we need to use different colors :-) */
    // private static HashMap<Class, Integer> instances = new HashMap<Class, Integer>();
@@ -156,7 +156,12 @@ public class RenderType {
     }
      public String getKaryoScoreName(){
         String rel= gui.getKaryoScoreName(getGuiSample(), getGuiKey(), ktrack.getFileExt());
-        if (rel == null) rel = "SCORE";
+        if (rel == null) rel = "PLOIDY";
+        return rel;
+    }
+      public String getKaryoFilterScoreName(){
+        String rel= gui.getKaryoFilterScoreName(getGuiSample(), getGuiKey(), ktrack.getFileExt());
+        if (rel == null) rel = "PRECISION";
         return rel;
     }
       public String getKaryoScoreLabel(){

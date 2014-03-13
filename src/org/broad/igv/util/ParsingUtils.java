@@ -250,7 +250,7 @@ public class ParsingUtils {
     public static boolean parseTrackLine(String nextLine, TrackProperties trackProperties)
             throws NumberFormatException {
 
-    //    log.info("================= parseTrackLine: Parsing trackline: "+nextLine);
+        log.info("================= parseTrackLine: Parsing trackline: "+nextLine);
         boolean foundProperties = false;
         try {
             // track type=wiggle_0 name="CSF +" description="CSF +" visibility=full autoScale=off viewLimits=-50:50

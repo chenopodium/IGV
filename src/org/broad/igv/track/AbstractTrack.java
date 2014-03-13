@@ -67,6 +67,7 @@ public abstract class AbstractTrack implements Track {
     }
     private String id;
     private String name;
+    private String description;
     private String url;
     private boolean itemRGB = true;
     private boolean useScore;
@@ -214,12 +215,14 @@ public abstract class AbstractTrack implements Track {
 
         if (sample != null) {
 
-            String realname = this.prefMgr.getTemp(sample + "_name");
+            String desc = this.getDescription();
+            
+            if (desc == null) desc = this.prefMgr.getTemp(sample + "_name");
             //  if (realname != null) log.info("getDisplayName: name is "+disp+", sample="+sample+", getting "+sample+"_name -> realname="+realname);
             // TESTING
             // if (realname == null) realname="testsample";
-            if (realname != null && realname.length() > 0 && !realname.equalsIgnoreCase("sample")) {
-                disp += "<br> (" + realname + ")";
+            if (desc != null && desc.length() > 0 && !desc.equalsIgnoreCase("sample")) {
+                disp += "<br> (" + desc + ")";
             }
 
         }
@@ -658,6 +661,10 @@ public abstract class AbstractTrack implements Track {
         if (properties.getTrackorder() != 0) {
             //  log.info("setProperties: Got getTrackorder "+properties.getTrackorder()+" for "+this.getName());
             this.setTrackorder(properties.getTrackorder());
+        }
+         if (properties.getDescription()!= null) {
+             log.info("setProperties: Got getTrackorder desc "+properties.getDescription()+" for "+this.getName());
+            this.setDescription(properties.getDescription());
         }
         // Color scale properties
         if (!properties.isAutoScale()) {
@@ -1399,5 +1406,14 @@ public abstract class AbstractTrack implements Track {
      */
     public void setGender(String gender) {
         this.gender = gender;
+    }
+
+    @Override
+    public String getDescription() {
+        return this.description;
+    }
+    @Override
+    public void setDescription(String description) {
+        this.description = description;
     }
 }

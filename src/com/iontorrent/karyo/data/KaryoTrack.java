@@ -197,7 +197,7 @@ public class KaryoTrack {
                         r.min = Double.NaN;;
                         r.max = fvalue;
                     }
-                    String scorename = this.renderType.getKaryoScoreName();
+                    String scorename = this.renderType.getKaryoFilterScoreName();
                     sfil.setScorename(scorename);
                     p("===================== Got a LocusScoreFilter:" + sfil);
                 } else if (fil instanceof VariantAttributeFilter) {
