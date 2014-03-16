@@ -34,6 +34,11 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import org.broad.igv.Globals;
+import org.broad.igv.feature.Chromosome;
+import org.broad.igv.feature.genome.Genome;
+import org.broad.igv.feature.genome.GenomeImpl;
+import org.broad.igv.feature.genome.GenomeManager;
 import org.broad.igv.track.AbstractTrack;
 import org.broad.igv.track.DataTrack;
 
@@ -201,13 +206,13 @@ public class DataPanelPainter {
         int trackY = 0;
         boolean anyScaleDrawn = false;
 
-       // log.info("======================== DataPanelPainter. paintFrame");
+        log.info("======================== DataPanelPainter. paintFrame");
 
         for (Iterator<TrackGroup> groupIter = groups.iterator(); groupIter.hasNext();) {
             TrackGroup group = groupIter.next();
 
             if (visibleRect != null && (trackY > visibleRect.y + visibleRect.height)) {
-           //     log.info("NOT darwing troup "+group.getName()+", y="+trackY+" > visible rect height "+(visibleRect.y + visibleRect.height));
+                //     log.info("NOT darwing troup "+group.getName()+", y="+trackY+" > visible rect height "+(visibleRect.y + visibleRect.height));
                 break;
             }
             if (group.isVisible()) {
@@ -217,14 +222,14 @@ public class DataPanelPainter {
                     greyGraphics.fillRect(0, trackY + 1, width, UIConstants.groupGap - 1);
                     trackY += UIConstants.groupGap;
                 }
-             //   log.info("=== Drawing group " + group.getName());
+                //   log.info("=== Drawing group " + group.getName());
                 // Draw a line just above group.
                 if (group.isDrawBorder()) {
-                  //  log.info("Drawing border");
+                    //  log.info("Drawing border");
                     Graphics2D graphics2D = context.getGraphic2DForColor(Color.black);
                     graphics2D.drawLine(0, trackY - 1, width, trackY - 1);
                 }
-              //  else log.info("NOT drawing border");
+                //  else log.info("NOT drawing border");
 
                 List<Track> trackList = group.getTracks();
                 HashMap<Track, Integer> trackymap = new HashMap<Track, Integer>();
@@ -236,21 +241,21 @@ public class DataPanelPainter {
                             continue;
                         }
                         int trackHeight = track.getHeight();
-                       // log.info(track.getDisplayName()+", h="+trackHeight);
+                        // log.info(track.getDisplayName()+", h="+trackHeight);
                         if (visibleRect != null) {
                             if (trackY > visibleRect.y + visibleRect.height) {
                                 break;
                             } else if (trackY + trackHeight < visibleRect.y) {
                                 if (track.isVisible()) {
                                     trackY += trackHeight;
-                             //       log.info("          visible, h="+trackHeight+", tracky is now = "+trackY);
+                                    //       log.info("          visible, h="+trackHeight+", tracky is now = "+trackY);
                                 }
-                          //      log.info("         "+(trackY + trackHeight)+"<"+visibleRect.y+" => not drawing, continue");
+                                //      log.info("         "+(trackY + trackHeight)+"<"+visibleRect.y+" => not drawing, continue");
                                 continue;
                             }
-                            
-                            
-                          //  log.info("     a) " + track.getDisplayName() + " tracky=" + trackY);
+
+
+                            //  log.info("     a) " + track.getDisplayName() + " tracky=" + trackY);
                             if (track.isVisible()) {
                                 visibleTracks.add(track);
                                 trackymap.put(track, trackY);
@@ -261,7 +266,7 @@ public class DataPanelPainter {
                             }
                             trackY += trackHeight;
                         }
-                       // else log.info("Got no visible rect");
+                        // else log.info("Got no visible rect");
                     }
                     linkTracks(visibleTracks, context);
                     for (Track track : visibleTracks) {
@@ -269,8 +274,8 @@ public class DataPanelPainter {
                         int curY = trackymap.get(track);
 
                         Rectangle rect = new Rectangle(trackX, curY, width, trackHeight);
-                     //   log.info("     Drawing " + track.getDisplayName() + " tracky=" + curY +  "-" + rect.getMaxY()+", x="+trackX);
-                        
+                        //   log.info("     Drawing " + track.getDisplayName() + " tracky=" + curY +  "-" + rect.getMaxY()+", x="+trackX);
+
                         // DEBUGGING
 //                        Graphics2D g = context.getGraphics();
 //                        g.setColor(Color.yellow);
@@ -286,9 +291,9 @@ public class DataPanelPainter {
                             Rectangle scaleRect = new Rectangle(x, rect.y, rect.width, rect.height);
                             ((CoverageTrack) track).drawScale(context, scaleRect);
                             anyScaleDrawn = true;
-                          //  log.info("             drawing scales");
+                            //  log.info("             drawing scales");
                         }
-                    //    else log.info("             NOT drawing scales");
+                        //    else log.info("             NOT drawing scales");
                     }
                 }
 
@@ -299,12 +304,51 @@ public class DataPanelPainter {
                 }
             }
         }
+        ReferenceFrame frame = context.getReferenceFrame();
+        if (isWholeGenomeView(frame)) {
+            Color blueline = new Color(180, 180, 255, 150);
+            Graphics2D g = context.getGraphic2DForColor(blueline);
+            float dash1[] = {5.0f};
+            Stroke s = new BasicStroke(1.0f,
+                    BasicStroke.CAP_BUTT,
+                    BasicStroke.JOIN_MITER,
+                    10.0f, dash1, 0.0f);
+            g.setStroke(s);
+            g.drawLine(100, 0, 100, context.getPanel().getHeight());
+
+            Genome genome = GenomeManager.getInstance().getCurrentGenome();
+            List<String> chrNames = genome.getLongChromosomeNames();
+
+
+            int locationUnit = 1000;
+
+            int height = context.getPanel().getHeight();
+            long offset = 0;
+            for (String chrName : chrNames) {
+                Chromosome c = genome.getChromosome(chrName);
+                if (c == null) {
+                    continue;
+                }
+                int chrLength = c.getLength();
+
+                double scale = frame.getScale();
+                int gStart = genome.getGenomeCoordinate(chrName, 0);
+                int x = (int) (gStart / scale)+1;
+
+                g.drawLine(x, 2, x, height - 2);
+                offset += chrLength;
+            }
+        } 
         scalesDrawn |= anyScaleDrawn;
+    }
+
+    private boolean isWholeGenomeView(ReferenceFrame frame) {
+        return frame.getChrName().equals(Globals.CHR_ALL);
     }
 
     final private void draw(Track track, Rectangle rect, RenderContext context) {
 
-      //   Logger.getLogger("DataPanelPainter").info("========= draw " + track.getName());
+        //   Logger.getLogger("DataPanelPainter").info("========= draw " + track.getName());
         track.render(context, rect);
 
         // Get overlays

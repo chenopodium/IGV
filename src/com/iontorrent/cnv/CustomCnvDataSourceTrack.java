@@ -84,7 +84,7 @@ public class CustomCnvDataSourceTrack extends DataSourceTrack {
 
         if (this.getSample() != null) {
             String key = chr + "_CUTOFF_" + this.getSample();
-            p("Getting expected value ov cnv track for chr " + chr + "-  store in map!");
+            p(" getExpectedValue ===================  Getting expected value cnv track for chr " + chr + "-  store in map. KEY: "+key);
             key = key.toUpperCase();
             // CHR1_CUTOFF_SELF=4
             // CHR2_CUTOFF_SELF=3
@@ -94,14 +94,14 @@ public class CustomCnvDataSourceTrack extends DataSourceTrack {
                 try {
                     expected = Integer.parseInt(val);
                 } catch (Exception e) {
-                    p("Could not parse expected from " + val);
+                    p("getExpectedValue Could not parse expected from " + val);
                 }
             } else {
-                p("Found no value for expected value for key  " + key);
+                p("getExpectedValueFound no value for expected value for key  " + key);
             }
-            p("Expected value for " + key + ":" + expected);
+            p("getExpectedValue Expected value for " + key + ":" + expected);
         } else {
-            p("Got no expected value (using 2), and have no sample info for track " + this.getName());
+            p("getExpectedValue no Sample Info. Got no expected value (using 2), and have no sample info for track " + this.getName());
         }
         cutoffvalues.put(chr, expected);
         return expected;

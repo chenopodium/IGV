@@ -440,7 +440,7 @@ public class GuiChromosome extends GuiObject {
      * This method should be overwritten for any specific instance
      */
     public String toString(String nl) {
-        String res = "chr " + chromo.getName() + ", " + (int) chromo.getLength() / 1000000 + " MB " + nl + chromo.getBands().size() + "  bands";
+        String res = chromo.getName() + ", " + (int) chromo.getLength() / 1000000 + " MB " + nl + chromo.getBands().size() + "  bands";
         return res;
     }
 

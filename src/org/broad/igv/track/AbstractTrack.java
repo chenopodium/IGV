@@ -240,7 +240,7 @@ public abstract class AbstractTrack implements Track {
             }
             disp += " "+ g;
         }
-        
+        else log.info("Got no gender info for  "+this.getName());
         disp = disp.replace("_", " ");
         disp = disp.replace("-", " ");
         disp = firstUpper(disp);
@@ -1397,8 +1397,21 @@ public abstract class AbstractTrack implements Track {
      * @return the gender
      */
     public String getGender() {
-        if (this.resourceLocator != null) return resourceLocator.getGender();
-        else return gender;
+        if (gender != null) return gender;
+        if (this.resourceLocator != null) gender =  resourceLocator.getGender();
+        if (gender == null || gender.length()< 1) { //
+           // <argument>Self_gender=Male</argument>
+            if (this.getSample() != null) {
+                
+                String key = this.getSample().toUpperCase()+"_GENDER";
+                log.info("Getting sample gender info: "+key);
+                gender = PreferenceManager.getInstance().getTemp(key);
+            }
+            else log.info("Got no gender info and no sample");
+        }
+            
+        
+        return gender;
     }
 
     /**

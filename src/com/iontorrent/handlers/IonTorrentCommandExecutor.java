@@ -116,6 +116,7 @@ public class IonTorrentCommandExecutor implements CommandExecutorIF{
                         value += " " + param4;
                     }
                     if (key != null && value != null && key.length() > 0) {
+                        key = key.toUpperCase();
                         if (IGV.DEBUG) {
                             MessageUtils.showMessage("CommandExecutor: Setting " + key + "=" + value);
                         }
