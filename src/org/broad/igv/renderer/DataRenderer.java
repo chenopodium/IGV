@@ -51,7 +51,7 @@ public abstract class DataRenderer implements Renderer<LocusScore> {
 
     private static Logger log = Logger.getLogger(DataRenderer.class);
 
-    protected static final int AXIS_AREA_WIDTH = 60;
+    protected static final int AXIS_AREA_WIDTH = 25;
     protected static Color axisLineColor = new Color(255, 180, 180);
 
     /**
@@ -145,16 +145,18 @@ public abstract class DataRenderer implements Renderer<LocusScore> {
         PreferenceManager prefs = PreferenceManager.getInstance();
 
         // For now disable axes for all chromosome view
-        if (context.getChr().equals(Globals.CHR_ALL)) {
-            return;
-        }
+//        if (context.getChr().equals(Globals.CHR_ALL)) {
+//            return;
+//        }
         if (prefs.getAsBoolean(PreferenceManager.CHART_DRAW_Y_AXIS))  {
 
             Rectangle axisRect = new Rectangle(rect.x, rect.y + 1, AXIS_AREA_WIDTH, rect.height);
-            Graphics2D whiteGraphics = context.getGraphic2DForColor(Color.white);
+            Graphics2D whiteGraphics = context.getGraphic2DForColor(new Color(255,255,255,165));
 
             whiteGraphics.fillRect(axisRect.x, axisRect.y, axisRect.width, axisRect.height);
 
+            whiteGraphics = context.getGraphic2DForColor(new Color(255,255,255));
+            whiteGraphics.fillRect(axisRect.x, axisRect.y, 14, axisRect.height);
             Graphics2D axisGraphics = context.getGraphic2DForColor(axisLineColor);
 
             axisGraphics.drawLine(rect.x + AXIS_AREA_WIDTH, rect.y, rect.x + AXIS_AREA_WIDTH,

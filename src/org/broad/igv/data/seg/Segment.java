@@ -18,6 +18,7 @@
 
 package org.broad.igv.data.seg;
 
+import java.text.DecimalFormat;
 import java.util.HashMap;
 import org.broad.igv.feature.LocusScore;
 import org.broad.igv.track.WindowFunction;
@@ -36,6 +37,7 @@ public class Segment implements LocusScore {
     protected String chr;
     protected String description;
     protected HashMap<String,String> atts;
+    protected static DecimalFormat format = new DecimalFormat("#.##");
 
     public Segment(int start, int end, float score) {
         this.start = start;
@@ -112,7 +114,7 @@ public class Segment implements LocusScore {
 
     @Override
     public String getValueString(double position, WindowFunction ignored) {
-        String valueString = "Value at "+chr+":"+start+"-"+end+": <b>" + getScore()+"</b>";
+        String valueString = "Value @ "+chr+":"+start+"-"+end+": <b>" + format.format(getScore())+"</b>";
         if (description != null) {
             valueString += "<br>"+description;
         }

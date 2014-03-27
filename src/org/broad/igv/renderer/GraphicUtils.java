@@ -26,6 +26,7 @@ import org.broad.igv.util.StringUtils;
 import java.awt.*;
 import java.awt.geom.Rectangle2D;
 import java.util.logging.Logger;
+import javax.swing.JLabel;
 
 /**
  * @author jrobinso
@@ -73,10 +74,19 @@ public class GraphicUtils {
     public static void drawCenteredText(String text, int x, int y, int w, int h, Graphics g) {
         FontMetrics fontMetrics = g.getFontMetrics();
 
-        Rectangle2D textBounds = fontMetrics.getStringBounds(text, g);
+        String t = text.replace("<b>", "");
+        t = t.replace("</b>", "");
+        t = t.replace("<font", "");
+        t = t.replace("</font>", "");
+        Rectangle2D textBounds = fontMetrics.getStringBounds(t, g);
         int xOffset = (int) ((w - textBounds.getWidth()) / 2);
         int yOffset = (int) ((h - textBounds.getHeight()) / 2);
-        g.drawString(text, x + xOffset, y + h - yOffset - (int) (textBounds.getHeight() / 4));
+        int ypos = y + h - yOffset - (int) (textBounds.getHeight() / 4);
+        if (text.indexOf("<") > 0) {
+            paintHtmlString(g, text, x + xOffset, ypos);
+        } else {
+            g.drawString(text, x + xOffset, ypos);
+        }
 
     }
 
@@ -98,7 +108,11 @@ public class GraphicUtils {
             boolean rightJustify,
             boolean clear) {
         FontMetrics fontMetrics = g2D.getFontMetrics();
-        Rectangle2D textBounds = fontMetrics.getStringBounds(text, g2D);
+        String t = text.replace("<b>", "");
+        t = t.replace("</b>", "");
+        t = t.replace("<font", "");
+        t = t.replace("</font>", "");
+        Rectangle2D textBounds = fontMetrics.getStringBounds(t, g2D);
 
         int yOffset = (int) ((rect.getHeight() - textBounds.getHeight()) / 2);
         int yPos = (rect.y + rect.height) - yOffset - (int) (textBounds.getHeight() / 4);
@@ -117,8 +131,62 @@ public class GraphicUtils {
         if (rightJustify) {
             drawRightJustifiedText(text, rect.x + rect.width - margin, yPos, g2D);
         } else {
-            g2D.drawString(text, margin, yPos);
+            if (text.indexOf("<") > 0) {
+                paintHtmlString(g2D, text, margin, yPos);
+            } else {
+                g2D.drawString(text, margin, yPos);
+            }
         }
+    }
+
+    private static void p(String s) {
+        Logger.getLogger("GraphicsUtils").info(s);
+
+    }
+
+    private static void paintHtmlString(Graphics gg, String html, int x, int y) {
+        Graphics2D g = (Graphics2D) gg;
+        p("paintHtmlString " + html + "  at " + x + "/" + y);
+
+        FontMetrics fontMetrics = g.getFontMetrics();
+
+
+        String t = html;
+        int b = html.indexOf("<b>");
+
+        while (b > 0) {
+            int e = html.indexOf("</b>", b + 1);
+            if (e > b) {
+                t = t.substring(0, b);
+                Rectangle2D tb = fontMetrics.getStringBounds(t, g);
+                g.drawString(t, x, y);
+                x = (int) (x + tb.getWidth());
+
+                Font f = g.getFont();
+                Stroke oldstroke = g.getStroke();
+                Color c = g.getColor();
+                g.setFont(new Font("SansSerif Bold", Font.BOLD, f.getSize() + 2));
+                g.setStroke(new BasicStroke(3));
+                g.setColor(Color.black);
+                g.setRenderingHint(
+                        RenderingHints.KEY_TEXT_ANTIALIASING,
+                        RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                String bold = html.substring(b + 3, e);
+                p("bold part: " + bold + ", lenght: " + bold.length());
+                tb = fontMetrics.getStringBounds(bold, g);
+                g.drawString(bold, x, y);
+                x = (int) (x + tb.getWidth());
+
+                g.setStroke(oldstroke);
+                g.setFont(f);
+                g.setColor(c);
+                html = html.substring(e + 4);
+                b = html.indexOf("<b>");
+            }
+
+        }
+        p("Drawing remainder: " + html);
+        g.drawString(html, x, y);
     }
 
     /**
@@ -133,9 +201,17 @@ public class GraphicUtils {
             Graphics g) {
         FontMetrics fontMetrics = g.getFontMetrics();
 
-        Rectangle2D textBounds = fontMetrics.getStringBounds(text, g);
+        String t = text.replace("<b>", "");
+        t = t.replace("</b>", "");
+        t = t.replace("<font", "");
+        t = t.replace("</font>", "");
+        Rectangle2D textBounds = fontMetrics.getStringBounds(t, g);
         int x = right - (int) textBounds.getWidth();
-        g.drawString(text, x, y);
+        if (text.indexOf("<") > 0) {
+            paintHtmlString(g, text, x, y);
+        } else {
+            g.drawString(text, x, y);
+        }
 
     }
 
@@ -185,24 +261,24 @@ public class GraphicUtils {
 //            }
             int nlpos = 0;
             if (nl) {
-             //   p("drawWrappedText: found nl in " + string + ". nr=" + nStrings + ",  h=" + rect.getHeight() + ", w=" + rect.getWidth() + ", perline:" + charsPerLine);
+                //   p("drawWrappedText: found nl in " + string + ". nr=" + nStrings + ",  h=" + rect.getHeight() + ", w=" + rect.getWidth() + ", perline:" + charsPerLine);
                 int nlpos1 = string.indexOf("<br>");
                 int nlpos2 = string.indexOf("\n");
                 string = string.replace("<br>", "");
                 string = string.replace("\n", "");
                 nlpos = Math.max(nlpos1, nlpos2);
                 nStrings++;
-             //   p("nStrings = " + nStrings + ", textHeight=" + textHeight + ", rect.height=" + rect.height + ", nlpos=" + nlpos);
+                //   p("nStrings = " + nStrings + ", textHeight=" + textHeight + ", rect.height=" + rect.height + ", nlpos=" + nlpos);
             }
             if (nStrings * textHeight > rect.height) {
                 if (nlpos > 0) {
                     //cutting off after nl
-                    
-                    string = string.substring(0, nlpos );
-                 //   p("Cutting off part after nlpos "+nlpos+": drawing just "+string);
+
+                    string = string.substring(0, nlpos);
+                    //   p("Cutting off part after nlpos "+nlpos+": drawing just "+string);
                     GraphicUtils.drawVerticallyCenteredText(string, margin, rect, g2D, false, clear);
                 } else {
-               //     p("drawWrappedText: Shortening string " + string + ", nlines=" + nStrings + ", rect.height=" + rect.height);
+                    //     p("drawWrappedText: Shortening string " + string + ", nlines=" + nStrings + ", rect.height=" + rect.height);
                     // Shorten string to fit in space.  Try a max of 5 times,  progressivley shortening string
                     int nChars = (rect.width - 2 * margin) / charWidth + 1;
                     int nTries = 0;
@@ -218,7 +294,7 @@ public class GraphicUtils {
                     GraphicUtils.drawVerticallyCenteredText(shortString, margin, rect, g2D, false, clear);
                 }
             } else {
-            //    p("--drawWrappedText: computing breakpointfor "+string+": nStrings=" + nStrings + ", totlen=" + string.length()+", textheight="+textHeight+", charpserline="+charsPerLine);
+                //    p("--drawWrappedText: computing breakpointfor "+string+": nStrings=" + nStrings + ", totlen=" + string.length()+", textheight="+textHeight+", charpserline="+charsPerLine);
                 int breakPoint = 0;
                 Rectangle tmp = new Rectangle(rect);
                 tmp.y -= ((nStrings - 1) * textHeight) / 2;
@@ -230,10 +306,10 @@ public class GraphicUtils {
                         end = nlpos;
                     }
                     String sub = string.substring(breakPoint, end);
-               //     p("        got substring " + breakPoint + "-" + end + ":" + string.substring(breakPoint, end));
+                    //     p("        got substring " + breakPoint + "-" + end + ":" + string.substring(breakPoint, end));
                     double w = fontMetrics.getStringBounds(sub, g2D).getWidth() + 2 * margin;
                     if (w > rect.width) {
-               //         p("          substring too long - shortening maybe");
+                        //         p("          substring too long - shortening maybe");
                         int nChars = (rect.width - 2 * margin) / charWidth + 1;
                         int nTries = 0;
                         while (w > rect.width && nTries <= 5 && nChars > 1) {
@@ -244,19 +320,19 @@ public class GraphicUtils {
                         }
                         GraphicUtils.drawVerticallyCenteredText(sub, margin, tmp, g2D, false, clear);
                     } else {
-                      //  p("          substring NOT too long");
+                        //  p("          substring NOT too long");
                         GraphicUtils.drawVerticallyCenteredText(sub, margin, tmp, g2D, false);
                     }
                     breakPoint = end;
 
-             //       p("        drawWrappedText: new breakopint=" + breakPoint);
+                    //       p("        drawWrappedText: new breakopint=" + breakPoint);
                     tmp.y += textHeight;
                 }
             }
         }
     }
 
-    private static void p(String s) {
+    private static void sp(String s) {
         Logger.getLogger("GraphicUtils").info(s);
     }
 

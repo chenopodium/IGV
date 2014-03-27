@@ -108,6 +108,7 @@ public abstract class XYPlotRenderer extends DataRenderer {
         return c;
 
     }
+
     public Color getGainLossColor(double MIN, double MAX, double score, Color chigh, Color clow, Color cmid, double middle) {
 
 
@@ -120,19 +121,20 @@ public abstract class XYPlotRenderer extends DataRenderer {
         if (clow == null) {
             clow = cmid;
         }
-      
+
         if (middle == Integer.MIN_VALUE) {
             middle = (MAX - MIN) / 2;
         }
-    
+
         if (Math.abs(score - middle) < 0.0000001) {
             return cmid;
         }
         if (score > middle) {
             return chigh;
+        } else {
+            return clow;
         }
-        else return clow;
-      
+
     }
 
     /**
@@ -169,7 +171,7 @@ public abstract class XYPlotRenderer extends DataRenderer {
             Color posColor = track.getColor();
             Color negColor = track.getAltColor();
             Color midColor = track.getMidColor();
-          //  p(track.getName()+": high color: "+posColor+", midColor: "+midColor+", low color="+negColor);
+            //  p(track.getName()+": high color: "+posColor+", midColor: "+midColor+", low color="+negColor);
             // Get the Y axis definition, consisting of minimum, maximum, and base value.  Often
             // the base value is == min value which is == 0.
 
@@ -180,10 +182,10 @@ public abstract class XYPlotRenderer extends DataRenderer {
             if (track instanceof CustomCnvDataSourceTrack) {
                 // CHANGE METHOD GETCUTOFF SCORE TO INCLUDE POSITION!                    
                 cutOff = (float) ((CustomCnvDataSourceTrack) track).getExpectedValue(context.getChr());
-              //  p("XYPlotRenderer: Got CustomCnvDataSourceTrack: cutoff at " + context.getChr() + " is " + cutOff);
+                //  p("XYPlotRenderer: Got CustomCnvDataSourceTrack: cutoff at " + context.getChr() + " is " + cutOff);
             } else {
                 cutOff = (float) track.getCutoffScore();
-              //  p("XYPlotRenderer: NOT a CustomCnvDataSourceTrack track: " + track.getClass().getName());
+                //  p("XYPlotRenderer: NOT a CustomCnvDataSourceTrack track: " + track.getClass().getName());
             }
 
             float baseValue = 0;
@@ -315,8 +317,7 @@ public abstract class XYPlotRenderer extends DataRenderer {
                         if (track instanceof CustomCnvDataSourceTrack) {
                             color = getGainLossColor(minValue, maxValue, dataY, posColor, negColor, midColor, cutOff);
                             //p("Got color "+color+" for "+dataY+" and mid "+cutOff+", chigh="+posColor+", clow="+negColor);
-                        }
-                        else {
+                        } else {
                             color = getGradientColor(minValue, maxValue, dataY, posColor, negColor, midColor, cutOff);
                         }
                     }
@@ -361,9 +362,9 @@ public abstract class XYPlotRenderer extends DataRenderer {
     }
 
     private void p(String s) {
-       // System.out.println("XYRENDERER: " + s);
+        // System.out.println("XYRENDERER: " + s);
     }
-    static DecimalFormat formatter = new DecimalFormat();
+    static DecimalFormat formatter = new DecimalFormat("#.##");
 
     /**
      * Method description
@@ -376,9 +377,9 @@ public abstract class XYPlotRenderer extends DataRenderer {
     public void renderAxis(Track track, RenderContext context, Rectangle arect) {
 
         // For now disable axes for all chromosome view
-        if (context.getChr().equals(Globals.CHR_ALL)) {
-            return;
-        }
+//        if (context.getChr().equals(Globals.CHR_ALL)) {
+//            return;
+//        }
 
         super.renderAxis(track, context, arect);
 
@@ -387,21 +388,23 @@ public abstract class XYPlotRenderer extends DataRenderer {
         PreferenceManager prefs = PreferenceManager.getInstance();
 
         Color labelColor = prefs.getAsBoolean(PreferenceManager.CHART_COLOR_TRACK_NAME) ? track.getColor() : Color.black;
-        Graphics2D labelGraphics = context.getGraphic2DForColor(labelColor);
+        Graphics2D lg = context.getGraphic2DForColor(labelColor);
 
-        labelGraphics.setFont(FontManager.getFont(8));
+        lg.setFont(FontManager.getFont(8));
 
         if (prefs.getAsBoolean(PreferenceManager.CHART_DRAW_TRACK_NAME)) {
 
             // Only attempt if track height is > 25 pixels
             if (arect.getHeight() > 25) {
                 Rectangle labelRect = new Rectangle(arect.x, arect.y + 10, arect.width, 10);
-                labelGraphics.setFont(FontManager.getFont(10));
-                GraphicUtils.drawCenteredText(track.getDisplayName(), labelRect, labelGraphics);
+                lg.setFont(FontManager.getFont(10));
+                GraphicUtils.drawCenteredText(track.getDisplayName(), labelRect, lg);
             }
         }
 
         if (prefs.getAsBoolean(PreferenceManager.CHART_DRAW_Y_AXIS)) {
+            Font smallFont = FontManager.getFont(8);
+            lg.setFont(smallFont);
 
             Rectangle axisRect = new Rectangle(arect.x, arect.y + 1, AXIS_AREA_WIDTH, arect.height);
 
@@ -412,35 +415,87 @@ public abstract class XYPlotRenderer extends DataRenderer {
             float minValue = axisDefinition.getMinimum();
 
 
+            // draw small ticks first.
             // Bottom (minimum tick mark)
-            int pY = computeYPixelValue(drawingRect, axisDefinition, minValue);
+            int minY = computeYPixelValue(drawingRect, axisDefinition, minValue);
+            int ax = axisRect.x + 1;
 
-            labelGraphics.drawLine(axisRect.x + AXIS_AREA_WIDTH - 10, pY, axisRect.x + AXIS_AREA_WIDTH - 5, pY);
-            GraphicUtils.drawRightJustifiedText(formatter.format(minValue), axisRect.x + AXIS_AREA_WIDTH - 15, pY, labelGraphics);
-
+            int lx = ax + 2;
+            int tx = lx + 6;
             // Top (maximum tick mark)
-            int topPY = computeYPixelValue(drawingRect, axisDefinition, maxValue);
+            int maxY = computeYPixelValue(drawingRect, axisDefinition, maxValue);
+            int midY = computeYPixelValue(drawingRect, axisDefinition, baseValue);
 
-            labelGraphics.drawLine(axisRect.x + AXIS_AREA_WIDTH - 10, topPY,
-                    axisRect.x + AXIS_AREA_WIDTH - 5, topPY);
-            GraphicUtils.drawRightJustifiedText(formatter.format(maxValue),
-                    axisRect.x + AXIS_AREA_WIDTH - 15, topPY + 4, labelGraphics);
-
-            // Connect top and bottom
-            labelGraphics.drawLine(axisRect.x + AXIS_AREA_WIDTH - 10, topPY,
-                    axisRect.x + AXIS_AREA_WIDTH - 10, pY);
-
-            // Middle tick mark.  Draw only if room
-            int midPY = computeYPixelValue(drawingRect, axisDefinition, baseValue);
-
-            if ((midPY < pY - 15) && (midPY > topPY + 15)) {
-                labelGraphics.drawLine(axisRect.x + AXIS_AREA_WIDTH - 10, midPY,
-                        axisRect.x + AXIS_AREA_WIDTH - 5, midPY);
-                GraphicUtils.drawRightJustifiedText(formatter.format(baseValue),
-                        axisRect.x + AXIS_AREA_WIDTH - 15, midPY + 4, labelGraphics);
+        //    log.info("Drawing Y axis: min = " + minValue + ", max=" + maxValue + ", base=" + baseValue);
+            int nrsteps = 4;
+            double dy = minY - maxY;
+            if (dy > 40) {
+                nrsteps = 10;
+            } else if (dy > 16) {
+                nrsteps = 4;
+            } else {
+                nrsteps = 1;
+            }
+            double step = getStepSize(maxValue - minValue, nrsteps);
+            if (nrsteps > 0 && step > 0 && (maxValue - minValue)>0) {
+                lg.setColor(Color.lightGray);                
+                nrsteps = (int) ((maxValue - minValue) / step);
+             //   log.info(nrsteps+ " steps, range=" + (maxValue - minValue) + ", stepsize=" + step);
+                // where to start? Divide max to step size. Say step size is 2, and max is 11. Then 11/2 -> 10 is start
+                double smax = Math.floor(maxValue / step) * step;
+                if (nrsteps > 0) {
+                    boolean drawAllTickLabels = -(maxY - minY) / nrsteps > 8;
+                    boolean drawOddTickLabels = -(maxY - minY) / nrsteps > 4;
+                    for (int s = 0; s <= nrsteps; s++) {
+                        double sv = (smax - s * step);
+                        int sy = computeYPixelValue(drawingRect, axisDefinition, sv);
+                        if (sy + 2 > minY) {
+                            break;
+                        }
+                        // not too close to min or max
+                        if (sy > maxY + 2) {
+                            lg.drawLine(lx, sy, lx + 2, sy);
+                            if (drawAllTickLabels || (drawOddTickLabels && s % 2 == 1)) {
+                                // not too close to other labels
+                                if (sy + 12 < minY && sy > maxY + 8 && Math.abs(sy - midY) > 8) {
+                                    lg.drawString(formatter.format(sv), tx, sy + 4);
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
-        } else if (!FrameManager.isExomeMode() && track.isShowDataRange() && arect.height > 20) {
+            Color axisLabelColor = Color.darkGray;
+            lg.setColor(axisLabelColor);
+
+            //labelGraphics.drawLine(axisRect.x + AXIS_AREA_WIDTH - 10, pY, axisRect.x + AXIS_AREA_WIDTH - 5, pY);
+            lg.drawLine(lx, minY - 1, lx + 5, minY - 1);
+            //GraphicUtils.drawRightJustifiedText(formatter.format(minValue), axisRect.x + AXIS_AREA_WIDTH - 15, pY, lg);
+            lg.drawString(formatter.format(minValue), tx, minY - 1);
+
+
+            //labelGraphics.drawLine(axisRect.x + AXIS_AREA_WIDTH - 10, topPY,axisRect.x + AXIS_AREA_WIDTH - 5, topPY);
+            lg.drawLine(lx, maxY, lx + 5, maxY);
+            //GraphicUtils.drawRightJustifiedText(formatter.format(maxValue), axisRect.x + AXIS_AREA_WIDTH - 15, topPY + 4, lg);
+            lg.drawString(formatter.format(maxValue), tx, maxY + 4);
+
+            // Connect top and bottom
+            // labelGraphics.drawLine(axisRect.x + AXIS_AREA_WIDTH - 10, topPY,axisRect.x + AXIS_AREA_WIDTH - 10, pY);
+            lg.drawLine(lx, maxY, lx, minY);
+            // Middle tick mark.  Draw only if room
+
+            if ((midY < minY - 3) && (midY > maxY + 3)) {
+                //labelGraphics.drawLine(axisRect.x + AXIS_AREA_WIDTH - 10, midPY,axisRect.x + AXIS_AREA_WIDTH - 5, midPY);
+                lg.drawLine(lx, midY, lx + 5, midY);
+            }
+
+            if ((midY < minY - 10) && (midY > maxY + 10)) {
+                //GraphicUtils.drawRightJustifiedText(formatter.format(baseValue), axisRect.x + AXIS_AREA_WIDTH - 15, midPY + 4, labelGraphics);
+                lg.drawString(formatter.format(baseValue), tx, midY + 4);
+            }
+        } else if (track.isShowDataRange() && arect.height > 20) {
+            //} else if (!FrameManager.isExomeMode() && track.isShowDataRange() && arect.height > 20) {
             DataRange range = track.getDataRange();
             if (range != null) {
                 Graphics2D g = context.getGraphic2DForColor(Color.black);
@@ -459,6 +514,43 @@ public abstract class XYPlotRenderer extends DataRenderer {
                 }
             }
         }
+    }
+
+    private double getStepSize(double range, int nrsteps) {
+        // calculate an initial guess at step size
+        if (range ==0 || nrsteps <1) return 0;
+        double tempStep = range / nrsteps;
+
+        // get the magnitude of the step size
+        double mag =  Math.floor(Math.log10(tempStep));
+        double magPow =  Math.pow(10.0, mag);
+
+        // calculate most significant digit of the new step size
+        int magMsd = (int) (tempStep / magPow + 0.5);
+
+        // promote the MSD to either 1, 2, or 5
+        if (magMsd > 5.0) {
+            magMsd = 10;
+        } else if (magMsd > 2.0) {
+            magMsd = 5;
+        } else if (magMsd > 1.0) {
+            magMsd = 2;
+        }
+        else magMsd = 1;
+
+     //      log.info("tempStep="+tempStep+", mag="+mag+", magPow="+magPow+", msd="+magMsd);
+         
+        double size = magMsd * magPow;
+        if (range / size > nrsteps) {
+            size = size * 2;
+        }
+        if (range / size > nrsteps) {
+            size = size * 2;
+        }
+        if (range / size < nrsteps / 2) {
+            size = size / 2;
+        }
+        return size;
     }
 
     @Override

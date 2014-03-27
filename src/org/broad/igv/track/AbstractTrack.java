@@ -213,6 +213,21 @@ public abstract class AbstractTrack implements Track {
             }
         }
 
+        gender = this.getGender();
+        if (gender != null) {
+            char g = '?';
+            // female &#x2640; &#9792;
+            // male &#9794;	&#x2642;
+            if (gender.toUpperCase().equalsIgnoreCase("MALE")) {
+                g = 9794;
+            }
+            else if (gender.toUpperCase().equalsIgnoreCase("FEMALE")) {
+                g = 9792;
+            }
+            disp += " <b>"+ g+"</b>";
+        }
+        //else log.info("Got no gender info for  "+this.getName());
+        
         if (sample != null) {
 
             String desc = this.getDescription();
@@ -227,20 +242,7 @@ public abstract class AbstractTrack implements Track {
 
         }
         
-        gender = this.getGender();
-        if (gender != null) {
-            char g = '?';
-            // female &#x2640; &#9792;
-            // male &#9794;	&#x2642;
-            if (gender.toUpperCase().equalsIgnoreCase("MALE")) {
-                g = 9794;
-            }
-            else if (gender.toUpperCase().equalsIgnoreCase("FEMALE")) {
-                g = 9792;
-            }
-            disp += " "+ g;
-        }
-        else log.info("Got no gender info for  "+this.getName());
+        
         disp = disp.replace("_", " ");
         disp = disp.replace("-", " ");
         disp = firstUpper(disp);
@@ -1047,6 +1049,7 @@ public abstract class AbstractTrack implements Track {
         this.fontSize = fontSize;
     }
 
+    @Override
     public boolean isShowDataRange() {
         return showDataRange;
     }
@@ -1396,6 +1399,7 @@ public abstract class AbstractTrack implements Track {
     /**
      * @return the gender
      */
+    @Override
     public String getGender() {
         if (gender != null) return gender;
         if (this.resourceLocator != null) gender =  resourceLocator.getGender();
@@ -1407,7 +1411,7 @@ public abstract class AbstractTrack implements Track {
                 log.info("Getting sample gender info: "+key);
                 gender = PreferenceManager.getInstance().getTemp(key);
             }
-            else log.info("Got no gender info and no sample");
+           // else log.info("Got no gender info and no sample");
         }
             
         

@@ -1020,7 +1020,7 @@ public class PreferenceManager implements PropertyManager {
         defaultValues.put(CHART_DRAW_BOTTOM_BORDER, "false");
         defaultValues.put(CHART_COLOR_BORDERS, "true");
         defaultValues.put(CHART_DRAW_TRACK_NAME, "false");
-        defaultValues.put(CHART_DRAW_Y_AXIS, "false");
+        defaultValues.put(CHART_DRAW_Y_AXIS, "true");
         defaultValues.put(CHART_AUTOSCALE, "false");
         defaultValues.put(CHART_SHOW_DATA_RANGE, "true");
         defaultValues.put(CHART_COLOR_TRACK_NAME, "true");
@@ -1079,7 +1079,7 @@ public class PreferenceManager implements PropertyManager {
         defaultValues.put(USE_PROXY, "false");
         defaultValues.put(PROXY_AUTHENTICATE, "false");
         defaultValues.put(PORT_NUMBER, "60151");
-        defaultValues.put(TRACK_HEIGHT_KEY, "15");
+        defaultValues.put(TRACK_HEIGHT_KEY, "25");
         defaultValues.put(FLANKING_REGION, "2000");
 
         defaultValues.put(SHOW_SEQUENCE_TRANSLATION, "false");

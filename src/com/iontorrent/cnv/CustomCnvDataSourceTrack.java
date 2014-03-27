@@ -7,6 +7,7 @@ package com.iontorrent.cnv;
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -24,6 +25,7 @@ import org.broad.igv.track.Track;
 import org.broad.igv.track.TrackClickEvent;
 import org.broad.igv.track.TrackMenuUtils;
 import org.broad.igv.track.WindowFunction;
+import org.broad.igv.ui.UIConstants;
 import org.broad.igv.ui.panel.IGVPopupMenu;
 import org.broad.igv.ui.panel.ReferenceFrame;
 import org.broad.igv.util.ResourceLocator;
@@ -38,7 +40,7 @@ public class CustomCnvDataSourceTrack extends DataSourceTrack {
     private boolean toggleRedLine;
     private static Logger log = Logger.getLogger(CustomCnvDataSourceTrack.class);
     private HashMap<String, Double> cutoffvalues = new HashMap<String, Double>();
-
+    private static DecimalFormat format = new DecimalFormat("#.##");
     public CustomCnvDataSourceTrack(CnvData data, ResourceLocator locator, String id, String name, DataSource dataSource) {
         super(locator, id, name, dataSource);
         this.data = data;
@@ -55,6 +57,10 @@ public class CustomCnvDataSourceTrack extends DataSourceTrack {
 
     }
 
+    @Override
+    protected String getBaselineName() {
+        return "Expected value";
+    }
     /**
      * @return the cutoffScore
      */
@@ -127,7 +133,7 @@ public class CustomCnvDataSourceTrack extends DataSourceTrack {
             buf.append("Expected value: <b>" + expected + "</b><br>");
         }
         double p = score.getScore();
-        String pl = "" + p;
+        String pl = "" + format.format(p);
 
 
         if (p > expected) {
@@ -135,7 +141,7 @@ public class CustomCnvDataSourceTrack extends DataSourceTrack {
         } else if (p < expected) {
             pl = "<font color='990000'>" + pl + "</font>";
         }
-        String valueString = "Value at " + chr + ":" + score.getStart() + "-" + score.getEnd() + ": <b>" + pl + "</b>";
+        String valueString = "Value @ " + chr + ":" + score.getStart() + "-" + score.getEnd() + ": <b>" + pl + "</b>";
         buf.append(valueString);
         return buf.toString();
     }
@@ -169,10 +175,13 @@ public class CustomCnvDataSourceTrack extends DataSourceTrack {
         List<Track> tracks = Arrays.asList((Track) this);
 
         CustomCnvDataSourceTrack track = (CustomCnvDataSourceTrack) CustomCnvDataSourceTrack.this;
-        JLabel popupTitle = new JLabel("  " + track.getDisplayName(), JLabel.CENTER);
+        String title = track.getDisplayName();
+        title = title.replace("<br>", " ");
+        JLabel popupTitle = new JLabel("<html>" + title+"</html>");
 
-
+        
         if (popupTitle != null) {
+            popupTitle.setFont(UIConstants.boldFont);
             menu.add(popupTitle);
         }
 
@@ -186,7 +195,7 @@ public class CustomCnvDataSourceTrack extends DataSourceTrack {
         //   menu.add(showInWindow);
 
 
-        final JMenuItem toggleLine = new JCheckBoxMenuItem("<html>Toggle orange <b>ploidy line</b></html>");
+        final JMenuItem toggleLine = new JCheckBoxMenuItem("<html>Toggle <b>ploidy line</b></html>");
         toggleLine.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {

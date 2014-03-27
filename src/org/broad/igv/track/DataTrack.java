@@ -449,7 +449,7 @@ public abstract class DataTrack extends AbstractTrack {
         
         if (this.getCutoffScore() != 0 && this.getAltColor() != this.getColor() && this.getDataRange() != null) {
             if (this.getCutoffScore() > -this.getDataRange().getMinimum() && this.getCutoffScore() <= this.getDataRange().getMaximum()) {
-                buf.append("Value where color changes: " + this.getCutoffScore() + "<br>");
+                if (!chr.equalsIgnoreCase("ALL")) buf.append(getBaselineName()+": " + this.getCutoffScore() + "<br>");
             }
         }
 
@@ -457,6 +457,9 @@ public abstract class DataTrack extends AbstractTrack {
         return buf.toString();
     }
 
+    protected String getBaselineName() {
+        return "Baseline";
+    }
     protected LocusScore getLocusScoreAt(String chr, double position, ReferenceFrame frame) {
         int zoom = Math.max(0, frame.getZoom());
         List<LocusScore> scores = getSummaryScores(chr, (int) position - 10, (int) position + 10, zoom);

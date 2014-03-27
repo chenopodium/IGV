@@ -253,7 +253,7 @@ public class KaryoOverviewPanel extends JPanel {
                         guitrees.add(guitree);
                         mainview.addDrawable(guitree);
                         Text st = new Text(kt.getShortName(), guitree.getX() + 3, guitree.getY() - 3, Color.black);
-                        mainview.addText(st);
+                        if (totaltrees > 1) mainview.addText(st);
                         // p("Added text: "+st.getText()+", at "+st.getX()+"/"+st.getY());
                         guitree.addSelectionListener(new SelectionListener() {
                             @Override
@@ -529,7 +529,7 @@ public class KaryoOverviewPanel extends JPanel {
 
 
                     Text st = new Text(kt.getShortName(), guitree.getX() - 1, guitree.getY() - 3, Color.black);
-                    view.addDrawable(st);
+                    if (totaltrees > 1) view.addDrawable(st);
 
                     //GuiFeatureTree guitree = new GuiFeatureTree(kt, view.getCanvas(), guichr, tree, trackx);
                     guitree.setWidth(SCALEX * guitree.getWidth());

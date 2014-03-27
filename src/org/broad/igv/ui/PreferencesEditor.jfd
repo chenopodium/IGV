@@ -2030,7 +2030,7 @@
               <string>javax.swing.JLabel</string>
               <void method="setProperty">
                <string>text</string>
-               <string>&lt;html&gt;&lt;i&gt;Draw a label centered over the track. </string>
+               <string>&lt;html&gt;&lt;i&gt;Draw tick marks (and values) on the left side of the tracks</string>
               </void>
               <void property="name">
                <string>jLabel9</string>

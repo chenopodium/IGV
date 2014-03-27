@@ -10,6 +10,8 @@
  */
 package org.broad.igv.track;
 
+import com.iontorrent.utils.ErrorHandler;
+import com.iontorrent.utils.io.FileTools;
 import org.apache.commons.math3.stat.StatUtils;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
@@ -39,7 +41,11 @@ import javax.swing.event.PopupMenuListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
+import java.net.URL;
 import java.util.*;
+import org.broad.igv.ui.util.FileDialogUtils;
+import org.broad.igv.util.HttpUtils;
 import org.broad.igv.variant.VariantTrack;
 
 /**
@@ -367,7 +373,7 @@ public class TrackMenuUtils {
         //menu.add(trackSettingsHeading);
 
         menu.add(getTrackRenameItem(tracks));
-
+        menu.add(getSaveTrackItem(tracks));
         String colorLabel = hasFeatureTracks
                 ? "Change Track Color..." : "Change Track Color (High Values)...";
 
@@ -425,6 +431,7 @@ public class TrackMenuUtils {
         refresh();
     }
 
+    
     public static JMenuItem getTrackRenameItem(final Collection<Track> selectedTracks) {
         // Change track height by attribute
         JMenuItem item = new JMenuItem("Rename Track...");
@@ -443,6 +450,25 @@ public class TrackMenuUtils {
         return item;
     }
 
+     public static JMenuItem getSaveTrackItem(final Collection<Track> selectedTracks) {
+        // Change track height by attribute
+        JMenuItem item = new JMenuItem("Save Track(s) as...");
+        item.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent evt) {
+                UIUtilities.invokeOnEventThread(new Runnable() {
+                    public void run() {
+                        saveTracks(selectedTracks);
+                    }
+                });
+            }
+        });
+        if (selectedTracks.size() > 1) {
+            item.setEnabled(false);
+        }
+        return item;
+    }
+
+    // 
     private static JMenuItem getHeatmapScaleItem(final Collection<Track> selectedTracks) {
 
         JMenuItem item = new JMenuItem("Set Heatmap Scale...");
@@ -758,7 +784,32 @@ public class TrackMenuUtils {
         }
         refresh();
     }
+    private static void sp(String s) {
+        log.info(s);
+    }
+    
+    public static void saveTracks(final Collection<Track> selectedTracks) {
 
+        if (selectedTracks.isEmpty()) {
+            return;
+        }
+        for (Track track : selectedTracks) {
+            saveTrack(track);
+        }
+    }
+    public static void saveTrack(Track track) {
+        
+        if (track != null && track.getResourceLocator() != null) {
+            String path = track.getResourceLocator().getPath();
+            
+            savePath(path);
+            if (path.endsWith(".gz")) {
+                // also try to save the file withouyt .gz
+                savePath(path.substring(0, path.length()-3));
+            }
+        }
+        else sp("Got no track or path");
+    }
     public static void renameTrack(final Collection<Track> selectedTracks) {
 
         if (selectedTracks.isEmpty()) {
@@ -1122,5 +1173,30 @@ public class TrackMenuUtils {
             }
         });
         return item;
+    }
+
+    private static void savePath(String path) {
+        File f = null;
+        String content = null;
+        if (FileTools.isUrl(path)) {
+            sp("Path is url: " + path);
+            int sl = path.lastIndexOf("/");
+            f = new File(path.substring(sl));
+            try {
+                content = HttpUtils.getInstance().getContentsAsString(new URL(path));
+            } catch (Exception ex) {
+                sp("Unable to load data for " + path + ":" + ErrorHandler.getString(ex));
+            }
+        } else {
+            f = new File(path);
+            if (path != null && new File(path).exists()) {
+                content = FileTools.getFileAsString(path);
+            }
+        }
+        if (content != null) {
+            sp("Saving content to file");                                
+            File output = FileDialogUtils.chooseFile("Save Track", PreferenceManager.getInstance().getLastSessionDirectory(),f, FileDialogUtils.SAVE);
+            FileTools.writeStringToFile(output, content, false);                
+        }
     }
 }

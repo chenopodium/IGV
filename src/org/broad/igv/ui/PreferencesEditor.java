@@ -1016,7 +1016,7 @@ public class PreferencesEditor extends javax.swing.JDialog {
                     autoscaleCB.setBounds(new Rectangle(new Point(30, 186), autoscaleCB.getPreferredSize()));
 
                     //---- jLabel9 ----
-                    jLabel9.setText("<html><i>Draw a label centered over the track. ");
+                    jLabel9.setText("<html><i>Draw tick marks (and values) on the left side of the tracks");
                     jPanel4.add(jLabel9);
                     jLabel9.setBounds(220, 159, 355, jLabel9.getPreferredSize().height);
 

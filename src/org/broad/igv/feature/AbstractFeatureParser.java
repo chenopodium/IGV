@@ -50,6 +50,7 @@ public abstract class AbstractFeatureParser implements FeatureParser {
     protected int startBase = 0;
     boolean gffTags = false;
 
+    private String path;
     /* An object to collection track properties, if specified in the feature file. */
     protected TrackProperties trackProperties = null;
 
@@ -72,10 +73,13 @@ public abstract class AbstractFeatureParser implements FeatureParser {
     public static FeatureParser getInstanceFor(String path, Genome genome) {
         AsciiFeatureCodec codec = getCodec(path, genome);
         if (codec != null) {
-            return new FeatureCodecParser(codec, genome);
+            AbstractFeatureParser parser = new FeatureCodecParser(codec, genome);
+            parser.path = path;
+            return parser;
         } else {
             return null;
         }
+       
     }
 
     private static AsciiFeatureCodec getCodec(String path, Genome genome) {
@@ -177,6 +181,7 @@ public abstract class AbstractFeatureParser implements FeatureParser {
         int maxLogErrors = 10;
         int nErrors = 0;
         int nLines = 0;
+        int nrnull = 0;
         try {
             while ((nextLine = reader.readLine()) != null) {
                 nextLine = nextLine.trim();
@@ -220,6 +225,10 @@ public abstract class AbstractFeatureParser implements FeatureParser {
                         Feature feature = parseLine(nextLine);
                         if (feature != null) {
                             features.add(feature);
+                        }
+                        else {
+                            nrnull++;
+                            if (nrnull < 10)  log.info("Got no feature for line "+nextLine+", \npath = "+this.path);
                         }
                     }
 

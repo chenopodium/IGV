@@ -59,8 +59,19 @@ public class BatchRunner implements NamedRunnable {
             while ((inLine = reader.readLine()) != null) {
                 inLine = inLine.trim();
                 if (inLine.length()>0 && !(inLine.startsWith("#") || inLine.startsWith("//"))) {
-                    
-                    cmdExe.execute(inLine);
+                    // check for .jnlp file, here we only accept <argument> </arguments>
+                    if (inLine.startsWith("<")) {
+                        // looks like html - only if argument
+                        if (inLine.startsWith("<argument>")) {
+                            // ok
+                            inLine = inLine.replace("<argument>", "set ");
+                            inLine = inLine.replace("</argument>", "");
+                         //   log.info("Executing set from jnlp: "+inLine);
+                            cmdExe.execute(inLine);
+                        }
+                      //  else log.info("Not executing line with html: "+inLine);
+                    }
+                    else cmdExe.execute(inLine);
                 }
             }
             

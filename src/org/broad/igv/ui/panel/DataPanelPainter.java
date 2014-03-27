@@ -206,7 +206,7 @@ public class DataPanelPainter {
         int trackY = 0;
         boolean anyScaleDrawn = false;
 
-        log.info("======================== DataPanelPainter. paintFrame");
+      //  log.info("======================== DataPanelPainter. paintFrame");
 
         for (Iterator<TrackGroup> groupIter = groups.iterator(); groupIter.hasNext();) {
             TrackGroup group = groupIter.next();
@@ -335,7 +335,7 @@ public class DataPanelPainter {
                 int gStart = genome.getGenomeCoordinate(chrName, 0);
                 int x = (int) (gStart / scale)+1;
 
-                g.drawLine(x, 2, x, height - 2);
+                if (offset > 0) g.drawLine(x, 2, x, height - 2);
                 offset += chrLength;
             }
         } 
