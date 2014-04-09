@@ -8,7 +8,7 @@
  * This software is licensed under the terms of the GNU Lesser General Public License (LGPL),
  * Version 2.1 which is available at http://www.opensource.org/licenses/lgpl-2.1.php.
  */
-
+ 
 package org.broad.igv.feature.tribble;
 
 import org.apache.log4j.Logger;

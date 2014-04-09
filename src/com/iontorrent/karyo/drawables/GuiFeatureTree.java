@@ -185,7 +185,7 @@ public class GuiFeatureTree extends GuiObject {
             double startx = 0;
             for (int i = 0; i < nr; i++) {
                 KaryoFeature f = (KaryoFeature) features.get(i);
-                if (renderType.drawFeature(f)) {
+                if (renderType.drawFeature(ktrack.getMetaInfo(), f)) {
                     Color color = this.renderType.getColor(ktrack.getMetaInfo(), f);
                     g.setColor(color);
                    boolean drawit = true;

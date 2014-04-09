@@ -44,15 +44,15 @@ public class CnvRenderType extends RenderType{
      // TODO: use color gradient with multiple colors
     @Override
     public Color getColor(FeatureMetaInfo meta, KaryoFeature f) {
-        if (f.isInsertion(this.getCutoffScore(f))) return this.getColor(1);
-        else if (f.isDeletion(this.getCutoffScore(f))) return this.getColor(2);
+        if (f.isInsertion(this.getCutoffScore(f, meta.getTrack().getTrack()))) return this.getColor(1);
+        else if (f.isDeletion(this.getCutoffScore(f, meta.getTrack().getTrack()))) return this.getColor(2);
         return this.getColor(0);
         //return c;
     }
     @Override
-    public boolean drawFeature(KaryoFeature f) {
-        if (f.isInsertion(this.getCutoffScore(f))) return true;
-        else if (f.isDeletion(this.getCutoffScore(f))) return true;
+    public boolean drawFeature(FeatureMetaInfo meta,KaryoFeature f) {
+        if (f.isInsertion(this.getCutoffScore(f, meta.getTrack().getTrack()))) return true;
+        else if (f.isDeletion(this.getCutoffScore(f, meta.getTrack().getTrack()))) return true;
         else return true;
     }
    

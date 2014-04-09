@@ -422,6 +422,7 @@ public abstract class DataTrack extends AbstractTrack {
         return renderer;
     }
 
+    
     /**
      * Return a value string for the tooltip window at the given location, or
      * null to signal there is no value at that location
@@ -447,10 +448,9 @@ public abstract class DataTrack extends AbstractTrack {
             buf.append("<b>Data scale is linked to track: " + getLinkedTrack() + "</b><br>");
         }
         
-        if (this.getCutoffScore() != 0 && this.getAltColor() != this.getColor() && this.getDataRange() != null) {
-            if (this.getCutoffScore() > -this.getDataRange().getMinimum() && this.getCutoffScore() <= this.getDataRange().getMaximum()) {
-                if (!chr.equalsIgnoreCase("ALL")) buf.append(getBaselineName()+": " + this.getCutoffScore() + "<br>");
-            }
+        double expected = this.getExpectedValue(chr);
+        if (expected != 0 && this.getDataRange() != null) {           
+             if (!chr.equalsIgnoreCase("ALL")) buf.append(getBaselineName()+": " + expected + "<br>");            
         }
 
         buf.append(score.getValueString(position, getWindowFunction()));

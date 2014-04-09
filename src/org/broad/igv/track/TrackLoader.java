@@ -86,6 +86,8 @@ import org.broad.tribble.AsciiFeatureCodec;
 import org.broad.tribble.TabixFeatureReader;
 import org.broad.tribble.TribbleException;
 import org.broad.tribble.TribbleIndexedFeatureReaderToken;
+import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLine;
+import org.broadinstitute.sting.utils.codecs.vcf.VCFInfoHeaderLine;
 
 /**
  * User: jrobinso Date: Feb 14, 2010
@@ -264,6 +266,9 @@ public class TrackLoader {
                 loadTDFFile(locator, newTracks, genome);
             } else if (typeString.endsWith(".counts")) {
                 loadGobyCountsArchive(locator, newTracks, genome);
+            } else if (typeString.endsWith(".dag")) {
+                p("Got got dag file");
+                loadDagFile(locator, newTracks, genome);
             } else if (GFFFeatureSource.isGFF(locator.getPath())) {
                 p("Got got gff file");
                 loadGFFfile(locator, newTracks, genome);
@@ -402,9 +407,27 @@ public class TrackLoader {
             boolean enableMethylationRateSupport = (header.getFormatHeaderLine("MR") != null
                     && header.getFormatHeaderLine("GB") != null);
 
+        
             List<String> allSamples = new ArrayList(header.getGenotypeSamples());
 
             VariantTrack t = new VariantTrack(locator, src, allSamples, enableMethylationRateSupport);
+
+                p("==================== VCF header: INFO HEADER LINES =================");
+            for (VCFInfoHeaderLine l: header.getInfoHeaderLines()) {
+                p(l.getKey()+"="+l.getValue());                
+            }
+            
+            p("==================== VCF header: VCFHeaderLine =================");
+            for (VCFHeaderLine l: header.getMetaDataInInputOrder()) {
+                String k = l.getKey().trim();
+                if (!k.equalsIgnoreCase("contig") && !k.equalsIgnoreCase("INFO") && !k.equalsIgnoreCase("ALT") && !k.equalsIgnoreCase("FORMAT")) {
+                    p(k+ "="+l.getValue());
+                    t.setAttributeValue(k, l.getValue());
+                    AttributeManager.getInstance().addAttribute(t.getId(), k, l.getValue());
+                }
+                
+                
+            }
             log.info("Created variant track " + t.getName());
             // VCF tracks handle their own margin
             t.setMargin(0);
@@ -492,6 +515,12 @@ public class TrackLoader {
         newTracks.addAll(parser.loadTracks(locator, genome));
     }
 
+    private void loadDagFile(ResourceLocator locator, List<Track> newTracks, Genome genome) throws IOException {
+
+        DagParser featureParser = new DagParser(locator.getPath());
+        List<FeatureTrack> tracks = featureParser.loadTracks(locator, genome);
+        newTracks.addAll(tracks);
+    }
     /**
      * Load the input file as a feature, mutation, or maf (multiple alignment)
      * file.

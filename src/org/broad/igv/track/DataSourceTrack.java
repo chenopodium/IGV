@@ -23,8 +23,10 @@ import org.broad.igv.util.ResourceLocator;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.broad.igv.PreferenceManager;
 import org.broad.igv.ui.IGV;
 import org.broad.igv.ui.panel.TrackPanel;
 
@@ -34,6 +36,7 @@ import org.broad.igv.ui.panel.TrackPanel;
  */
  public class DataSourceTrack extends DataTrack {
 
+     
     private static Logger log = Logger.getLogger(DataSourceTrack.class);
 
     private DataSource dataSource;
@@ -63,12 +66,17 @@ import org.broad.igv.ui.panel.TrackPanel;
         setDataRange(dr);
        
     }
+   
 
     public List<LocusScore> getSummaryScores(String chr, int startLocation, int endLocation, int zoom) {
         List<LocusScore> tmp = dataSource.getSummaryScoresForRange(chr, startLocation, endLocation, zoom);
         return tmp == null ? new ArrayList() : tmp;
 
     }
+     protected void p(String s) {
+        log.info(s);
+    }
+
 
 
     @Override

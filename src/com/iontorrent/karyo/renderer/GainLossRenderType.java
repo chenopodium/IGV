@@ -70,7 +70,7 @@ public class GainLossRenderType extends RenderType {
      
         if (feature instanceof Variant) {
             String rel = this.getRelevantAttName();
-            double cutoff = this.getCutoffScore(f);
+            double cutoff = this.getCutoffScore(f, info.getTrack().getTrack());
             double score =f.getScore(info, rel) ;
           //  p("getGainType: att="+this.getRelevantAttName()+" for "+feature.getChr()+":"+feature.getStart()+", score  is: "+score+", cutoff="+cutoff);
             if (score > cutoff) {
@@ -85,8 +85,8 @@ public class GainLossRenderType extends RenderType {
             }
             else return NEUTRAL;          
         }
-        if (f.isInsertion(this.getCutoffScore(f))) return GAIN;
-        else if (f.isDeletion(this.getCutoffScore(f))) return LOSS;
+        if (f.isInsertion(this.getCutoffScore(f, info.getTrack().getTrack()))) return GAIN;
+        else if (f.isDeletion(this.getCutoffScore(f, info.getTrack().getTrack()))) return LOSS;
         else return NEUTRAL;               
     }
     

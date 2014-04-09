@@ -39,7 +39,7 @@ public class CustomCnvDataSourceTrack extends DataSourceTrack {
     CnvData data;
     private boolean toggleRedLine;
     private static Logger log = Logger.getLogger(CustomCnvDataSourceTrack.class);
-    private HashMap<String, Double> cutoffvalues = new HashMap<String, Double>();
+    
     private static DecimalFormat format = new DecimalFormat("#.##");
     public CustomCnvDataSourceTrack(CnvData data, ResourceLocator locator, String id, String name, DataSource dataSource) {
         super(locator, id, name, dataSource);
@@ -80,38 +80,7 @@ public class CustomCnvDataSourceTrack extends DataSourceTrack {
     public Color getColor() {
         return new Color(0, 0, 255);
     }
-    public double getExpectedValue(String chr) {
-        Double ex = cutoffvalues.get(chr);
-        if (ex != null && ex.doubleValue() != 0) {
-        //    p("Found expected value for " + chr + " in map");
-            return ex.doubleValue();
-        }
-        double expected = this.getCutoffScore();
-
-        if (this.getSample() != null) {
-            String key = chr + "_CUTOFF_" + this.getSample();
-            p(" getExpectedValue ===================  Getting expected value cnv track for chr " + chr + "-  store in map. KEY: "+key);
-            key = key.toUpperCase();
-            // CHR1_CUTOFF_SELF=4
-            // CHR2_CUTOFF_SELF=3
-            // CHR23_CUTOFF_SELF=4
-            String val = PreferenceManager.getInstance().getTemp(key);
-            if (val != null) {
-                try {
-                    expected = Integer.parseInt(val);
-                } catch (Exception e) {
-                    p("getExpectedValue Could not parse expected from " + val);
-                }
-            } else {
-                p("getExpectedValueFound no value for expected value for key  " + key);
-            }
-            p("getExpectedValue Expected value for " + key + ":" + expected);
-        } else {
-            p("getExpectedValue no Sample Info. Got no expected value (using 2), and have no sample info for track " + this.getName());
-        }
-        cutoffvalues.put(chr, expected);
-        return expected;
-    }
+    
 
     public String getValueStringAt(String chr, double position, int y, ReferenceFrame frame) {
         StringBuilder buf = new StringBuilder();
@@ -130,7 +99,7 @@ public class CustomCnvDataSourceTrack extends DataSourceTrack {
 
         double expected = this.getExpectedValue(chr);
         if (expected != 0 && this.getAltColor() != this.getColor() && this.getDataRange() != null) {
-            buf.append("Expected value: <b>" + expected + "</b><br>");
+            if (!chr.equalsIgnoreCase("all")) buf.append("Expected value: <b>" + expected + "</b><br>");
         }
         double p = score.getScore();
         String pl = "" + format.format(p);
@@ -158,10 +127,7 @@ public class CustomCnvDataSourceTrack extends DataSourceTrack {
         //CnvControlPanel.show(data);
     }
 
-    private void p(String s) {
-        log.info(s);
-    }
-
+   
     void toggleRedLine() {
         toggleRedLine = !toggleRedLine;
     }

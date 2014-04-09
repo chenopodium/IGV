@@ -10,6 +10,7 @@
  */
 package org.broad.igv.tools;
 
+import com.iontorrent.utils.ErrorHandler;
 import org.apache.log4j.Logger;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.track.WindowFunction;
@@ -502,7 +503,7 @@ public class IgvToolsGui extends JDialog {
                     runButton.setEnabled(false);
                     igvTools.doIndex(ifile, null, indexType, binSize);
                 } catch (Exception e) {
-                    log.error(e);
+                    log.error(ErrorHandler.getString(e));
                     showMessage("Error: " + e.getMessage());
                 }
 

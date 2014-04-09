@@ -18,6 +18,7 @@ import java.util.HashMap;
 import org.apache.log4j.Logger;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.feature.genome.GenderManager;
+import org.broad.igv.track.AbstractTrack;
 import org.broad.tribble.Feature;
 
 /**
@@ -74,7 +75,18 @@ public class RenderType {
          if (parcutoffScore == Integer.MIN_VALUE) parcutoffScore = 2;  
          return parcutoffScore;
     }
-    public double getCutoffScore(KaryoFeature f) {
+    
+    public double getCutoffScore(KaryoFeature f, AbstractTrack track) {
+        double expected = track.getExpectedValue(f.getChr());
+        
+        if (expected != 0) {
+            // Got expected value from track Ploidy_(vcf) and chr chrY:1.0
+            if (f.getChr().equalsIgnoreCase("chrx") || f.getChr().equalsIgnoreCase("chry")) {
+        //        p("Got expected value from track "+track.getName()+" and chr "+f.getChr()+":"+expected);
+            }
+            return expected;
+        }
+      //  else p("Got no expeded value from track "+track.getName()+", using old way to get cutoff score");
         
         String chr = f.getChr();
         Double score = cutoffmap.get(chr);
@@ -123,7 +135,7 @@ public class RenderType {
        return null;
     }
     
-    public boolean drawFeature(KaryoFeature f) {
+    public boolean drawFeature(FeatureMetaInfo meta, KaryoFeature f) {
         return true;
     }
     
@@ -217,11 +229,11 @@ public class RenderType {
     public Color getColor(FeatureMetaInfo meta, KaryoFeature f) {
         Color c = this.getColor(0);
         if (c == null) c = getKaryoColorNeutral();
-        if (f.isInsertion(this.getCutoffScore(f))) {
+        if (f.isInsertion(this.getCutoffScore(f, meta.getTrack().getTrack()))) {
             c = this.getColor(1);
             if (c == null) c = getKaryoColorGain();
         }
-        else if (f.isDeletion(this.getCutoffScore(f))) {
+        else if (f.isDeletion(this.getCutoffScore(f,meta.getTrack().getTrack()))) {
             c = this.getColor(2);
             if (c == null) c = getKaryoColorLoss();
         }
@@ -254,7 +266,7 @@ public class RenderType {
         
         double MAX = range.max;
         double MIN = range.min;
-        double middle = getCutoffScore(f);
+        double middle = getCutoffScore(f, meta.getTrack().getTrack());
         
         int which = 0;
         if (Math.abs(score - middle) <= 0.001) which=0;
@@ -295,11 +307,11 @@ public class RenderType {
         double MAX = Math.max(range.max, score);
         double MIN = Math.min(range.min, score);
         if (MAX== MIN) MAX = MIN+1;
-       return getGradientColor(f, MIN, MAX, score);
+       return getGradientColor(f, MIN, MAX, score, meta.getTrack().getTrack());
         
     }
   
-    public Color getGradientColor(KaryoFeature f, double MIN, double MAX, double score) {
+    public Color getGradientColor(KaryoFeature f, double MIN, double MAX, double score, AbstractTrack t) {
               
         
         
@@ -310,7 +322,7 @@ public class RenderType {
         if (clow == null) clow = cmid;
         if (chigh == null) chigh = cmid;
         double rangedelta = MAX-MIN;
-        double middle = getCutoffScore(f);
+        double middle = getCutoffScore(f, t);
         
 //        if (debug) {
 //            //MIN=1.0, MAX=1.0, score=1.0, middle=2.0

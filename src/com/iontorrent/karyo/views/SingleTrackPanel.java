@@ -58,17 +58,22 @@ public class SingleTrackPanel extends JPanel {
         }
         
          String tname = track.getTrackDisplayName();
-         p("Track name is: "+tname);
+       
         tname = getShorterName(tname, 5, 40);
+        String g = track.getTrack().getGenderSymbol();
+          p("Track name is: "+tname+", gender="+g);
+        if (g != null) {
+          tname += " <font size='4'><b>"+g+"</b></font>" ;
+        }
         String name = track.getShortName() + ": " + tname;
 
        
-        String tool = "File: " + file + "<br>";
+        String tool = "File: " + file ;
         if (track.getSampleafeture() != null) {
-            tool = "<html>" + tool + "Example: " + track.getSampleafeture().toString() + "</html>";
+            tool = "<html>" + tool + "<br>Example: " + track.getSampleafeture().toString() + "</html>";
         }
         if (check) {
-            box = new JCheckBox(name);
+            box = new JCheckBox("<html>"+ name+"</html>");
             // box.setForeground(track.getRenderType().getColor(0));              
             box.setSelected(track.isVisible());
             box.setToolTipText(tool);

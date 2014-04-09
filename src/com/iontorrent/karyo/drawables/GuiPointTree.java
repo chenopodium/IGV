@@ -167,7 +167,7 @@ public class GuiPointTree extends GuiFeatureTree {
                     }
                     
                 }
-                double cutoff = renderType.getCutoffScore(f);
+                double cutoff = renderType.getCutoffScore(f, this.getTree().getSource());
                 if ( ( times == 0 && score == cutoff ) || 
                         (times ==1 && score != cutoff ) || 
                         ( times ==2 &&  pointType.outlineOval(min, max, cutoff, score))) {

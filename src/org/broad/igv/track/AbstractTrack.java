@@ -54,6 +54,8 @@ public abstract class AbstractTrack implements Track {
     private static Class defaultRendererClass = BarChartRenderer.class;
     private static Map<TrackType, Class> defaultRendererMap = new HashMap();
 
+     private HashMap<String, Double> cutoffvalues = new HashMap<String, Double>();
+   
     static {
         defaultRendererMap.put(TrackType.RNAI, HeatmapRenderer.class);
         defaultRendererMap.put(TrackType.COPY_NUMBER, HeatmapRenderer.class);
@@ -121,7 +123,41 @@ public abstract class AbstractTrack implements Track {
         init();
         prefMgr = PreferenceManager.getInstance();
     }
+     public double getExpectedValue(String chr) {
+        Double ex = cutoffvalues.get(chr);
+        if (ex != null && ex.doubleValue() != 0) {
+        //    p("Found expected value for " + chr + " in map");
+            return ex.doubleValue();
+        }
+        double expected = this.getCutoffScore();
 
+        if (this.getSample() != null) {
+            String key = chr + "_CUTOFF_" + this.getSample();
+         //   p(" getExpectedValue ===================  Getting expected value cnv track for chr " + chr + "-  store in map. KEY: "+key);
+            key = key.toUpperCase();
+            // CHR1_CUTOFF_SELF=4
+            // CHR2_CUTOFF_SELF=3
+            // CHR23_CUTOFF_SELF=4
+            String val = PreferenceManager.getInstance().getTemp(key);
+            if (val != null) {
+                try {
+                    expected = Integer.parseInt(val);
+                } catch (Exception e) {
+                    p("getExpectedValue Could not parse expected from " + val);
+                }
+            } else {
+           //     p("getExpectedValueFound no value for expected value for key  " + key);
+            }
+          //  p("getExpectedValue Expected value for " + key + ":" + expected);
+        } else {
+         //   p("getExpectedValue no Sample Info. Got no expected value (using 2), and have no sample info for track " + this.getName());
+        }
+        cutoffvalues.put(chr, expected);
+        return expected;
+    }
+     private void p(String s) {
+         log.info(s);
+     }
     public AbstractTrack(ResourceLocator dataResourceLocator, String id) {
         this(dataResourceLocator, id, dataResourceLocator.getTrackName());
     }
@@ -213,19 +249,9 @@ public abstract class AbstractTrack implements Track {
             }
         }
 
-        gender = this.getGender();
-        if (gender != null) {
-            char g = '?';
-            // female &#x2640; &#9792;
-            // male &#9794;	&#x2642;
-            if (gender.toUpperCase().equalsIgnoreCase("MALE")) {
-                g = 9794;
-            }
-            else if (gender.toUpperCase().equalsIgnoreCase("FEMALE")) {
-                g = 9792;
-            }
-            disp += " <b>"+ g+"</b>";
-        }
+        String g = getGenderSymbol();
+        if (g != null) disp += " <b>"+ g+"</b>";
+        
         //else log.info("Got no gender info for  "+this.getName());
         
         if (sample != null) {
@@ -251,6 +277,22 @@ public abstract class AbstractTrack implements Track {
         return disp;
     }
 
+    public String getGenderSymbol() {
+        gender = this.getGender();
+        if (gender != null) {
+            char g = '?';
+            // female &#x2640; &#9792;
+            // male &#9794;	&#x2642;
+            if (gender.toUpperCase().equalsIgnoreCase("MALE")) {
+                g = 9794;
+            }
+            else if (gender.toUpperCase().equalsIgnoreCase("FEMALE")) {
+                g = 9792;
+            }
+            return ""+g;
+        }
+        else return null;
+    }
     public String getFileExt() {
         if (getResourceLocator() == null) {
             return "?";
@@ -393,12 +435,14 @@ public abstract class AbstractTrack implements Track {
      * @param name
      * @param value
      */
+    @Override
     public void setAttributeValue(String name, String value) {
         String key = name.toUpperCase();
         attributes.put(key, value);
         AttributeManager.getInstance().addAttribute(getSample(), name, value);
     }
 
+    @Override
     public String getAttributeValue(String attributeName) {
         String key = attributeName.toUpperCase();
         String value = attributes.get(key);
