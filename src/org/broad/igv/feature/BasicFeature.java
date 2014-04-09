@@ -120,35 +120,28 @@ public class BasicFeature extends AbstractFeature {
 
 
         String name = getName();
-        if (name != null) {
+        if (name != null && name.length()>0) {
             valueString.append("<b>" + name + "</b>");
         }
-        if ((identifier != null) && ((name == null) || !name.equals(identifier))) {
-            valueString.append("<br>" + identifier);
+        if ((identifier != null) && ((name == null || name.length()<1) || !name.equals(identifier))) {
+            valueString.append("<br>ID=" + identifier);
         }
-
 
         if (!Float.isNaN(score)) {
             valueString.append("<br>Score = " + score);
         }
-        if (description != null) {
+        if (description != null  && description.length()>0) {
             valueString.append("<br>" + description);
         }
-        if (type != null) {
-            valueString.append(type);
+        if (type != null && type.length()>0) {
+            valueString.append("<br>Type="+type);
             valueString.append("<br>");
         }
-        if (attributes != null) {
+        if (attributes != null  && attributes.size() > 0) {
             valueString.append(getAttributeString());
         }
 
         valueString.append("<br>" + getLocusString());
-
-
-        // Display attributes, if any
-        if (attributes != null && attributes.size() > 0) {
-
-        }
 
 
         // Get exon number, if over an exon

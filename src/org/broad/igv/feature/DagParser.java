@@ -48,7 +48,7 @@ public class DagParser implements FeatureParser {
         BufferedReader reader = null;
         try {
             reader = ParsingUtils.openBufferedReader(locator);
-            DagCodec.Version version = locator.getPath().endsWith(".dag") ? DagCodec.Version.DAG : DagCodec.Version.DAG;
+            DagCodec.Version version = locator.getPath().endsWith(".dag") || locator.getPath().endsWith(".dgv") ? DagCodec.Version.DAG : DagCodec.Version.DAG;
             List<org.broad.tribble.Feature> features = loadFeatures(reader, genome);
 
             FeatureTrack track = new FeatureTrack(locator, new FeatureCollectionSource(features, genome));
@@ -151,9 +151,7 @@ public class DagParser implements FeatureParser {
                 String[] tokens = Globals.tabPattern.split(nextLine.trim().replaceAll("\"", ""), -1);
 
                 String type = tokens[2];
-                if (DagCodec.geneParts.contains(type)) {
-                    type = "gene";
-                }
+                
                 if (!writers.containsKey(type)) {
                     writers.put(type,
                             new PrintWriter(new FileWriter(new File(outputDirectory, type + ext))));
@@ -173,9 +171,7 @@ public class DagParser implements FeatureParser {
             } else {
                 String[] tokens = Globals.tabPattern.split(nextLine.trim().replaceAll("\"", ""), -1);
                 String type = tokens[2];
-                if (DagCodec.geneParts.contains(type)) {
-                    type = "gene";
-                }
+               
                 currentWriter = writers.get(type);
 
                 if (currentWriter != null) {

@@ -266,8 +266,8 @@ public class TrackLoader {
                 loadTDFFile(locator, newTracks, genome);
             } else if (typeString.endsWith(".counts")) {
                 loadGobyCountsArchive(locator, newTracks, genome);
-            } else if (typeString.endsWith(".dag")) {
-                p("Got got dag file");
+            } else if (typeString.endsWith(".dag") || typeString.endsWith(".dgv")) {
+                p("Got got dgv file");
                 loadDagFile(locator, newTracks, genome);
             } else if (GFFFeatureSource.isGFF(locator.getPath())) {
                 p("Got got gff file");

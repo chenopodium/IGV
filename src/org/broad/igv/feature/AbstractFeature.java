@@ -33,7 +33,7 @@ import java.util.Map;
  */
 abstract public class AbstractFeature implements IGVFeature, org.broad.tribble.Feature {
 
-    private static Logger log = Logger.getLogger(AbstractFeature.class);
+    protected static Logger log = Logger.getLogger(AbstractFeature.class);
     protected Strand strand = Strand.NONE;
     protected String chromosome;
     protected int start = -1;
@@ -43,7 +43,8 @@ abstract public class AbstractFeature implements IGVFeature, org.broad.tribble.F
     protected String description;
     protected MultiMap<String, String> attributes;
     protected String name = "";
-
+    protected HashMap<String,Color> highlightcolors;
+    
     /**
      * Constructs ...
      */
@@ -245,13 +246,18 @@ abstract public class AbstractFeature implements IGVFeature, org.broad.tribble.F
     }
 
 
+    public void addHighlightColor(String key, Color c ) {
+        if (highlightcolors == null) highlightcolors = new HashMap<String, Color>();
+        highlightcolors.put(key, c);
+    }
     protected String getAttributeString() {
 
         StringBuffer buf = new StringBuffer();
-        buf.append("<br>");
+       buf.append("<br>");
         // 30 attributes is the maximum visible on a typical screen
         int max = 30;
-        attributes.printHtml(buf, max);
+        
+        attributes.printHtml(buf, max, highlightcolors);
         return buf.toString();
 
     }

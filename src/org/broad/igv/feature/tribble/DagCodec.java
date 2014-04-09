@@ -11,6 +11,7 @@
 
 package org.broad.igv.feature.tribble;
 
+import java.awt.Color;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.exceptions.ParserException;
@@ -54,53 +55,7 @@ public class DagCodec extends AsciiFeatureCodec<Feature> {
 
     private static Logger log = Logger.getLogger(DagCodec.class);
 
-    public static Set<String> exonTerms = new HashSet();
-    public static Set<String> utrTerms = new HashSet();
-    public static Set<String> geneParts = new HashSet();
-    static HashSet<String> ignoredTypes = new HashSet();
-
-
-    static {
-        utrTerms.add("five_prime_UTR");
-        utrTerms.add("three_prime_UTR");
-        utrTerms.add("5'-utr");
-        utrTerms.add("3'-utr");
-        utrTerms.add("3'-UTR");
-        utrTerms.add("5'-UTR");
-        utrTerms.add("5utr");
-        utrTerms.add("3utr");
-    }
-
-    static {
-        exonTerms.addAll(utrTerms);
-        exonTerms.add("exon");
-        exonTerms.add("coding_exon");
-        exonTerms.add("CDS");
-        exonTerms.add("cds");
-
-    }
-
-
-    static {
-        geneParts.addAll(exonTerms);
-        geneParts.add("transcript");
-        geneParts.add("processed_transcript");
-        geneParts.add("mrna");
-        geneParts.add("mRNA");
-        geneParts.add("promoter");
-        geneParts.add("intron");
-        geneParts.add("CDS_parts");
-
-    }
-
-    static {
-        ignoredTypes.add("start_codon");
-        ignoredTypes.add("stop_codon");
-        ignoredTypes.add("Contig");
-        ignoredTypes.add("RealContig");
-        ignoredTypes.add("intron");
-    }
-
+    static Color defaultColor = Color.pink.darker();
 
     private TrackProperties trackProperties = null;
     CI.CIHashSet featuresToHide = new CI.CIHashSet();
@@ -122,7 +77,7 @@ public class DagCodec extends AsciiFeatureCodec<Feature> {
      * Name   Display name for the feature.
      * Alias  A secondary name for the feature.
      */
-    static String[] nameFields = {"Name", "name", "Alias", "gene", "primary_name", "locus", "alias", "cohortdescription", "ID"};
+    static String[] nameFields = {"Name", "name", "Alias", "variantaccession",  "locus", "alias", "ID"};
     String[] headerFields;
 
     public DagCodec(Genome genome) {
@@ -236,11 +191,7 @@ public class DagCodec extends AsciiFeatureCodec<Feature> {
   //      mergedorsample	frequency	samplesize	observedgains	observedlosses	cohortdescription	genes	samples
         String chrToken = tokens[1].trim();
         String featureType = StringUtils.intern(tokens[4].trim());
-
-        if (ignoredTypes.contains(featureType)) {
-            return null;
-        }
-
+        String subType = StringUtils.intern(tokens[5].trim());
         String chromosome = genome == null ? StringUtils.intern(chrToken) : genome.getChromosomeAlias(chrToken);
 
         // GFF coordinates are 1-based inclusive (length = end - start + 1)
@@ -261,12 +212,15 @@ public class DagCodec extends AsciiFeatureCodec<Feature> {
         
         //CI.CILinkedHashMap<String> attributes = new CI.CILinkedHashMap();
         MultiMap<String, String> attributes = new MultiMap<String, String>();
-        for (int c = 5; c < nTokens; c++) {
+        for (int c = 0; c < nTokens; c++) {
            // log.info("Adding att:"+headerFields[c]+"="+ tokens[c]);
-            attributes.put(headerFields[c], tokens[c]);
+            if (c < 1 || c > 3) { 
+                String val = tokens[c].trim();
+                if (val.length() > 0) attributes.put(headerFields[c], val);
+            }
         }
         
-        String description = getDescription(attributes, featureType);
+        String description = tokens[nTokens-3];//getDescription(attributes, featureType);
         String id = helper.getID(attributes);
        
         Strand strand = Strand.NONE;
@@ -281,12 +235,35 @@ public class DagCodec extends AsciiFeatureCodec<Feature> {
 
         f.setAttributes(attributes);
 
+        String typename = this.headerFields[5];
         String[] colorNames = new String[]{"color", "Color", "colour", "Colour"};
         for(String colorName: colorNames){
+            Color c = defaultColor;
             if (attributes.containsKey(colorName)) {
                 f.setColor(ColorUtilities.stringToColor(attributes.get(colorName)));
                 break;
             }
+            else if (subType.equalsIgnoreCase("Gain") || subType.equalsIgnoreCase("insertion")) {
+                 c=Color.blue.darker();
+            }
+            else if (subType.equalsIgnoreCase("Loss") || subType.equalsIgnoreCase("deletion") ) {
+                 c=Color.red.darker();
+            }
+            else if (subType.equalsIgnoreCase("inversion")) {
+                 c=Color.pink.darker();
+            }
+            else if (subType.equalsIgnoreCase("complex")) {
+                 c=Color.yellow.darker();
+            }
+            else if (subType.equalsIgnoreCase("gain+loss")) {
+                 c=Color.pink;
+            }
+            else if (subType.equalsIgnoreCase("unknown")) {
+                 c= Color.black;             
+            }
+            
+            f.addHighlightColor(typename, c);
+            f.setColor(c);
         }
 
         if (featuresToHide.contains(featureType)) {

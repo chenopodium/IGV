@@ -11,10 +11,13 @@
 
 package org.broad.igv.util.collections;
 
+import java.awt.Color;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.log4j.Logger;
 
 /**
  * A "map-like" class that supports multiple values for a given key.
@@ -24,6 +27,7 @@ import java.util.Map;
 public class MultiMap<K, V> {
 
     LinkedHashMap<K, Object> map;
+    protected static Logger log = Logger.getLogger(MultiMap.class);
     int size = 0;
 
     public MultiMap() {
@@ -85,23 +89,41 @@ public class MultiMap<K, V> {
     private static final int MAX_CHARS_PER_LINE = 50;
 
     public void printHtml(StringBuffer buffer, int max) {
+        printHtml(buffer, max, null);
+    }
+
+    public void printHtml(StringBuffer buffer, int max, HashMap<String,Color> highlightcolors) {
 
         if (map == null || map.isEmpty()) return;
 
         int count = 0;
-        buffer.append("<br>");
+        //buffer.append("<br>");
         for (Map.Entry<K, Object> entry : map.entrySet()) {
             Object value = entry.getValue();
+            String key = (String) entry.getKey();
+            boolean gotcolor = false;
+            if (highlightcolors != null && highlightcolors.size()>0) {
+             //   log.info("Got hightlightcolors: "+highlightcolors.keySet());
+                Color c = highlightcolors.get(key);
+                
+                if (key != null && c != null) {
+                   
+                    gotcolor = true;
+                    String hex = String.format("#%02x%02x%02x", c.getRed(), c.getGreen(), c.getBlue());
+                    key = "<font color='"+hex+"'><b>"+key;
+                 //    log.info("Got key "+key+" with value "+c+", key is now: "+key);
+                }
+            }
             if (value instanceof List) {
                 for (V v : ((List<V>) value)) {
-                    buffer.append(entry.getKey());
+                    buffer.append(key);
                     buffer.append("=");
                     buffer.append(v.toString());
                     buffer.append("<br/>");
                     count++;
                 }
             } else {
-                buffer.append(entry.getKey());
+                buffer.append(key);
                 buffer.append("=");
                 String ts = lineWrapString(value.toString(), MAX_CHARS_PER_LINE);
 
@@ -109,6 +131,7 @@ public class MultiMap<K, V> {
                 buffer.append("<br/>");
                 count++;
             }
+            if (gotcolor) buffer.append("</b></font>");
             if (++count > max) {
                 buffer.append("...");
                 break;
