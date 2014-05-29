@@ -218,7 +218,8 @@ public class Utilities {
         } else {
             fileName = url;
         }
-
+        if (fileName.startsWith("/")) fileName= fileName.substring(1);
+        if (fileName.startsWith("\\")) fileName= fileName.substring(1);
         return fileName;
     }
 

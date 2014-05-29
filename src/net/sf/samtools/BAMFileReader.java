@@ -147,6 +147,7 @@ class BAMFileReader extends SAMFileReader.ReaderImplementation {
             final ValidationStringency validationStringency,
             final SAMRecordFactory factory)
             throws IOException {
+        p("-------- Created IGV BamFileReader");
         mIndexFile = indexFile;
         mIsSeekable = true;
         mCompressedInputStream = compressedInputStream;
@@ -168,7 +169,7 @@ class BAMFileReader extends SAMFileReader.ReaderImplementation {
         mIndexStream = indexStream;
         mIsSeekable = true;
         mCompressedInputStream = compressedInputStream;
-     //   p("creating binarycodec");
+        p("creating binarycodec");
         mStream = new BinaryCodec(new DataInputStream(mCompressedInputStream));
         this.eagerDecode = eagerDecode;
         this.mValidationStringency = validationStringency;
@@ -701,6 +702,7 @@ class BAMFileReader extends SAMFileReader.ReaderImplementation {
         SAMRecord getNextRecord()
                 throws IOException {
             // Advance to next file block if necessary
+          //  p("GetNextRecord with mCompressedInputStream="+mCompressedInputStream.getClass().getName());
             while (mCompressedInputStream.getFilePointer() >= mFilePointerLimit) {
                 if (mFilePointers == null
                         || mFilePointerIndex >= mFilePointers.length) {

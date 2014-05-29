@@ -70,7 +70,7 @@ public class IonTorrentHttpHandler implements HttpHandler {
         if (header_value != null && header_key == null) {
             header_key = "Authorization";
         }
-        boolean show =  HEADER_CHECKS < 3;/// || url.toString().endsWith(".seg") || url.toString().endsWith(".bed");
+        boolean show =  false;//HEADER_CHECKS < 50;/// || url.toString().endsWith(".seg") || url.toString().endsWith(".bed");
 //        if (show) {
 //            log.info("checkForHeaderParameters: header key and value: " + header_key + "=" + header_value + ", ecnryption is: " + header_encrypt + ", will add it to connection header");
 //            log.info("checkForHeaderParameters: server:" + server + ", URL is: " + url.toString());
@@ -86,7 +86,7 @@ public class IonTorrentHttpHandler implements HttpHandler {
                 try {
                     InetAddress inetAddress = InetAddress.getByName(server);
                     ipAddress = inetAddress.getHostAddress().toString();
-                    p("Got IP address " + ipAddress + "  for " + server);
+                  //  p("Got IP address " + ipAddress + "  for " + server);
                 } catch (Exception e) {
                     p("Could not get IP of " + server + ":" + e.getMessage());
                 }
@@ -157,14 +157,14 @@ public class IonTorrentHttpHandler implements HttpHandler {
                     // replace _ with space
 
                     header_value = StringTools.replace(header_value, "_", " ");
-                    if (show) {
-                        p("checkForHeaderParameters: Token was not not encrypted! encrypt=" + pref.getTemp("header_encrypt") + ", Using token " + header_value);
-                    }
+//                    if (show) {
+//                        p("checkForHeaderParameters: Token was not not encrypted! encrypt=" + pref.getTemp("header_encrypt") + ", Using token " + header_value);
+//                    }
                 }
                 conn.setRequestProperty("Accept", "*/*");
                 if (header_value != null) {
                     if (show) {
-                        p("SETTING " + header_key + "=" + header_value+" for url "+ url.toString());
+                        p("SETTING " + header_key + "=" + header_value+" for file "+ url.getFile());
                     }
                     conn.addRequestProperty(header_key, header_value);
                 }
@@ -172,9 +172,9 @@ public class IonTorrentHttpHandler implements HttpHandler {
                 log.info("checkForHeaderParameters: NOT using token becaue server is not in URL: server:" + server + ", URL is: " + url.toString());
             }
         } else {
-            if (show) {
-                p("checkForHeaderParameters: Got no header key or value or no server " + server + ":" + url);
-            }
+//            if (show) {
+//                p("checkForHeaderParameters: Got no header key or value or no server " + server + ":" + url);
+//            }
         }
         HEADER_CHECKS++;
     }

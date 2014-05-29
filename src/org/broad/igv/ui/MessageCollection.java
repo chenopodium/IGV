@@ -42,7 +42,7 @@ public class MessageCollection {
     }
 
     public void append(String message) {
-        messages.add(message);
+        if (messages.contains(message)) messages.add(message);
     }
 
     public void prepend(String message) {
@@ -62,7 +62,7 @@ public class MessageCollection {
 
         for (String msg : messages) {
             buffer.append(msg);
-            buffer.append("\n");
+            buffer.append("\n\n");
         }
 
         return buffer.toString();

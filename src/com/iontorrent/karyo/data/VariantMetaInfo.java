@@ -4,6 +4,7 @@
  */
 package com.iontorrent.karyo.data;
 
+import java.text.DecimalFormat;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -21,6 +22,8 @@ public class VariantMetaInfo extends FeatureMetaInfo {
     private String scorefieldname = null;
     int count = 0;
 
+    
+    
     public VariantMetaInfo(KaryoTrack t, String name) {
         super(t, name);
     }

@@ -23,14 +23,15 @@
  */
 package net.sf.samtools.seekablestream;
 
-import net.sf.samtools.util.HttpUtils;
-
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.Proxy;
 import java.net.URL;
+import org.apache.log4j.Logger;
+import org.broad.igv.util.HttpUtils;
+import org.openide.util.Exceptions;
 
 /**
  * @author jrobinso
@@ -54,7 +55,12 @@ public class SeekableHTTPStream extends SeekableStream {
 
         // Try to get the file length
         // Note: This also sets setDefaultUseCaches(false), which is important
-        final String contentLengthString = HttpUtils.getHeaderField(url, "Content-Length");
+        String contentLengthString = null;
+        try {
+            contentLengthString = HttpUtils.getInstance().getHeaderField(url, "Content-Length");
+        } catch (IOException ex) {
+            Exceptions.printStackTrace(ex);
+        }
         if (contentLengthString != null) {
             try {
                 contentLength = Long.parseLong(contentLengthString);
@@ -90,6 +96,9 @@ public class SeekableHTTPStream extends SeekableStream {
         this.position = position;
     }
 
+    private void p(String s) {
+        Logger.getLogger(this.getClass()).info(s);
+    }
     public int read(byte[] buffer, int offset, int len) throws IOException {
 
         if (offset < 0 || len < 0 || (offset + len) > buffer.length) {
@@ -116,6 +125,7 @@ public class SeekableHTTPStream extends SeekableStream {
             byteRange = "bytes=" + position + "-" + endRange;
             connection.setRequestProperty("Range", byteRange);
 
+            //p("Reading "+position+"-"+endRange+", range request property = "+connection.getRequestProperty("Range"));
             is = connection.getInputStream();
 
             while (n < len) {

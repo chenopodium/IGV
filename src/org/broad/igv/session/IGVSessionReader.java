@@ -597,10 +597,11 @@ public class IGVSessionReader implements SessionReader {
 
             if (errors.size() > 0) {
                 StringBuffer buf = new StringBuffer();
-                buf.append("<html>Errors were encountered loading the session:<br>");
+                buf.append("<html>Errors were encountered loading the session:<br><ul>");
                 for (String msg : errors) {
-                    buf.append(msg);
+                    buf.append("<li>"+msg+"</li>");
                 }
+                buf.append("</ul>");
                 MessageUtils.showMessage(buf.toString());
             }
 
@@ -1076,7 +1077,7 @@ public class IGVSessionReader implements SessionReader {
      */
     private List<Track> processTrack(Session session, Element element, HashMap additionalInformation, String rootPath) {
 
-        log.info("=== processTrack " + element);
+        
         String id = getAttribute(element, SessionAttribute.ID.getText());
 
         Map<String, String> tAttributes = Utilities.getAttributes(element);
@@ -1084,11 +1085,7 @@ public class IGVSessionReader implements SessionReader {
         Map<String, String> drAttributes = null;
 
         String trackLine = getAttribute(element, SessionAttribute.TRACK_LINE.getText());
-
-        if (trackLine != null) {
-            log.info("Got trackline " + trackLine + " for id " + id);
-        }
-
+       
         if (element.hasChildNodes()) {
             Node childNode = element.getFirstChild();
             Node sibNode = childNode.getNextSibling();
@@ -1097,17 +1094,21 @@ public class IGVSessionReader implements SessionReader {
                 drAttributes = Utilities.getAttributes(sibNode);
             }
         }
-
+        log.info("=== processTrack " + id);
         // Get matching tracks.
         List<Track> matchedTracks = trackDictionary.get(id);
+        String name = getAttribute(element, SessionAttribute.NAME.getText());
         if (matchedTracks == null) {
-            matchedTracks = trackDictionary.get(getAttribute(element, SessionAttribute.NAME.getText()));
+            matchedTracks = trackDictionary.get(name);
         }
         if (matchedTracks == null) {
-//            log.info("Warning.  No tracks were found in trackDictionary with id: " + id + ", element: " + element.toString() + ",  in session file. Check spelling. Tracks are:");
-//            for (Iterator it = trackDictionary.keySet().iterator(); it.hasNext();) {
-//                log.info("              - " + it.next());
-//            }
+            matchedTracks = trackDictionary.get(id+".gz");
+        }
+        if (matchedTracks == null) {
+            log.info("Warning.  No tracks were found in trackDictionary with id: " + id + " (and with .gz, or name "+name+") element: " + element.toString() + ",  in session file. Check spelling. Tracks are:");
+            for (Iterator it = trackDictionary.keySet().iterator(); it.hasNext();) {
+                log.info("              - " + it.next());
+            }
         } else {
             for (final Track track : matchedTracks) {
 
@@ -1120,10 +1121,15 @@ public class IGVSessionReader implements SessionReader {
                 track.restorePersistentState(tAttributes);
                 TrackProperties tp = null;
                 if (trackLine != null) {
-                    tp = new TrackProperties();
-                    ParsingUtils.parseTrackLine(trackLine, tp);
-                    track.setProperties(tp);
-                   // log.info("Processing trackLine " + trackLine + " for " + track.getDisplayName() + ":" + tp.toString());
+                    try {
+                        tp = new TrackProperties();
+                        ParsingUtils.parseTrackLine(trackLine, tp);
+                        track.setProperties(tp);
+                        log.info("Processing trackLine " + trackLine + " for " + track.getDisplayName() + ":" + tp.toString());
+                    }
+                    catch (Exception e) {
+                        log.error(ErrorHandler.getString(e));
+                    }
                    // log.info("cutoff of properties=" + tp.getCutoffScore() + ", trackorder of properties: " + tp.getTrackorder());
                     //log.info("Got cutoff: " + track.getCutoffScore());
                    // log.info("Got order: " + track.getTrackorder());

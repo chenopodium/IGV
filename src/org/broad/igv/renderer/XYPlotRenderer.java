@@ -24,22 +24,23 @@ package org.broad.igv.renderer;
 //~--- non-JDK imports --------------------------------------------------------
 import com.iontorrent.cnv.CustomCnvDataSourceTrack;
 import com.iontorrent.utils.ErrorHandler;
-import org.broad.igv.Globals;
-import org.broad.igv.PreferenceManager;
-import org.broad.igv.feature.LocusScore;
-import org.broad.igv.track.RenderContext;
-import org.broad.igv.track.Track;
-import org.broad.igv.ui.FontManager;
-import org.broad.igv.ui.UIConstants;
-import org.broad.igv.ui.panel.FrameManager;
-
 import java.awt.*;
 import java.text.DecimalFormat;
 import java.util.List;
 import java.util.logging.Logger;
+import org.broad.igv.Globals;
+import org.broad.igv.PreferenceManager;
 import org.broad.igv.data.seg.ReferenceSegment;
 import org.broad.igv.data.seg.SummarySegment;
+import org.broad.igv.feature.LocusScore;
+import org.broad.igv.track.DataTrack;
+import org.broad.igv.track.RenderContext;
+import org.broad.igv.track.Track;
 import org.broad.igv.track.WindowFunction;
+import org.broad.igv.ui.FontManager;
+import org.broad.igv.ui.UIConstants;
+import org.broad.igv.ui.panel.FrameManager;
+
 
 /**
  * @author jrobinso
@@ -126,7 +127,7 @@ public abstract class XYPlotRenderer extends DataRenderer {
             middle = (MAX - MIN) / 2;
         }
 
-        if (Math.abs(score - middle) < 0.0000001) {
+        if (Math.abs(score - middle) < 0.01) {
             return cmid;
         }
         if (score > middle) {
@@ -149,7 +150,7 @@ public abstract class XYPlotRenderer extends DataRenderer {
     // XXX was synchronized
     public synchronized void renderScores(Track track, List<LocusScore> locusScores, RenderContext context, Rectangle arect) {
         try {
-            //  log.info("renderScores: "+locusScores.size()+", scale="+context.getScale()+",chr="+context.getChr()+", origin="+context.getOrigin());
+            p("renderScores: "+locusScores.size()+", scale="+context.getScale()+",chr="+context.getChr()+",track="+track.getName());
             boolean show = locusScores.size() < 200;
 
             boolean showMissingData = PreferenceManager.getInstance().getAsBoolean(PreferenceManager.SHOW_MISSING_DATA_KEY);
@@ -171,7 +172,7 @@ public abstract class XYPlotRenderer extends DataRenderer {
             Color posColor = track.getColor();
             Color negColor = track.getAltColor();
             Color midColor = track.getMidColor();
-            //  p(track.getName()+": high color: "+posColor+", midColor: "+midColor+", low color="+negColor);
+            p(track.getName()+": high color: "+posColor+", midColor: "+midColor+", low color="+negColor);
             // Get the Y axis definition, consisting of minimum, maximum, and base value.  Often
             // the base value is == min value which is == 0.
 
@@ -183,9 +184,14 @@ public abstract class XYPlotRenderer extends DataRenderer {
                 // CHANGE METHOD GETCUTOFF SCORE TO INCLUDE POSITION!                    
                 cutOff = (float) ((CustomCnvDataSourceTrack) track).getExpectedValue(context.getChr());
                 //  p("XYPlotRenderer: Got CustomCnvDataSourceTrack: cutoff at " + context.getChr() + " is " + cutOff);
+            }
+            else if (track instanceof DataTrack) {
+                 cutOff = (float) ((DataTrack) track).getExpectedValue(context.getChr());
+                // p("XYPlotRenderer: Got DataTrack: "+track.getName()+" cutoff at " + context.getChr() + " is " + cutOff);
+            
             } else {
                 cutOff = (float) track.getCutoffScore();
-                //  p("XYPlotRenderer: NOT a CustomCnvDataSourceTrack track: " + track.getClass().getName());
+               // p("XYPlotRenderer: NOT a DataTrack or CustomCnvDataSourceTrack track: " + track.getClass().getName()+", cutoff="+cutOff);
             }
 
             float baseValue = 0;
@@ -315,6 +321,9 @@ public abstract class XYPlotRenderer extends DataRenderer {
                         }
                     } else {
                         if (track instanceof CustomCnvDataSourceTrack) {
+                            color = getGainLossColor(minValue, maxValue, dataY, posColor, negColor, midColor, cutOff);
+                            //p("Got color "+color+" for "+dataY+" and mid "+cutOff+", chigh="+posColor+", clow="+negColor);
+                        } else if (track instanceof DataTrack) {
                             color = getGainLossColor(minValue, maxValue, dataY, posColor, negColor, midColor, cutOff);
                             //p("Got color "+color+" for "+dataY+" and mid "+cutOff+", chigh="+posColor+", clow="+negColor);
                         } else {

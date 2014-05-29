@@ -280,7 +280,7 @@ public abstract class AbstractTrack implements Track {
     public String getGenderSymbol() {
         gender = this.getGender();
         if (gender != null) {
-            char g = '?';
+            char g = ' ';
             // female &#x2640; &#9792;
             // male &#9794;	&#x2642;
             if (gender.toUpperCase().equalsIgnoreCase("MALE")) {
@@ -289,6 +289,10 @@ public abstract class AbstractTrack implements Track {
             else if (gender.toUpperCase().equalsIgnoreCase("FEMALE")) {
                 g = 9792;
             }
+            else if (gender.toUpperCase().equalsIgnoreCase("NONE")) {
+                g = ' ';
+            }
+            
             return ""+g;
         }
         else return null;
@@ -1452,7 +1456,7 @@ public abstract class AbstractTrack implements Track {
             if (this.getSample() != null) {
                 
                 String key = this.getSample().toUpperCase()+"_GENDER";
-                log.info("Getting sample gender info: "+key);
+              //  log.info("Getting sample gender info: "+key);
                 gender = PreferenceManager.getInstance().getTemp(key);
             }
            // else log.info("Got no gender info and no sample");

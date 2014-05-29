@@ -27,6 +27,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  * @author jrobinso
@@ -37,6 +38,7 @@ public class IGVUrlHelper implements URLHelper {
     URL url;
 
     public IGVUrlHelper(URL url) {
+       // p("Creating IGVUrlHelper for "+url);
         this.url = url;
     }
 
@@ -51,12 +53,17 @@ public class IGVUrlHelper implements URLHelper {
     public InputStream openInputStream() throws IOException {
         return HttpUtils.getInstance().openConnectionStream(url);
     }
+    
+    private void p(String s){
+        Logger.getLogger(getClass().getName()).info(s);
+    }
 
     public InputStream openInputStreamForRange(long start, long end) throws IOException {
 
         String byteRange = "bytes=" + start + "-" + end;
         Map<String, String> params = new HashMap();
         params.put("Range", byteRange);
+     //   p("openInputStreamForRange for "+url.getFile()+", "+byteRange);
         return HttpUtils.getInstance().openConnectionStream(url, params);
     }
 

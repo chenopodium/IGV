@@ -1,0 +1,7 @@
+id=hg18
+name=Human hg18
+cytobandFile=hg18_cytoBand.txt
+geneFile=hg18_refGene.txt
+sequenceLocation=http://www.broadinstitute.org/igvdata/annotations/seq/hg18
+geneTrackName=RefSeq genes
+url= http://www.ncbi.nlm.nih.gov/nuccore/$$

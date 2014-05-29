@@ -56,7 +56,13 @@ public class DagCodec extends AsciiFeatureCodec<Feature> {
     private static Logger log = Logger.getLogger(DagCodec.class);
 
     static Color defaultColor = Color.pink.darker();
-
+    static Color complex = new Color(139,69,19);
+    static Color loss = new Color(200,0,0);
+    
+    static Color inv = new Color(200,0,200);
+    static Color gain = new Color(0,0,200);
+    static Color dup = new Color(0,200,0);
+    
     private TrackProperties trackProperties = null;
     CI.CIHashSet featuresToHide = new CI.CIHashSet();
 
@@ -237,6 +243,7 @@ public class DagCodec extends AsciiFeatureCodec<Feature> {
 
         String typename = this.headerFields[5];
         String[] colorNames = new String[]{"color", "Color", "colour", "Colour"};
+        
         for(String colorName: colorNames){
             Color c = defaultColor;
             if (attributes.containsKey(colorName)) {
@@ -244,22 +251,31 @@ public class DagCodec extends AsciiFeatureCodec<Feature> {
                 break;
             }
             else if (subType.equalsIgnoreCase("Gain") || subType.equalsIgnoreCase("insertion")) {
-                 c=Color.blue.darker();
+                 c=gain;
             }
             else if (subType.equalsIgnoreCase("Loss") || subType.equalsIgnoreCase("deletion") ) {
-                 c=Color.red.darker();
+                 c= loss;
             }
             else if (subType.equalsIgnoreCase("inversion")) {
-                 c=Color.pink.darker();
+                 c=inv;
+            }
+            else if (subType.equalsIgnoreCase("duplication")) {
+                 c=Color.black; ;
             }
             else if (subType.equalsIgnoreCase("complex")) {
-                 c=Color.yellow.darker();
+                 c=complex;
             }
             else if (subType.equalsIgnoreCase("gain+loss")) {
-                 c=Color.pink;
+                 c=complex;
+            }
+            else if (subType.indexOf('+')>-1 ) {
+                 c=complex;
             }
             else if (subType.equalsIgnoreCase("unknown")) {
                  c= Color.black;             
+            }
+            else  {
+                 c= Color.gray;             
             }
             
             f.addHighlightColor(typename, c);

@@ -458,7 +458,7 @@ public abstract class DataTrack extends AbstractTrack {
     }
 
     protected String getBaselineName() {
-        return "Baseline";
+        return "Baseline (expected value)";
     }
     protected LocusScore getLocusScoreAt(String chr, double position, ReferenceFrame frame) {
         int zoom = Math.max(0, frame.getZoom());

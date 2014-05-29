@@ -41,20 +41,23 @@ public class HttpResponseException extends IOException {
 
     @Override
     public String getMessage() {
+        
         String scode = " (status code " + statusCode + ")";
         String prefs = "<br>(check menu <b>View/Preferences/Proxy settings</b> (even if you use no proxy) to set default username/pw)" ;
         String user = " (maybe try a different username/password) ";
         switch (statusCode) {
             case 407:
-                return "Proxy authentication required"+user+scode+prefs;
+                return "<br>Proxy authentication required"+user+scode+prefs;
             case 403:
-                return "Access Forbidden"+user+scode+prefs;
+                return "<br>Access Forbidden"+user+scode+prefs;
             case 404:
-                return "File not found"+scode;
+                return "<br>File (<b>or its index file</b>) was not found"+scode;
             case 401:
-                return "Access Forbidden "+user+scode+prefs;
+                return "<br>Access Forbidden "+user+scode+prefs;
+            case 500:
+                return "<br>The file (<b>or its index file</b>) was not found "+scode;
             default:
-                return "HTTP access error"+user+scode+prefs;
+                return "<br>HTTP access error"+user+scode+prefs;
         }
 
     }

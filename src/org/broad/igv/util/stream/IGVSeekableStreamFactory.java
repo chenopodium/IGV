@@ -26,6 +26,7 @@ import org.broad.tribble.util.SeekableStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import org.apache.log4j.Logger;
 
 /**
  * @author Jim Robinson
@@ -46,6 +47,9 @@ public class IGVSeekableStreamFactory {
                   //  is = new SeekableHTTPStream(new IGVUrlHelper(url));
                     is = new IGVSeekableHTTPStream(url);
                 } else {
+                    
+                    //is = new SeekableServiceStream(url);
+                    Logger.getLogger(IGVSeekableStreamFactory.class).info("NOT using IGVSeekableHTTPStream for url "+url+" because no byte request available");
                     is = new SeekableServiceStream(url);
                 }
             } else if (path.toLowerCase().startsWith("ftp:")) {

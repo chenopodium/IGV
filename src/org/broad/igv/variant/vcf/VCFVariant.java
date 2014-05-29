@@ -87,7 +87,7 @@ public class VCFVariant implements Variant {
     }
     @Override
     public double getPloidy() {
-        int p = tryToGetPloidy("CNV_Ploidy");
+        double p = tryToGetPloidy("CNV_Ploidy");
         if (p > -1) return p;
         p = tryToGetPloidy("LongDel_CNV_Ploidy");
         if (p > -1) return p;
@@ -115,7 +115,7 @@ public class VCFVariant implements Variant {
         return getPloidy();
     }
     
-    public int getPloidy(String sample) {
+    public double getPloidy(String sample) {
         Genotype genotype = getGenotype(sample);
         if (genotype != null && genotype.getAttributes() != null) {
             Set<String> keys = genotype.getAttributes().keySet();
@@ -125,9 +125,9 @@ public class VCFVariant implements Variant {
                     try {
                         String sp = genotype.getAttributeAsString(key);
                         if (sp == null) return -1;
-                        else return Integer.parseInt(sp);
+                        else return Double.parseDouble(sp);
                     } catch (Exception e) {
-                        log.info("getPloidy: Could not get "+key+"  from sample "+sample);
+                        log.info("getPloidy: Could not get "+key+"  from sample "+sample+", value was: "+genotype.getAttributeAsString(key)) ;
                     }
                // }
             }

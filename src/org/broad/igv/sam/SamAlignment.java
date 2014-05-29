@@ -167,10 +167,12 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
             }
         }
         getModelParameters();
-        rawflowSignals = getFlowSignals(flowOrder, keySequence);
-        oldSignals = getOldFlowSignals(flowOrder, keySequence);
-        if (show) {
-            p("rawflowSignals: " + Arrays.toString(rawflowSignals));
+        if (flowOrder != null && keySequence != null) {
+            rawflowSignals = getFlowSignals(flowOrder, keySequence);
+            oldSignals = getOldFlowSignals(flowOrder, keySequence);
+            if (show) {
+                p("rawflowSignals: " + Arrays.toString(rawflowSignals));
+            }
         }
 
         createAlignmentBlocks(show, record.getCigarString(), keySequence + record.getReadString(), record.getReadBases(), record.getBaseQualities(), decodeReduceCounts(record),
@@ -946,12 +948,15 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
      * @return the raw flow signals
      */
     private float[] getFlowSignals(String flowOrder, String keySequence) {
-
-        float[] result = getNewFlowSignals(flowOrder, keySequence);
-        if (result == null) {
-            result = getOldFlowSignals(flowOrder, keySequence);
+        
+        if (flowOrder != null) {
+            float[] result = getNewFlowSignals(flowOrder, keySequence);
+            if (result == null) {
+                result = getOldFlowSignals(flowOrder, keySequence);
+            }
+            return result;
         }
-        return result;
+        else return null;
     }
 
     private float[] getNewFlowSignals(String flowOrder, String keySequence) {

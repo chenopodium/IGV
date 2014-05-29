@@ -519,11 +519,11 @@ public class SAMFileReader implements Iterable<SAMRecord>, Closeable {
     private void init(final SeekableStream strm, final SeekableStream indexStream, final boolean eagerDecode,
                       final ValidationStringency validationStringency) {
 
-     //   p("Init called");
+        p("---------- Init called");
         try {
-          //  p("Checking what stream looks like");
+            p("Checking what stream looks like");
             if (streamLooksLikeBam(strm)) {
-         //       p("stream looks like bam");
+                p("stream looks like bam");
                 mIsBinary = true;
                 mReader = new BAMFileReader(strm, indexStream, eagerDecode, validationStringency, this.samRecordFactory);
             } else {
@@ -538,8 +538,8 @@ public class SAMFileReader implements Iterable<SAMRecord>, Closeable {
     }
 
     protected void p(String s) {
-        Logger.getLogger(getClass()).info(s);
-        System.out.println(getClass().getName()+":"+s);
+        Logger.getLogger(getClass()).info(":IGV SamFileReader:"+ s);
+        System.out.println(getClass().getName()+":IGV SamFileReader: "+s);
     }
     // Its too expensive to examine the remote file to determine type.
     // Rely on file extension.

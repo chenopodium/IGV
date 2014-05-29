@@ -19,6 +19,7 @@ import java.awt.event.ItemListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.util.logging.Logger;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JColorChooser;
@@ -56,27 +57,32 @@ public class SingleTrackPanel extends JPanel {
         if (track.getTrack().getResourceLocator() != null) {
             file = track.getTrack().getResourceLocator().getFileName();       
         }
-        
-         String tname = track.getTrackDisplayName();
+        String tname = track.getTrackDisplayName();
+        String tool = tname+"<br>File: " + file ;
        
-        tname = getShorterName(tname, 5, 40);
+        tname = getShorterName(tname, 15, 60);
         String g = track.getTrack().getGenderSymbol();
-          p("Track name is: "+tname+", gender="+g);
+        p("Track name is: "+tname+", gender="+g);
         if (g != null) {
           tname += " <font size='4'><b>"+g+"</b></font>" ;
         }
         String name = track.getShortName() + ": " + tname;
 
        
-        String tool = "File: " + file ;
+        
         if (track.getSampleafeture() != null) {
-            tool = "<html>" + tool + "<br>Example: " + track.getSampleafeture().toString() + "</html>";
+            tool = tool + "<br>Example: " + track.getSampleafeture().toString();
+        }
+        if (track.getTrack() != null && track.getTrack().getResourceLocator() != null) {
+            String path = track.getTrack().getResourceLocator().getPath();
+            path = path.replace("=", "<br>");
+            tool = tool + "<br>Path: " + path;
         }
         if (check) {
             box = new JCheckBox("<html>"+ name+"</html>");
             // box.setForeground(track.getRenderType().getColor(0));              
             box.setSelected(track.isVisible());
-            box.setToolTipText(tool);
+            box.setToolTipText("<html>"+tool+"</html>");
             box.addItemListener(new ItemListener() {
                 @Override
                 public void itemStateChanged(ItemEvent e) {
@@ -186,19 +192,40 @@ public class SingleTrackPanel extends JPanel {
     }
 
     private String getShorterName(String n, int minlen, int maxlen) {
-        if (n != null && n.length() > maxlen) {
+        
+        if (n == null) return "";
+        if (n.length() < maxlen) return n;
+        
+        int left = n.lastIndexOf("(");
+        int right = n.lastIndexOf(")");
+        p("Got () at: "+left+"-"+right+", minlen: "+minlen+", maxlen="+maxlen+" for "+n);
+        if (left >= minlen && left < maxlen && right-left > 10) {           
+            n = n.substring(0, left-1);
+        }
+        else {
+            p("Get shorter name between "+minlen+"-"+maxlen+" for "+n);
             n = n.substring(0, maxlen);
-            int dot = n.lastIndexOf(".");
-            int under = n.indexOf("_");
-            int hy = n.indexOf("-");
-            int col = n.indexOf(":");
+            int dot = n.lastIndexOf(".", minlen);
+            int under = n.indexOf("_", minlen);
+            int space = n.indexOf(" ", minlen);
+            int hy = n.indexOf("-", minlen);
+            int col = n.indexOf(":", minlen);
+            int par = n.indexOf("(", minlen);
             int p = Math.max(dot, under);
+            p = Math.max(p, par);
+            p = Math.max(p, space);
             p = Math.max(p, hy);
             p = Math.max(p, col);
             if (p > minlen && p < maxlen) {
-                n = n.substring(0, minlen);
+                //n = n.substring(0, p);
+                n = n.substring(0, p)+"<br>"+n.substring(p);
             }
+            else {
+                n = n.substring(0, maxlen);
+            }
+            n+="...";
         }
+        
         return n;
     }
 
@@ -233,7 +260,7 @@ public class SingleTrackPanel extends JPanel {
     }
 
     private void p(String s) {
-        //Logger.getLogger("SingleTrackPanel").info(s);
+        Logger.getLogger("SingleTrackPanel").info(s);
         System.out.println("SingleTrackPanel: " + s);
     }
 }

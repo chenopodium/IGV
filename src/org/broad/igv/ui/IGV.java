@@ -557,6 +557,8 @@ public class IGV {
         final String name = genome.getDisplayName();
         final String id = genome.getId();
 
+        log.info("=========== IGV.loadGenome: got genome, name="+name+", id="+id);
+        
         GenomeListItem genomeListItem = new GenomeListItem(name, path, id);
         getGenomeManager().addGenomeItem(genomeListItem);
 
@@ -1526,7 +1528,10 @@ public class IGV {
                         log.info("Loading done for " + locator.getPath());
                     } catch (Exception e) {
                         log.error("Error loading tracks", e);
-                        messages.append("Error loading " + locator + ": " + e.getMessage());
+                        String msg = "Unable to load file<br>" + locator + ":<br>" + e.getMessage();
+                        msg = msg.replace("filePath=", "filePath=<br>");
+                       
+                        messages.append(msg);
                     }
                 }
             };

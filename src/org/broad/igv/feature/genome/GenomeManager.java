@@ -207,6 +207,7 @@ public class GenomeManager {
 
         }
 
+        log.info("Loading genome with fasta path: "+fastaPath);
         GenomeListItem item = buildFromPath(fastaPath);
         if (item == null) {
             throw new IOException(fastaPath + " does not exist, could not load genome");

@@ -46,7 +46,7 @@ public class AlignmentTileLoader {
     private AlignmentReader reader;
     private boolean cancel = false;
     private boolean pairedEnd = false;
-
+    private int errors = 0;
     private static final long MB = 1000000;
     
     // Map of read group -> paired end stats
@@ -66,7 +66,9 @@ public class AlignmentTileLoader {
         this.reader = reader;
         activeLoaders.add(new WeakReference<AlignmentTileLoader>(this));
     }
-
+    public int getErrors() {
+        return errors;
+    }
     public void close() throws IOException {
         reader.close();
     }
@@ -113,7 +115,14 @@ public class AlignmentTileLoader {
 
 
             activeLoaders.add(ref);
-            iter = reader.query(chr, start, end, false);
+            try {
+                iter = reader.query(chr, start, end, false);
+            }
+            catch (Exception e) {
+                log.error(ErrorHandler.getString(e));
+                if (errors < 3) MessageUtils.showMessage("<html>Error encountered querying alignments: " + e.toString());
+                return null;
+            }
 
             log.info("loadTile: Loading alignment data for "+chr+":"+start+"-"+end);
             while (iter != null && iter.hasNext()) {
@@ -221,13 +230,14 @@ public class AlignmentTileLoader {
         } catch (java.nio.BufferUnderflowException e) {
             // This almost always indicates a corrupt BAM index, or less frequently a corrupt bam file
             corruptIndex = true;
-            MessageUtils.showMessage("<html>Error encountered querying alignments: " + e.toString()
+           if (errors < 3) MessageUtils.showMessage("<html>Error encountered querying alignments: " + e.toString()
                     + "<br>This is often caused by a corrupt index file.");
             return null;
 
         } catch (Exception e) {
             log.error("Error loading alignment data", e);
-            MessageUtils.showMessage("<html>Error encountered querying alignments: " + e.toString());
+            log.error(ErrorHandler.getString(e));
+            if (errors < 3)MessageUtils.showMessage("<html>Error encountered querying alignments: " + e.toString());
             return null;
         } finally {
             // reset cancel flag.  It doesn't matter how we got here,  the read is complete and this flag is reset

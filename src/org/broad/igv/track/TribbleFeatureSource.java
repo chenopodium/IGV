@@ -18,6 +18,9 @@
 
 package org.broad.igv.track;
 
+import com.iontorrent.utils.ErrorHandler;
+import com.iontorrent.utils.io.FileTools;
+import java.io.File;
 import org.broad.igv.data.DataSource;
 import org.broad.igv.feature.LocusScore;
 import org.broad.igv.feature.genome.Genome;
@@ -28,7 +31,6 @@ import org.broad.igv.tdf.TDFDataSource;
 import org.broad.igv.tdf.TDFReader;
 import org.broad.igv.util.ParsingUtils;
 import org.broad.igv.util.RuntimeUtils;
-import org.broad.igv.util.stream.IGVUrlHelper;
 import org.broad.tribble.*;
 import org.broad.tribble.AbstractFeatureReader;
 
@@ -38,6 +40,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+import org.broad.igv.PreferenceManager;
+import org.broad.igv.ui.util.MessageUtils;
+import org.broad.igv.util.HttpUtils;
+import org.openide.util.Exceptions;
 
 /**
  * @author jrobinso
@@ -81,7 +87,41 @@ public class TribbleFeatureSource implements org.broad.igv.track.FeatureSource {
         isVCF = codec.getClass() == VCFWrapperCodec.class;
         featureClass = codec.getFeatureType();
        // log("Feature class="+featureClass);
-        AbstractFeatureReader basicReader = AbstractFeatureReader.getFeatureReader(path, codec, true);
+        AbstractFeatureReader basicReader = null;
+        try {
+            basicReader = AbstractFeatureReader.getFeatureReader(path, codec, true);
+        }
+        catch (Exception e) {           
+           String msg = e.getMessage();
+           p("Could not read file "+ path+" because: "+ErrorHandler.getString(e));
+           if (msg != null && msg.indexOf("parse") > 0) {
+               basicReader = AbstractFeatureReader.getFeatureReader(path, codec, true);
+           }
+           else {                      
+                boolean yes = MessageUtils.confirm("<html>I had trouble reading the remote file<br>"+path+".<br><b>Would you like me to download it and read it locally?</b></html>");
+                if (yes) {
+                 String f = this.savePath(path);
+                 if (path.endsWith(".gz")) {
+                      // also try to save the file withouyt .gz
+                      savePath(path.substring(0, path.length()-3));
+                      savePath(path+".tbi");
+                 }
+                 else if (path.endsWith(".vcf")) {
+                      // also try to save the file withouyt .gz
+                      savePath(path+".gz");
+                      savePath(path+".gz.tbi");
+                 }
+                 if (f != null) {
+                     p("Trying again with downloaded file "+f);
+                     path = f;
+                     basicReader = AbstractFeatureReader.getFeatureReader(f, codec, true);
+                 }
+                }
+                else basicReader = AbstractFeatureReader.getFeatureReader(path, codec, true);
+           }
+           // generate same exception again
+           
+        }
         header = basicReader.getHeader();
       //  log("header  = "+header.toString());
         initFeatureWindowSize(basicReader);
@@ -101,6 +141,31 @@ public class TribbleFeatureSource implements org.broad.igv.track.FeatureSource {
         initCoverageSource(path + ".tdf");
     }
 
+    private void p(String s) {
+        Logger.getLogger("TribbleFeatureSource").info(s);
+    }
+   private String savePath(String path) {
+        File f = null;
+        byte[] content = null;
+        p("SavePath: "+path);
+        if (FileTools.isUrl(path)) {
+            try {
+                p("SavePath is url: " + path);
+                int sl = path.lastIndexOf("/");
+                f = new File(path.substring(sl));
+                File output = new File(PreferenceManager.getInstance().getLastSessionDirectory()+"/"+ f.getName());
+                HttpUtils.getInstance().downloadFile(path, output);
+                return output.getAbsolutePath();
+            } catch (IOException ex) {
+                Exceptions.printStackTrace(ex);
+                return null;
+            }
+       
+        } else {
+            return path;
+        }
+        
+    }
     public Class getFeatureClass() {
         return featureClass;
     }

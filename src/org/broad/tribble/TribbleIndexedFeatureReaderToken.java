@@ -143,7 +143,11 @@ public class TribbleIndexedFeatureReaderToken<T extends Feature> extends Abstrac
                 pbs = new PositionalBufferedStream(is);
                 header = codec.readHeader(pbs);
             } catch (Exception e) {
-                throw new TribbleException.MalformedFeatureFile("Unable to parse header with error: " + e.getMessage(), path, e);
+                String msg = e.getMessage();
+                if (msg == null || msg.equals("null")) {
+                    msg = " Maybe the file does not exist?";
+                }
+                throw new TribbleException.MalformedFeatureFile("Unable to parse header with error:\n<b>" + msg+"</b>", path, e);
             } finally {
                 if ( pbs != null ) pbs.close();
                 else if (is != null) is.close();

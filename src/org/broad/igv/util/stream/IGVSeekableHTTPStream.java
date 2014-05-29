@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.Proxy;
 import java.net.URL;
+import java.util.logging.Logger;
 
 /**
  * TODO Get rid of this class
@@ -24,9 +25,12 @@ public class IGVSeekableHTTPStream extends SeekableStream {
 
     public IGVSeekableHTTPStream(final URL url) {
         this(url, null);
+        p("Create IGVSeekableHTTPStream for URL "+url);
 
     }
-
+    private void p(String s){
+        Logger.getLogger(getClass().getName()).info(s);
+    }
     public IGVSeekableHTTPStream(final URL url, Proxy proxy) {
 
         this.proxy = proxy;

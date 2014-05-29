@@ -228,7 +228,7 @@ public abstract class AbstractAlignment implements Alignment {
                 int offset = basePosition - block.getStart();
                 byte base = block.getBase(offset);
                 byte quality = block.getQuality(offset);
-                buf.append("Location = " + basePosition + "<br>");
+                buf.append("Location = " + (basePosition+1) + "<br>");
                 buf.append("Base = " + (char) base + "<br>");
                 buf.append("Base phred quality = " + quality + "<br>");
                 if (block.hasCounts()) {

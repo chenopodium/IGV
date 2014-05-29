@@ -140,13 +140,13 @@ public class GraphicUtils {
     }
 
     private static void p(String s) {
-        Logger.getLogger("GraphicsUtils").info(s);
+      //  Logger.getLogger("GraphicsUtils").info(s);
 
     }
 
     private static void paintHtmlString(Graphics gg, String html, int x, int y) {
         Graphics2D g = (Graphics2D) gg;
-        p("paintHtmlString " + html + "  at " + x + "/" + y);
+      //  p("paintHtmlString " + html + "  at " + x + "/" + y);
 
         FontMetrics fontMetrics = g.getFontMetrics();
 

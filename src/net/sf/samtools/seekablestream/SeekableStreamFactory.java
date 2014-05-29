@@ -26,6 +26,7 @@ package net.sf.samtools.seekablestream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import org.broad.igv.util.stream.IGVSeekableHTTPStream;
 
 /**
  * Singleton class for getting {@link SeekableStream}s from URL/paths

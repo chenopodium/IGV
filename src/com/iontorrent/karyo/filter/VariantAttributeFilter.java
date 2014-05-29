@@ -67,6 +67,11 @@ public class VariantAttributeFilter extends KaryoFilter{
         if (!(f instanceof Variant)) return true;
         Variant var = (Variant)f;
         String value = var.getAttributeAsString(attname);
+        // check for non-presence of this value and do NOT filter it if value is not there
+        if (value == null || value.equalsIgnoreCase("null")) {
+            p("Variant does not have att "+attname+", will not filter it out");
+            return true;
+        }
         
       //  p("filtering "+attname+", "+value+" with filter "+this.toString());
         // if this is  number, operator is not null
@@ -81,7 +86,7 @@ public class VariantAttributeFilter extends KaryoFilter{
             }
             catch (Exception e) {
             //    p("Could NOT get value "+value+"  for attname="+attname+"  for variant at "+var.getPositionString());
-                passed = false;
+                passed = true;
             }
         }
         else {

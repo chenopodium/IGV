@@ -300,9 +300,9 @@ public class PreferenceManager implements PropertyManager {
     }
     public void putTemp(String key, String val) {
         key = key.toUpperCase();
-        if (key.endsWith("_NAME")) {
-            log.info("Adding temp "+key+"="+val);
-        }
+       // if (key.endsWith("_NAME")) {
+       //     log.info("Adding temp "+key+"="+val);
+       // }
         temporaryValues.put(key, val);
     }
  /**

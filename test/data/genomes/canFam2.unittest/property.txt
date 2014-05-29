@@ -1,0 +1,6 @@
+id=canFam2.unittest
+name=Dog (canFam2)
+cytobandFile=Dog_canFam2_cytoband.txt
+geneFile=refGene.txt
+geneTrackName=Refseq genes
+sequenceLocation=http://www.broadinstitute.org/igv/sequence/canFam2

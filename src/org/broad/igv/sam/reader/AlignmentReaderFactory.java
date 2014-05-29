@@ -71,11 +71,11 @@ public class AlignmentReaderFactory {
             reader = new GeraldReader(samFile, requireIndex);
         } else if (pathLowerCase.endsWith(".bam")) {
             if (locator.isLocal()) {
-                
+                log.info("----------- AlignmentReader: File is local, creating new BAMFileReader");
                 reader = new BAMFileReader(new File(samFile));
             } else if (HttpUtils.isRemoteURL(locator.getPath().toLowerCase())) {
                 try {
-                //    log.info("AlignmentReader: Creating new BAMHttpReader");
+                    log.info("-------- AlignmentReader: Creating new BAMHttpReader");
                     reader = new BAMHttpReader(locator, requireIndex);
                 } catch (Exception e) {
                     log.error("", e);

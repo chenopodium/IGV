@@ -17,8 +17,6 @@ import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMRecord;
 import net.sf.samtools.SAMSequenceRecord;
 import net.sf.samtools.util.CloseableIterator;
-//import net.sf.samtools.util.SeekableBufferedStream;
-//import net.sf.samtools.util.SeekableStream;
 import org.apache.log4j.Logger;
 import org.broad.igv.DirectoryManager;
 import org.broad.igv.exceptions.DataLoadException;
@@ -66,6 +64,7 @@ public class BAMHttpReader implements AlignmentReader {
 
     public BAMHttpReader(ResourceLocator locator, boolean requireIndex) throws IOException {
         this.url = new URL(locator.getPath()); 
+        log.info(" ========= creating BAMHttpReader for "+url);
         if (requireIndex) {
             indexFile = getIndexFile(url, locator.getIndexPath());
             if (indexFile == null) {
@@ -75,7 +74,7 @@ public class BAMHttpReader implements AlignmentReader {
             SeekableStream ss = getSeekableStream(url);
             SeekableStream si = new SeekableFileStream(indexFile);
             try {
-              //  log.info("Creating SAMFilereaderCustom with index file");
+                log.info("Creating SAMFilereaderCustom with index file");
                 reader = new SAMFileReader(ss, si, false);
             }
             catch (Throwable e) {
@@ -84,7 +83,7 @@ public class BAMHttpReader implements AlignmentReader {
             
         } else {
             InputStream is = HttpUtils.getInstance().openConnectionStream(url);
-          //  log.info("BAMHttpReader: creating SAMFileReader");
+            log.info("BAMHttpReader: creating SAMFileReader");
             reader = new SAMFileReader(new BufferedInputStream(is));
         }
 
@@ -161,9 +160,12 @@ public class BAMHttpReader implements AlignmentReader {
     private SeekableStream getSeekableStream(URL url) throws IOException {
         String protocol = url.getProtocol().toLowerCase();
         SeekableStream is = null;
+        log.info("===========  getSeekableStream for "+url);
         if (protocol.equals("http") || protocol.equals("https")) {
+            
             org.broad.tribble.util.SeekableStream tribbleStream = IGVSeekableStreamFactory.getStreamFor(url.toExternalForm());
             String source = url.toExternalForm();
+            log.info("CREATED SEEKABLE STREAM: "+tribbleStream.getClass().getName()+" for url "+url);
             is = new SeekablePicardStream(tribbleStream, source);
         } else if (protocol.equals("ftp")) {
             org.broad.tribble.util.SeekableStream tribbleStream = new SeekableFTPStream(url);

@@ -61,13 +61,16 @@ public class MessageUtils {
         boolean showDialog = !(Globals.isHeadless() || Globals.isSuppressMessages() || Globals.isTesting());
         if (showDialog) {
             // Always use HTML for message displays, but first remove any embedded <html> tags.
-            message = "<html>" + message.replaceAll("<html>", "").replaceAll("</html>", "").replaceAll("\n", "<br>");
+            message = "<html>" + message.replaceAll("<html>", "").replaceAll("</html>", "").replaceAll("\n", "<br>")+"</html>";
             
             Frame parent = IGV.hasInstance() ? IGV.getMainFrame() : null;
             Color background = parent != null ? parent.getBackground() : Color.lightGray;
             //So users can select text
             JEditorPane content = new JEditorPane();
+            
             content.setContentType("text/html");
+            p("Showing message: "+message);
+                    
             content.setText(message);
             content.setBackground(background);
             JOptionPane.showMessageDialog(parent, content);

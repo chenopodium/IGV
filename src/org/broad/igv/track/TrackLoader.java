@@ -140,7 +140,11 @@ public class TrackLoader {
         if (pref == null) {
             pref = PreferenceManager.getInstance();
         }
-        final String path = locator.getPath();
+        String path = locator.getPath();
+        if (path.endsWith(".vcf")){
+            path = path+".gz";
+            locator.setPath(path);
+        }
       //  log.info("============= About to load " + locator.getPath());
         try {
             String typeString = locator.getType();
@@ -178,7 +182,7 @@ public class TrackLoader {
                         + " load the associated gzipped file, which should have an extension of '.gz'");
             }
 
-            p("============ load: type String is " + typeString+", locator="+locator.getType());
+            p("type String is " + typeString+", locator="+locator.getType());
             //p("=== path is: "+path);
             //This list will hold all new tracks created for this locator
             List<Track> newTracks = new ArrayList<Track>();
@@ -210,7 +214,10 @@ public class TrackLoader {
                 loadVCFListFile(locator, newTracks, genome);
             } else if (typeString.endsWith(".vcf") || typeString.endsWith(".vcf4")) {
                 // VCF files must be indexed.
-                throw new IndexNotFoundException(path + ", the file needs to end with .vcf.gz <b>and must have a file .vcf.gz.tbi</b>");
+                
+                String msg = "<br>"+path + ".<br>The file needs to end with .vcf.gz <b>and must have a file .vcf.gz.tbi</b>";                
+                // https://cherry.itw/ir/rest/wsVerRest/getFile?filePath=/data/IR/data/IR_Org/ion.reporter@lifetech.com/AmpliSeq_CCP_CNV_case_UnknownGender_AmpliSeq_CCP_CNV_control_UnknownGender/AmpliSeq_CCP_CNV_case_UnknownGender_20140513133221045/outputs/CnvActor-00/CN_Segments.vcf
+                throw new IndexNotFoundException(msg);
             } else if (typeString.endsWith(".trio")) {
                 loadTrioData(locator);
             } else if (typeString.endsWith("varlist")) {
@@ -386,7 +393,7 @@ public class TrackLoader {
 
     private void loadIndexed(ResourceLocator locator, List<Track> newTracks, Genome genome) throws IOException {
 
-      //  log.info("Loading indexed file " + locator.getPath());
+        log.info("Loading indexed file " + locator.getPath());
         TribbleFeatureSource src = GFFFeatureSource.isGFF(locator.getPath())
                 ? new GFFFeatureSource(locator.getPath(), genome)
                 : new TribbleFeatureSource(locator.getPath(), genome);
@@ -412,23 +419,19 @@ public class TrackLoader {
 
             VariantTrack t = new VariantTrack(locator, src, allSamples, enableMethylationRateSupport);
 
-                p("==================== VCF header: INFO HEADER LINES =================");
-            for (VCFInfoHeaderLine l: header.getInfoHeaderLines()) {
-                p(l.getKey()+"="+l.getValue());                
-            }
             
-            p("==================== VCF header: VCFHeaderLine =================");
+           // p("==================== VCF header: VCFHeaderLine =================");
             for (VCFHeaderLine l: header.getMetaDataInInputOrder()) {
                 String k = l.getKey().trim();
                 if (!k.equalsIgnoreCase("contig") && !k.equalsIgnoreCase("INFO") && !k.equalsIgnoreCase("ALT") && !k.equalsIgnoreCase("FORMAT")) {
-                    p(k+ "="+l.getValue());
+                  //  p(k+ "="+l.getValue());
                     t.setAttributeValue(k, l.getValue());
                     AttributeManager.getInstance().addAttribute(t.getId(), k, l.getValue());
                 }
                 
                 
             }
-            log.info("Created variant track " + t.getName());
+            log.info("Created variant track " + t.getName()+", disp="+t.getDisplayName()+", visible="+t.isVisible()+", id="+t.getId()+", h="+t.getHeight());
             // VCF tracks handle their own margin
             t.setMargin(0);
             newTracks.add(t);
@@ -457,7 +460,7 @@ public class TrackLoader {
             }
             newTracks.add(t);
         }
-       // log.info("Loading indexed file done");
+        //log.info("Loading indexed file done. Tracks are: "+newTracks);
     }
 
     private void loadVCFListFile(ResourceLocator locator, List<Track> newTracks, Genome genome) throws IOException {
@@ -1357,22 +1360,27 @@ public class TrackLoader {
 
     public static boolean isIndexed(String path, Genome genome) {
 
+        
         // Checking for the index is expensive over HTTP.  First see if this is an indexable format by fetching the codec
         if (!isIndexable(path, genome)) {
+            log.info("Not indexable: "+path);
             return false;
         }
-
+      //  log.info("Indexable: "+path);
         String indexExtension = path.endsWith("gz") ? ".tbi" : ".idx";
         String indexPath = path + indexExtension;
         try {
             if (HttpUtils.isRemoteURL(path)) {
-                return HttpUtils.getInstance().resourceAvailable(new URL(indexPath));
+                boolean exists = HttpUtils.getInstance().resourceAvailable(new URL(indexPath));
+               // log.info("Does "+indexPath+" exist? "+exists);
+                return exists;
             } else {
                 File f = new File(path + indexExtension);
                 return f.exists();
             }
 
         } catch (Exception e) {
+            log.info("Got error: "+e);
             return false;
         }
 

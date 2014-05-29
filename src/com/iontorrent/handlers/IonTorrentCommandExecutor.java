@@ -6,11 +6,13 @@ package com.iontorrent.handlers;
 
 import java.awt.Frame;
 import java.io.File;
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.log4j.Logger;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.batch.CommandExecutorIF;
+import org.broad.igv.batch.CommandListener;
 import org.broad.igv.sam.AlignmentTrack;
 import org.broad.igv.track.Track;
 import org.broad.igv.ui.IGV;
@@ -121,7 +123,7 @@ public class IonTorrentCommandExecutor implements CommandExecutorIF{
                             MessageUtils.showMessage("CommandExecutor: Setting " + key + "=" + value);
                         }
                         if (prefs.contains(key)) {
-                            //     log.info("Set: regular preference: put("+key+ ","+value+")");
+                            //log.info("Set: regular preference: put("+key+ ","+value+")");
                             prefs.put(key, value);
                             prefs.putTemp(key.toUpperCase(), value);
                             // checking for some of the settings
@@ -129,6 +131,19 @@ public class IonTorrentCommandExecutor implements CommandExecutorIF{
                                 log.info("Dealing with " + key);
                                 IGV.getInstance().doShowAttributeDisplay(value.equalsIgnoreCase("true"));
                             }
+                            
+                        }
+                        if (key.equalsIgnoreCase(PreferenceManager.PORT_NUMBER)) {
+                                log.info("+++++++++ Dealing with PORT number change. Stopping listener, restarting it " + key+"="+value);
+                                CommandListener.halt();
+                                int port = Integer.parseInt(value);
+                                CommandListener.start(port);
+                           }
+                        if (key.equalsIgnoreCase("hash")) {    
+                            value = URLDecoder.decode(value, "UTF-8");
+                            value = value.replace(" ","");                            
+                            log.info("Set hash: ("+key+ ","+value+"). Normalized value first.");
+                            
                         }
                         log.info("Set: putTemp ("+key+ ","+value+")");
                         prefs.putTemp(key, value);
@@ -137,9 +152,10 @@ public class IonTorrentCommandExecutor implements CommandExecutorIF{
                         result = "set requires 2 parameters, but I got: " + param1;
                     }
                 } else if (cmd.equalsIgnoreCase("get")) {
-                    log.info("Get, param1: " + param1);
+                    log.info("Command GET, param1: " + param1);
                     if (param1 != null) {
                         result = prefs.getTemp(param1);
+                        log.info("Got "+param1+": "+result);
                         if (result == null) {
                             result = " ";
                         }

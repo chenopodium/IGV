@@ -336,7 +336,7 @@ public class RenderType {
         Color hi = cmid;
         Color lo = clow;
         
-        if (Math.abs(score-middle) < 0.0001) return cmid;
+        if (Math.abs(score-middle) < 0.01) return cmid;
         
         if (score > middle) {
             lo = cmid;

@@ -18,11 +18,13 @@
 
 package org.broad.tribble;
 
+import com.iontorrent.utils.ErrorHandler;
 import org.broad.tribble.index.Index;
 import org.broad.tribble.util.ParsingUtils;
 
 import java.io.IOException;
 import java.util.Iterator;
+import org.apache.log4j.Logger;
 
 /**
  * jrobinso
@@ -69,8 +71,12 @@ public abstract class AbstractFeatureReader<T extends Feature> implements Featur
                 return new TribbleIndexedFeatureReaderToken(featureResource, codec, requireIndex);
             }
         } catch (IOException e) {
+            Logger.getLogger("AbstractFeatureReader").error(ErrorHandler.getString(e));
+              
             throw new TribbleException.MalformedFeatureFile("Unable to create BasicFeatureReader using feature file ", featureResource, e);
         } catch (TribbleException e) {
+             Logger.getLogger("AbstractFeatureReader").error(ErrorHandler.getString(e));
+           
             e.setSource(featureResource);
             throw e;
         }

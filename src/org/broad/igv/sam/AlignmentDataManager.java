@@ -432,6 +432,7 @@ public class AlignmentDataManager {
                 renderOptions != null ? renderOptions.bisulfiteContext : null;
 
 
+        
         AlignmentTileLoader.AlignmentTile t = reader.loadTile(sequence, start, end, showSpliceJunctions,
                 downsampleOptions, peStats, bisulfiteContext);
 

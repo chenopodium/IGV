@@ -8,9 +8,7 @@ import com.iontorrent.karyo.data.KaryoTrack;
 import com.iontorrent.karyo.renderer.RenderManager;
 import com.iontorrent.prefs.IonTorrentPreferencesManager;
 import com.iontorrent.utils.ErrorHandler;
-import freemarker.log.Logger;
 import java.awt.BorderLayout;
-import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseListener;
@@ -20,6 +18,8 @@ import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import org.apache.log4j.Logger;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.sam.CoverageTrack;
 import org.broad.igv.track.AbstractTrack;
@@ -80,6 +80,7 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
         MouseListener list = null;
         int count = 0;
         p("Found "+tracks.size()+" IGV tracks");
+        boolean selectedByDefault = tracks.size() < 5;
         for (Track igvtrack : tracks) {
 
             p("Got track: " + igvtrack.getDisplayName() + ", " + igvtrack.getClass().getName());
@@ -131,7 +132,7 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
                             ktrack.setVisible(false);
                         } else {
                             cb = new SingleTrackPanel(ktrack, true, control, list);
-                            cb.setSelected(true);
+                            cb.setSelected(selectedByDefault);
                             p(n + "/" + type + " : Adding DataSourceTrack");
                         }
                     } else if (atrack instanceof CoverageTrack) {
@@ -206,7 +207,7 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
                             } else {
                                 ktrack.setVisible(false);
                                 cb = new SingleTrackPanel(ktrack, true, control, list);
-                                cb.setSelected(true);
+                                cb.setSelected(selectedByDefault);
                             }
 
                         }
@@ -226,7 +227,8 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
                 p(ErrorHandler.getString(e));
             }
         }
-        this.add("Center", center);
+        //if ()
+        this.add("Center", new JScrollPane(center));
         
         
     }

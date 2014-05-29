@@ -31,6 +31,7 @@ import java.awt.event.MouseEvent;
 import java.util.*;
 import java.util.List;
 import org.broad.igv.Handlers;
+import org.jfree.util.Log;
 
 /**
  * A class for performing search actions. The class takes a view context and
@@ -146,6 +147,8 @@ public class SearchCommand implements Command {
 
         List<SearchResult> results = new ArrayList<SearchResult>();
 
+        searchString = searchString.replaceAll(" - ", "-");
+       
         searchString = searchString.replace("\"", "");
 
         Set<ResultType> wholeStringType = checkTokenType(searchString);
@@ -461,11 +464,16 @@ public class SearchCommand implements Command {
          chromosome also might have : in the name
          */
         int[] startEnd = null;
+        // in case there is white space such as space - space, remove that
+        searchString = searchString.replaceAll(" - ", "-");
+        
         String[] tokens = searchString.split("\\s+");
 
+        log.info("======== Got search string: "+searchString);
         String chr = tokens[0];
         boolean whitespace_delim = tokens.length >= 2;
         if (whitespace_delim) {
+            log.info("whitespace: got "+tokens.length+" tokens");
             String posString = tokens[1];
             if (tokens.length >= 3) {
                 posString += "-" + tokens[2];
@@ -474,11 +482,28 @@ public class SearchCommand implements Command {
         } else {
             //Not whitespace delimited
             //Could be chromoname:1-100, chromoname:1, chromoname
-
-            int colonIdx = searchString.lastIndexOf(":");
-            if (colonIdx > 0) {
-                chr = searchString.substring(0, colonIdx);
-                String posString = searchString.substring(colonIdx).replace(":", "");
+            // and also handle chr:1 - chr:2
+            int colonIdx1 = searchString.indexOf(":");
+            int colonIdx2 = searchString.lastIndexOf(":");
+            
+            if (colonIdx1 > 0) {
+                chr = searchString.substring(0, colonIdx1);
+                String posString = searchString.substring(colonIdx1+1);
+                if (colonIdx2 != colonIdx1) {
+                    log.info("Found second colon index... will remove it: "+posString);
+                    int dash = posString.indexOf("-");
+                    if (dash > -1 && dash < colonIdx2) {
+                        String left = posString.substring(0, dash+1);
+                        colonIdx2 = posString.lastIndexOf(":");
+                        String right = posString.substring(colonIdx2+1);
+                        posString = left+ right;
+                        
+                        //                    156104257-chr1:156104257
+                        // PosString is now: :156104257104257
+                        log.info("PosString is now: "+posString);
+                    }
+                }
+                posString.replace(":", "");
                 startEnd = getStartEnd(posString);
                 //This MAY for case of chromoname having semicolon in it
                 if (startEnd == null) {
@@ -489,6 +514,11 @@ public class SearchCommand implements Command {
 
         //startEnd will have coordinates if found.
        // log.info("calcChromoLocus: chr is: "+chr);
+        if (genome == null ) {
+            Log.error("Bummer, no genome... can't find the chromosome");
+            return new SearchResult(ResultType.CHROMOSOME, chr, -1, -1);
+        }
+        
         chr = genome.getChromosomeAlias(chr);
       //  log.info("calcChromoLocus: alias is: "+chr);
         Chromosome chromosome = genome.getChromosome(chr);

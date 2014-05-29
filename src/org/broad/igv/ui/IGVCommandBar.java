@@ -253,8 +253,8 @@ public class IGVCommandBar extends javax.swing.JPanel {
 
                         int choice =
                                 JOptionPane.showConfirmDialog(
-                                IGV.getMainFrame(), "The genome file [" + e.getMessage()
-                                + "] could not be read. Would you like to remove the selected entry?",
+                                IGV.getMainFrame(), "<html>The genome file " + e.getMessage()
+                                + "]could not be read. Would you like to remove the selected entry?</html>",
                                 "", JOptionPane.OK_CANCEL_OPTION);
 
                         if (choice == JOptionPane.OK_OPTION) {

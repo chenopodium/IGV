@@ -30,6 +30,8 @@ import java.util.zip.CRC32;
 import java.util.zip.DataFormatException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Arrays;
+import org.apache.log4j.Logger;
 
 /**
  * Alternative to GZIPInputStream, for decompressing GZIP blocks that are already loaded into a byte[].
@@ -46,12 +48,17 @@ public class BlockGunzipper {
     private final Inflater inflater = new Inflater(true); // GZIP mode
     private final CRC32 crc32 = new CRC32();
     private boolean checkCrcs = false;
-
+    private final Logger log = Logger.getLogger(BlockGunzipper.class);
+    
     /** Allows the caller to decide whether or not to check CRCs on when uncompressing blocks. */
     public void setCheckCrcs(final boolean check) {
         this.checkCrcs = check;
     }
 
+    private void p(String s) {
+        System.out.println("BlockGunzipper: "+s);
+         log.fatal(s);
+    }
     /**
      * Decompress GZIP-compressed data
      * @param uncompressedBlock must be big enough to hold decompressed output.
@@ -64,12 +71,18 @@ public class BlockGunzipper {
             byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
 
             // Validate GZIP header
+            
             if (byteBuffer.get() != BlockCompressedStreamConstants.GZIP_ID1 ||
                     byteBuffer.get() != (byte)BlockCompressedStreamConstants.GZIP_ID2 ||
                     byteBuffer.get() != BlockCompressedStreamConstants.GZIP_CM_DEFLATE ||
                     byteBuffer.get() != BlockCompressedStreamConstants.GZIP_FLG
                     ) {
-                throw new SAMFormatException("Invalid GZIP header");
+               
+                String tmp = new String(byteBuffer.array());
+                if (tmp.length()> 10000) tmp = tmp.substring(0, 10000);
+                p("Got ByteBuffer: "+tmp);
+               // p("Got compressedBlock: "+new String(compressedBlock));
+                throw new SAMFormatException("Invalid GZIP header - or possibly missing /auth/ for Ion Torrent URL");
             }
             // Skip MTIME, XFL, OS fields
             byteBuffer.position(byteBuffer.position() + 6);

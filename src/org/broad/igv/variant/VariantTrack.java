@@ -59,6 +59,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
     private final static int DEFAULT_VARIANT_BAND_HEIGHT = 25;
     private final static int MAX_FILTER_LINES = 30;
     // TODO -- this needs to be settable
+    static DecimalFormat f = new DecimalFormat("#.##");
     public static int METHYLATION_MIN_BASE_COUNT = 10;
     int messages;
     /**
@@ -963,7 +964,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         double p = variant.getPloidy();
         
         if (p >= 0) {
-            String pl = "Ploidy: " + variant.getPloidy();
+            String pl = "Ploidy: " + f.format(variant.getPloidy());
             // USE EXPECTED PLOIDY
             
             int expected = variant.getExpected();

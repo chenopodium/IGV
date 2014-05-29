@@ -2532,7 +2532,14 @@ public class PreferencesEditor extends javax.swing.JDialog {
                     updatedPreferenceMap.containsKey(PreferenceManager.PORT_NUMBER)) {
                 CommandListener.halt();
                 if (enablePortCB.isSelected()) {
-                    int port = Integer.parseInt(updatedPreferenceMap.get(PreferenceManager.PORT_NUMBER));
+                    int port = 60151;
+                    String val = updatedPreferenceMap.get(PreferenceManager.PORT_NUMBER);
+                    try {
+                        port = Integer.parseInt(val);
+                    }
+                    catch (Exception e) {
+                        log.error("Could not parse "+val+" as integer, will use default "+port);
+                    }
                     CommandListener.start(port);
                 }
             }

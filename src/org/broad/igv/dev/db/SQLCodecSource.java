@@ -51,7 +51,7 @@ public class SQLCodecSource extends DBQueryReader<Feature> implements FeatureSou
     protected AsciiFeatureCodec codec;
 
     protected PreparedStatement queryStatement;
-    protected PreparedStatement binnedQueryStatement;
+  //  protected PreparedStatemet binnedQueryStatement;
 
     /**
      * The name of the column with chromosome names
@@ -83,8 +83,7 @@ public class SQLCodecSource extends DBQueryReader<Feature> implements FeatureSou
      * If there are leading index columns but the table structure is otherwise
      * similar to a file format, can skip by setting startColIndex to
      * the first data column.
-     */
-    protected int startColIndex = 1;
+     */    protected int startColIndex = 1;
 
     /**
      * Maximum column number to read, by default is Integer.MAX_VALUE
@@ -148,7 +147,7 @@ public class SQLCodecSource extends DBQueryReader<Feature> implements FeatureSou
             } catch (SQLException e) {
                 log.error("Error reading column labels", e);
                 columnLabels = null;
-            }
+           }
 
 
         }
@@ -164,7 +163,7 @@ public class SQLCodecSource extends DBQueryReader<Feature> implements FeatureSou
             byte[] bytes = lines.getBytes();
             InputStream is = new ByteArrayInputStream(bytes);
             AsciiLineReader reader = new AsciiLineReader(is);
-            codec.readHeader(reader);
+           // codec.readHeader(reader);
         }
 
     }
@@ -242,7 +241,7 @@ public class SQLCodecSource extends DBQueryReader<Feature> implements FeatureSou
                 String[] qs = new String[MAX_BINS];
                 Arrays.fill(qs, "?");
                 String binnedQueryString = queryString + String.format(" AND %s IN (%s) %s", binColName, StringUtils.join(qs, ','), orderClause);
-                binnedQueryStatement = DBManager.getConnection(locator).prepareStatement(binnedQueryString);
+      //          binnedQueryStatement = DBManager.getConnection(locator).prepareStatement(binnedQueryString);
             }
 
 
@@ -258,9 +257,9 @@ public class SQLCodecSource extends DBQueryReader<Feature> implements FeatureSou
         PreparedStatement statement = queryStatement;
         Set<Integer> bins = calculateBins(start, end);
         //System.out.println("number of bins: " + bins.size());
-        if (bins.size() < MAX_BINS && binnedQueryStatement != null) {
-            statement = binnedQueryStatement;
-        }
+   //     if (bins.size() < MAX_BINS && binnedQueryStatement != null) {
+   //         statement = binnedQueryStatement;
+   //     }
 
         try {
             statement.clearParameters();
@@ -276,17 +275,17 @@ public class SQLCodecSource extends DBQueryReader<Feature> implements FeatureSou
                 statement.setInt(cc, start);
             }
 
-            if (statement == binnedQueryStatement) {
-                int qnum = 6;
-                for (Integer bin : bins) {
-                    statement.setInt(qnum, bin);
-                    qnum++;
-                }
-
-                for (; qnum <= statement.getParameterMetaData().getParameterCount(); qnum++) {
-                    statement.setNull(qnum, Types.INTEGER);
-                }
-            }
+//            if (statement == binnedQueryStatement) {
+//                int qnum = 6;
+//                for (Integer bin : bins) {
+//                    statement.setInt(qnum, bin);
+//                    qnum++;
+//                }
+//
+//                for (; qnum <= statement.getParameterMetaData().getParameterCount(); qnum++) {
+//                    statement.setNull(qnum, Types.INTEGER);
+//                }
+//            }
 
         } catch (SQLException e) {
             log.error(e.getMessage(), e);

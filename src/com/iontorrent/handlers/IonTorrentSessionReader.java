@@ -154,8 +154,10 @@ public class IonTorrentSessionReader extends IGVSessionReader {
                 } catch (Exception e1) {
                     log.error("loadDocument: Could not read input stream:" + ErrorHandler.getString(e1));
                 }
+                if(reason == null)  reason = e.getMessage();
                 Exception usererror = new Exception(reason);
                 usererror.setStackTrace(e.getStackTrace());
+                
 
                 throw new RuntimeException(usererror);
             }
@@ -168,6 +170,7 @@ public class IonTorrentSessionReader extends IGVSessionReader {
     @Override
     protected boolean handleError(Exception e, String path, List<String> errors) {
         String reason = getMessageForContent(e.getMessage(), path);
+        if (reason ==null )reason= e.getMessage();
         log.info("Handling error: " + e.getMessage() + " -> reason=" + reason);
         if (!errors.contains(reason)) {
             errors.add(reason);
@@ -214,22 +217,14 @@ public class IonTorrentSessionReader extends IGVSessionReader {
     private String getMessageForContent(String content, String path) {
         String reason = content;
         if (content == null ) {
-            return "Not sure why";
+            return null;
             
         }
         content = content.toLowerCase();
 
         //String contact = "<br>Please contact a system administrator";
-        if (content.indexOf("token") > -1 || content.indexOf("does not exist") > -1) {
-            reason = "<b>IGV uses your authentication token for securely connecting to the server.</b><br>";
-
-            if (content.indexOf("expired") > -1) {
-                reason += "<b>It looks like your token has expired - " + blue("please regenerate it from your Profile.") + "</b>";
-            } else if (content.indexOf("invalid") > -1) {
-                reason += "<b>It looks like your token is invalid - " + blue("please regenerate it from your Profile.") + "</b>";
-            } else {
-                reason += "<b>It could be that the token has expired - " + blue("please regenerate it from your Profile.") + "</b>";
-            }
+        if (content.indexOf("token") > -1) {
+            reason = "<b>IGV uses an authentication token for securely connecting to the server.</b><br>";          
             reason += "<br><br>" + gray("The exception was:<br>" + content);
             return reason;
         } else if (content.indexOf("user") > -1) {

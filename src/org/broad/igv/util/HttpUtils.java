@@ -102,7 +102,7 @@ public class HttpUtils {
         };
     }
 
-    public static boolean isRemoteURL(String string) {
+     public static boolean isRemoteURL(String string) {
         String lcString = string.toLowerCase();
         return lcString.startsWith("http://") || lcString.startsWith("https://") || lcString.startsWith("ftp://");
     }
@@ -160,6 +160,29 @@ public class HttpUtils {
             }
         }
     }
+    /**
+     * Return the contents of the url as a String. This method should only be
+     * used for queries expected to return a small amount of data.
+     *
+     * @param url
+     * @return
+     * @throws IOException
+     */
+    public byte[] getContentsAsBytes(URL url) throws IOException {
+
+        InputStream is = null;
+        HttpURLConnection conn = openConnection(url, null);
+
+        try {
+            is = conn.getInputStream();
+            return readByteContents(is);
+
+        } finally {
+            if (is != null) {
+                is.close();
+            }
+        }
+    }
 
     public String getContentsAsJSON(URL url) throws IOException {
 
@@ -205,6 +228,7 @@ public class HttpUtils {
         HttpURLConnection conn = openConnection(url, requestProperties);
         InputStream input = conn.getInputStream();
         if ("gzip".equals(conn.getContentEncoding())) {
+            log.info("Creating GZIPInputStream ");
             input = new GZIPInputStream(input);
         }
         return input;
@@ -224,7 +248,7 @@ public class HttpUtils {
     }
 
     public boolean resourceAvailable(String fileorurl) {
-        if (com.iontorrent.utils.io.FileUtils.isUrl(fileorurl)) {
+        if (!com.iontorrent.utils.io.FileUtils.isUrl(fileorurl)) {
             return new File(fileorurl).exists();
         } else {
             try {
@@ -243,11 +267,20 @@ public class HttpUtils {
         }
 
         try {
+           // log.info("Checking if exists: "+url);
             HttpURLConnection conn = openConnection(url, null, "HEAD");
-
-            int code = conn.getResponseCode();
+            int code = 404;
+            if (conn != null) {
+                code = conn.getResponseCode();
+            }
+            if (code != 200) {
+                //log.info("resourceAvailable: code is not 200: "+code);
+            }
+           // else log.info("Code: "+code);
+            
             return code == 200;
         } catch (IOException e) {
+           // log.error("Problem: "+e.getMessage(), e);
             return false;
         }
     }
@@ -256,7 +289,8 @@ public class HttpUtils {
 
         HttpURLConnection conn = openConnection(url, null, "HEAD");
         //  log.info("Getting header field:"+key);
-        return conn.getHeaderField(key);
+        if (conn==null) return null;
+        else return conn.getHeaderField(key);
     }
 
     public long getContentLength(URL url) throws IOException {
@@ -364,7 +398,7 @@ public class HttpUtils {
         }
 
 
-        log.info("Content length = " + contentLength);
+       // log.info("Content length = " + contentLength);
 
         InputStream is = null;
         OutputStream out = null;
@@ -514,6 +548,20 @@ public class HttpUtils {
         return res.toString();
     }
 
+     private byte[] readByteContents(InputStream is) throws IOException {
+        BufferedInputStream bis = new BufferedInputStream(is);
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        int b;
+        int count = 0;
+        while ((b = bis.read()) >= 0) {
+            bos.write(b);
+            count++;
+            if (count % 100000 == 0) {
+                log.info("Reading byte " + count);
+            }
+        }
+        return (bos.toByteArray());
+    }
     private String readContents(InputStream is) throws IOException {
         BufferedInputStream bis = new BufferedInputStream(is);
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -561,7 +609,7 @@ public class HttpUtils {
         }
     }
 
-    private HttpURLConnection openConnection(URL url, Map<String, String> requestProperties) throws IOException {
+    public HttpURLConnection openConnection(URL url, Map<String, String> requestProperties) throws IOException {
         return openConnection(url, requestProperties, "GET");
     }
 
@@ -649,7 +697,7 @@ public class HttpUtils {
         //CR: handle potential ion reporter or ion torrent links
         HttpHandler specialhandler = Handlers.getHttpHandler();
         if (specialhandler != null) {
-            //log.info(" ++++ Using special HTTP handler");
+         //   log.info(" ++++ Using special HTTP handler");
             specialhandler.handle(url, conn);
         }
 
@@ -688,13 +736,20 @@ public class HttpUtils {
             else if (code >= 400) {
 
                 if (code == 404) {
-                    message = "File/URL not found (404): " + url.toString();
-                    throw new FileNotFoundException(message);
+                    String f = url.getFile();
+                    if (f != null && !f.endsWith(".mapping") && !f.endsWith(".tdf")) {
+                        message = "File/URL not found (404): " + url.getFile();
+                        log.info("          "+message);
+                    }
+                    return null;
                 } else {
                     // if wrong pw, handle this here!
                     message = conn.getResponseMessage();
                     log.info("Got code " + code+" (401 means wrong pw): "+message);
-
+                    if (code == 505) {
+                        log.info("Got http, but should have used https. URL was: \n"+url.toString());
+                        log.info(ErrorHandler.getString(new Exception("Stack trace")));
+                    }
                     HttpResponseException exc = new HttpResponseException(code);
                     if (code == 403 || code == 401 || code == 500) {
                         log.info(" ======== DEBUGGING ERROR " + code + " (401 means wrong pw), url: " + url);
@@ -802,9 +857,10 @@ public class HttpUtils {
                 }
 
                 if (byteRangeTestSuccess) {
-                    // log.info("Range-byte request succeeded");
+                    log.info("Range-byte request succeeded for "+host);
                 } else {
-                    log.info("Range-byte test failed -- problem with client network environment.");
+                    // if auth is missing.
+                    log.info("Range-byte test failed for "+host+" -- problem with client network environment - or missing /auth/ in URL to Ion Torrent data (otherwise you get a login page!)");
                 }
 
                 byteRangeTestMap.put(host, byteRangeTestSuccess);
