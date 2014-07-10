@@ -117,7 +117,8 @@ public class IonTorrentSearchCommandHandler implements SearchCommandHandler {
                             String locationtofile = PreferenceManager.getInstance().getTemp(tempkey);
                            // log.info("Found  "+tempkey+" for  "+newchr+" to locationtofile");
                             if (locationtofile != null) {
-                                
+                                locationtofile = locationtofile.replace("&amp;", "&");
+                                locationtofile = locationtofile.replace("%26", "&");
                                 // first remove other tracks
                                 String name = tempkey.toLowerCase();
                                 CommandExecutor cmdExe = new CommandExecutor();

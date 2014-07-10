@@ -119,8 +119,15 @@ public class AlignmentTileLoader {
                 iter = reader.query(chr, start, end, false);
             }
             catch (Exception e) {
-                log.error(ErrorHandler.getString(e));
-                if (errors < 3) MessageUtils.showMessage("<html>Error encountered querying alignments: " + e.toString());
+                log.error(e.getMessage());
+               
+                if (errors < 3) {
+                    log.error(ErrorHandler.getString(e));
+                    MessageUtils.showMessage("<html>Error encountered querying alignments: " + e.toString());
+                    log.error("reader: index="+reader.hasIndex()+", seqs="+reader.getSequenceNames()+", reader: "+reader.getClass().getName());
+                            
+                }
+                errors++;
                 return null;
             }
 
@@ -230,14 +237,22 @@ public class AlignmentTileLoader {
         } catch (java.nio.BufferUnderflowException e) {
             // This almost always indicates a corrupt BAM index, or less frequently a corrupt bam file
             corruptIndex = true;
-           if (errors < 3) MessageUtils.showMessage("<html>Error encountered querying alignments: " + e.toString()
+           if (errors < 3) {
+               MessageUtils.showMessage("<html>Error encountered querying alignments: " + e.toString()
                     + "<br>This is often caused by a corrupt index file.");
+           }
+           errors++;
             return null;
 
         } catch (Exception e) {
-            log.error("Error loading alignment data", e);
-            log.error(ErrorHandler.getString(e));
-            if (errors < 3)MessageUtils.showMessage("<html>Error encountered querying alignments: " + e.toString());
+            log.error("Error loading alignment data: "+ e.getMessage());
+            
+            if (errors < 3){
+                log.error(ErrorHandler.getString(e));
+                MessageUtils.showMessage("<html>Error encountered querying alignments: " + e.toString());
+                
+            }
+            errors++;
             return null;
         } finally {
             // reset cancel flag.  It doesn't matter how we got here,  the read is complete and this flag is reset

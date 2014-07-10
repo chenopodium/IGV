@@ -238,6 +238,7 @@ public class BAMHttpReader implements AlignmentReader {
         try {
             String idx = (indexPath != null && indexPath.length() > 0) ? indexPath : path + ".bai";
             URL indexURL = new URL(idx);
+            log.info("==== ABOUT TO OPEN INDEXL FILE:\n"+indexURL);
             os = new FileOutputStream(indexFile);
             try {
                 is = HttpUtils.getInstance().openConnectionStream(indexURL);

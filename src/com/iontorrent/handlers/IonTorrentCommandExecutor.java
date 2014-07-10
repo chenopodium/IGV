@@ -51,7 +51,7 @@ public class IonTorrentCommandExecutor implements CommandExecutorIF{
     @Override
     public String execute(String command) {
         
-        //log.info("Executing "+command);
+        log.info("Executing "+command);
         List<String> args = getArgs(StringUtils.breakQuotedString(command, ' ').toArray(new String[]{}));
 
 
@@ -65,7 +65,8 @@ public class IonTorrentCommandExecutor implements CommandExecutorIF{
                 String param3 = args.size() > 3 ? args.get(3) : null;
                 String param4 = args.size() > 4 ? args.get(4) : null;
 
-                if (!cmd.equals("set")) log.info("Got command: "+cmd);
+                if (!cmd.equals("set")) 
+                    log.info("Got command: "+cmd);
                 if (cmd.equalsIgnoreCase("echo")) {
                     result = cmd;
                 } else if (cmd.equalsIgnoreCase("msg")) {
@@ -102,11 +103,15 @@ public class IonTorrentCommandExecutor implements CommandExecutorIF{
                     }
                 } else if (cmd.equalsIgnoreCase("set")) {
                     String parts[] = param1.split("=", 2);
+                    
                     String key = "";
                     String value = "";
                     if (parts.length > 1) {
                         key = parts[0];
+                        
                         value = parts[1];
+                       // log.info("got key: "+key);
+                       // log.info("got value: "+value);
                     }
                     if (param2 != null) {
                         value += " " + param2;
@@ -134,12 +139,13 @@ public class IonTorrentCommandExecutor implements CommandExecutorIF{
                             
                         }
                         if (key.equalsIgnoreCase(PreferenceManager.PORT_NUMBER)) {
-                                log.info("+++++++++ Dealing with PORT number change. Stopping listener, restarting it " + key+"="+value);
-                                CommandListener.halt();
-                                int port = Integer.parseInt(value);
-                                CommandListener.start(port);
-                           }
-                        if (key.equalsIgnoreCase("hash")) {    
+                            log.info("+++++++++ Dealing with PORT number change. Stopping listener, restarting it " + key+"="+value);
+                            PreferenceManager.getInstance().put(PreferenceManager.PORT_ENABLED, true);
+                            CommandListener.halt();
+                            int port = Integer.parseInt(value);
+                            CommandListener.start(port);
+                        }
+                        else if (key.equalsIgnoreCase("hash")) {    
                             value = URLDecoder.decode(value, "UTF-8");
                             value = value.replace(" ","");                            
                             log.info("Set hash: ("+key+ ","+value+"). Normalized value first.");
@@ -149,6 +155,7 @@ public class IonTorrentCommandExecutor implements CommandExecutorIF{
                         prefs.putTemp(key, value);
                         result = value;
                     } else {
+                        log.info("not setting. param1 ="+param1);
                         result = "set requires 2 parameters, but I got: " + param1;
                     }
                 } else if (cmd.equalsIgnoreCase("get")) {
@@ -276,9 +283,11 @@ public class IonTorrentCommandExecutor implements CommandExecutorIF{
             return "ERROR: missing locus parameter";
         }
         String locus = args.get(1);
+        
         for (int i = 2; i < args.size(); i++) {
-            locus += (" " + args.get(i));
+            locus += (" " + args.get(i));        
         }
+        locus = locus.replace(",", " ");
         igv.goToLocus(locus);
         return "OK";
     }

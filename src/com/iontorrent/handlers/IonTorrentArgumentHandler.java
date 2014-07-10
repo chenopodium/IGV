@@ -9,6 +9,7 @@ import com.iontorrent.utils.ErrorHandler;
 import jargs.gnu.CmdLineParser;
 import org.apache.log4j.Logger;
 import org.broad.igv.PreferenceManager;
+import org.broad.igv.batch.CommandListener;
 import org.broad.igv.ui.ArgumentHandler;
 import org.broad.igv.ui.IGV;
 import org.broad.igv.ui.Main;
@@ -67,11 +68,13 @@ public class IonTorrentArgumentHandler implements ArgumentHandler {
             }
             PreferenceManager prefs = PreferenceManager.getInstance();
             int eq = arg.indexOf("=");
-            if (eq > 0 && (!arg.startsWith("http:") && !arg.startsWith("https:"))) {
+            boolean isUrl = arg.startsWith("http:") ||  arg.startsWith("https:");
+            if (eq > 0 && ( !isUrl || (isUrl && arg.indexOf("getFile")<0))) {
                 // we got a key=value
                 String key = arg.substring(0, eq);
                 String val = arg.substring(eq + 1);
                 
+              // log.info("Jnlp Argument: key="+key+", value="+val);
                if (key.startsWith("session") || key.equalsIgnoreCase("file")) {
                     if (val.endsWith(".xml") || val.endsWith(".php") || val.endsWith(".php3")
                             || val.endsWith(".session")) {
@@ -101,8 +104,14 @@ public class IonTorrentArgumentHandler implements ArgumentHandler {
                     log.info("Got locus: " + key + "=" + val);
                     igvargs.setLocusString(val);
                     arg = val;
+                } else if (key.equalsIgnoreCase(PreferenceManager.PORT_NUMBER)) {
+                    log.info("+++++++++ setting PORT_NUNBER: " + key+"="+val);
+                    PreferenceManager.getInstance().put(PreferenceManager.PORT_ENABLED, true);
+                    PreferenceManager.getInstance().put(PreferenceManager.PORT_NUMBER, val);
+                    this.igvargs.setPort(val);
+                    return null;      
                 } else {
-                //    log.info("Adding to preferences TMP: set " + key + "=" + val);
+                    log.info("Adding to preferences TMP: set " + key + "=" + val);
                     if (IGV.DEBUG) MessageUtils.showMessage("Currently not handled specifically, adding it to preferences: "+ key + "=" + val);
                     if (prefs.contains(key)) {
                         prefs.put(key, val);

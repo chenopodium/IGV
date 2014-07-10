@@ -283,8 +283,20 @@ public class PreferenceManager implements PropertyManager {
     public Map<String, String> getTemplValues() {
         return temporaryValues;
     }
+    public void showTempValues(String part) {
+        for (Iterator it = temporaryValues.keySet().iterator(); it.hasNext(); ) {
+            String key = (String)it.next();
+            if (key.indexOf(part)> -1) {
+                log.info("Got temp key : "+key);
+                log.info("        value: "+this.getTemp(key));
+            }
+        }
+        
+    }
     public String getTemp(String key) {
-        return temporaryValues.get(key.toUpperCase());
+        String res =  temporaryValues.get(key.toUpperCase());
+        if (res == null && key.indexOf("@")>-1) return getTemp(key.replace("@", "%40"));
+        else return res;
     }
     public String getTempKeys() {
         return ""+temporaryValues.keySet();
@@ -305,6 +317,7 @@ public class PreferenceManager implements PropertyManager {
        // }
         temporaryValues.put(key, val);
     }
+    
  /**
      * Get the default value for the specified key.
      * May be null.

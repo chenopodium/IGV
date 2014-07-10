@@ -1350,6 +1350,8 @@ public class IGV {
      * @param locus
      */
     public void goToLocus(String locus) {
+        locus = locus.replace(",", " ");
+        log.info("goint to locus: "+locus);
         contentPane.getCommandBar().searchByLocus(locus);
     }
 
@@ -1441,6 +1443,7 @@ public class IGV {
     }
 
     public boolean isShowDetailsOnClick() {
+        
         return contentPane != null && contentPane.getCommandBar().getDetailsBehavior() == IGVCommandBar.SHOW_DETAILS_BEHAVIOR.CLICK;
     }
 

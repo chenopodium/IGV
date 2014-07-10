@@ -40,6 +40,8 @@ import java.util.*;
 import java.util.List;
 import org.broad.igv.Globals;
 import org.broad.igv.PreferenceManager;
+import org.broad.igv.ui.TooltipTextFrame;
+import org.broad.igv.ui.util.UIUtilities;
 
 /**
  * @author Jesse Whitworth, Jim Robinson, Fabien Campagne
@@ -140,6 +142,8 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
      */
     Map<String, String> alignmentFiles;
     private boolean userSetHeight;
+    private int max_nr_variants_tt =1 ;
+    
 
     @Override
     public String getDisplayName(boolean withSampleInfo) {
@@ -367,6 +371,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
 
     private void p(String s) {
         log.info("VariantTrack: " + s);
+        System.out.println("VT: "+s);
     }
 
     /**
@@ -398,17 +403,13 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         }
 
         List<Feature> features = packedFeatures.getFeatures();
-        if (features.size() > 0) {
 
-            boolean hasLarge = false;
-            int sizelimit = 10;
-            int nrtimes = 1;
-            for (Feature f : features) {
-                if (f.getEnd() - f.getStart() > sizelimit) {
-                    hasLarge = true;
-                    nrtimes = 2;
-                }
-            }
+        boolean show = false;//features.size() < 10;
+        if (features.size() > 0) {
+            p("Rendering "+features.size()+ " variants from "+left+" to "+right);
+            
+            int[] sizelimits = { 1000000, 100000, 10000, 1000, 100, 10, 0};
+            int nrtimes = sizelimits.length;
 
             for (int times = 0; times < nrtimes; times++) {
                 final double locScale = context.getScale();
@@ -419,30 +420,29 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
                 final double pXMax = rect.getMaxX();
 
                 for (Feature feature : features) {
-
-                    Variant variant = (Variant) feature;
-
-                    //char ref = getReference(variant, windowStart, reference);
-
+                    Variant variant = (Variant) feature; 
                     if (hideFiltered && variant.isFiltered()) {
                         continue;
                     }
-
                     int start = variant.getStart();
                     int end = variant.getEnd();
 
                     int size = end - start;
-                    if (times == 0 || (times == 1 && size < sizelimit)) {
+                   // if (show) p(" v "+start+"-"+end+", size="+size+", limit="+sizelimits[times]);
+                    if (size < sizelimits[times]) continue;
+                    else if (times > 0 && size > sizelimits[times-1]) continue;
+                        if (show) p("     drawing v "+variant.getID()+" at "+start+",size="+size);
+
                         int pX = (int) ((start - origin) / locScale);
                         int dX = (int) Math.max(2, (end - start) / locScale);
 
                         //if (show)   p("Maybe drawing variant :"+variant+", pX="+pX+",  dx="+dX+", locScale="+locScale+", pxmin="+pXMin+", (px+dx)="+(int)(pX+dX));
                         if (pX + (long) dX < (long) pXMin && pX < pXMin) {
-                            //  p("NOT drawing variant :"+variant+" because px+dx < pxmin");
+                            if (show)p("NOT drawing variant :"+variant+" because px+dx < pxmin");
                             continue;
                         }
                         if (pX > pXMax) {
-                            //   p("NOT drawing variant and BREAKING :"+variant+" because px > mxmax");
+                            if (show) p("NOT drawing variant and BREAKING :"+variant+" because px (start) > pXMax: "+pX+">"+pXMax);
                             break;
                         }
                         int w = (int) dX;
@@ -454,7 +454,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
 
 
                         if ((long) pX + (long) dX > (long) lastPX) {
-                            //  p("Yes, rendering variant");
+                            if (show) p("Yes, rendering variant");
                             rect.y = top;
                             rect.height = variantBandHeight;
                             if (rect.intersects(visibleRectangle)) {
@@ -498,14 +498,14 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
                                 selectionGraphics.drawRect(x, top, w, getHeight());
                             }
                             // ONLY FOR SMALL VARIANTS!                        
-                            if (size < sizelimit) {
+                           // if (size < sizelimit) {
                                 lastPX = pX + dX;
-                            } else {
-                                dX = (int) Math.max(1, 2 / locScale);
-                                lastPX = pX + dX;
-                            }
+                           // } else {
+                           ////     dX = (int) Math.max(1, 2 / locScale);
+                           //     lastPX = pX + dX;
+                           // }
                         }
-                    }
+                    
                 }
             }
         } else {
@@ -847,19 +847,20 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         }
         try {
             double maxDistance = 10 * frame.getScale();
-            Variant variant = getFeatureClosest(position, maxDistance, frame);
-            if (variant == null) {
+            List<Variant> variants = getFeatureClosests(position, maxDistance, frame);
+            if (variants == null) {
                 return null;
             } else {
+                
                 if (y < top + variantBandHeight) {
-                    return getVariantToolTip(variant);
+                    return getVariantToolTip(variants);
                 } else {
                     if (sampleBounds == null && sampleBounds.isEmpty()) {
                         return null;
                     }
                     String sample = getSampleAtPosition(y);
                     if (sample != null) {
-                        return getSampleToolTip(sample, variant);
+                        return getSampleToolTip(sample, variants);
                     } else {
                         return null;
                     }
@@ -889,7 +890,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         final int sampleCount = sampleBounds.size();
 
         int firstSampleY = sampleBounds.get(0).top;
-        int idx = Math.max(0, Math.min((y - firstSampleY) / getGenotypeBandHeight(), sampleCount - 1));
+        int idx = Math.max(0, Math.min((y - firstSampleY) / Math.max(1, getGenotypeBandHeight()), sampleCount - 1));
 
         SampleBounds bounds = sampleBounds.get(idx);
         if (bounds.contains(y)) {
@@ -922,41 +923,69 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
      * @param frame
      * @return
      */
-    protected Variant getFeatureClosest(double position, double maxDistance, ReferenceFrame frame) {
+    protected List<Variant> getFeatureClosests(double position, double maxDistance, ReferenceFrame frame) {
 
+        List<Variant> res = new ArrayList<Variant>();
         PackedFeatures<IGVFeature> packedFeatures = packedFeaturesMap.get(frame.getName());
 
         if (packedFeatures == null) {
             return null;
         }
 
-        Feature feature = null;
-
+    
+        List<Feature> foundfeatures = null;
         // Note that we use the full features to search here because (1) we expect to retrieve one element at most
         // (2) searching packed features would miss the features we are looking for despite them being in the full set.
         List<IGVFeature> features = packedFeatures.getFeatures();
+        
+      //  p("Getting features closest to position " + position);
         if (features != null) {
-            feature = FeatureUtils.getFeatureClosest(position, features);
+            foundfeatures = FeatureUtils.getFeatureClosests(position, features);
         }
-        if (feature == null
-                || ((position < feature.getStart() - maxDistance) || (position > feature.getEnd() + maxDistance))) {
-            return null;
-        } else {
-            return (Variant) feature;     // TODO -- don't like this cast
+        if (foundfeatures == null) return null;
+        else {
+            for (Feature f: foundfeatures) {
+                if (f instanceof Variant) {
+                    if  ( (position < f.getStart() - maxDistance) || (position > f.getEnd() + maxDistance)) {
+                        // ignore
+                    }
+                    else res.add((Variant)f);
+                }
+                else p("Got NON variant feature: "+f);
+            }
+            
         }
+        return res;
     }
 
-    public String getVariantToolTip(Variant variant) {
-        return getVariantToolTip(variant, false);
+    public String getVariantToolTip(List<Variant> variants) {
+        boolean isShort = variants.size() > max_nr_variants_tt;
+        
+        return getVariantToolTip(variants, isShort, variants.size() > 2*max_nr_variants_tt);
     }
-
+    public String getVariantToolTip(List<Variant> variants, boolean isShort, boolean isVeryShort) {
+        String s = "";
+        for (int i = 0; i < variants.size(); i++) {
+            Variant v = variants.get(i);
+            s += getVariantToolTip(v, isShort, isVeryShort);
+            if (i+1 < variants.size()) s +="<hr>";
+        }
+        return s;
+    }
     public String getVariantToolTip(Variant variant, boolean isShort) {
+        return getVariantToolTip(variant, isShort, isShort);
+    }
+    public String getVariantToolTip(Variant variant) {
+        return getVariantToolTip(variant, false, false);
+    }
+
+    public String getVariantToolTip(Variant variant, boolean isShort, boolean isVeryShort) {
         String id = variant.getID();
 
         StringBuffer toolTip = new StringBuffer();
         toolTip.append("Position: " + variant.getChr());
-        toolTip.append(", " + variant.getPositionString());
-        if (!isShort) {
+        toolTip.append(", " + variant.getStart()+"-"+variant.getEnd());
+        if (!isVeryShort) {
             toolTip.append("<br>ID: " + id);
             toolTip.append("<br>Reference: " + variant.getReference());
         }
@@ -986,7 +1015,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
                         }
                     }
                     else p("Found no value for expected value for key  "+key);
-                    p("Expected value for "+key+":"+expected);
+                   // p("Expected value for "+key+":"+expected);
                 }
                 else p("Got no expected value (using 2), and have no sample info for track "+this.getName());
                 
@@ -1005,52 +1034,56 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         } else {
             // toolTip.append("<br>Ploidy: unknown");
         }
+        toolTip.append("<br>Type: " + variant.getType());
         if (!isShort) {
             Set<Allele> alternates = variant.getAlternateAlleles();
             if (alternates.size() > 0) {
                 toolTip.append("<br>Alternate: " + alternates.toString());
             }
         }
-        if (!isShort) {
+        if (!isVeryShort) {
             toolTip.append("<br>Qual: " + numFormat.format(variant.getPhredScaledQual()));
-            toolTip.append("<br>Type: " + variant.getType());
-            if (variant.isFiltered()) {
-                toolTip.append("<br>Is Filtered Out: Yes</b>");
-                toolTip = toolTip.append(getFilterTooltip(variant));
-            } else {
-                toolTip.append("<br>Is Filtered Out: No</b><br>");
-            }
-            addBrIfMissing(toolTip);
-            toolTip.append("<b>Alleles:</b>");
-            toolTip.append(getAlleleToolTip(variant));
-
-
-            double[] af = variant.getAlleleFreqs();
-            if (af[0] < 0 && variant.getSampleNames().size() > 0) {
-                af = new double[]{variant.getAlleleFraction()};
-            }
-            String afMsg = "Unknown";
-            if (af[0] >= 0) {
-                afMsg = numFormat.format(af[0]);
-                for (int ii = 1; ii < af.length; ii++) {
-                    afMsg += ", " + numFormat.format(af[ii]);
+            
+            if (!isShort) {
+                if (variant.isFiltered()) {
+                    toolTip.append("<br>Is Filtered Out: Yes</b>");
+                    toolTip = toolTip.append(getFilterTooltip(variant));
+                } else {
+                    toolTip.append("<br>Is Filtered Out: No</b><br>");
                 }
-            }
-            toolTip.append("<br>Allele Frequency: " + afMsg + "<br>");
+                addBrIfMissing(toolTip);
+                toolTip.append("<b>Alleles:</b>");
+                toolTip.append(getAlleleToolTip(variant));
 
-            if (variant.getSampleNames().size() > 0) {
-                toolTip = toolTip.append(getSampleToolTip(null, variant));
-                double afrac = variant.getAlleleFraction();
-                toolTip = toolTip.append("Minor Allele Fraction: " + numFormat.format(afrac) + "<br>");
-            }
 
-            toolTip.append("<b>Genotypes:</b>");
-            // for all samples!
-            addBrIfMissing(toolTip);
-            toolTip.append(getGenotypeToolTip(variant) + "<br>");
+                double[] af = variant.getAlleleFreqs();
+                if (af[0] < 0 && variant.getSampleNames().size() > 0) {
+                    af = new double[]{variant.getAlleleFraction()};
+                }
+                String afMsg = "Unknown";
+                if (af[0] >= 0) {
+                    afMsg = numFormat.format(af[0]);
+                    for (int ii = 1; ii < af.length; ii++) {
+                        afMsg += ", " + numFormat.format(af[ii]);
+                    }
+                }
+                toolTip.append("<br>Allele Frequency: " + afMsg + "<br>");
+
+                if (variant.getSampleNames().size() > 0) {
+                    toolTip = toolTip.append(getSampleToolTip(null, variant));
+                    double afrac = variant.getAlleleFraction();
+                    toolTip = toolTip.append("Minor Allele Fraction: " + numFormat.format(afrac) + "<br>");
+                }
+
+                toolTip.append("<b>Genotypes:</b>");
+                // for all samples!
+                addBrIfMissing(toolTip);
+                toolTip.append(getGenotypeToolTip(variant) + "<br>");
+            }
         }
         addBrIfMissing(toolTip);
-        toolTip.append(getVariantInfo(variant, isShort) + "<br>");
+        String vi = getVariantInfo(variant, isShort, isVeryShort);
+        if (vi.length()>0) toolTip.append(vi + "<br>");
 
         return toolTip.toString();
     }
@@ -1063,25 +1096,33 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
     }
 
     protected String getVariantInfo(Variant variant) {
-        return getVariantInfo(variant, false);
+        return getVariantInfo(variant, false, false);
     }
 
-    protected String getVariantInfo(Variant variant, boolean isShort) {
+    protected String getVariantInfo(Variant variant, boolean isShort, boolean isVeryShort) {
         Set<String> keys = variant.getAttributes().keySet();
         if (keys.size() > 0) {
 
-            if (isShort) {
+            if (isVeryShort) {
+                String res = "";
                 String key = "CONFIDENCE";
-                String value = variant.getAttributeAsString(key);
+                String value = variant.getAttributeAsString(key);               
+                if (value != null && value.length() > 0) {
+                    String name = getFullName(key);                   
+                    res = "<br>" + name + ": " + variant.getAttributeAsString(key);
+                }
+                key = "SVTYPE";
+                value = variant.getAttributeAsString(key);
+              
                 if (value != null && value.length() > 0) {
                     String name = getFullName(key);
-                    name = "<b><font color='000099'>" + name + "</font></b>";
-                    return "<br>" + name + ": " + variant.getAttributeAsString(key);
+                    res +="<br>" + name + ": " + variant.getAttributeAsString(key);
                 }
+                return res;
             } else {
                 String toolTip = "<b>Variant Attributes:</b>";
                 int count = 0;
-
+                boolean skipped = false;
                 // Put AF and GMAF and put at the top, if present
                 String k = "AF";
                 String afValue = variant.getAttributeAsString(k);
@@ -1093,10 +1134,9 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
                 if (afValue != null && afValue.length() > 0 && !afValue.equals("null")) {
                     toolTip = toolTip.concat("<br>" + getFullName(k) + ": " + variant.getAttributeAsString(k));
                 }
-
-
+                
                 int COLS = 2;
-                boolean usetable = keys.size() > 10;
+                boolean usetable = keys.size() > 10 && !isShort;
                 if (keys.size() > 0) {
                     if (usetable) {
                         toolTip = toolTip.concat("<table border='0' cellspacing='0' cellpadding='0'><tr>");
@@ -1110,17 +1150,25 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
                         if (key.length() < 1 || key.equals("AF") || key.equals("GMAF")) {
                             continue;
                         }
-                        if (count > MAX_FILTER_LINES) {
-                            break;
-                        }
+                        
                         String t = "";
                         String name = getFullName(key);
                         if (name.equalsIgnoreCase("CONFIDENCE")) {
                             name = "<b><font color='000099'>" + name + "</font></b>";
                         }
+                        else if (name.equalsIgnoreCase("SVTYPE")) {
+                            name = "<b>" + name + "</font></b>";
+                        }
+                        else {
+                            if (this.max_nr_variants_tt < 5 && !key.equalsIgnoreCase("PRECISION") && 
+                                    (count > MAX_FILTER_LINES || (isShort && count > MAX_FILTER_LINES/3 )) )  {
+                                skipped = true;
+                                continue;
+                            }                        
+                        }
                         if (name.length() > 0) {
                             t = name + ": " + variant.getAttributeAsString(key);
-                            if (t.length() > 60) {
+                            if (this.max_nr_variants_tt < 5 && t.length() > 60) {
                                 t = t.substring(0, 60) + "...";
                             }
                         } else {
@@ -1141,8 +1189,8 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
                     if (usetable) {
                         toolTip = toolTip.concat("</tr></table>");
                     }
-                    if (count > MAX_FILTER_LINES) {
-                        toolTip = toolTip.concat("<br>....");
+                    if (skipped) {
+                        toolTip = toolTip.concat("...");
                     }
 
                 }
@@ -1243,6 +1291,13 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         return fullNames.containsKey(key) ? fullNames.get(key) : key;
     }
 
+    private String getSampleToolTip(String sample, List<Variant>  variants) {
+        String res = "";
+        for (Variant v: variants) {
+            res += getSampleToolTip(sample, v)+"<br>";
+        }
+        return res;
+    }
     private String getSampleToolTip(String sample, Variant variant) {
         if (sample == null) {
             if (variant.getSampleNames() != null && variant.getSampleNames().size() > 0) {
@@ -1262,10 +1317,11 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         String id = variant.getID();
         StringBuffer toolTip = new StringBuffer();
         toolTip = toolTip.append("Position: " + variant.getChr());
-        toolTip = toolTip.append(", " + variant.getPositionString());
+        toolTip = toolTip.append(", " + variant.getStart()+"-"+variant.getEnd());
         toolTip = toolTip.append("<br>ID: " + id + "<br>");
         toolTip = toolTip.append("<b>Sample Information:</b>");
 
+       
         Genotype genotype = variant.getGenotype(sample);
         if (genotype != null && genotype.getAttributes() != null) {
             Set<String> keys = genotype.getAttributes().keySet();
@@ -1275,7 +1331,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
                 if (usetable) {
                     toolTip = toolTip.append("<table border='0'  cellspacing='0' cellpadding='0'><tr>");
                 } else {
-                    toolTip = toolTip.append("<br>");
+                    toolTip = toolTip.append("");
                 }
                 int col = 1;
                 int nr = 0;
@@ -1362,10 +1418,10 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         if (referenceFrame != null && referenceFrame.getName() != null) {
             final double position = te.getChromosomePosition();
             double maxDistance = 10 * referenceFrame.getScale();
-            Variant f = getFeatureClosest(position, maxDistance, referenceFrame);
+            List<Variant> list = getFeatureClosests(position, maxDistance, referenceFrame);
             // If more than ~ 20 pixels distance reject
-            if (f != null) {
-                selectedVariant = f;
+            if (list != null && list.size() > 0) {
+                selectedVariant = list.get(0);
                 IGV.getInstance().doRefresh();
             }
         }
@@ -1455,7 +1511,9 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
             final double position = te.getChromosomePosition();
             double maxDistance = 10 * referenceFrame.getScale();
 
-            Variant f = getFeatureClosest(position, maxDistance, te.getFrame());
+            List<Variant> variants = getFeatureClosests(position, maxDistance, te.getFrame());
+            Variant f = null;
+            if (variants != null && variants.size()>0) f = variants.get(0);
             selectedSamples.clear();
             if (f != null) {
                 String selectedSample = getSampleAtPosition(te.getMouseEvent().getY());
@@ -1488,13 +1546,33 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
             IGV.getInstance().doRefresh();
         }
 
-        if (IGV.getInstance().isShowDetailsOnClick()) {
+        if (te.getMouseEvent().getClickCount()>0 || IGV.getInstance().isShowDetailsOnClick()) {            
             openTooltipWindow(te);
         }
 
         return true;
     }
+    protected boolean openTooltipWindow(TrackClickEvent e) {
+        ReferenceFrame frame = e.getFrame();
+        final MouseEvent me = e.getMouseEvent();
+        this.max_nr_variants_tt = 10;
+        String popupText = getValueStringAt(frame.getChrName(), e.getChromosomePosition(), e.getMouseEvent().getY(), frame);
+        this.max_nr_variants_tt = 1;
+        if (popupText != null) {
 
+            final TooltipTextFrame tf = new TooltipTextFrame(getDisplayName(true), popupText);
+            Point p = me.getComponent().getLocationOnScreen();
+            tf.setLocation(Math.max(0, p.x + me.getX() - 150), Math.max(0, p.y + me.getY() - 150));
+
+            UIUtilities.invokeOnEventThread(new Runnable() {
+                public void run() {
+                    tf.setVisible(true);
+                }
+            });
+            return true;
+        }
+        return false;
+    }
     @Override
     protected boolean isShowFeatures(RenderContext context) {
         boolean show = super.isShowFeatures(context);
@@ -1515,7 +1593,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
      * to store session state.
      * <p/>
      * // TODO -- this whole scheme could probably be more elegantly handled
-     * with annotations.
+     * with annotations.d
      *
      * @return
      */

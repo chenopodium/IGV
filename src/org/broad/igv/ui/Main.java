@@ -237,6 +237,7 @@ public class Main {
 
             String[] nonOptionArgs = parser.getRemainingArgs();
             if (nonOptionArgs != null && nonOptionArgs.length > 0) {               
+                log.info("Got "+nonOptionArgs.length +" additional arguments in Main");
                 // Alternative implementation           
                 
                 ArgumentHandler specialhandler = Handlers.getArgumentHandler();
@@ -244,6 +245,7 @@ public class Main {
                     log.info("Handling non optional args with handler "+ specialhandler.getClass().getName());
                     specialhandler.parseArgs(this, nonOptionArgs);
                 }
+                else log.info("Got NO special handerl or args");
                 String firstArg = StringUtils.decodeURL(nonOptionArgs[0]);
                 if (firstArg != null && !firstArg.equals("ignore")) {
                     log.info("Loading: " + firstArg);
@@ -271,7 +273,9 @@ public class Main {
                 }
             }
         }        
-
+        public void setPort(String port) {
+            this.port = port;
+        }
         public void setLocusString(String s) {
             this.locusString = s;
         }

@@ -76,7 +76,7 @@ public class VariantMenu extends IGVPopupMenu {
 
 
         //Title
-        JLabel popupTitle = new JLabel("<html><b>" + this.track.getDisplayName(true), JLabel.LEFT);
+        JLabel popupTitle = new JLabel("<html><b>" + this.track.getDisplayName(true)+"</b></html>", JLabel.LEFT);
         Font newFont = getFont().deriveFont(Font.BOLD, 12);
         popupTitle.setFont(newFont);
         add(popupTitle);
@@ -106,7 +106,7 @@ public class VariantMenu extends IGVPopupMenu {
 
         //Hides
         addSeparator();
-        JLabel colorByItem = new JLabel("<html>&nbsp;&nbsp;<b>Color By", JLabel.LEFT);
+        JLabel colorByItem = new JLabel("<html><b>Color By</b></html>", JLabel.LEFT);
         add(colorByItem);
         add(getColorByTrack());
         add(getColorByGenotype());
@@ -128,9 +128,11 @@ public class VariantMenu extends IGVPopupMenu {
 
         //Variant Information
         addSeparator();
-        JLabel displayHeading = new JLabel("Display Mode", JLabel.LEFT);
+        JLabel displayHeading = new JLabel("<html><b>Display Mode</b></html>", JLabel.LEFT);
         add(displayHeading);
+        p("Adding variant display mode items");
         for (JMenuItem item : getDisplayModeItems()) {
+            p("adding "+item);
             add(item);
         }
 
@@ -164,6 +166,9 @@ public class VariantMenu extends IGVPopupMenu {
 
     }
 
+    private static void p(String s) {
+        log.info(s);
+    }
      public static JMenuItem getChangeTrackHeightItem(final Collection<Track> selectedTracks) {
         // Change track height by attribute
         JMenuItem item = new JMenuItem("Change Track Height...");

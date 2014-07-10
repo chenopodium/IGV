@@ -279,7 +279,6 @@ public class GenomeManager {
 
 
         String sequencePath = genomeDescriptor.getSequenceLocation();
-                
         Sequence sequence = null;
         //We preserve ordering only for legacy genomes
         boolean chromosOrdered = false;
@@ -298,6 +297,7 @@ public class GenomeManager {
             FastaDirectorySequence fastaDirectorySequence = new FastaDirectorySequence(sequencePath, fastaFiles);
             sequence = new SequenceWrapper(fastaDirectorySequence);
         } else {
+            log.info("Got sequencePath: "+sequencePath);
             FastaIndexedSequence fastaSequence = new FastaIndexedSequence(sequencePath);
             sequence = new SequenceWrapper(fastaSequence);
         }
@@ -515,6 +515,25 @@ public class GenomeManager {
                     String chrAliasFileName = properties.getProperty(Globals.GENOME_CHR_ALIAS_FILE_KEY);
                     String sequenceLocation = properties.getProperty(Globals.GENOME_ARCHIVE_SEQUENCE_FILE_LOCATION_KEY);
 
+                    // replace [hostname] with server
+                String server = PreferenceManager.getInstance().getTemp("server");
+                if (server != null && sequenceLocation != null && sequenceLocation.indexOf("[hostname]")>0) {
+                    log.warn("Deployment issue: link to fasta file contains [hostname], implementing workaround: "+sequenceLocation);
+                    boolean https = false;
+                    if (server.indexOf("443")>0) {
+                        https=true;
+                        log.warn("Server has 443: "+server+". Replacing http with https");
+                    }
+                    int col = server.indexOf(":");
+                    if (col > -1) {
+                        server = server.substring(0, col);
+                    }
+                    sequenceLocation = sequenceLocation.replace("[hostname]", server);
+                    if (https) {
+                        
+                        sequenceLocation = sequenceLocation.replace("http:", "https:");
+                    }
+                }
                     log.info("Got sequence loc: "+sequenceLocation);
                   
                     if ((sequenceLocation != null) && !HttpUtils.isRemoteURL(sequenceLocation)) {

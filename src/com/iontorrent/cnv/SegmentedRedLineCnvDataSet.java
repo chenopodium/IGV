@@ -334,6 +334,12 @@ public class SegmentedRedLineCnvDataSet implements SegmentedDataSet {
                 for (LocusScore score : chrSegments) {
                     Segment seg = (Segment) score;
                     String segchr = seg.getChr();
+                    if (genome == null) {
+                        this.genome = IGV.getInstance().getGenomeManager().getCurrentGenome();
+                    }
+                    if (genome == null) {
+                        //log.fatal("Got no genome");
+                    }
                     String actualChr = genome.getChromosomeAlias(segchr);
                     
                     String alt = this.getAlt(actualChr);

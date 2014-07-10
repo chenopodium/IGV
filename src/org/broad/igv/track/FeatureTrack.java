@@ -341,7 +341,12 @@ public class FeatureTrack extends AbstractTrack {
                 // give a +/- 2 pixel buffer, otherwise very narrow features will be missed.
                 double bpPerPixel = frame.getScale();
                 int minWidth = (int) (2 * bpPerPixel);    /* * */
-                LocusScore score = (LocusScore) FeatureUtils.getFeatureAt(position, minWidth, scores);
+               // log.info("Getting scores at "+position+", zoom="+zoom+", bp per pixel="+minWidth);
+                ArrayList<LocusScore> nonzero = new ArrayList<LocusScore>();
+                for (LocusScore score: scores){
+                     if(score.getScore() != 0) nonzero.add(score);
+                }
+                LocusScore score = (LocusScore) FeatureUtils.getFeatureAt(position, minWidth, nonzero);
                 return score == null ? null : "Mean count: " + score.getScore();
             }
 
@@ -674,7 +679,7 @@ public class FeatureTrack extends AbstractTrack {
 
     private float getMaxEstimate(List<LocusScore> scores) {
         float max = 0;
-        int n = Math.min(200, scores.size());
+        int n = Math.min(2000, scores.size());
         for (int i = 0; i < n; i++) {
             max = Math.max(max, scores.get(i).getScore());
         }

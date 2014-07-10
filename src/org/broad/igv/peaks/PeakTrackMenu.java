@@ -70,7 +70,7 @@ public class PeakTrackMenu extends IGVPopupMenu {
         Collection<Track> tracks = IGV.getInstance().getSelectedTracks(); //Arrays.asList(new Track[] {track});
 
         //Title
-        JLabel popupTitle = new JLabel("<html><b>" + track.getName(), JLabel.LEFT);
+        JLabel popupTitle = new JLabel("<html><b>" + track.getName()+"</b></html>", JLabel.LEFT);
         Font newFont = getFont().deriveFont(Font.BOLD, 12);
         popupTitle.setFont(newFont);
         add(popupTitle);
@@ -137,7 +137,7 @@ public class PeakTrackMenu extends IGVPopupMenu {
 
 
         addSeparator();
-        add(new JLabel("Color by"));
+        add(new JLabel("<html><b>Color by</b></html>"));
 
         ButtonGroup group = new ButtonGroup();
 

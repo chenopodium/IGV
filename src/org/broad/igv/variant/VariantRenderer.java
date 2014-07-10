@@ -161,8 +161,8 @@ public class VariantRenderer { //extends FeatureRenderer {
         int tOffset = 6;
         int bOffset = 8;
         Graphics2D g = (Graphics2D) context.getGraphics().create();
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, PreferenceManager.getInstance().getAntiAliasingHint());
-
+       // g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, PreferenceManager.getInstance().getAntiAliasingHint());
+        
         if (dX >= 10) {
             if (dY > 24) {
                 Font f = FontManager.getFont(Font.BOLD, Math.min(dX, 12));
@@ -180,8 +180,8 @@ public class VariantRenderer { //extends FeatureRenderer {
         Genotype genotype = variant.getGenotype(sampleName);
         if (variant.getEnd() - variant.getStart() > 100000) {
             // this is no ordinary variant... some kind of indel of ploidy... so rendering by genotype makes no sense
-          //  p("Large variant size: "+(variant.getEnd() - variant.getStart()));
-            //coloring = VariantTrack.ColorMode.TRACK;
+            p("Large variant size: "+(variant.getEnd() - variant.getStart()));
+            coloring = VariantTrack.ColorMode.TRACK;
         }
         if (genotype == null) {
             log.error("Now what?");

@@ -247,7 +247,7 @@ public class CoverageTrack extends AbstractTrack {
             return "";
         }
         int zoom = Math.max(0, frame.getZoom());
-        List<LocusScore> scores = dataSource.getSummaryScoresForRange(chr, (int) position - 10, (int) position + 10, zoom);
+        List<LocusScore> scores = dataSource.getSummaryScoresForRange(chr, (int) position - 20, (int) position + 20, zoom);
 
         // give a 2 pixel window, otherwise very narrow features will be missed.
         double bpPerPixel = frame.getScale();
@@ -256,7 +256,13 @@ public class CoverageTrack extends AbstractTrack {
         if (scores == null) {
             return "";
         } else {
-            LocusScore score = (LocusScore) FeatureUtils.getFeatureAt(position, 0, scores);
+          //  log.info("Getting scores at "+position+", zoom="+zoom+", bp per pixel="+minWidth);
+            ArrayList<LocusScore> nonzero = new ArrayList<LocusScore>();
+            for (LocusScore score: scores){
+                 if(score.getScore() != 0) nonzero.add(score);
+            }
+            
+            LocusScore score = (LocusScore) FeatureUtils.getFeatureAt(position, (int)minWidth, nonzero);
             return score == null ? "" : "Mean count: " + score.getScore();
         }
     }

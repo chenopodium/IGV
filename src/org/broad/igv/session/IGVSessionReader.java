@@ -260,8 +260,11 @@ public class IGVSessionReader implements SessionReader {
         if (inputStream == null) {
             return false;
         }
-        log.info("Load session");
-        Document document = loadDocument(inputStream);
+        
+        String content = FileTools.getIsAsString(inputStream);
+        log.info("Loading session with content "+content);
+        
+        Document document = loadDocument(content);
         if (document == null) {
             log.info("loadSession: Got no document back from input stream");
             return false;
@@ -299,6 +302,7 @@ public class IGVSessionReader implements SessionReader {
     protected Document loadDocument(InputStream inputStream) throws RuntimeException {
         Document document = null;
         try {
+            
             document = Utilities.createDOMDocumentFromXmlStream(inputStream);
         } catch (Exception e) {
             log.error("Load session error (will try to show content)", e);
@@ -306,6 +310,28 @@ public class IGVSessionReader implements SessionReader {
             String result = "I was unable to read anything from the input stream\n";
             try {
                 result = "IGV got this from the server:\n" + FileTools.getIsAsString(inputStream);
+                log.error(result);
+            } catch (Exception e1) {
+                log.error("Could not read input stream:" + ErrorHandler.getString(e1));
+            }
+            Exception usererror = new Exception(result + e.getMessage());
+            usererror.setStackTrace(e.getStackTrace());
+
+            throw new RuntimeException(usererror);
+        }
+        return document;
+    }
+    protected Document loadDocument(String content) throws RuntimeException {
+        Document document = null;
+        try {
+            
+            document = Utilities.createDOMDocumentFromXml(content);
+        } catch (Exception e) {
+            log.error("Load session error (will try to show content)", e);
+            // also try to read from input stream to see WHERE the error happened!
+            String result = "I was unable to read anything from the input stream\n";
+            try {
+                result = "IGV got this from the server:\n" + content;
                 log.error(result);
             } catch (Exception e1) {
                 log.error("Could not read input stream:" + ErrorHandler.getString(e1));
@@ -816,7 +842,7 @@ public class IGVSessionReader implements SessionReader {
             String hash = element.getAttribute("hash");
             int computed = this.computeHash(resourceLocator);
             if (!hash.equals("" + computed)) {
-                resourcevalid = false;
+           //     resourcevalid = false;
             }
           //  log.info("========== RESOURCE " + resourceLocator.getPath() + " has att hash: " + hash + ", computed hash=" + computed + ": same? " + resourcevalid);
 
@@ -1214,6 +1240,14 @@ public class IGVSessionReader implements SessionReader {
 
     private String getAttribute(Element element, String key) {
         String value = element.getAttribute(key);
+        if (value.indexOf("&amp;") > -1 || value.indexOf("%26") > -1) {
+            log.info("Replacing special chars in element "+element.getTagName()+", att:\n"+value);
+        
+            value = value.replace("&amp;", "&");
+            value = value.replace("%26", "&");
+            log.info("att is now:\n"+value);
+        }
+        
         //log.info("finding "+key +" in "+ element.getNodeName());
         if (value == null) {
             value = element.getAttribute(key.toLowerCase());

@@ -11,15 +11,18 @@
 package org.broad.igv.util;
 
 //~--- non-JDK imports --------------------------------------------------------
-
 import biz.source_code.base64Coder.Base64Coder;
 import com.iontorrent.utils.ErrorHandler;
-import org.apache.log4j.Logger;
-import org.w3c.dom.Document;
-import org.w3c.dom.NamedNodeMap;
-import org.w3c.dom.Node;
-import org.xml.sax.SAXException;
-
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.StringTokenizer;
+import java.util.zip.CRC32;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -29,15 +32,13 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.StringWriter;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.StringTokenizer;
-import java.util.zip.CRC32;
+import org.apache.log4j.Logger;
+import org.w3c.dom.Document;
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.Node;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+import org.xml.sax.SAXParseException;
 
 /**
  *
@@ -54,13 +55,11 @@ public class Utilities {
     public static String base64Decode(String str) {
         try {
             return Base64Coder.decodeString(str);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             log.info(ErrorHandler.getString(e));
         }
         return str;
     }
-
 
     /**
      * Changes a files extension.
@@ -104,6 +103,41 @@ public class Utilities {
         return xmlDocument;
     }
 
+    public static Document createDOMDocumentFromXml(String content)
+            throws ParserConfigurationException, IOException, SAXException {
+
+        DocumentBuilder documentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+        documentBuilder.setErrorHandler( new MyErrorHandler());
+        Document xmlDocument = documentBuilder.parse(new InputSource(new StringReader(content)));
+
+        return xmlDocument;
+    }
+
+   static class MyErrorHandler implements org.xml.sax.ErrorHandler {
+
+        public void warning(SAXParseException e) throws SAXException {
+            show("Warning", e);
+            //throw (e);
+        }
+
+        public void error(SAXParseException e) throws SAXException {
+            show("Error", e);
+            //throw (e);
+        }
+
+        public void fatalError(SAXParseException e) throws SAXException {
+            show("Fatal Error", e);
+           // throw (e);
+        }
+
+        private void show(String type, SAXParseException e) {
+            System.out.println(type + ": " + e.getMessage());
+            System.out.println("Line " + e.getLineNumber() + " Column "
+                    + e.getColumnNumber());
+            System.out.println("System ID: " + e.getSystemId());
+        }
+    }
+
     public static Map<String, String> getAttributes(Node node) {
         HashMap<String, String> attributes = new HashMap();
 
@@ -138,10 +172,9 @@ public class Utilities {
         return streamResult.getWriter().toString();
     }
 
-
     /**
-     * Get the text content of the attribute {@code key} from
-     * the set {@code attr}. If that attribute is not present, null is returned
+     * Get the text content of the attribute {@code key} from the set
+     * {@code attr}. If that attribute is not present, null is returned
      *
      * @param attr
      * @param key
@@ -218,8 +251,12 @@ public class Utilities {
         } else {
             fileName = url;
         }
-        if (fileName.startsWith("/")) fileName= fileName.substring(1);
-        if (fileName.startsWith("\\")) fileName= fileName.substring(1);
+        if (fileName.startsWith("/")) {
+            fileName = fileName.substring(1);
+        }
+        if (fileName.startsWith("\\")) {
+            fileName = fileName.substring(1);
+        }
         return fileName;
     }
 

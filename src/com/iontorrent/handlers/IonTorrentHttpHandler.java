@@ -70,7 +70,7 @@ public class IonTorrentHttpHandler implements HttpHandler {
         if (header_value != null && header_key == null) {
             header_key = "Authorization";
         }
-        boolean show =  false;//HEADER_CHECKS < 50;/// || url.toString().endsWith(".seg") || url.toString().endsWith(".bed");
+        boolean show =  false;//true;//HEADER_CHECKS < 50;/// || url.toString().endsWith(".seg") || url.toString().endsWith(".bed");
 //        if (show) {
 //            log.info("checkForHeaderParameters: header key and value: " + header_key + "=" + header_value + ", ecnryption is: " + header_encrypt + ", will add it to connection header");
 //            log.info("checkForHeaderParameters: server:" + server + ", URL is: " + url.toString());
@@ -115,10 +115,11 @@ public class IonTorrentHttpHandler implements HttpHandler {
             boolean useToken = surl.indexOf(server) > -1 || surl.indexOf(ipAddress) > -1
                     || server.indexOf(ipURL) > -1 || server.indexOf(url.getHost()) > -1;
             
+            
             // TESTING/DEBUG ON UAT: we also use the token if it NOT broad
             if (!useToken) {
                 surl = surl.toLowerCase();
-                if (surl.indexOf("broad")<0 && surl.indexOf("hgdown")<0) {
+                if (surl.indexOf("broad")<0 && surl.indexOf("hgdown")<0 && surl.indexOf("amazon") < 0) {
                     useToken = true;
                     p("I would not use the token for "+surl+", but for debugging etc we are still using it");
                 }
@@ -126,8 +127,9 @@ public class IonTorrentHttpHandler implements HttpHandler {
             
             if (useToken) {
                 if (header_encrypt) {
+                    
                     String encrypted = header_value;
-
+                  //  p("Decrypt the token first: encrypted="+encrypted);
                     String algo = pref.getTemp("algorithm");
                     if (algo == null) {
                         algo = Encryptor.getDefaultAlgorithm();
@@ -155,7 +157,7 @@ public class IonTorrentHttpHandler implements HttpHandler {
 
                 } else {
                     // replace _ with space
-
+                    p("NOT decrypting the token");
                     header_value = StringTools.replace(header_value, "_", " ");
 //                    if (show) {
 //                        p("checkForHeaderParameters: Token was not not encrypted! encrypt=" + pref.getTemp("header_encrypt") + ", Using token " + header_value);

@@ -183,6 +183,20 @@ public class TrackLoader {
             }
 
             p("type String is " + typeString+", locator="+locator.getType());
+            int q = path.indexOf("?");
+            if (q > 0 && path.indexOf("getFile")< 0) {
+                String params = path.substring(q);
+                path = path.substring(0, q);
+                p("Got quote, cutting off end: "+path);
+                locator.setPath(path);
+                PreferenceManager.getInstance().putTemp(path, params);
+                
+                q = typeString.indexOf("?");
+                typeString = typeString.substring(0, q);
+            }
+            //cut off ? for urls with parameters 
+            // https://com-lifetech-ionreporter-karl-ezstorage.s3.amazonaws.com/ir_org/data/ir/data/ir_org/ion.reporter%40lifetech.com/demo_ampliseq_chpv2_tumor/demo_ampliseq_chpv2_tumor_20140619014528246/outputs/annotatoractor
+             // -00/igv.vcf?expires=1405006529&awsaccesskeyid=akiaikitluxepeiufz4a&signature=nr%2bpjt8r57oepecw6%2bzh%2fubnszm%3d
             //p("=== path is: "+path);
             //This list will hold all new tracks created for this locator
             List<Track> newTracks = new ArrayList<Track>();
@@ -1372,7 +1386,7 @@ public class TrackLoader {
         try {
             if (HttpUtils.isRemoteURL(path)) {
                 boolean exists = HttpUtils.getInstance().resourceAvailable(new URL(indexPath));
-               // log.info("Does "+indexPath+" exist? "+exists);
+                log.info("Does "+indexPath+" exist? "+exists);
                 return exists;
             } else {
                 File f = new File(path + indexExtension);

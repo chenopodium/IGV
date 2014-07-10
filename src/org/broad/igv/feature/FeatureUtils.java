@@ -277,13 +277,47 @@ public class FeatureUtils {
         return null;
 
     }
+     public static List<Feature> getFeaturesAfter(double position, List<? extends Feature> features) {
+
+        if (features.size() == 0 ||
+                features.get(features.size() - 1).getStart() <= position) {
+            return null;
+        }
+
+        int startIdx = 0;
+        int endIdx = features.size();
+
+        // Narrow the list to ~ 10
+        while (startIdx != endIdx) {
+            int idx = (startIdx + endIdx) / 2;
+            double distance = features.get(idx).getStart() - position;
+            if (distance <= 0) {
+                startIdx = idx;
+            } else {
+                endIdx = idx;
+            }
+            if (endIdx - startIdx < 10) {
+                break;
+            }
+        }
+        List<Feature> res = new ArrayList<Feature>();
+        // Now find feature
+        for (int idx = startIdx; idx < features.size(); idx++) {
+            if (features.get(idx).getStart() > position) {
+                res.add(features.get(idx));
+            }
+        }
+        
+        return res;
+
+    }
 
     public static Feature getFeatureBefore(double position, List<? extends Feature> features) {
 
         int index = getIndexBefore(position, features);
         while (index >= 0) {
             org.broad.tribble.Feature f = features.get(index);
-            if (f.getStart() < position) {
+            if (f.getStart() <= position) {
                 return f;
             }
             index--;
@@ -292,6 +326,21 @@ public class FeatureUtils {
 
     }
 
+     public static List<Feature> getFeaturesBefore(double position, List<? extends Feature> features) {
+
+        int index = getIndexBefore(position, features);
+        
+        List<Feature> res = new ArrayList<Feature>();
+        while (index >= 0) {
+            org.broad.tribble.Feature f = features.get(index);
+            if (f.getStart() <= position) {
+                res.add(f);
+            }
+            index--;
+        }
+        return res;
+
+    }
     public static Feature getFeatureClosest(double position, List<? extends org.broad.tribble.Feature> features) {
         // look for exact match at position:
         org.broad.tribble.Feature f0 = getFeatureAt(position, features);
@@ -308,7 +357,25 @@ public class FeatureUtils {
         return (d1 < d2 ? f1 : f2);
 
     }
+    public static List<Feature> getFeatureClosests(double position, List<? extends org.broad.tribble.Feature> features) {
+        // look for exact match at position:
+        List<Feature> res = getFeaturesAt(position, features);
+        if (res != null) {
+            return res;
+        }
+        res = new ArrayList<Feature>();
+        // otherwise look for features on either side and return the closest:
+        List<Feature> f1 = getFeaturesBefore(position, features);
+        List<Feature> f2 = getFeaturesAfter(position, features);
 
+        if (f1 != null) {
+            res.addAll(f1);
+        }
+        if (f2 != null) {
+            res.addAll(f2);
+        }
+        return res;
+    }
     /**
      * Return a feature that encompasses the supplied position.
      *
@@ -327,6 +394,26 @@ public class FeatureUtils {
         } else {
             return null;
         }
+    }
+    private static List<Feature> getFeaturesAt(double position, List<? extends Feature> features) {
+        int strt = (int) position;
+        Feature key = new BasicFeature("", strt, strt + 1);
+
+        int r = Collections.binarySearch(features, key, FEATURE_START_COMPARATOR);
+        if (r < 0) {
+            r = Collections.binarySearch(features, key, FEATURE_CONTAINS_COMPARATOR);
+        }
+
+        ArrayList<Feature> res = new  ArrayList<Feature>();
+        if (r >= 0) {
+            for (int i = r; i < features.size(); i++) {
+                Feature f = features.get(i);
+                if (f.getStart() <=position && f.getEnd()>= position ) res.add(f);
+            }
+        } else {
+            return null;
+        }
+        return res;
     }
 
 

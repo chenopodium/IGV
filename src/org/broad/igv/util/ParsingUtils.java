@@ -13,15 +13,6 @@ package org.broad.igv.util;
 //~--- non-JDK imports --------------------------------------------------------
 
 import com.iontorrent.utils.ErrorHandler;
-import org.apache.log4j.Logger;
-import org.broad.igv.Globals;
-import org.broad.igv.renderer.*;
-import org.broad.igv.track.Track;
-import org.broad.igv.track.TrackProperties;
-import org.broad.igv.track.WindowFunction;
-import org.broad.igv.ui.color.ColorUtilities;
-import org.broad.igv.ui.util.MessageUtils;
-import org.broad.tribble.readers.AsciiLineReader;
 
 import java.awt.*;
 import java.io.*;
@@ -32,6 +23,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
+import org.apache.log4j.Logger;
+import org.broad.igv.Globals;
+import org.broad.igv.PreferenceManager;
+import org.broad.igv.renderer.*;
+import org.broad.igv.track.Track;
+import org.broad.igv.track.TrackProperties;
+import org.broad.igv.track.WindowFunction;
+import org.broad.igv.ui.color.ColorUtilities;
+import org.broad.igv.ui.util.MessageUtils;
+import org.broad.tribble.readers.AsciiLineReader;
 
 /**
  * @author jrobinso
@@ -101,11 +102,23 @@ public class ParsingUtils {
         } else {
 
             InputStream inputStream = null;
-            if (HttpUtils.isRemoteURL(locator.getPath())) {
-                URL url = new URL(locator.getPath());
+             String path = locator.getPath();
+            if (HttpUtils.isRemoteURL(path)) {
+               
+                // replace [hostname] with server
+                String server = PreferenceManager.getInstance().getTemp("server");
+                if (server != null) {
+                    int col = server.indexOf(":");
+                    if (col > -1) {
+                        server = server.substring(0, col);
+                    }
+                    path = path.replace("[hostname]", server);
+                }
+               
+                log.info("openInputStreamGZ: Got url: "+path);
+                URL url = new URL(path);
                 inputStream = HttpUtils.getInstance().openConnectionStream(url);
-            } else {
-                String path = locator.getPath();
+            } else {                
                 if (path.startsWith("file://")) {
                     path = path.substring(7);
                 }

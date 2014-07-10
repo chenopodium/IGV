@@ -34,6 +34,7 @@ import org.broad.igv.data.seg.ReferenceSegment;
 import org.broad.igv.data.seg.SummarySegment;
 import org.broad.igv.feature.LocusScore;
 import org.broad.igv.track.DataTrack;
+import org.broad.igv.track.FeatureTrack;
 import org.broad.igv.track.RenderContext;
 import org.broad.igv.track.Track;
 import org.broad.igv.track.WindowFunction;
@@ -103,7 +104,7 @@ public abstract class XYPlotRenderer extends DataRenderer {
         Color c = new Color(r, g, b);
 
         if (middle != 2) {
-            p("score: " + score + ", low=" + MIN + ", mid=CUTOFF=" + middle + ", max=" + MAX + " => color=" + c + ", rangedelta=" + rangedelta);
+           // p("score: " + score + ", low=" + MIN + ", mid=CUTOFF=" + middle + ", max=" + MAX + " => color=" + c + ", rangedelta=" + rangedelta);
             //c = chigh;
         }
         return c;
@@ -172,7 +173,7 @@ public abstract class XYPlotRenderer extends DataRenderer {
             Color posColor = track.getColor();
             Color negColor = track.getAltColor();
             Color midColor = track.getMidColor();
-            p(track.getName()+": high color: "+posColor+", midColor: "+midColor+", low color="+negColor);
+            //p(track.getName()+": high color: "+posColor+", midColor: "+midColor+", low color="+negColor);
             // Get the Y axis definition, consisting of minimum, maximum, and base value.  Often
             // the base value is == min value which is == 0.
 
@@ -371,7 +372,7 @@ public abstract class XYPlotRenderer extends DataRenderer {
     }
 
     private void p(String s) {
-        // System.out.println("XYRENDERER: " + s);
+       // System.out.println("XYRENDERER: " + s);
     }
     static DecimalFormat formatter = new DecimalFormat("#.##");
 
@@ -411,6 +412,7 @@ public abstract class XYPlotRenderer extends DataRenderer {
             }
         }
 
+        // LABELS Y AXIS LEGENDs
         if (prefs.getAsBoolean(PreferenceManager.CHART_DRAW_Y_AXIS)) {
             Font smallFont = FontManager.getFont(8);
             lg.setFont(smallFont);
@@ -418,7 +420,13 @@ public abstract class XYPlotRenderer extends DataRenderer {
             Rectangle axisRect = new Rectangle(arect.x, arect.y + 1, AXIS_AREA_WIDTH, arect.height);
 
 
+            if (context.getChr().equalsIgnoreCase("All") && track instanceof FeatureTrack) {
+               // p("Whole genome context. Data range needs to be recomputed for FeatureTrack");
+                
+             //   p("Data Range of "+track.getClass().getName()+" is "+track.getDataRange());
+            }
             DataRange axisDefinition = track.getDataRange();
+            
             float maxValue = axisDefinition.getMaximum();
             float baseValue = axisDefinition.getBaseline();
             float minValue = axisDefinition.getMinimum();
@@ -652,7 +660,7 @@ public abstract class XYPlotRenderer extends DataRenderer {
     private static Graphics2D getBaselineGraphics(RenderContext context) {
         Graphics2D baselineGraphics;
         baselineGraphics = (Graphics2D) context.getGraphic2DForColor(Color.lightGray).create();
-        baselineGraphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+       // baselineGraphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         return baselineGraphics;
     }
 

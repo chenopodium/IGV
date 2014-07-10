@@ -102,7 +102,7 @@ public class HttpUtils {
         };
     }
 
-     public static boolean isRemoteURL(String string) {
+    public static boolean isRemoteURL(String string) {
         String lcString = string.toLowerCase();
         return lcString.startsWith("http://") || lcString.startsWith("https://") || lcString.startsWith("ftp://");
     }
@@ -160,6 +160,7 @@ public class HttpUtils {
             }
         }
     }
+
     /**
      * Return the contents of the url as a String. This method should only be
      * used for queries expected to return a small amount of data.
@@ -226,9 +227,13 @@ public class HttpUtils {
     public InputStream openConnectionStream(URL url, Map<String, String> requestProperties) throws IOException {
 
         HttpURLConnection conn = openConnection(url, requestProperties);
+        // log.info("opening: "+url);
+        if (conn == null) {
+            return null;
+        }
         InputStream input = conn.getInputStream();
         if ("gzip".equals(conn.getContentEncoding())) {
-            log.info("Creating GZIPInputStream ");
+            // log.info("Creating GZIPInputStream ");
             input = new GZIPInputStream(input);
         }
         return input;
@@ -267,20 +272,21 @@ public class HttpUtils {
         }
 
         try {
-           // log.info("Checking if exists: "+url);
+
             HttpURLConnection conn = openConnection(url, null, "HEAD");
             int code = 404;
             if (conn != null) {
                 code = conn.getResponseCode();
             }
+            log.info("Checking if exists: code=" + code + " for " + url);
             if (code != 200) {
                 //log.info("resourceAvailable: code is not 200: "+code);
             }
            // else log.info("Code: "+code);
-            
+
             return code == 200;
         } catch (IOException e) {
-           // log.error("Problem: "+e.getMessage(), e);
+            // log.error("Problem: "+e.getMessage(), e);
             return false;
         }
     }
@@ -289,8 +295,11 @@ public class HttpUtils {
 
         HttpURLConnection conn = openConnection(url, null, "HEAD");
         //  log.info("Getting header field:"+key);
-        if (conn==null) return null;
-        else return conn.getHeaderField(key);
+        if (conn == null) {
+            return null;
+        } else {
+            return conn.getHeaderField(key);
+        }
     }
 
     public long getContentLength(URL url) throws IOException {
@@ -313,7 +322,6 @@ public class HttpUtils {
      * @throws IOException
      */
     public boolean compareResources(File file, URL url) throws IOException {
-
 
         if (!file.exists()) {
             return false;
@@ -347,7 +355,6 @@ public class HttpUtils {
             long localModifiedTime = file.lastModified();
             return remoteModifiedTime <= localModifiedTime;
         }
-
 
     }
 
@@ -397,9 +404,7 @@ public class HttpUtils {
             contentLength = Long.parseLong(contentLengthString);
         }
 
-
        // log.info("Content length = " + contentLength);
-
         InputStream is = null;
         OutputStream out = null;
 
@@ -548,7 +553,7 @@ public class HttpUtils {
         return res.toString();
     }
 
-     private byte[] readByteContents(InputStream is) throws IOException {
+    private byte[] readByteContents(InputStream is) throws IOException {
         BufferedInputStream bis = new BufferedInputStream(is);
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         int b;
@@ -562,6 +567,7 @@ public class HttpUtils {
         }
         return (bos.toByteArray());
     }
+
     private String readContents(InputStream is) throws IOException {
         BufferedInputStream bis = new BufferedInputStream(is);
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -593,7 +599,7 @@ public class HttpUtils {
         }
     }
 
-     private String readInputStream(HttpURLConnection connection) throws IOException {
+    private String readInputStream(HttpURLConnection connection) throws IOException {
         InputStream inputStream = null;
 
         try {
@@ -622,6 +628,55 @@ public class HttpUtils {
         return openConnection(url, requestProperties, method, redirectCount, true);
     }
 
+    private URL handleParameters(URL url, String method) {
+        String path = url.toString();
+        // ONLY DO THIS FOR AMAZON FOR NOW TO SAVE TIME
+        if (path.indexOf("s3")<0 || path.indexOf("getFile")>0) return url;
+        int q = path.indexOf("?");
+        if (q > 0 && path.indexOf("getFile") < 0) {
+            path = path.substring(0,q);
+        }
+        if (method == null) {
+            method = "GET";
+        }
+        log.info("handleParamters " + method + ", checking url: " + url);        
+        String key =  method.toUpperCase()+"_"+path;
+       
+        String params = PreferenceManager.getInstance().getTemp(key);
+        path = path.replace("&amp;", "&");
+        key =  method.toUpperCase()+"_"+path;
+        
+        // now check map if we have to add paraemters!
+        if (params == null) {
+           // log.info("Could not find key\n"+key.toUpperCase());
+            params = PreferenceManager.getInstance().getTemp(key);
+        }
+        if (params != null && params.length()>0) {
+            log.info("Found " + path + " in temp props, need to add parameters " + params);
+            if (!params.startsWith("?")) {
+                params = "?" + params;
+            }
+            params = params.replaceAll("&amp;", "&");
+            // amp
+            path = path.replaceAll("@", "%40");
+            path = path + params;
+            log.info("URL WITH PARAMS IS NOW:\n" + path);
+            try {
+                url = new URL(path);
+            } catch (MalformedURLException ex) {
+                log.error("handleParameters: " + ErrorHandler.getString(ex));
+            }
+        } else {
+            key = key.toUpperCase();
+            if (key.indexOf("BAM") > 0  && key.indexOf(".MAPPING") < 0 && key.indexOf(".TDF") < 0 && key.indexOf(".IDX") < 0) {
+                log.info("FOUND NO PARAMETERS FOR:\n" + key);
+                PreferenceManager.getInstance().showTempValues("BAM");
+            }
+        }
+
+        return url;
+    }
+
     /**
      * The "real" connection method
      *
@@ -637,6 +692,8 @@ public class HttpUtils {
         boolean useProxy = proxySettings != null && proxySettings.useProxy && proxySettings.proxyHost != null
                 && proxySettings.proxyPort > 0;
 
+        url = handleParameters(url, method);
+
         HttpURLConnection conn;
 
 //        if (method.equalsIgnoreCase("HEAD")) {
@@ -644,7 +701,6 @@ public class HttpUtils {
 //            method = "GET";
 //        }
 //        log.info(" ==== OPEN CONNECTION "+method+" TO " + url);
-
         if (useProxy) {
             Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxySettings.proxyHost, proxySettings.proxyPort));
             conn = (HttpURLConnection) url.openConnection(proxy);
@@ -697,7 +753,7 @@ public class HttpUtils {
         //CR: handle potential ion reporter or ion torrent links
         HttpHandler specialhandler = Handlers.getHttpHandler();
         if (specialhandler != null) {
-         //   log.info(" ++++ Using special HTTP handler");
+            //   log.info(" ++++ Using special HTTP handler");
             specialhandler.handle(url, conn);
         }
 
@@ -730,34 +786,43 @@ public class HttpUtils {
                     throw new IOException("Too many redirects - could be due to login failure. Please verify your proxy password, and also your user password in View/Preferences/Proxy.");
                 }
 
-
                 return openConnection(new URL(newLocation), requestProperties, method, redirectCount++);
             } // TODO -- handle other response codes.
             else if (code >= 400) {
-
-                if (code == 404) {
+                String path = url.toString();
+                if (code == 404 || path.contains(".mapping") || path.contains(".tdf")|| path.contains(".idx")) {
                     String f = url.getFile();
-                    if (f != null && !f.endsWith(".mapping") && !f.endsWith(".tdf")) {
+                    if (f != null && !f.endsWith(".mapping") && !f.endsWith(".tdf") && !f.endsWith(".idx")) {
                         message = "File/URL not found (404): " + url.getFile();
-                        log.info("          "+message);
+                        log.info("          " + message);
                     }
                     return null;
                 } else {
                     // if wrong pw, handle this here!
                     message = conn.getResponseMessage();
-                    log.info("Got code " + code+" (401 means wrong pw): "+message);
+                    log.info("Got code " + code + " (401=wrong pw, 403=access forbidden): " + message);
                     if (code == 505) {
-                        log.info("Got http, but should have used https. URL was: \n"+url.toString());
+                        log.info("Got http, but should have used https. URL was: \n" + url.toString());
                         log.info(ErrorHandler.getString(new Exception("Stack trace")));
                     }
                     HttpResponseException exc = new HttpResponseException(code);
-                    if (code == 403 || code == 401 || code == 500) {
-                        log.info(" ======== DEBUGGING ERROR " + code + " (401 means wrong pw), url: " + url);
+                   
+                    if (!path.contains(".mapping") && !path.contains(".tdf") && !path.contains(".idx") && (code == 403 || code == 401 || code == 500)) {
+                        log.info(" ======== DEBUGGING ERROR " + code + " (401 means wrong pw), url:\n" + url);
                         String details = readErrorStream(conn);
                         if (details != null) {
                             log.info("error stream: " + details);
                         }
-                       
+                        if (code == 403) {
+                            handleParameters(url, method);
+                            log.info("Method: " + method);
+
+                            Map<String, List<String>> hmap = conn.getHeaderFields();
+                            for (Iterator<String> it = hmap.keySet().iterator(); it.hasNext();) {
+                                String key = it.next();
+                                log.info("Got " + key + "=" + hmap.get(key));
+                            }
+                        }
                         if (this.defaultPassword != null || this.defaultUserName != null) {
                             log.info("Found default pw, should clear it");
                             MessageUtils.showMessage(exc.getMessage() + "<br>I will clear the credentials and try again");
@@ -776,7 +841,9 @@ public class HttpUtils {
                                 return openConnection(url, requestProperties, method, redirectCount, false);
                             }
                         } else {
-                            if (code == 401) MessageUtils.showMessage("The wrong pw might be stored. Please check menu View/Preferences/Proxy (bottom part)");
+                            if (code == 401) {
+                                MessageUtils.showMessage("The wrong pw might be stored. Please check menu View/Preferences/Proxy (bottom part)");
+                            }
                             log.info(ErrorHandler.getString(exc));
                         }
                     }
@@ -815,8 +882,9 @@ public class HttpUtils {
     public boolean useByteRange(URL url) {
 
         // We can test byte-range success for hosts we can reach.
-
         final String host = url.getHost();
+
+        url = handleParameters(url, "GET");
 
         if (byteRangeTestMap.containsKey(host)) {
             return byteRangeTestMap.get(host);
@@ -857,10 +925,10 @@ public class HttpUtils {
                 }
 
                 if (byteRangeTestSuccess) {
-                    log.info("Range-byte request succeeded for "+host);
+                    log.info("Range-byte request succeeded for " + host);
                 } else {
                     // if auth is missing.
-                    log.info("Range-byte test failed for "+host+" -- problem with client network environment - or missing /auth/ in URL to Ion Torrent data (otherwise you get a login page!)");
+                    log.info("Range-byte test failed for " + host + " -- problem with client network environment - or missing /auth/ in URL to Ion Torrent data (otherwise you get a login page!)");
                 }
 
                 byteRangeTestMap.put(host, byteRangeTestSuccess);
@@ -997,7 +1065,6 @@ public class HttpUtils {
          */
         @Override
         protected PasswordAuthentication getPasswordAuthentication() {
-
 
             RequestorType type = getRequestorType();
 

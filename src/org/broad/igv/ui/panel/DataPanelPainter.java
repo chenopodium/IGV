@@ -274,7 +274,7 @@ public class DataPanelPainter {
                         int curY = trackymap.get(track);
 
                         Rectangle rect = new Rectangle(trackX, curY, width, trackHeight);
-                        //   log.info("     Drawing " + track.getDisplayName() + " tracky=" + curY +  "-" + rect.getMaxY()+", x="+trackX);
+                        //log.info("      rendering x="+rect.x+", width="+rect.width);
 
                         // DEBUGGING
 //                        Graphics2D g = context.getGraphics();
@@ -282,7 +282,7 @@ public class DataPanelPainter {
 //                        g.fillRect(rect.x, rect.y, rect.width, rect.height);
 //                        g.setColor(Color.RED);                        
 //                        g.drawRect(rect.x, rect.y, rect.width, rect.height);
-//                        g.drawString(track.getDisplayName(), rect.x+5, rect.y+20);
+                        
                         draw(track, rect, context);
 
                         //TODO Hack to keep from rendering scale multiple times in Exome View

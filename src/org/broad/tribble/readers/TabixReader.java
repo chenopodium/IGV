@@ -28,11 +28,13 @@ package org.broad.tribble.readers;
 
 //import net.sf.samtools.util.BlockCompressedInputStream;
 
+import com.iontorrent.utils.ErrorHandler;
 import java.io.*;
 import java.nio.*;
 import java.util.HashMap;
 import java.util.Arrays;
 import java.lang.StringBuffer;
+import org.apache.log4j.Logger;
 
 import org.broad.tribble.util.BlockCompressedInputStream;
 import org.broad.tribble.util.SeekableStream;
@@ -249,16 +251,26 @@ public class TabixReader {
         ret[0] = chr2tid(chr);
         return ret;
     }
-
+    private void p(String s) {
+        Logger.getLogger(TabixReader.class).warn(s);
+    }
     private TIntv getIntv(final String s) {
         TIntv intv = new TIntv();
         int col = 0, end = 0, beg = 0;
         while ((end = s.indexOf('\t', beg)) >= 0 || end == -1) {
             ++col;
+         //   p("Got col "+col+", tab: "+end);
             if (col == mSc) {
                 intv.tid = chr2tid(end != -1 ? s.substring(beg, end) : s.substring(beg));
             } else if (col == mBc) {
-                intv.beg = intv.end = Integer.parseInt(end != -1 ? s.substring(beg, end) : s.substring(beg));
+                String sub = end != -1 ? s.substring(beg, end) : s.substring(beg);
+                try {                    
+                    intv.beg = intv.end = Integer.parseInt(sub);
+                }
+                catch (Exception e) {
+                    p("Problem reading line \n"+s+"\nncolumn "+col+"\nsubstring: "+sub+":"+ErrorHandler.getString(e));
+                            
+                }
                 if ((mPreset & 0x10000) != 0) ++intv.end;
                 else --intv.beg;
                 if (intv.beg < 0) intv.beg = 0;

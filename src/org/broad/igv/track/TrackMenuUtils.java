@@ -462,9 +462,7 @@ public class TrackMenuUtils {
                 });
             }
         });
-        if (selectedTracks.size() > 1) {
-            item.setEnabled(false);
-        }
+        
         return item;
     }
 
@@ -676,6 +674,7 @@ public class TrackMenuUtils {
 
     public static void addDisplayModeItems(final Collection<Track> tracks, JPopupMenu menu) {
 
+        p("addDisplayModeItems ==========================)");
         // Find "most representative" state from track collection
         Map<Track.DisplayMode, Integer> counts = new HashMap<Track.DisplayMode, Integer>(Track.DisplayMode.values().length);
         Track.DisplayMode currentMode = null;
@@ -707,7 +706,10 @@ public class TrackMenuUtils {
             modes.put("Alternative Splice", Track.DisplayMode.ALTERNATIVE_SPLICE);
         }
         for (final Map.Entry<String, Track.DisplayMode> entry : modes.entrySet()) {
-            JRadioButtonMenuItem mm = new JRadioButtonMenuItem(entry.getKey());
+            String key = entry.getKey();
+            p("Adding menu "+key);
+            JRadioButtonMenuItem mm = new JRadioButtonMenuItem(key);
+            
             mm.setSelected(currentMode == entry.getValue());
             mm.addActionListener(new ActionListener() {
                 public void actionPerformed(ActionEvent evt) {
@@ -727,7 +729,9 @@ public class TrackMenuUtils {
             t.setDisplayMode(mode);
         }
     }
-
+    private static void p(String s) {
+        log.info(s);
+    }
     public static JMenuItem getRemoveMenuItem(final Collection<Track> selectedTracks) {
 
         boolean multiple = selectedTracks.size() > 1;
@@ -1196,7 +1200,12 @@ public class TrackMenuUtils {
         if (content != null) {
             sp("Saving content to file");                                
             File output = FileDialogUtils.chooseFile("Save Track", PreferenceManager.getInstance().getLastSessionDirectory(),f, FileDialogUtils.SAVE);
-            FileTools.writeStringToFile(output, content, false);                
+            if (output != null) {
+                if (!output.getParentFile().canWrite()) {
+                    MessageUtils.showMessage("I seem to have no permission to write to the file "+output);
+                }
+                else FileTools.writeStringToFile(output, content, false);
+            }                
         }
     }
 }

@@ -30,7 +30,7 @@ public class IonTorrentSessionReader extends IGVSessionReader {
 
     private static Logger log = Logger.getLogger(IonTorrentSessionReader.class);
     private String path;
-    private static final boolean DEBUG = false;
+    private static final boolean DEBUG = true;
     
     public IonTorrentSessionReader(IGV igv) {
         super(igv);
@@ -49,7 +49,7 @@ public class IonTorrentSessionReader extends IGVSessionReader {
         long lsignature = 0;
         if (signature != null && signature.length() > 0){
             try {
-                lsignature = Long.parseLong(signature);
+                //lsignature = Long.parseLong(signature);
             }
             catch (Exception e){
                 log.warn("Could not interpret signature "+signature);
@@ -68,7 +68,7 @@ public class IonTorrentSessionReader extends IGVSessionReader {
             }
             else log.warn("Got no file or path for resourcelocator: "+file);
         }
-        if (lsignature > 0 && lsignature != hash || invalidFiles.size()>0) {
+        if ( lsignature > 0 && lsignature != hash ) {
             if (DEBUG) log.info("Signature " + signature + "/" + lsignature + " is not equals to hash code " + hash+", or invalid files");
 
             StringBuilder message = new StringBuilder();
@@ -92,6 +92,7 @@ public class IonTorrentSessionReader extends IGVSessionReader {
             message.append("<br>It looks like the session.xml file has been tampered with");
             message.append("</html>");
 
+            //log(message);
             //MessageUtils.showMessage(message.toString());
             // XXX TODO to activate, uncommoent below
             //return message.toString();
@@ -156,9 +157,7 @@ public class IonTorrentSessionReader extends IGVSessionReader {
                 }
                 if(reason == null)  reason = e.getMessage();
                 Exception usererror = new Exception(reason);
-                usererror.setStackTrace(e.getStackTrace());
-                
-
+                usererror.setStackTrace(e.getStackTrace());                
                 throw new RuntimeException(usererror);
             }
         }
@@ -171,11 +170,12 @@ public class IonTorrentSessionReader extends IGVSessionReader {
     protected boolean handleError(Exception e, String path, List<String> errors) {
         String reason = getMessageForContent(e.getMessage(), path);
         if (reason ==null )reason= e.getMessage();
+        
         log.info("Handling error: " + e.getMessage() + " -> reason=" + reason);
         if (!errors.contains(reason)) {
             errors.add(reason);
         }
-        if (reason.indexOf("token") > -1) {
+        if (reason != null && reason.indexOf("token") > -1) {
             Exception usererror = new Exception(reason);
             usererror.setStackTrace(e.getStackTrace());
             throw new RuntimeException(usererror);
@@ -228,19 +228,19 @@ public class IonTorrentSessionReader extends IGVSessionReader {
             reason += "<br><br>" + gray("The exception was:<br>" + content);
             return reason;
         } else if (content.indexOf("user") > -1) {
-            reason = "It looks like there is a problem with your user account.";
+            reason = "";
             if (content.indexOf("http access") > -1) {
                 // IR
                 if (path.indexOf("wsVerRest") > -1) {
                     reason = "<b>IGV uses your authentication token for securely connecting to the server.</b><br>";
-                    reason += "<b>But IGV did not get your token</b> - "
+                    reason += "<b>Maybe IGV did not get your token</b> - "
                             + b(blue("please make sure you launch IGV from the analysis result page in IR"));
                 } else {
                     // ion torrent
                     reason += "<br>" + content;
                 }
             } else {
-                reason += "<br>" + content;
+                reason +=  content;
             }
         } else if (content.indexOf("organization") > -1) {
             reason = "It looks like there is a problem with your organization:<br>" + content;

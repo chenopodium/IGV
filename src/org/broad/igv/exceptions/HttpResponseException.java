@@ -56,6 +56,8 @@ public class HttpResponseException extends IOException {
                 return "<br>Access Forbidden "+user+scode+prefs;
             case 500:
                 return "<br>The file (<b>or its index file</b>) was not found "+scode;
+            case 503:
+                return "<br>The server is not available: "+scode+"<br>Maybe it is overloaded or being restarted?";
             default:
                 return "<br>HTTP access error"+user+scode+prefs;
         }

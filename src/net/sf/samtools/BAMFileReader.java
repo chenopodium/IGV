@@ -23,15 +23,16 @@
  */
 package net.sf.samtools;
 
-import net.sf.samtools.util.*;
-import net.sf.samtools.SAMFileReader.ValidationStringency;
-import net.sf.samtools.seekablestream.SeekableStream;
+import com.iontorrent.utils.ErrorHandler;
 
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
+import net.sf.samtools.SAMFileReader.ValidationStringency;
+import net.sf.samtools.seekablestream.SeekableStream;
+import net.sf.samtools.util.*;
 import org.apache.log4j.Logger;
 
 /**
@@ -521,6 +522,7 @@ class BAMFileReader extends SAMFileReader.ReaderImplementation {
         private final BAMRecordCodec bamRecordCodec;
         private long samRecordIndex = 0; // Records at what position (counted in records) we are at in the file
         private boolean isClosed = false;
+        private int nrerrors;
 
         BAMFileIterator() {
             this(true);
@@ -589,6 +591,14 @@ class BAMFileReader extends SAMFileReader.ReaderImplementation {
                     mNextRecord.eagerDecode();
                 }
             } catch (IOException exc) {
+                nrerrors++;
+                if (nrerrors < 5){ 
+                    Logger.getLogger("BamFileReader").info("Got error in advance :"+ErrorHandler.getString(exc));
+                    
+                }
+                else {
+                    Logger.getLogger("BamFileReader").info("Got error in advance :"+exc.getMessage());
+                }
                 throw new RuntimeException(exc.getMessage(), exc);
             }
         }
@@ -702,7 +712,7 @@ class BAMFileReader extends SAMFileReader.ReaderImplementation {
         SAMRecord getNextRecord()
                 throws IOException {
             // Advance to next file block if necessary
-          //  p("GetNextRecord with mCompressedInputStream="+mCompressedInputStream.getClass().getName());
+           // p("GetNextRecord with mCompressedInputStream="+mCompressedInputStream.getClass().getName());
             while (mCompressedInputStream.getFilePointer() >= mFilePointerLimit) {
                 if (mFilePointers == null
                         || mFilePointerIndex >= mFilePointers.length) {
@@ -710,6 +720,7 @@ class BAMFileReader extends SAMFileReader.ReaderImplementation {
                 }
                 final long startOffset = mFilePointers[mFilePointerIndex++];
                 final long endOffset = mFilePointers[mFilePointerIndex++];
+                p("seeking: "+startOffset);
                 mCompressedInputStream.seek(startOffset);
                 mFilePointerLimit = endOffset;
             }

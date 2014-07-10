@@ -135,6 +135,7 @@ public class IGVCommandBar extends javax.swing.JPanel {
                 getPopupMenuToolTipBehavior().show(e.getComponent(), e.getX(), e.getY());
             }
         });
+        
     }
 
     private JPopupMenu getPopupMenuToolTipBehavior() {
