@@ -347,7 +347,7 @@ public class FeatureTreeNode {
              //   else p("Found no features in tree at "+pos);
                 
             } else {
-                p("Found no tree at "+pos/1000000+", bucket"+bucket);                
+              //  p("Found no tree at "+pos/1000000+", bucket"+bucket);                
             }
         }
         return res;

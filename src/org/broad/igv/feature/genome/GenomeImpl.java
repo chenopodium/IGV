@@ -362,12 +362,15 @@ public class GenomeImpl implements Genome {
 
         Chromosome c = getChromosome(chr);
         if (c == null) {
+            p("getSequence: getChromosome resulted in null");
             return null;
         }
         end = Math.min(end, c.getLength());
         if (end <= start) {
+            p("getSequence: End < start, no seq");
             return null;
         }
+        p("Class sequcence:"+sequence.getClass().getName());
         return sequence.getSequence(chr, start, end);
     }
 

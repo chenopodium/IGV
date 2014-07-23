@@ -73,7 +73,11 @@ public class ResourceLocator {
 
     private String sampleId;
 
+    private String analysis;
+    
     private String gender;
+    
+    private boolean autoLoad;
     
     String username;
     String password;
@@ -88,6 +92,7 @@ public class ResourceLocator {
      */
     public ResourceLocator(String path) {
         this(null, path);
+        
     }
 
     /**
@@ -104,8 +109,12 @@ public class ResourceLocator {
             this.serverURL = serverURL.replace("broad.mit.edu", "broadinstitute.org");
         }
         this.setPath(path);
+        autoLoad = true;
     }
 
+    public boolean isAutoLoad() {
+        return this.autoLoad;
+    }
     /**
      * Determines if the resource actually exists.
      *
@@ -189,6 +198,7 @@ public class ResourceLocator {
     public String getTrackName() {
         String trackname = null;
         trackname = name != null ? name : new File(getPath()).getName();
+        if (this.getAnalysis()!= null) trackname = this.getAnalysis()+ " "+trackname;
         if (this.getSampleId() != null) trackname = this.getSampleId()+ " "+trackname;
         return trackname;
     }
@@ -258,6 +268,13 @@ public class ResourceLocator {
     public void setSampleId(String sampleId) {
         this.sampleId = sampleId;
     }
+    public String getAnalysis() {
+        return analysis;
+    }
+
+    public void setAnalysis(String analysis) {
+        this.analysis = analysis;
+    }
 
     public String getIndexPath() {
         return indexPath;
@@ -306,6 +323,10 @@ public class ResourceLocator {
      */
     public void setGender(String gender) {
         this.gender = gender;
+    }
+
+    public void setAutoLoad(boolean autoLoad) {
+        this.autoLoad = autoLoad;
     }
 
     /**

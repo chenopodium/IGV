@@ -233,6 +233,9 @@ public class VCFVariant implements Variant {
         return total == 0 ? -1 : (((double) getHomVarCount() + ((double) getHetCount()) / 2) / total);
     }
 
+    public VariantContext getContext() {
+        return this.variantContext;
+    }
     /**
      * Return the methylation rate as annoted with a MR attribute.  A value of -1 indicates
      * no annotation (unknown methylation rate).  This option is only applicable for dna methylation data.

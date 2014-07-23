@@ -15,18 +15,6 @@
 package org.broad.igv.ui.panel;
 
 //~--- non-JDK imports --------------------------------------------------------
-import org.apache.log4j.Logger;
-import org.broad.igv.PreferenceManager;
-import org.broad.igv.feature.FeatureUtils;
-import org.broad.igv.feature.exome.ExomeBlock;
-import org.broad.igv.feature.exome.ExomeReferenceFrame;
-import org.broad.igv.sam.CoverageTrack;
-import org.broad.igv.track.RenderContext;
-import org.broad.igv.track.RenderContextImpl;
-import org.broad.igv.track.Track;
-import org.broad.igv.track.TrackGroup;
-import org.broad.igv.ui.IGV;
-import org.broad.igv.ui.UIConstants;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -34,13 +22,26 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
+import org.broad.igv.PreferenceManager;
 import org.broad.igv.feature.Chromosome;
+import org.broad.igv.feature.FeatureUtils;
+import org.broad.igv.feature.exome.ExomeBlock;
+import org.broad.igv.feature.exome.ExomeReferenceFrame;
 import org.broad.igv.feature.genome.Genome;
 import org.broad.igv.feature.genome.GenomeImpl;
 import org.broad.igv.feature.genome.GenomeManager;
+import org.broad.igv.renderer.GraphicUtils;
+import org.broad.igv.sam.CoverageTrack;
 import org.broad.igv.track.AbstractTrack;
 import org.broad.igv.track.DataTrack;
+import org.broad.igv.track.RenderContext;
+import org.broad.igv.track.RenderContextImpl;
+import org.broad.igv.track.Track;
+import org.broad.igv.track.TrackGroup;
+import org.broad.igv.ui.IGV;
+import org.broad.igv.ui.UIConstants;
 
 /**
  * @author jrobinso
@@ -263,8 +264,9 @@ public class DataPanelPainter {
                                     DataTrack atrack = (DataTrack) track;
                                     atrack.setDataRangeComputed(false);
                                 }
+                                trackY += trackHeight;
                             }
-                            trackY += trackHeight;
+                            
                         }
                         // else log.info("Got no visible rect");
                     }
@@ -276,7 +278,7 @@ public class DataPanelPainter {
                         Rectangle rect = new Rectangle(trackX, curY, width, trackHeight);
                         //log.info("      rendering x="+rect.x+", width="+rect.width);
 
-                        // DEBUGGING
+                        // DEBUGGING TRACK DRAWING, suchas for FILTERING
 //                        Graphics2D g = context.getGraphics();
 //                        g.setColor(Color.yellow);
 //                        g.fillRect(rect.x, rect.y, rect.width, rect.height);
@@ -348,8 +350,26 @@ public class DataPanelPainter {
 
     final private void draw(Track track, Rectangle rect, RenderContext context) {
 
-        //   Logger.getLogger("DataPanelPainter").info("========= draw " + track.getName());
-        track.render(context, rect);
+      //  Logger.getLogger("DataPanelPainter").info("========= draw " + track.getName());
+        // check for autoLoad
+        boolean ignore = false;
+        if (track.getResourceLocator() != null) {
+            ignore = !track.getResourceLocator().isAutoLoad();
+        }
+        if (ignore) {
+            Rectangle visibleRect = context.getVisibleRect().intersection(rect);
+            Graphics2D g = context.getGraphic2DForColor(Color.gray);
+            g.setColor(Color.lightGray);
+            Font f = g.getFont();            
+            visibleRect.y-=f.getSize()*0.5;
+            GraphicUtils.drawCenteredText("Data not loaded yet to save time (due to nr of tracks)", visibleRect, g);
+            visibleRect.y+=1.5*f.getSize();
+            g.setColor(Color.blue.darker());
+            g.setFont(f.deriveFont(Font.BOLD, 14));
+            GraphicUtils.drawCenteredText("Double click to load data.", visibleRect, g);
+            g.setFont(f);
+            return;
+        } else track.render(context, rect);
 
         // Get overlays
 

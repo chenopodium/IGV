@@ -204,6 +204,7 @@ public class IGVSessionReader implements SessionReader {
         FEATURE_URL("featureURL"),
         DESCRIPTION("description"),
         TYPE("type"),
+        ANALYSIS("analysis"),
         COVERAGE("coverage"),
         TRACK_LINE("trackLine"),
         CHR("chr"),
@@ -559,6 +560,7 @@ public class IGVSessionReader implements SessionReader {
             MessageUtils.showMessage(message.toString());
         }
 
+        
         if (dataFiles.size() > 0) {
             String message = checkAccessToResources(dataFiles, invalidFiles);
             if (message != null && message.length() > 0) {
@@ -567,6 +569,12 @@ public class IGVSessionReader implements SessionReader {
             }
             final List<String> errors = new ArrayList<String>();
 
+            boolean autoLoad = true;
+            int maxFilesForLoad = 5;//;PreferenceManager.getInstance().getAutoLoadTrackLimit();
+            if (dataFiles.size() > maxFilesForLoad){
+                log.info("Setting autoload to FALSE because there are "+dataFiles.size() +" data files");
+                autoLoad = false;
+            }
             // Load files concurrently -- TODO, put a limit on # of threads?
             List<TrackThread> threads = new ArrayList(dataFiles.size());
             long t0 = System.currentTimeMillis();
@@ -575,6 +583,7 @@ public class IGVSessionReader implements SessionReader {
 
             for (final ResourceLocator locator : dataFiles) {
 
+                locator.setAutoLoad(autoLoad);
                 final String suppliedPath = locator.getPath();
                 final String relPath = fullToRelPathMap.get(suppliedPath);
 
@@ -596,6 +605,7 @@ public class IGVSessionReader implements SessionReader {
                 }
                 i++;
             }
+            
             boolean abort = false;
             // Wait for all threads to complete
             for (TrackThread t : threads) {
@@ -656,12 +666,14 @@ public class IGVSessionReader implements SessionReader {
         String suppliedPath;
         List<String> errors;
         boolean ok;
-
+        
         public TrackLoadRunnable(ResourceLocator locator, String relPath, String suppliedPath, List<String> errors) {
             this.locator = locator;
+            
             this.relPath = relPath;
             this.suppliedPath = suppliedPath;
             this.errors = errors;
+            
         }
 
         public boolean isOk() {
@@ -756,6 +768,7 @@ public class IGVSessionReader implements SessionReader {
         String label = getAttribute(element, SessionAttribute.LABEL.getText());
         String name = getAttribute(element, SessionAttribute.NAME.getText());
         String sampleId = getAttribute(element, SessionAttribute.SAMPLE_ID.getText());
+        String analysis = getAttribute(element, SessionAttribute.ANALYSIS.getText());
         String gender = getAttribute(element, SessionAttribute.GENDER.getText());
         String description = getAttribute(element, SessionAttribute.DESCRIPTION.getText());
         String type = getAttribute(element, SessionAttribute.TYPE.getText());
@@ -814,6 +827,7 @@ public class IGVSessionReader implements SessionReader {
             resourceLocator.setName(label);
         }
 
+        resourceLocator.setAnalysis(analysis);
         resourceLocator.setSampleId(sampleId);
         resourceLocator.setGender(gender);
         resourceLocator.setDescription(description);

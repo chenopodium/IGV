@@ -42,6 +42,7 @@ public class SequenceWrapper implements Sequence {
 
 
     public SequenceWrapper(Sequence sequence) {
+        //log.info("SEQUENCEWRAPPER for class: "+sequence.getClass().getName());
         this.sequence = sequence;
     }
 

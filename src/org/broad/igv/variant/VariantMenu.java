@@ -32,6 +32,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.*;
 import java.util.List;
+import static org.broad.igv.track.TrackMenuUtils.getLoadMenuItem;
+import static org.broad.igv.track.TrackMenuUtils.getLoadTypeMenuItem;
 
 /**
  * User: Jesse Whitworth
@@ -76,7 +78,7 @@ public class VariantMenu extends IGVPopupMenu {
 
 
         //Title
-        JLabel popupTitle = new JLabel("<html><b>" + this.track.getDisplayName(true)+"</b></html>", JLabel.LEFT);
+        JLabel popupTitle = new JLabel("<html><b>" + this.track.getDisplayName(false)+"</b></html>", JLabel.LEFT);
         Font newFont = getFont().deriveFont(Font.BOLD, 12);
         popupTitle.setFont(newFont);
         add(popupTitle);
@@ -163,6 +165,22 @@ public class VariantMenu extends IGVPopupMenu {
         addSeparator();
         add(TrackMenuUtils.getRemoveMenuItem(Arrays.asList(new Track[]{this.track})));
 
+        ArrayList<Track> tracks = new ArrayList<Track>();
+        tracks.add(track);
+        
+        boolean hasNotLoaded = false;
+        for (Track t: tracks) {
+            if (t.getResourceLocator() != null && !t.getResourceLocator().isAutoLoad()) {
+                hasNotLoaded = true;
+                break;
+            }
+        }
+        if (hasNotLoaded) {
+            log.info("We have some unloaded tracks. Add autoload to menu");
+            add(getLoadMenuItem(tracks));
+            add(getLoadTypeMenuItem(tracks));
+        }
+        else p("all selected tracks have autoload to true");
 
     }
 

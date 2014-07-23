@@ -320,6 +320,9 @@ public class SessionWriter {
                         if (resourceLocator.getSampleId() != null) {
                             dataFileElement.setAttribute(SessionAttribute.SAMPLE_ID.getText(), resourceLocator.getSampleId());
                         }
+                        if (resourceLocator.getAnalysis()!= null) {
+                            dataFileElement.setAttribute(SessionAttribute.ANALYSIS.getText(), resourceLocator.getAnalysis());
+                        }
                          if (resourceLocator.getGender() != null) {
                             dataFileElement.setAttribute(SessionAttribute.GENDER.getText(), resourceLocator.getGender());
                         }
@@ -393,6 +396,9 @@ public class SessionWriter {
                     }
                     if (track.getSample() != null && track.getSample().length() > 0) {
                         trackElement.setAttribute(IGVSessionReader.SessionAttribute.SAMPLE_ID.getText(), track.getSample());
+                    }                    
+                    if (track.getAnalysis() != null && track.getAnalysis().length() > 0) {
+                        trackElement.setAttribute(IGVSessionReader.SessionAttribute.ANALYSIS.getText(), track.getAnalysis());
                     }
                      if (track.getGender() != null && track.getGender().length() > 0) {
                         trackElement.setAttribute(IGVSessionReader.SessionAttribute.GENDER.getText(), track.getGender());

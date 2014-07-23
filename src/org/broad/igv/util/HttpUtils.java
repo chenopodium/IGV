@@ -294,11 +294,17 @@ public class HttpUtils {
     public String getHeaderField(URL url, String key) throws IOException {
 
         HttpURLConnection conn = openConnection(url, null, "HEAD");
-        //  log.info("Getting header field:"+key);
+       // log.info("getHeaderField: Getting header field:"+key+" for "+url);
         if (conn == null) {
+            log.info("getHeaderField: No connection");
             return null;
         } else {
-            return conn.getHeaderField(key);
+            String res = conn.getHeaderField(key);
+       //     log.info("getHeaderField:Getting header field:"+key+"="+res);
+            if (key.toUpperCase().startsWith("CONTENT") && res == null || res.equalsIgnoreCase("0")) {
+                showHeader(conn);
+            }            
+            return res;
         }
     }
 
@@ -350,9 +356,17 @@ public class HttpUtils {
             return false;
         } else {
             HttpDate date = new HttpDate();
-            date.parse(lastModifiedString);
-            long remoteModifiedTime = date.getTime();
             long localModifiedTime = file.lastModified();
+            long remoteModifiedTime = localModifiedTime;
+            try {
+                date.parse(lastModifiedString);
+                remoteModifiedTime = date.getTime();
+            }
+            catch (Exception e) {
+                log.info("Could not parse date "+lastModifiedString);                
+            }
+            
+            
             return remoteModifiedTime <= localModifiedTime;
         }
 
@@ -677,6 +691,14 @@ public class HttpUtils {
         return url;
     }
 
+    private void showHeader(HttpURLConnection conn) {
+        Map<String, List<String>> hmap = conn.getHeaderFields();
+        
+        for (Iterator<String> it = hmap.keySet().iterator(); it.hasNext();) {
+            String key = it.next();
+            log.info( key + "=" + hmap.get(key));
+        }
+    }
     /**
      * The "real" connection method
      *
@@ -817,11 +839,7 @@ public class HttpUtils {
                             handleParameters(url, method);
                             log.info("Method: " + method);
 
-                            Map<String, List<String>> hmap = conn.getHeaderFields();
-                            for (Iterator<String> it = hmap.keySet().iterator(); it.hasNext();) {
-                                String key = it.next();
-                                log.info("Got " + key + "=" + hmap.get(key));
-                            }
+                            showHeader(conn);
                         }
                         if (this.defaultPassword != null || this.defaultUserName != null) {
                             log.info("Found default pw, should clear it");

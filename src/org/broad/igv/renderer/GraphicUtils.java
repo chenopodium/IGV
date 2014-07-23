@@ -140,22 +140,23 @@ public class GraphicUtils {
     }
 
     private static void p(String s) {
-      //  Logger.getLogger("GraphicsUtils").info(s);
+       // Logger.getLogger("GraphicsUtils").info(s);
 
     }
 
     private static void paintHtmlString(Graphics gg, String html, int x, int y) {
         Graphics2D g = (Graphics2D) gg;
-      //  p("paintHtmlString " + html + "  at " + x + "/" + y);
+        
 
         FontMetrics fontMetrics = g.getFontMetrics();
 
 
         String t = html;
         int b = html.indexOf("<b>");
-
+        int e = 0;
         while (b > 0) {
-            int e = html.indexOf("</b>", b + 1);
+            p("paintHtmlString " + html + ". Found <b> at "+b);
+            e = html.indexOf("</b>", b + 1);
             if (e > b) {
                 t = t.substring(0, b);
                 Rectangle2D tb = fontMetrics.getStringBounds(t, g);
@@ -183,7 +184,7 @@ public class GraphicUtils {
                 html = html.substring(e + 4);
                 b = html.indexOf("<b>");
             }
-
+            else break;
         }
         p("Drawing remainder: " + html);
         g.drawString(html, x, y);

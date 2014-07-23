@@ -244,6 +244,7 @@ public class RenderType {
     }
     public Color getDistinctColor(FeatureMetaInfo meta, KaryoFeature f, boolean debug) {
         String fieldname =this.getRelevantAttName();
+        //debug = true;
         if(debug)  p("Getting color for "+fieldname);
         if (fieldname == null) {
              fieldname = meta.getScoreFieldName(f.getFeature());
@@ -251,7 +252,7 @@ public class RenderType {
               if(debug)  p("Fieldname was null, it is now "+fieldname);
         }
         
-        FeatureMetaInfo.Range range = meta.getRangeForAttribute(fieldname);
+        FeatureMetaInfo.Range range = meta.getRangeForAttribute(fieldname, getKaryoScoreLabel());
       
         if (range == null) {
             if (this.nrerrors < 5)  {
@@ -261,7 +262,7 @@ public class RenderType {
             return this.getColor(0);
         }
         
-        if(debug)  p("Getting color for "+this.getRelevantAttName());
+        //if(debug)  p("Getting color for "+this.getRelevantAttName());
         double score = f.getScore(meta, this.getRelevantAttName());
         
         double MAX = range.max;
@@ -290,8 +291,9 @@ public class RenderType {
              this.setRelevantAttName(fieldname);
         }
         
-        FeatureMetaInfo.Range range = meta.getRangeForAttribute(fieldname);
+        FeatureMetaInfo.Range range = meta.getRangeForAttribute(fieldname, this.getKaryoScoreLabel());
       
+        
         if (range == null) {
             if (debug || this.nrerrors < 5)  {
                 p("Found no range for field "+fieldname+" in meta info: "+meta.getTrackname()+", "+meta.getClass().getName());

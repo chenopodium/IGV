@@ -11,6 +11,7 @@
 
 package org.broad.igv.feature.genome;
 
+import com.iontorrent.utils.ErrorHandler;
 import org.broad.igv.util.ParsingUtils;
 import org.broad.tribble.util.SeekableStream;
 import org.broad.tribble.util.SeekableStreamFactory;
@@ -19,6 +20,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.log4j.Logger;
+import org.broad.igv.track.SequenceTrack;
 
 /**
  * Implementation of Sequence backed by an indexed fasta file
@@ -27,6 +30,8 @@ import java.util.List;
  * @date 8/7/11
  */
 public class FastaIndexedSequence implements Sequence {
+
+    private static Logger log  = Logger.getLogger(FastaIndexedSequence.class);
 
     final FastaIndex index;
     final String path;
@@ -71,16 +76,22 @@ public class FastaIndexedSequence implements Sequence {
 
     public byte[] getSequence(String chr, int qstart, int qend) {
 
+        log.info("getSequence: chr "+chr+"qstart="+qstart+", qend="+qend);
         FastaIndex.FastaSequenceIndexEntry idxEntry = index.getIndexEntry(chr);
+       
+        // getSequence: got indxEntry contig chr1; position 6; size 249250621; basesPerLine 60; bytesPerLine 61
         if (idxEntry == null) {
+            log.info("getSequence: No idxEntry");
             return null;
         }
 
         try {
-
+            log.info("getSequence: got indxEntry "+idxEntry);
+            log.info("getSequence: indxEntry: size= "+idxEntry.getSize()+", contentLength="+this.contentLength);
             final int start = Math.max(0, qstart);    // qstart should never be < 0
             final int end = Math.min((int) idxEntry.getSize(), qend);
 
+            log.info("getSequence: start "+start+", end="+end);
             final int bytesPerLine = idxEntry.getBytesPerLine();
             final int basesPerLine = idxEntry.getBasesPerLine();
             int nEndBytes = bytesPerLine - basesPerLine;
@@ -99,6 +110,7 @@ public class FastaIndexedSequence implements Sequence {
             long endByte = Math.min(contentLength, position + endLine * bytesPerLine + offset1);
 
             if (startByte >= endByte) {
+                log.info("Start > end: "+startByte+">"+endByte);
                 return null;
             }
 
@@ -129,7 +141,8 @@ public class FastaIndexedSequence implements Sequence {
 
             return bos.toByteArray();
 
-        } catch (IOException e) {
+        } catch (Exception e) {
+            ErrorHandler.getString(e);
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
 
             return null;
@@ -150,9 +163,11 @@ public class FastaIndexedSequence implements Sequence {
      */
     private byte[] readBytes(long posStart, long posEnd) throws IOException {
 
+        log.info("readBytes");
         SeekableStream ss = null;
         try {
             ss = SeekableStreamFactory.getStreamFor(path);
+            log.info("readBytes: SeekableStream for "+path+" is "+ss.getClass().getName());
             int nBytes = (int) (posEnd - posStart);
             byte[] bytes = new byte[nBytes];
             ss.seek(posStart);

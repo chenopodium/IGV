@@ -310,7 +310,7 @@ public class GuiFeatureTree extends GuiObject {
         String info = "";
         if (features != null && features.size()>0) {
             
-            p("Found " + features.size() + " items at "+loc/MILLION+"  (+- "+MB+" MB): ");
+          //  p("Found " + features.size() + " items at "+loc/MILLION+"  (+- "+MB+" MB): ");
             
             info = "Found " + features.size() +" at "+loc/MILLION+" MB (+- "+MB+" MB):<br>";
             if (features.size() < 5) {

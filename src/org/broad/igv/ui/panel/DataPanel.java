@@ -634,13 +634,14 @@ public class DataPanel extends JComponent implements Paintable {
         @Override
         public void mouseClicked(final MouseEvent e) {
 
-            Logger.getLogger("DataPanel").info("MouseClicked: "+e.getClickCount());
+          //  Logger.getLogger("DataPanel").info("MouseClicked: "+e.getClickCount());
             // ctrl-mouse down is the mac popup trigger, but you will also get a clck even.  Ignore the click.
             if (Globals.IS_MAC && e.isControlDown()) {
                 return;
             }
 
             if (currentTool instanceof RegionOfInterestTool) {
+             //   log.info("mouseClicked:currentTool.mouseClicked(e)");
                 currentTool.mouseClicked(e);
                 return;
             }
@@ -651,9 +652,11 @@ public class DataPanel extends JComponent implements Paintable {
             }
 
             Object source = e.getSource();
+           // log.info("mouseClicked: source: "+source.getClass().getName());
             if (source instanceof DataPanel && e.getButton() == MouseEvent.BUTTON1) {
                 final Track track = ((DataPanel) e.getSource()).getTrack(e.getX(), e.getY());
 
+              //  log.info("mouseClicked: DataPanel, left mouse button");
                 if (e.isShiftDown()) {
                     final double locationClicked = frame.getChromosomePosition(e.getX());
                     frame.zoomBy(3, locationClicked);
@@ -666,11 +669,14 @@ public class DataPanel extends JComponent implements Paintable {
                     track.handleDataClick(te);
 
                 } else {
-
+                    //log.info("mouseClicked: DataPanel, no modifier. Track ="+track);
                     // No modifier, left-click.  Defer processing with a timer until we are sure this is not the
                     // first of a "double-click".
-
-                    if (e.getClickCount() > 1) {
+                    if (track != null && track.getResourceLocator() != null && !track.getResourceLocator().isAutoLoad()) {
+                        TrackClickEvent te = new TrackClickEvent(e, frame);    
+                        track.handleDataClick(te);
+                    }
+                    else if (e.getClickCount() > 1) {
                         clickScheduler.cancelClickTask();
                         final double locationClicked = frame.getChromosomePosition(e.getX());
                         

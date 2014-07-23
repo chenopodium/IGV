@@ -148,6 +148,19 @@ public class TrackMenuUtils {
 
         menu.addSeparator();
         menu.add(getRemoveMenuItem(tracks));
+        boolean hasNotLoaded = false;
+        for (Track t: tracks) {
+            if (t.getResourceLocator() != null && !t.getResourceLocator().isAutoLoad()) {
+                hasNotLoaded = true;
+                break;
+            }
+        }
+        if (hasNotLoaded) {
+            log.info("We have some unloaded tracks. Add autoload to menu");
+            menu.add(getLoadMenuItem(tracks));
+            menu.add(getLoadTypeMenuItem(tracks));
+        }
+        else p("all selected tracks have autoload to true");
 
     }
 
@@ -773,7 +786,55 @@ public class TrackMenuUtils {
         });
         return item;
     }
+    public static JMenuItem getLoadMenuItem(final Collection<Track> selectedTracks) {
 
+        boolean multiple = selectedTracks.size() > 1;
+
+        JMenuItem item = new JMenuItem("Load Track" + (multiple ? "s" : ""));
+        item.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent evt) {
+                if (selectedTracks.isEmpty()) {
+                    return;
+                }
+
+                for (Track track : selectedTracks) {
+                    if (track.getResourceLocator()!= null) {
+                        track.getResourceLocator().setAutoLoad(true);
+                    }
+                }
+                
+                IGV.getInstance().doRefresh();
+            }
+        });
+        return item;
+    }
+
+    public static JMenuItem getLoadTypeMenuItem(final Collection<Track> selectedTracks) {
+
+        JMenuItem item = new JMenuItem("Load all tracks of this type");
+        item.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent evt) {
+                if (selectedTracks.isEmpty()) {
+                    return;
+                }
+
+                for (Track track : selectedTracks) {
+                    if (track.getResourceLocator()!= null) {
+                        TrackType type = track.getTrackType();
+                        // now get all tracks of this type track.getResourceLocator().setAutoLoad(true);
+                        for (Track toload: IGV.getInstance().getAllTracks()) {
+                            if (toload.getResourceLocator() != null && !toload.getResourceLocator().isAutoLoad() && toload.getTrackType() == type) {
+                                toload.getResourceLocator().setAutoLoad(true);
+                            }
+                        }
+                    }
+                }
+                
+                IGV.getInstance().doRefresh();
+            }
+        });
+        return item;
+    }
     public static void changeRenderer(final Collection<Track> selectedTracks, Class rendererClass) {
         for (Track track : selectedTracks) {
 
@@ -797,19 +858,33 @@ public class TrackMenuUtils {
         if (selectedTracks.isEmpty()) {
             return;
         }
+        int count = 1;
+        int total = selectedTracks.size();
         for (Track track : selectedTracks) {
-            saveTrack(track);
+            saveTrack(track, track.getName()+", "+count+ " of "+total);
+            count++;
         }
     }
-    public static void saveTrack(Track track) {
+    public static void saveTrack(Track track, String which) {
         
         if (track != null && track.getResourceLocator() != null) {
             String path = track.getResourceLocator().getPath();
             
-            savePath(path);
-            if (path.endsWith(".gz")) {
+            File savedFile = savePath(path, null, which);
+            if (path.endsWith(".gz") && savedFile != null) {
                 // also try to save the file withouyt .gz
-                savePath(path.substring(0, path.length()-3));
+                String vcf =path.substring(0, path.length()-3); 
+                savePath(vcf, savedFile.getParent(), null);
+                savePath(path+".tbi", savedFile.getParent(), null);
+            }
+            else if (path.endsWith(".bam")) {
+                // also try to save the file withouyt .gz
+                 savePath(path+".bai", savedFile.getParent(), which);            
+            }
+            else if (path.endsWith(".vcf")) {
+                // also try to save the file withouyt .gz
+                 savePath(path+".gz", savedFile.getParent(), null);            
+                 savePath(path+".gz.tbi", savedFile.getParent(), which);            
             }
         }
         else sp("Got no track or path");
@@ -1179,7 +1254,7 @@ public class TrackMenuUtils {
         return item;
     }
 
-    private static void savePath(String path) {
+    private static File savePath(String path, String parentfolder, String msg) {
         File f = null;
         String content = null;
         if (FileTools.isUrl(path)) {
@@ -1198,14 +1273,26 @@ public class TrackMenuUtils {
             }
         }
         if (content != null) {
-            sp("Saving content to file");                                
-            File output = FileDialogUtils.chooseFile("Save Track", PreferenceManager.getInstance().getLastSessionDirectory(),f, FileDialogUtils.SAVE);
+            File output = null;
+            if (parentfolder != null) {
+                parentfolder = FileTools.addSlashOrBackslash(parentfolder);
+                output = new File(parentfolder + f.getName());
+            }
+            else  {            
+                if (msg == null) msg = "";
+                output = FileDialogUtils.chooseFile("Save Track "+msg, PreferenceManager.getInstance().getLastSessionDirectory(),f, FileDialogUtils.SAVE);
+            }
+            sp("Saving content to file "+output);  
+            
             if (output != null) {
                 if (!output.getParentFile().canWrite()) {
-                    MessageUtils.showMessage("I seem to have no permission to write to the file "+output);
+                    MessageUtils.showMessage("I seem to have no permission to write to the file \n"+output+"\nplease pick another location");
+                    return savePath(path, null, msg);
                 }
                 else FileTools.writeStringToFile(output, content, false);
-            }                
+            }  
+            return output;
         }
+        else return null;
     }
 }

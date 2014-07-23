@@ -71,7 +71,9 @@ public abstract class AbstractTrack implements Track {
     private String name;
     private String description;
     private String url;
+    private String analysis;
     private boolean itemRGB = true;
+    private boolean autoLoad;
     private boolean useScore;
     private double cutoffScore;
     private String customProperties;
@@ -117,6 +119,7 @@ public abstract class AbstractTrack implements Track {
         this.resourceLocator = dataResourceLocator;
         this.id = id;
         this.name = name;
+        this.autoLoad = true;
         posColor = Color.blue; //java.awt.Color[r=0,g=0,b=178];
         altColor = Color.blue;
         midColor = Color.blue;
@@ -212,7 +215,7 @@ public abstract class AbstractTrack implements Track {
 
     @Override
     public String getDisplayName() {
-        return getDisplayName(true);
+        return getDisplayName(false);
     }
 
     public String getDisplayName(boolean withSampleInfo) {
@@ -225,15 +228,33 @@ public abstract class AbstractTrack implements Track {
             }
         }
         String disp = getName();
+        String g = getGenderSymbol();
+        if (g != null) disp += " <b>"+ g+"</b>";
         //  log.info("getDisplayName: getName="+disp);
+        disp= getAdditionalTrackInfo(disp, withSampleInfo);
+
+        
+        
+        //else log.info("Got no gender info for  "+this.getName());
+        
+        
+        disp = firstUpper(disp);
+        ///disp = disp.replace(".", " ");
+      //  log.info("getDisplayName: result is: "+disp);
+        return disp;
+    }
+    public String getAdditionalTrackInfo(String disp, boolean withSampleInfo) {
         String sample = null;
         
         if (this.getResourceLocator() != null) {
+            // todo: also add analysis info
             sample = this.getResourceLocator().getSampleId();
             if (sample == null) {
                 sample = this.getSample();
             }
-
+            if (analysis == null && this.getResourceLocator().getAnalysis() != null) {
+                analysis =  this.getResourceLocator().getAnalysis() ;
+            }
             if (sample != null) {
                 if (!disp.toUpperCase().startsWith(sample.toUpperCase())) {
                     sample = Character.toUpperCase(sample.charAt(0)) + sample.substring(1);
@@ -248,35 +269,53 @@ public abstract class AbstractTrack implements Track {
                 disp = sample + " " + disp;
             }
         }
-
-        String g = getGenderSymbol();
-        if (g != null) disp += " <b>"+ g+"</b>";
-        
-        //else log.info("Got no gender info for  "+this.getName());
         
         if (sample != null) {
-
             String desc = this.getDescription();
             
-            if (desc == null) desc = this.prefMgr.getTemp(sample + "_name");
-            //  if (realname != null) log.info("getDisplayName: name is "+disp+", sample="+sample+", getting "+sample+"_name -> realname="+realname);
-            // TESTING
-            // if (realname == null) realname="testsample";
-            if (desc != null && desc.length() > 0 && !desc.equalsIgnoreCase("sample")) {
-                disp += "<br> (" + desc + ")";
+            if (desc == null) {
+                desc = this.prefMgr.getTemp(sample + "_name");
+                if (desc == null) desc = sample;
             }
-
+            //  if (realname != null) log.info("getDisplayName: name is "+disp+", sample="+sample+", getting "+sample+"_name -> realname="+realname);
+         
+            if (desc != null && desc.length() > 0 && !desc.equalsIgnoreCase("sample")) {
+                if (withSampleInfo) {
+                    disp += "<br>Sample: " + desc;
+                }
+                else if (disp.indexOf(desc) <0) {
+                    disp += "<br> (" + desc + ")";
+                }
+            }    
+            if (withSampleInfo) {
+                if (analysis != null) {              
+                    disp += "<br>Analysis: " + analysis;             
+                }
+            }
         }
-        
+        else if (analysis != null) {
+             disp += "<br>" + analysis;                        
+        }
+        if (withSampleInfo) {
+            if (gender != null) {              
+                disp += "<br>Gender: " + gender;             
+            }
+            // also all other attributes
+            List<String> names = AttributeManager.getInstance().getAttributeNames();
+            if (names != null) {
+                for (String name: names) {
+                    String value = this.getAttributeValue(name);
+                    if (value != null && value.length()>0) {
+                        disp += "<br>"+name+": " + value;      
+                    }
+                }
+            }
+        }
         
         disp = disp.replace("_", " ");
         disp = disp.replace("-", " ");
-        disp = firstUpper(disp);
-        ///disp = disp.replace(".", " ");
-        //   log.info("getDisplayName: result is: "+disp);
         return disp;
     }
-
     public String getGenderSymbol() {
         gender = this.getGender();
         if (gender != null) {
@@ -322,7 +361,12 @@ public abstract class AbstractTrack implements Track {
     public void setSampleId(String sampleId) {
         this.sampleId = sampleId;
     }
-
+    public void setAnalysis(String analysis) {
+        this.analysis = analysis;
+    }
+    public String getAnalysis() {
+        return analysis;
+    }
     @Override
     public void preload(RenderContext context) {
         // No-op, to be overriden by subclasses
@@ -457,7 +501,6 @@ public abstract class AbstractTrack implements Track {
     }
 
     public String getSample() {
-
         if (sampleId != null && sampleId.length() > 0) {
             return sampleId;
         }
@@ -466,9 +509,6 @@ public abstract class AbstractTrack implements Track {
 
         String key = AttributeManager.getInstance().getSampleFor(getName());
         return key != null ? key : getName();
-
-
-
     }
 
     /**
@@ -630,8 +670,22 @@ public abstract class AbstractTrack implements Track {
         return new ArrayList();
     }
 
+    @Override
     public boolean handleDataClick(TrackClickEvent te) {
-
+        MouseEvent e = te.getMouseEvent();
+        log.info("handing handleDataClick in AbstractTrack");
+        boolean ignore = false;
+        if (getResourceLocator() != null) {
+            ignore = !getResourceLocator().isAutoLoad();
+        }
+        if (e.getClickCount() > 1) {           
+            if (ignore) {
+                getResourceLocator().setAutoLoad(true);
+                Logger.getLogger(getClass().getName()).info("AutoLoad was false, setting it now to true");
+                IGV.repaintPanelsHeadlessSafe();
+            }
+            return true;
+        }        
         if (IGV.getInstance().isShowDetailsOnClick()) {
             return openTooltipWindow(te);
         }
@@ -645,7 +699,7 @@ public abstract class AbstractTrack implements Track {
 
         if (popupText != null) {
 
-            final TooltipTextFrame tf = new TooltipTextFrame(getDisplayName(true), popupText);
+            final TooltipTextFrame tf = new TooltipTextFrame(getDisplayName(false), popupText);
             Point p = me.getComponent().getLocationOnScreen();
             tf.setLocation(Math.max(0, p.x + me.getX() - 150), Math.max(0, p.y + me.getY() - 150));
 
@@ -1480,5 +1534,19 @@ public abstract class AbstractTrack implements Track {
     @Override
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    /**
+     * @return the autoLoad
+     */
+    public boolean isAutoLoad() {
+        return autoLoad;
+    }
+
+    /**
+     * @param autoLoad the autoLoad to set
+     */
+    public void setAutoLoad(boolean autoLoad) {
+        this.autoLoad = autoLoad;
     }
 }

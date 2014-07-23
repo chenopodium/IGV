@@ -25,7 +25,9 @@ public class LocusScoreMetaInfo extends FeatureMetaInfo {
             return;
         }
         LocusScore var = (LocusScore) f;
+        // use score name?
         super.addAtt("Score", var.getScore());
+        super.addAtt("Ploidy", var.getScore());
     }
 
     private void p(String s) {

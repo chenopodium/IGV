@@ -26,6 +26,7 @@ import javax.swing.JColorChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import org.broad.igv.track.AbstractTrack;
 
 /**
  *
@@ -77,6 +78,11 @@ public class SingleTrackPanel extends JPanel {
             String path = track.getTrack().getResourceLocator().getPath();
             path = path.replace("=", "<br>");
             tool = tool + "<br>Path: " + path;
+        }
+        if (track.getTrack() != null) {
+            AbstractTrack at = track.getTrack();
+            String more = at.getAdditionalTrackInfo("", true);
+            tool = tool + "<br>"+more;
         }
         if (check) {
             box = new JCheckBox("<html>"+ name+"</html>");

@@ -504,7 +504,11 @@ public class FeatureTrack extends AbstractTrack {
 
     @Override
     public boolean handleDataClick(TrackClickEvent te) {
-
+        boolean done =  super.handleDataClick(te);
+        if (done) {
+            log.info("Event already handled in superclass, stopping");
+            return done;
+        }
         MouseEvent e = te.getMouseEvent();
 
         //dhmay adding selection of an expanded feature row

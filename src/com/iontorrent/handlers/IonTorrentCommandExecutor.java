@@ -51,7 +51,7 @@ public class IonTorrentCommandExecutor implements CommandExecutorIF{
     @Override
     public String execute(String command) {
         
-        log.info("Executing "+command);
+     //   log.info("Executing "+command);
         List<String> args = getArgs(StringUtils.breakQuotedString(command, ' ').toArray(new String[]{}));
 
 

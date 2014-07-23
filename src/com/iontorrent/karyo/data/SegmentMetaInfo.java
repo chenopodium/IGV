@@ -26,6 +26,7 @@ public class SegmentMetaInfo extends FeatureMetaInfo {
         }
         Segment s = (Segment) f;
         super.addAtt("Score", s.getScore());
+        super.addAtt("Ploidy", s.getScore());
     }
 
     private void p(String s) {

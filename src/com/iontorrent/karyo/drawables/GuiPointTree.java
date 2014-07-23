@@ -106,9 +106,9 @@ public class GuiPointTree extends GuiFeatureTree {
             features = node.getAllFeatures(true);
            // p("Got "+features.size()+" UNFILTERED features");
         }
-        FeatureMetaInfo.Range r = super.ktrack.getMetaInfo().getRangeForAttribute(this.renderType.getRelevantAttName());
+        FeatureMetaInfo.Range r = super.ktrack.getMetaInfo().getRangeForAttribute(this.renderType.getRelevantAttName(), renderType.getKaryoScoreLabel());
         if (r == null && nrerrors < 100){
-            p("=====Got no range for scatter plot and track "+ktrack.getTrackDisplayName()+", relevant field: "+this.renderType.getRelevantAttName());
+            p("=====Got no range for point plot and track "+ktrack.getTrackDisplayName()+", relevant field: "+this.renderType.getRelevantAttName()+", scorelabel="+renderType.getKaryoScoreLabel());
             nrerrors++;
             ktrack.getMetaInfo().showRanges();
             
@@ -132,6 +132,8 @@ public class GuiPointTree extends GuiFeatureTree {
         double min = 0; 
         double max = 100;
         
+    //    p("drawVars. PoinType = "+pointType.getClass().getName());
+                
         if (range != null) {
             min = range.min;
             max = range.max;
@@ -151,7 +153,7 @@ public class GuiPointTree extends GuiFeatureTree {
           
         int minheight = (int) pointType.getMinPointHeight();
         int minwidth = (int) pointType.getMinPointWidth();
-       // for (int times = 0; times < 3; times++) {
+        for (int times = 0; times < 3; times++) {
             for (int i = 0; i < nr; i++) {
                 KaryoFeature f = vars.get(i);
                 double score = f.getScore(super.ktrack.getMetaInfo(), this.renderType.getRelevantAttName());
@@ -177,11 +179,10 @@ public class GuiPointTree extends GuiFeatureTree {
 
                     gg.setPaint(c);
 
-//                    if ( nr < 3) {
-//                        pointType.debug = true;
-//                       // p("Got color: "+c+" for feature "+f+", times="+times+", meta="+ktrack.getMetaInfo());
-//                    }
-//                    else pointType.debug = true; 
+                  //  p("Got color: "+c+" for feature "+f+", times="+times+", cutoff="+cutoff+", meta="+ktrack.getMetaInfo()+", score="+f.getScore(ktrack.getMetaInfo(), ktrack.getMetaInfo().getScoreFieldName(f))+", rendertype ="+renderType.getClass().getName());
+                    
+                    pointType.debug = true; 
+                    
                     boolean drawit = true;
                     if (filter != null) {
                         if (filter.isHighlightFiltered()) {
@@ -234,7 +235,7 @@ public class GuiPointTree extends GuiFeatureTree {
                    // else p("Not drawing feature, was filtered OUT");
                 }
             }
-       // }
+        }
     }
 
     @Override

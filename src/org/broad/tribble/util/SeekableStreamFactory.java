@@ -23,7 +23,7 @@ import org.broad.igv.util.stream.IGVSeekableHTTPStream;
             return getHttpStream(url);
 
         } else if (path.startsWith("ftp:")) {
-            log.info("===============  CREATING IGVSeekableFTPStream");
+            log.info("===============  CREATING IGVSeekableFTPStream for "+path);
             return new IGVSeekableFTPStream(new URL(path));
         } else {
             return new SeekableFileStream(new File(path));
@@ -32,7 +32,7 @@ import org.broad.igv.util.stream.IGVSeekableHTTPStream;
 
     public static SeekableStream getHttpStream(URL url) {
         try {
-            log.info("==================  CREATING IGVSeekableHTTPStream");
+            log.info("==================  CREATING IGVSeekableHTTPStream for "+url);
             return new IGVSeekableHTTPStream(url);
         } catch (Exception e) {
             log.error("Error creating URL helper: ", e);

@@ -383,6 +383,12 @@ public class TrackLoader {
                 }
                 if (locator.getSampleId() != null) {
                     track.setSampleId(locator.getSampleId());
+                    track.setAttributeValue("SampleId", locator.getSampleId());   
+                }
+                if (locator.getAnalysis()!= null) {
+                    track.setAnalysis(locator.getAnalysis());
+                    
+                    track.setAttributeValue("Analysis", locator.getAnalysis());                    
                 }
             }
 

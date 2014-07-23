@@ -130,8 +130,8 @@ public abstract class FeatureMetaInfo {
     public void addAtt(String att) {
         if (!atts.contains(att)) {
             atts.add(att);
-          //  if (count < 100) {
-           // p("Adding " + att);
+          //  if (atts.size() < 100) {
+           //     p("Adding " + att);
          //   }
         }
     }
@@ -186,6 +186,15 @@ public abstract class FeatureMetaInfo {
 
     public Range getRangeForAttribute(String att) {
         return attrangemap.get(att.toUpperCase());
+    }
+    public Range getRangeForAttribute(String att, String scoreLabel) {
+        
+        Range r = attrangemap.get(att.toUpperCase());
+        if (r == null && att.equalsIgnoreCase(scoreLabel)) {
+            p("ScoreLabel case, using score instaed");
+            return getRangeForAttribute("SCORE");
+        }
+        return r;
     }
 
     public void showRanges() {

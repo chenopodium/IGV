@@ -104,6 +104,8 @@ public class PreferenceManager implements PropertyManager {
 
 
     public static final String AUTOLOAD_BAM_TRACKS = "AUTO_LOAD_BAM_TRACKS";
+    public static final String AUTOLOAD_TRACKS_LIMIT = "AUTO_LOAD_TRACKS_LIMIT";
+    
     public static final String EXPAND_FEAUTRE_TRACKS = "EXPAND_FEATURE_TRACKS";
     public static final String PORT_ENABLED = "PORT_ENABLED";
     public static final String PORT_NUMBER = "PORT_NUMBER";
@@ -310,6 +312,20 @@ public class PreferenceManager implements PropertyManager {
         if (s == null) return false;
         else return (s.equalsIgnoreCase("true"));
     }
+    public int getTempAsInt(String key) {
+        String s= getTemp(key);
+        if (s == null) return 0;
+        else {
+            int i = 0;
+            try {
+                i = (Integer.parseInt(s));
+            }
+            catch (Exception e) {
+                log.warn("Could parse to int key :"+key+"="+s);
+            }
+            return i;
+        }
+    }
     public void putTemp(String key, String val) {
         key = key.toUpperCase();
        // if (key.endsWith("_NAME")) {
@@ -324,8 +340,7 @@ public class PreferenceManager implements PropertyManager {
      *
      * @param key
      * @return
-     */
-    public String getDefaultValue(String key) {
+     */    public String getDefaultValue(String key) {
         return defaultValues.get(key);
     }
     /**
@@ -357,6 +372,19 @@ public class PreferenceManager implements PropertyManager {
         }
         else autoload = getAsBoolean(PreferenceManager.AUTOLOAD_BAM_TRACKS);
         return autoload;
+    }
+    
+    public int getAutoLoadTrackLimit() {
+        /// IGNORE_BAM_TRACKS
+        int limit = 10;
+        if (hasTemp(AUTOLOAD_TRACKS_LIMIT))  {
+            limit = this.getTempAsInt(AUTOLOAD_TRACKS_LIMIT);
+            log.info("Found AUTOLOAD_TRACKS_LIMIT in temp properties");
+        }
+        else limit = getAsInt(PreferenceManager.AUTOLOAD_TRACKS_LIMIT);
+        if (limit < 2) limit = 10;
+        log.info("AUTOLOAD_TRACKS_LIMIT is "+AUTOLOAD_TRACKS_LIMIT);
+        return limit;
     }
 
     /**

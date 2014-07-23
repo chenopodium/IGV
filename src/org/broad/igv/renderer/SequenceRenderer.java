@@ -125,7 +125,7 @@ public class SequenceRenderer {
 
             byte[] seq = genome.getSequence(chr, start, end);
             if (seq == null) {
-               // log.error("Unable to get sequence at " + chr + ":" + start + "-" + end);
+                log.error("Unable to get sequence at " + chr + ":" + start + "-" + end);
                 this.hasSequence = false;
                 return;
             } else {

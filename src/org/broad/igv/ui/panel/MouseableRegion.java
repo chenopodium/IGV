@@ -22,6 +22,7 @@
  */
 package org.broad.igv.ui.panel;
 
+import com.iontorrent.utils.StringTools;
 import org.broad.igv.track.Track;
 import org.broad.igv.ui.IGV;
 
@@ -52,6 +53,18 @@ public class MouseableRegion {
             }
             else this.text = "<html>" + track.getDisplayName() + "<br>" + track.getName();
         }
+        if (track.getAnalysis() != null) {
+            text += "<br>Analysis name: "+track.getAnalysis();
+        }
+        if (track.getGender()!= null) {
+            text += "<br>Gender: "+track.getGender();
+        }
+        if (track.getSample()!= null) {
+            text += "<br>Sample: "+track.getSample();
+        }
+         if (track.getDescription()!= null) {
+            text += "<br>Description: "+track.getDescription();
+        }
         trackCltn = new SingleTrackRegion(track);
     }
 
@@ -59,6 +72,7 @@ public class MouseableRegion {
 
         this.region = region;
         this.text = (name.length() > 0 ? name + " = " : "") + value;
+        text = StringTools.addNL(text, "<br>", 80);
         trackCltn = new AttributePanelRegion(name, value);
     }
 

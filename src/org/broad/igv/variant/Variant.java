@@ -11,11 +11,11 @@
 
 package org.broad.igv.variant;
 
-import org.broad.tribble.Feature;
-
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+import org.broad.tribble.Feature;
+import org.broadinstitute.sting.utils.variantcontext.VariantContext;
 
 /**
  * Represents a variant call on a collection of samples.
@@ -140,6 +140,8 @@ public interface Variant extends Feature {
 
     double getCoveredSampleFraction();
 
+    public VariantContext getContext();
+    
     String getPositionString();
 
     public int getExpected();

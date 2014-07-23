@@ -43,6 +43,8 @@ import java.util.List;
  */
 public interface Track extends Persistable {
 
+    public String getAnalysis();
+
     enum DisplayMode {
         COLLAPSED, SQUISHED, EXPANDED, ALTERNATIVE_SPLICE
     }
@@ -204,6 +206,8 @@ public interface Track extends Persistable {
 
     void setSampleId(String sampleId);
 
+    void setAnalysis(String analysis);
+    
     float logScaleData(float dataY);
 
     boolean isRegionScoreType(RegionScoreType type);

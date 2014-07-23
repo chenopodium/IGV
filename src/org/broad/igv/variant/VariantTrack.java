@@ -984,7 +984,8 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
 
         StringBuffer toolTip = new StringBuffer();
         toolTip.append("Position: " + variant.getChr());
-        toolTip.append(", " + variant.getStart()+"-"+variant.getEnd());
+        
+         toolTip.append(", " + variant.getPositionString());
         if (!isVeryShort) {
             toolTip.append("<br>ID: " + id);
             toolTip.append("<br>Reference: " + variant.getReference());
@@ -1317,7 +1318,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         String id = variant.getID();
         StringBuffer toolTip = new StringBuffer();
         toolTip = toolTip.append("Position: " + variant.getChr());
-        toolTip = toolTip.append(", " + variant.getStart()+"-"+variant.getEnd());
+        toolTip.append(", " + variant.getPositionString());
         toolTip = toolTip.append("<br>ID: " + id + "<br>");
         toolTip = toolTip.append("<b>Sample Information:</b>");
 
@@ -1506,6 +1507,16 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
     @Override
     public boolean handleDataClick(TrackClickEvent te) {
 
+        boolean ignore = false;
+        if (getResourceLocator() != null) {
+            ignore = !getResourceLocator().isAutoLoad();
+        }
+        
+        if (ignore) {
+            boolean done =  super.handleDataClick(te);
+            log.info("Event already handled in superclass, stopping");
+            if (done) return done;
+        }
         if (hasAlignmentFiles()) {
             final ReferenceFrame referenceFrame = te.getFrame();
             final double position = te.getChromosomePosition();
@@ -1560,7 +1571,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         this.max_nr_variants_tt = 1;
         if (popupText != null) {
 
-            final TooltipTextFrame tf = new TooltipTextFrame(getDisplayName(true), popupText);
+            final TooltipTextFrame tf = new TooltipTextFrame(getDisplayName(false), popupText);
             Point p = me.getComponent().getLocationOnScreen();
             tf.setLocation(Math.max(0, p.x + me.getX() - 150), Math.max(0, p.y + me.getY() - 150));
 

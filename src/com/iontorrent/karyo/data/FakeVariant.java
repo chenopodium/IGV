@@ -11,6 +11,7 @@ import java.util.Set;
 import org.broad.igv.variant.Allele;
 import org.broad.igv.variant.Genotype;
 import org.broad.igv.variant.Variant;
+import org.broadinstitute.sting.utils.variantcontext.VariantContext;
 
 /**
  *
@@ -45,6 +46,9 @@ public class FakeVariant implements Variant {
         String type = "GAIN";
         if (Math.random()>0.5) type = "LOSS";
         getAttributes().put("INDELTYPE", type);
+    }
+    public VariantContext getContext(){ 
+        return null;
     }
     public double getPloidy() {
         return 2;
