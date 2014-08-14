@@ -191,7 +191,7 @@ public abstract class FeatureMetaInfo {
         
         Range r = attrangemap.get(att.toUpperCase());
         if (r == null && att.equalsIgnoreCase(scoreLabel)) {
-            p("ScoreLabel case, using score instaed");
+          //  p("ScoreLabel case, using score instaed");
             return getRangeForAttribute("SCORE");
         }
         return r;

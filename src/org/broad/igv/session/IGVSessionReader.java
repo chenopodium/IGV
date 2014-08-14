@@ -570,7 +570,8 @@ public class IGVSessionReader implements SessionReader {
             final List<String> errors = new ArrayList<String>();
 
             boolean autoLoad = true;
-            int maxFilesForLoad = 5;//;PreferenceManager.getInstance().getAutoLoadTrackLimit();
+            int maxFilesForLoad = PreferenceManager.getInstance().getAutoLoadTrackLimit();
+            maxFilesForLoad = Math.max(10, maxFilesForLoad);
             if (dataFiles.size() > maxFilesForLoad){
                 log.info("Setting autoload to FALSE because there are "+dataFiles.size() +" data files");
                 autoLoad = false;
@@ -578,7 +579,7 @@ public class IGVSessionReader implements SessionReader {
             // Load files concurrently -- TODO, put a limit on # of threads?
             List<TrackThread> threads = new ArrayList(dataFiles.size());
             long t0 = System.currentTimeMillis();
-            int i = 0;
+            
             List<TrackLoadRunnable> synchronousLoads = new ArrayList<TrackLoadRunnable>();
 
             for (final ResourceLocator locator : dataFiles) {
@@ -603,7 +604,7 @@ public class IGVSessionReader implements SessionReader {
                     threads.add(t);
                     t.start();
                 }
-                i++;
+               
             }
             
             boolean abort = false;

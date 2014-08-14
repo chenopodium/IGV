@@ -241,6 +241,7 @@ public class GuiProperties {
 	}
         public boolean isKaryoVisible(String sample, String name, String filetype) {
 		String res = getValueFor(sample, name, filetype, "KARYO_VISIBLE");
+                p("isKaryoVisible: "+sample+"."+name+"."+filetype+": "+res);
                 if (res == null) return true;
                 else return res.equalsIgnoreCase("true") || res.equals("1");
 	}

@@ -370,7 +370,7 @@ public class GenomeImpl implements Genome {
             p("getSequence: End < start, no seq");
             return null;
         }
-        p("Class sequcence:"+sequence.getClass().getName());
+     //   p("Class sequcence:"+sequence.getClass().getName());
         return sequence.getSequence(chr, start, end);
     }
 

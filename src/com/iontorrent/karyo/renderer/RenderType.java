@@ -26,7 +26,7 @@ import org.broad.tribble.Feature;
  * @author Chantal
  */
 public class RenderType {
- public boolean debug = true;
+ public boolean debug = false;
     
     /** Count instances so we know if we need to use different colors :-) */
    // private static HashMap<Class, Integer> instances = new HashMap<Class, Integer>();
@@ -449,7 +449,7 @@ public class RenderType {
     }
 
     private void p(String s) {
-        Logger.getLogger("RenderType").info(s);
+        if (debug) Logger.getLogger("RenderType").info(s);
     }
 
     /**

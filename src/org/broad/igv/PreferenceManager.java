@@ -382,7 +382,7 @@ public class PreferenceManager implements PropertyManager {
             log.info("Found AUTOLOAD_TRACKS_LIMIT in temp properties");
         }
         else limit = getAsInt(PreferenceManager.AUTOLOAD_TRACKS_LIMIT);
-        if (limit < 2) limit = 10;
+        if (limit < 5) limit = 10;
         log.info("AUTOLOAD_TRACKS_LIMIT is "+AUTOLOAD_TRACKS_LIMIT);
         return limit;
     }

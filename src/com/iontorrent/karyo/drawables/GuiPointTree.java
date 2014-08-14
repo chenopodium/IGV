@@ -181,7 +181,7 @@ public class GuiPointTree extends GuiFeatureTree {
 
                   //  p("Got color: "+c+" for feature "+f+", times="+times+", cutoff="+cutoff+", meta="+ktrack.getMetaInfo()+", score="+f.getScore(ktrack.getMetaInfo(), ktrack.getMetaInfo().getScoreFieldName(f))+", rendertype ="+renderType.getClass().getName());
                     
-                    pointType.debug = true; 
+                  //  pointType.debug = true; 
                     
                     boolean drawit = true;
                     if (filter != null) {

@@ -370,7 +370,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
     }
 
     private void p(String s) {
-        log.info("VariantTrack: " + s);
+        //log.info("VariantTrack: " + s);
         System.out.println("VT: "+s);
     }
 
@@ -384,10 +384,10 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
     @Override
     protected void renderFeatureImpl(RenderContext context, Rectangle trackRectangle, PackedFeatures packedFeatures) {
 
-        Graphics2D g2D = context.getGraphics();
-
+        Graphics2D g2D = context.getGraphics();       
         top = trackRectangle.y;
-        final int left = trackRectangle.x;
+        
+         final int left = trackRectangle.x;
         final int right = (int) trackRectangle.getMaxX();
 
         Rectangle visibleRectangle = context.getVisibleRect();
@@ -396,6 +396,14 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
         Rectangle rect = new Rectangle(trackRectangle);
         rect.height = getGenotypeBandHeight();
         rect.y = trackRectangle.y + variantBandHeight;
+        
+        boolean debug = false;
+        // DEBUG
+        if (debug) {
+            g2D.setColor(Color.yellow);
+            
+            g2D.fillRect(rect.x, rect.y, rect.width, rect.height);
+        }
         drawBackground(g2D, rect, visibleRectangle, BackgroundType.DATA);
 
         if (top > visibleRectangle.y && top < visibleRectangle.getMaxY()) {
@@ -404,10 +412,10 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
 
         List<Feature> features = packedFeatures.getFeatures();
 
-        boolean show = false;//features.size() < 10;
+        boolean show = features.size() < 40 && debug;
         if (features.size() > 0) {
-            p("Rendering "+features.size()+ " variants from "+left+" to "+right);
-            
+         //   p("=====================================  Rendering "+features.size()+ " variants from "+left+" to "+right);
+          //  p("REct width="+rect.width);
             int[] sizelimits = { 1000000, 100000, 10000, 1000, 100, 10, 0};
             int nrtimes = sizelimits.length;
 
@@ -431,11 +439,13 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
                    // if (show) p(" v "+start+"-"+end+", size="+size+", limit="+sizelimits[times]);
                     if (size < sizelimits[times]) continue;
                     else if (times > 0 && size > sizelimits[times-1]) continue;
-                        if (show) p("     drawing v "+variant.getID()+" at "+start+",size="+size);
+                        
 
                         int pX = (int) ((start - origin) / locScale);
                         int dX = (int) Math.max(2, (end - start) / locScale);
 
+                        if (show ) p("     drawing v "+variant.getID()+" at "+start+",size="+size+", dx="+dX);
+                        
                         //if (show)   p("Maybe drawing variant :"+variant+", pX="+pX+",  dx="+dX+", locScale="+locScale+", pxmin="+pXMin+", (px+dx)="+(int)(pX+dX));
                         if (pX + (long) dX < (long) pXMin && pX < pXMin) {
                             if (show)p("NOT drawing variant :"+variant+" because px+dx < pxmin");
@@ -444,6 +454,14 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
                         if (pX > pXMax) {
                             if (show) p("NOT drawing variant and BREAKING :"+variant+" because px (start) > pXMax: "+pX+">"+pXMax);
                             break;
+                        }
+                        
+                        if (dX > rect.width) {
+                            dX = (int) (rect.width);
+                            if (show) {
+                                
+                                p("DX too large, using rect.width="+dX);
+                            }
                         }
                         int w = (int) dX;
                         int x = pX;
@@ -471,7 +489,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
                                         for (String sample : entry.getValue()) {
                                             if (rect.intersects(visibleRectangle)) {
                                                 renderer.renderGenotypeBandSNP(variant, context, rect, x, w, sample, coloring,
-                                                        hideFiltered);
+                                                        hideFiltered, debug);
                                             }
                                             rect.y += rect.height;
                                         }
@@ -483,7 +501,7 @@ public class VariantTrack extends FeatureTrack implements TrackGroupEventListene
                                     for (String sample : allSamples) {
                                         if (rect.intersects(visibleRectangle)) {
                                             renderer.renderGenotypeBandSNP(variant, context, rect, x, w, sample, coloring,
-                                                    hideFiltered);
+                                                    hideFiltered, debug);
                                         }
                                         rect.y += rect.height;
                                     }

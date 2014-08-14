@@ -105,7 +105,8 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
                     if (ktrack.getTrack().getResourceLocator() != null) {
                         file = ktrack.getTrack().getResourceLocator().getFileName();
                     }
-                    p("got track name "+ktrack.getTrackDisplayName()+" -> "+ktrack.getRenderType().getKaryoDisplayName());
+                   boolean visible = true;
+                    p("================= got track name "+ktrack.getTrackDisplayName()+" -> "+ktrack.getRenderType().getKaryoDisplayName());
                     String trackname = ktrack.getRenderType().getKaryoDisplayName();
                     if (trackname != null) {
                         // also get sample
@@ -118,10 +119,10 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
                         ktrack.setTrackDisplayName(trackname);
                     }
                     String displayname =ktrack.getTrackDisplayName();
-                   // p("Got displyaname: "+displayname);
+                    p("Got displyaname: "+displayname);
                     SingleTrackPanel cb = null;
                     if (atrack instanceof DataSourceTrack) {
-                     //   p("It is a datasource track");
+                        p("It is a datasource track");
                         if ((n.endsWith(".bam") || n.endsWith(".BAM") || file.endsWith(".bam") || file.endsWith(".BAM"))) {
                             p(n + "/" + type + ": Got a file with .bam" + n);
                             // check preferences if we want to use this or not
@@ -129,14 +130,21 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
                                 cb = new SingleTrackPanel(ktrack, true, control, list);
                                 cb.setSelected(false);
                             }
-                            ktrack.setVisible(false);
+                            else visible = false;
                         } else {
                             cb = new SingleTrackPanel(ktrack, true, control, list);
-                            cb.setSelected(selectedByDefault);
-                            p(n + "/" + type + " : Adding DataSourceTrack");
+                            if (n.toLowerCase().contains("ploidy")) {
+                                p("NOT allowing ploidy .seg tracks in karyo view)");
+                                visible = false;
+                            }
+                            else {
+                                cb.setSelected(selectedByDefault);
+                                p(n + "/" + type + " : Adding DataSourceTrack");
+                            }
+                            
                         }
                     } else if (atrack instanceof CoverageTrack) {
-                  //      p("It is a CoverageTrack");
+                        p("It is a CoverageTrack");
 
                         if (n.endsWith(".bam") || n.endsWith(".BAM") || file.endsWith(".bam") || file.endsWith(".BAM")) {
                             p("Got a file with .bam:" + n);
@@ -145,14 +153,14 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
                                 cb.setSelected(false);
                             }
                             // check preferences if we want to use this or not
-                            ktrack.setVisible(false);
+                            else visible = false;
                         } else {
                             cb = new SingleTrackPanel(ktrack, true, control, list);
                             p("Adding coverage track");
                         }
 
                     } else if (atrack instanceof FeatureTrack) {
-                  //      p("displayname="+ displayname+", n="+n + "/" + type + "/" + file + " is a feature track");
+                        p("displayname="+ displayname+", n="+n + "/" + type + "/" + file + " is a feature track");
                         String disp = displayname.toLowerCase();
                         if (n.startsWith("RefSeq") || n.indexOf("Ensemble") > -1) {
                             // ignore
@@ -160,9 +168,8 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
                         }
                         else if (!allowbam && (disp.startsWith("mother") || disp.startsWith("father"))) {
                          //   p("Ignoring mother and father for now as it was not tested and take too long!"); 
-                             //ktrack.setVisible(false);
                               cb = new SingleTrackPanel(ktrack, true, control, list);
-                               cb.setToolTipText("This type could potentially take <b>long to load</b> and use <b>a lot of memory</b>");
+                              cb.setToolTipText("This type could potentially take <b>long to load</b> and use <b>a lot of memory</b>");
                               cb.setSelected(false);
                         } else {
 
@@ -173,13 +180,12 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
                                     cb.setToolTipText("This type could potentially take long to load");
                                     p("This track could take too long, not adding");
                                 } else {
-                                    ktrack.setVisible(false);
+                                    visible = false;
                                 }
 
                             } else if (n.endsWith(".bam") || n.endsWith(".BAM") || file.endsWith(".bam") || file.endsWith(".BAM")) {
                                 p("Got a file with .bam:" + n);
                                 // check preferences if we want to use this or not
-
 
                                 if (allowbam) {
                                     cb = new SingleTrackPanel(ktrack, true, control, list);
@@ -192,6 +198,7 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
                                         cb.setText("Bam files can be huge, and it could take too long to load the entire file!");
                                     }
                                 }
+                                else  visible = false;
                             } else if (n.endsWith(".txt.gz") ||  file.endsWith(".txt.gz") ) {
                                 p("Got a file with .txt.gz:" + n);
 
@@ -204,23 +211,35 @@ public class IgvTrackSelectionPanel extends javax.swing.JPanel {
                                                 + "<br>You can store it locally first and then load it if you really want to.");                                    
                                     }
                                 }
+                                else  visible = false;
                             } else {
-                                ktrack.setVisible(false);
+                             // what about large .bed files?
+                               
                                 cb = new SingleTrackPanel(ktrack, true, control, list);
-                                cb.setSelected(selectedByDefault);
+                                if (file.endsWith(".vcf") || file.endsWith(".vcf.gz")) {
+                                    if (n.toLowerCase().contains("ploidy")) cb.setSelected(true);
+                                    else cb.setSelected(selectedByDefault);
+                                }
+                                else cb.setSelected(selectedByDefault);
                             }
 
                         }
                     }
                     if (cb != null) {
                         GuiProperties gui = RenderManager.getGuiProperties();
-                        boolean visible = gui.isKaryoVisible(ktrack.getGuiSample(), ktrack.getGuiKey(), ktrack.getFileExt());
-                        if (!visible) cb.setSelected(false);
-                        center.add(cb);
-                        panels.add(cb);
-                        karyotracks.add(ktrack);
-                        nrlisted++;
+                       // boolean visible = gui.isKaryoVisible(ktrack.getGuiSample(), ktrack.getGuiKey(), ktrack.getFileExt());
+                        if ( !visible)  {
+                            p("NOT adding "+n+", ktrack.isvisible: "+ktrack.isVisible());
+                            
+                        }
+                        else {                           
+                            center.add(cb);
+                            panels.add(cb);
+                            karyotracks.add(ktrack);
+                            nrlisted++;
+                        }
                     }
+                    else p("Got no panel for "+n);
                 }
 
             } catch (Exception e) {

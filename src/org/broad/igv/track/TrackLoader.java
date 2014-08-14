@@ -390,6 +390,7 @@ public class TrackLoader {
                     
                     track.setAttributeValue("Analysis", locator.getAnalysis());                    
                 }
+                track.setAttributeValue("Display name", track.getDisplayName());                    
             }
 
 

@@ -153,7 +153,7 @@ public class VariantRenderer { //extends FeatureRenderer {
         System.out.println("VariantRenderer: "+s);
     }
     public void renderGenotypeBandSNP(Variant variant, RenderContext context, Rectangle bandRectangle, int pX0, int dX,
-            String sampleName, VariantTrack.ColorMode coloring, boolean hideFiltered) {
+            String sampleName, VariantTrack.ColorMode coloring, boolean hideFiltered, boolean debug) {
 
         int pY = (int) bandRectangle.getY();
         int dY = (int) bandRectangle.getHeight();
@@ -161,8 +161,8 @@ public class VariantRenderer { //extends FeatureRenderer {
         int tOffset = 6;
         int bOffset = 8;
         Graphics2D g = (Graphics2D) context.getGraphics().create();
-       // g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, PreferenceManager.getInstance().getAntiAliasingHint());
-        
+        //g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, PreferenceManager.getInstance().getAntiAliasingHint());
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, true);
         if (dX >= 10) {
             if (dY > 24) {
                 Font f = FontManager.getFont(Font.BOLD, Math.min(dX, 12));
@@ -247,7 +247,13 @@ public class VariantRenderer { //extends FeatureRenderer {
             int h = Math.max(1, track.getDisplayMode() == Track.DisplayMode.EXPANDED ? dY - 2 : dY);
 
             if (coloring == VariantTrack.ColorMode.GENOTYPE || coloring == VariantTrack.ColorMode.TRACK) {
-
+//if (debug) {
+    p("Color by genotype: "+pX0+", dx="+dX);
+    if (dX > 100000) {
+        p("HUGE dx, trying smaller one for debugging");
+        dX = 1000;
+    }
+//}
                 g.setColor(b1Color);
                 g.fillRect(pX0, y0, dX, h);
             } else {
